@@ -1,0 +1,24 @@
+name: rpc-associates
+region: nyc
+services:
+  - name: web
+    github:
+      # Update this with your actual repository
+      repo: your-username/your-repo-name
+      branch: main
+      deploy_on_push: true
+    build_command: npm run build
+    run_command: npx serve -s dist -l 8080
+    environment_slug: node-js
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 8080
+    routes:
+      - path: /
+    health_check:
+      http_path: /
+    envs:
+      - key: NODE_ENV
+        value: production
+        scope: RUN_TIME
+

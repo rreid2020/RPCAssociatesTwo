@@ -7,14 +7,47 @@ const Contact: FC = () => {
     company: '',
     message: ''
   })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [errorMessage, setErrorMessage] = useState('')
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    console.log('Form submitted:', formData)
-    // TODO: Hook up to backend or form service
-    // For now, just log to console
-    alert('Thank you for your message! We will get back to you soon.')
-    setFormData({ name: '', email: '', company: '', message: '' })
+    setIsSubmitting(true)
+    setSubmitStatus('idle')
+    setErrorMessage('')
+
+    try {
+      const response = await fetch('https://formspree.io/f/xanrbgnz', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          company: formData.company,
+          message: formData.message,
+          _subject: 'New Contact Form Submission from RPC Associates Website'
+        })
+      })
+
+      if (response.ok) {
+        setSubmitStatus('success')
+        setFormData({ name: '', email: '', company: '', message: '' })
+        // Reset success message after 5 seconds
+        setTimeout(() => setSubmitStatus('idle'), 5000)
+      } else {
+        const data = await response.json()
+        setSubmitStatus('error')
+        setErrorMessage(data.error || 'Something went wrong. Please try again.')
+      }
+    } catch (error) {
+      setSubmitStatus('error')
+      setErrorMessage('Network error. Please check your connection and try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -79,9 +112,23 @@ const Contact: FC = () => {
                 required
               />
             </div>
-            <button type="submit" className="btn btn--primary">
-              Send message
+            <button 
+              type="submit" 
+              className="btn btn--primary"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Sending...' : 'Send message'}
             </button>
+            {submitStatus === 'success' && (
+              <div className="contact__message contact__message--success">
+                Thank you for your message! We will get back to you soon.
+              </div>
+            )}
+            {submitStatus === 'error' && (
+              <div className="contact__message contact__message--error">
+                {errorMessage || 'Something went wrong. Please try again or email us directly at info@rpcassociates.ca'}
+              </div>
+            )}
           </form>
           <div className="contact__details">
             <h3>Let's talk</h3>

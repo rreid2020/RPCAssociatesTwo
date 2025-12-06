@@ -675,6 +675,30 @@ a:focus {
   margin-right: var(--spacing-xs);
 }
 
+.contact__message {
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  margin-top: var(--spacing-sm);
+  font-size: 0.9375rem;
+}
+
+.contact__message--success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.contact__message--error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Footer */
 .footer {
   background-color: var(--color-primary);

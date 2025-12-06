@@ -1,5 +1,3 @@
-<svg width="120" height="40" xmlns="http://www.w3.org/2000/svg">
+<svg width="40" height="40" xmlns="http://www.w3.org/2000/svg">
   <rect width="40" height="40" fill="#183956" rx="4"/>
-  <text x="50" y="28" font-family="system-ui, sans-serif" font-size="18" font-weight="600" fill="#183956">RPC Associates</text>
 </svg>
-

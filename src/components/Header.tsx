@@ -21,8 +21,9 @@ const Header: FC = () => {
   return (
     <header className="header">
       <div className="header__container">
-        <a href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }} aria-label="RPC Associates Home">
+        <a href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }} aria-label="RPC Associates Home" className="header__logo-link">
           <img src={logo} alt="RPC Associates" className="header__logo" />
+          <span className="header__logo-text">RPC Associates</span>
         </a>
         <nav className={`header__nav ${isMenuOpen ? 'header__nav--open' : ''}`}>
           <ul className="header__nav-links">

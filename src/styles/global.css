@@ -178,9 +178,24 @@ a:focus {
   margin: 0 auto;
 }
 
+.header__logo-link {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  text-decoration: none;
+}
+
 .header__logo {
   height: 40px;
-  width: auto;
+  width: 40px;
+  flex-shrink: 0;
+}
+
+.header__logo-text {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  white-space: nowrap;
 }
 
 .header__nav {
@@ -677,6 +692,10 @@ a:focus {
     grid-template-columns: repeat(2, 1fr);
   }
   
+  .header__logo-text {
+    font-size: 1rem;
+  }
+  
   .header__nav-links,
   .header__cta-group {
     display: none;
@@ -724,6 +743,10 @@ a:focus {
   
   .hero__title {
     font-size: 1.75rem;
+  }
+  
+  .header__logo-text {
+    font-size: 0.9375rem;
   }
   
   .hero__buttons {

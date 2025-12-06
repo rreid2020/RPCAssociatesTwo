@@ -32,11 +32,6 @@ const Hero: FC = () => {
                 View Services
               </button>
             </div>
-            <div className="hero__meta">
-              <div>Strategic accounting & advisory</div>
-              <div>Workflow & automation support</div>
-              <div>Remote, secure collaboration</div>
-            </div>
           </div>
           <div className="hero__card">
             <h3 className="hero__card-title">A great accountant is a strategic partner.</h3>

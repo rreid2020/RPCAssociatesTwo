@@ -534,20 +534,39 @@ a:focus {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--spacing-xxl);
+  align-items: start;
+  margin-bottom: var(--spacing-lg);
+}
+
+.remote__content {
+  display: flex;
+  flex-direction: column;
 }
 
 .remote__content p {
-  margin-bottom: var(--spacing-md);
+  margin-bottom: 0;
+}
+
+.remote__list-wrapper {
+  display: flex;
+  flex-direction: column;
 }
 
 .remote__list {
   list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 .remote__item {
   margin-bottom: var(--spacing-md);
   padding-left: var(--spacing-md);
   position: relative;
+  line-height: 1.6;
+}
+
+.remote__item:last-child {
+  margin-bottom: 0;
 }
 
 .remote__item::before {
@@ -563,11 +582,13 @@ a:focus {
 }
 
 .remote__closing {
-  grid-column: 1 / -1;
   text-align: center;
   font-style: italic;
   color: var(--color-text-light);
-  margin-top: var(--spacing-md);
+  margin-top: var(--spacing-xl);
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* Contact Section */

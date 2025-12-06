@@ -544,15 +544,19 @@ a:focus {
 .remote__content {
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
+  min-height: 100%;
 }
 
 .remote__content p {
   margin-bottom: 0;
+  line-height: 1.8;
 }
 
 .remote__list-wrapper {
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
 }
 
 .remote__list {

@@ -1,13 +1,6 @@
 import { FC } from 'react'
 
 const About: FC = () => {
-  const benefits = [
-    'Integrated approach: Accounting + Consulting + Tech',
-    'Clear, jargon-free communication',
-    'Tailored solutions, not templates',
-    'Proactive, not reactive'
-  ]
-
   return (
     <section id="about" className="section">
       <div className="container">
@@ -36,11 +29,6 @@ const About: FC = () => {
               </p>
             </div>
           </div>
-        </div>
-        <div className="about__benefits">
-          {benefits.map((benefit, index) => (
-            <div key={index} className="about__benefit">{benefit}</div>
-          ))}
         </div>
       </div>
     </section>

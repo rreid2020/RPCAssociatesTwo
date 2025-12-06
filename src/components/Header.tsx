@@ -23,7 +23,10 @@ const Header: FC = () => {
       <div className="header__container">
         <a href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }} aria-label="RPC Associates Home" className="header__logo-link">
           <img src={logo} alt="RPC Associates" className="header__logo" />
-          <span className="header__logo-text">RPC Associates</span>
+          <div className="header__logo-text-wrapper">
+            <span className="header__logo-text">RPC Associates</span>
+            <span className="header__logo-tagline">Accounting · Consulting · Tech Solutions</span>
+          </div>
         </a>
         <nav className={`header__nav ${isMenuOpen ? 'header__nav--open' : ''}`}>
           <ul className="header__nav-links">

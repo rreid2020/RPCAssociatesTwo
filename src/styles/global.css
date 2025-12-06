@@ -95,8 +95,9 @@ a:focus {
   cursor: pointer;
   transition: var(--transition);
   border: none;
-  font-size: 1rem;
+  font-size: 0.9375rem;
   font-family: inherit;
+  white-space: nowrap;
 }
 
 .btn--primary {
@@ -176,6 +177,7 @@ a:focus {
   padding: var(--spacing-md) var(--spacing-md);
   max-width: 1200px;
   margin: 0 auto;
+  gap: var(--spacing-md);
 }
 
 .header__logo-link {
@@ -216,13 +218,13 @@ a:focus {
 .header__nav {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: var(--spacing-lg);
 }
 
 .header__nav-links {
   display: flex;
   list-style: none;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-md);
   align-items: center;
 }
 
@@ -230,6 +232,7 @@ a:focus {
   color: var(--color-text);
   font-weight: 500;
   padding: var(--spacing-xs) 0;
+  white-space: nowrap;
 }
 
 .header__nav-link:hover {
@@ -240,6 +243,7 @@ a:focus {
   display: flex;
   gap: var(--spacing-sm);
   align-items: center;
+  margin-left: var(--spacing-xs);
 }
 
 .header__hamburger {

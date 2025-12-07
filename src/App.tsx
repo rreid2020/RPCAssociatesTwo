@@ -1,27 +1,22 @@
 import { FC } from 'react'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Header from './components/Header'
-import Hero from './components/Hero'
-import Services from './components/Services'
-import Why from './components/Why'
-import About from './components/About'
-import Remote from './components/Remote'
-import Contact from './components/Contact'
 import Footer from './components/Footer'
+import Home from './pages/Home'
+import Resources from './pages/Resources'
+import Articles from './pages/Articles'
 
 const App: FC = () => {
   return (
-    <>
+    <Router>
       <Header />
-      <main>
-        <Hero />
-        <Services />
-        <Why />
-        <About />
-        <Remote />
-        <Contact />
-      </main>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/resources" element={<Resources />} />
+        <Route path="/articles" element={<Articles />} />
+      </Routes>
       <Footer />
-    </>
+    </Router>
   )
 }
 

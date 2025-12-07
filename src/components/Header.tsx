@@ -75,6 +75,24 @@ const Header: FC = () => {
                 Contact
               </a>
             </li>
+            <li>
+              <a 
+                href="#resources" 
+                className="header__nav-link"
+                onClick={(e) => { e.preventDefault(); scrollToSection('resources') }}
+              >
+                Resources
+              </a>
+            </li>
+            <li>
+              <a 
+                href="#articles" 
+                className="header__nav-link"
+                onClick={(e) => { e.preventDefault(); scrollToSection('articles') }}
+              >
+                Articles
+              </a>
+            </li>
           </ul>
           <div className="header__cta-group">
             <button 

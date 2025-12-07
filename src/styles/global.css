@@ -253,7 +253,7 @@ a:focus {
   list-style: none;
   padding: var(--spacing-xs) 0;
   margin-top: var(--spacing-xs);
-  min-width: 280px;
+  min-width: 360px;
   opacity: 0;
   visibility: hidden;
   transform: translateY(-10px);
@@ -273,6 +273,7 @@ a:focus {
   color: var(--color-text);
   font-size: 0.9375rem;
   cursor: default;
+  white-space: nowrap;
 }
 
 .header__dropdown-item--coming-soon {

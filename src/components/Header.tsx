@@ -6,6 +6,7 @@ import logo from '../assets/rpc-logo.svg'
 
 const Header: FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isResourcesOpen, setIsResourcesOpen] = useState(false)
   const location = useLocation()
 
   const scrollToSection = (id: string) => {
@@ -86,14 +87,32 @@ const Header: FC = () => {
                 Contact
               </a>
             </li>
-            <li>
+            <li 
+              className="header__nav-item--dropdown"
+              onMouseEnter={() => setIsResourcesOpen(true)}
+              onMouseLeave={() => setIsResourcesOpen(false)}
+            >
               <Link 
                 to="/resources" 
                 className="header__nav-link"
-                onClick={handleNavClick}
+                onClick={(e) => {
+                  if (window.innerWidth <= 900) {
+                    e.preventDefault()
+                    setIsResourcesOpen(!isResourcesOpen)
+                  } else {
+                    handleNavClick()
+                  }
+                }}
               >
                 Resources
               </Link>
+              <ul className={`header__dropdown ${isResourcesOpen ? 'header__dropdown--open' : ''}`}>
+                <li>
+                  <span className="header__dropdown-item header__dropdown-item--coming-soon">
+                    Canadian Personal Income Tax Calculator <span className="header__coming-soon">*Coming Soon*</span>
+                  </span>
+                </li>
+              </ul>
             </li>
             <li>
               <Link 

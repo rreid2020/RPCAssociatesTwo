@@ -7,6 +7,7 @@ import logo from '../assets/rpc-logo.svg'
 const Header: FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isResourcesOpen, setIsResourcesOpen] = useState(false)
+  const [isArticlesOpen, setIsArticlesOpen] = useState(false)
   const location = useLocation()
 
   const scrollToSection = (id: string) => {
@@ -106,7 +107,7 @@ const Header: FC = () => {
               >
                 Resources
               </Link>
-              <ul className={`header__dropdown ${isResourcesOpen ? 'header__dropdown--open' : ''}`}>
+              <ul className={`header__dropdown header__dropdown--resources ${isResourcesOpen ? 'header__dropdown--open' : ''}`}>
                 <li>
                   <span className="header__dropdown-item header__dropdown-item--coming-soon">
                     Canadian Personal Income Tax Calculator <span className="header__coming-soon">*Coming Soon*</span>
@@ -114,14 +115,42 @@ const Header: FC = () => {
                 </li>
               </ul>
             </li>
-            <li>
+            <li 
+              className="header__nav-item--dropdown"
+              onMouseEnter={() => setIsArticlesOpen(true)}
+              onMouseLeave={() => setIsArticlesOpen(false)}
+            >
               <Link 
                 to="/articles" 
                 className="header__nav-link"
-                onClick={handleNavClick}
+                onClick={(e) => {
+                  if (window.innerWidth <= 900) {
+                    e.preventDefault()
+                    setIsArticlesOpen(!isArticlesOpen)
+                  } else {
+                    handleNavClick()
+                  }
+                }}
               >
                 Articles
               </Link>
+              <ul className={`header__dropdown ${isArticlesOpen ? 'header__dropdown--open' : ''}`}>
+                <li>
+                  <span className="header__dropdown-item header__dropdown-item--coming-soon">
+                    Canadian Tax <span className="header__coming-soon">*Coming Soon*</span>
+                  </span>
+                </li>
+                <li>
+                  <span className="header__dropdown-item header__dropdown-item--coming-soon">
+                    Accounting <span className="header__coming-soon">*Coming Soon*</span>
+                  </span>
+                </li>
+                <li>
+                  <span className="header__dropdown-item header__dropdown-item--coming-soon">
+                    Technology <span className="header__coming-soon">*Coming Soon*</span>
+                  </span>
+                </li>
+              </ul>
             </li>
           </ul>
           <div className="header__cta-group">

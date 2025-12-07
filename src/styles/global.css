@@ -253,12 +253,16 @@ a:focus {
   list-style: none;
   padding: var(--spacing-xs) 0;
   margin-top: var(--spacing-xs);
-  min-width: 360px;
+  min-width: 240px;
   opacity: 0;
   visibility: hidden;
   transform: translateY(-10px);
   transition: var(--transition);
   z-index: 1000;
+}
+
+.header__dropdown--resources {
+  min-width: 360px;
 }
 
 .header__dropdown--open {

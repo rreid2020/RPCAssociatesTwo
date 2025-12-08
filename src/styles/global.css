@@ -860,6 +860,104 @@ a:focus {
   text-decoration: underline;
 }
 
+/* Page Content Styles */
+.page-content {
+  padding: var(--spacing-xxl) 0;
+  min-height: 60vh;
+}
+
+/* Privacy Policy Page */
+.privacy-policy {
+  max-width: 900px;
+  margin: 0 auto;
+  line-height: 1.8;
+}
+
+.privacy-policy h1 {
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+.privacy-policy__last-updated {
+  color: var(--color-text-light);
+  font-size: 0.9375rem;
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.privacy-policy__info {
+  background-color: var(--color-background);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-lg);
+}
+
+.privacy-policy__info p {
+  margin-bottom: var(--spacing-xs);
+}
+
+.privacy-policy__info p:last-child {
+  margin-bottom: 0;
+}
+
+.privacy-policy__section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.privacy-policy__section h2 {
+  color: var(--color-primary);
+  font-size: 1.5rem;
+  margin-top: var(--spacing-xl);
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 2px solid var(--color-primary);
+}
+
+.privacy-policy__section h3 {
+  color: var(--color-text);
+  font-size: 1.25rem;
+  margin-top: var(--spacing-lg);
+  margin-bottom: var(--spacing-sm);
+  font-weight: 600;
+}
+
+.privacy-policy__section p {
+  margin-bottom: var(--spacing-md);
+  color: var(--color-text);
+}
+
+.privacy-policy__section ul {
+  margin-bottom: var(--spacing-md);
+  padding-left: var(--spacing-lg);
+}
+
+.privacy-policy__section li {
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-text);
+}
+
+.privacy-policy__contact {
+  background-color: var(--color-background);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  margin-top: var(--spacing-md);
+}
+
+.privacy-policy__contact p {
+  margin-bottom: var(--spacing-sm);
+}
+
+.privacy-policy__contact a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: var(--transition);
+}
+
+.privacy-policy__contact a:hover {
+  text-decoration: underline;
+}
+
 /* Responsive Design */
 @media (max-width: 900px) {
   h1 {
@@ -1019,6 +1117,18 @@ a:focus {
   .footer__bottom {
     text-align: center;
     align-items: center;
+  }
+  
+  .privacy-policy {
+    padding: 0 var(--spacing-md);
+  }
+  
+  .privacy-policy__section h2 {
+    font-size: 1.25rem;
+  }
+  
+  .privacy-policy__section h3 {
+    font-size: 1.125rem;
   }
 }
 

@@ -5,6 +5,7 @@ import Footer from './components/Footer'
 import Home from './pages/Home'
 import Resources from './pages/Resources'
 import Articles from './pages/Articles'
+import Privacy from './pages/Privacy'
 
 const App: FC = () => {
   return (
@@ -14,6 +15,7 @@ const App: FC = () => {
         <Route path="/" element={<Home />} />
         <Route path="/resources" element={<Resources />} />
         <Route path="/articles" element={<Articles />} />
+        <Route path="/privacy" element={<Privacy />} />
       </Routes>
       <Footer />
     </Router>

@@ -1,8 +1,15 @@
 import { FC } from 'react'
+import SEO from '../components/SEO'
 
 const Terms: FC = () => {
   return (
-    <main className="page-content">
+    <>
+      <SEO
+        title="Terms of Service"
+        description="RPC Associates Terms of Service - Read our terms and conditions for using our accounting, consulting, and tech solutions services."
+        canonical="/terms"
+      />
+      <main className="page-content">
       <div className="container">
         <div className="terms-of-service">
           <h1>Terms of Service</h1>
@@ -140,6 +147,7 @@ const Terms: FC = () => {
         </div>
       </div>
     </main>
+    </>
   )
 }
 

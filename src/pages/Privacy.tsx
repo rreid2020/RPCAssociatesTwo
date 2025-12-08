@@ -1,8 +1,15 @@
 import { FC } from 'react'
+import SEO from '../components/SEO'
 
 const Privacy: FC = () => {
   return (
-    <main className="page-content">
+    <>
+      <SEO
+        title="Privacy Policy"
+        description="RPC Associates Privacy Policy - Learn how we collect, use, and protect your personal information when you use our accounting, consulting, and tech services."
+        canonical="/privacy"
+      />
+      <main className="page-content">
       <div className="container">
         <div className="privacy-policy">
           <h1>Privacy Policy</h1>
@@ -185,6 +192,7 @@ const Privacy: FC = () => {
         </div>
       </div>
     </main>
+    </>
   )
 }
 

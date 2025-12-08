@@ -1,8 +1,15 @@
 import { FC } from 'react'
+import SEO from '../components/SEO'
 
 const Articles: FC = () => {
   return (
-    <main>
+    <>
+      <SEO
+        title="Articles"
+        description="Insights, tips, and updates on accounting, consulting, and technology from RPC Associates. Stay informed with expert articles and industry news."
+        canonical="/articles"
+      />
+      <main>
       <section className="section">
         <div className="container">
           <div className="section__header">
@@ -17,6 +24,7 @@ const Articles: FC = () => {
         </div>
       </section>
     </main>
+    </>
   )
 }
 

@@ -1,4 +1,5 @@
 import { FC } from 'react'
+import { Link } from 'react-router-dom'
 
 const Footer: FC = () => {
   const currentYear = new Date().getFullYear()
@@ -16,19 +17,19 @@ const Footer: FC = () => {
             <h3 className="footer__title">Legal</h3>
             <ul className="footer__links">
               <li>
-                <a href="/privacy" className="footer__link">
+                <Link to="/privacy" className="footer__link">
                   Privacy
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="/terms" className="footer__link">
+                <Link to="/terms" className="footer__link">
                   Terms
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="/sitemap" className="footer__link">
+                <Link to="/sitemap" className="footer__link">
                   Site Map
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

@@ -11,15 +11,23 @@ const Footer: FC = () => {
             <div className="footer__copyright">
               © {currentYear} RPC Associates. All rights reserved.
             </div>
+          </div>
+          <div className="footer__legal">
+            <h3 className="footer__title">Legal</h3>
             <ul className="footer__links">
               <li>
-                <a href="#" className="footer__link" onClick={(e) => e.preventDefault()}>
+                <a href="/privacy" className="footer__link">
                   Privacy
                 </a>
               </li>
               <li>
-                <a href="#" className="footer__link" onClick={(e) => e.preventDefault()}>
+                <a href="/terms" className="footer__link">
                   Terms
+                </a>
+              </li>
+              <li>
+                <a href="/sitemap" className="footer__link">
+                  Site Map
                 </a>
               </li>
             </ul>

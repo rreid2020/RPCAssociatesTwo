@@ -6,6 +6,7 @@ import Home from './pages/Home'
 import Resources from './pages/Resources'
 import Articles from './pages/Articles'
 import Privacy from './pages/Privacy'
+import Terms from './pages/Terms'
 
 const App: FC = () => {
   return (
@@ -16,6 +17,7 @@ const App: FC = () => {
         <Route path="/resources" element={<Resources />} />
         <Route path="/articles" element={<Articles />} />
         <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
       </Routes>
       <Footer />
     </Router>

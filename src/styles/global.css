@@ -867,18 +867,21 @@ a:focus {
 }
 
 /* Privacy Policy Page */
-.privacy-policy {
+.privacy-policy,
+.terms-of-service {
   max-width: 900px;
   margin: 0 auto;
   line-height: 1.8;
 }
 
-.privacy-policy h1 {
+.privacy-policy h1,
+.terms-of-service h1 {
   color: var(--color-primary);
   margin-bottom: var(--spacing-md);
 }
 
-.privacy-policy__last-updated {
+.privacy-policy__last-updated,
+.terms-of-service__last-updated {
   color: var(--color-text-light);
   font-size: 0.9375rem;
   margin-bottom: var(--spacing-lg);
@@ -901,11 +904,13 @@ a:focus {
   margin-bottom: 0;
 }
 
-.privacy-policy__section {
+.privacy-policy__section,
+.terms-of-service__section {
   margin-bottom: var(--spacing-xl);
 }
 
-.privacy-policy__section h2 {
+.privacy-policy__section h2,
+.terms-of-service__section h2 {
   color: var(--color-primary);
   font-size: 1.5rem;
   margin-top: var(--spacing-xl);
@@ -922,39 +927,46 @@ a:focus {
   font-weight: 600;
 }
 
-.privacy-policy__section p {
+.privacy-policy__section p,
+.terms-of-service__section p {
   margin-bottom: var(--spacing-md);
   color: var(--color-text);
 }
 
-.privacy-policy__section ul {
+.privacy-policy__section ul,
+.terms-of-service__section ul {
   margin-bottom: var(--spacing-md);
   padding-left: var(--spacing-lg);
 }
 
-.privacy-policy__section li {
+.privacy-policy__section li,
+.terms-of-service__section li {
   margin-bottom: var(--spacing-sm);
   color: var(--color-text);
 }
 
-.privacy-policy__contact {
+.privacy-policy__contact,
+.terms-of-service__contact {
   background-color: var(--color-background);
   padding: var(--spacing-md);
   border-radius: var(--border-radius);
   margin-top: var(--spacing-md);
 }
 
-.privacy-policy__contact p {
+.privacy-policy__contact p,
+.terms-of-service__contact p {
   margin-bottom: var(--spacing-sm);
 }
 
-.privacy-policy__contact a {
+.privacy-policy__contact a,
+.terms-of-service__contact a {
   color: var(--color-primary);
   text-decoration: none;
   transition: var(--transition);
 }
 
-.privacy-policy__contact a:hover {
+.privacy-policy__contact a:hover,
+.terms-of-service__contact a:hover {
   text-decoration: underline;
 }
 
@@ -1119,11 +1131,13 @@ a:focus {
     align-items: center;
   }
   
-  .privacy-policy {
+  .privacy-policy,
+  .terms-of-service {
     padding: 0 var(--spacing-md);
   }
   
-  .privacy-policy__section h2 {
+  .privacy-policy__section h2,
+  .terms-of-service__section h2 {
     font-size: 1.25rem;
   }
   

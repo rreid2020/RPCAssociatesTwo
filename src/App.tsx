@@ -9,6 +9,7 @@ import Articles from './pages/Articles'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import Sitemap from './pages/Sitemap'
+import ComingSoon from './pages/ComingSoon'
 
 const App: FC = () => {
   return (
@@ -22,6 +23,7 @@ const App: FC = () => {
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/sitemap" element={<Sitemap />} />
+          <Route path="/client-portal" element={<ComingSoon />} />
         </Routes>
         <Footer />
       </Router>

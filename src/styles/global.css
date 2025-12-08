@@ -866,6 +866,81 @@ a:focus {
   min-height: 60vh;
 }
 
+/* Coming Soon Page */
+.coming-soon {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+  padding: var(--spacing-xxl) 0;
+}
+
+.coming-soon__content {
+  background-color: var(--color-background);
+  padding: var(--spacing-xxl);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.coming-soon__title {
+  color: var(--color-primary);
+  font-size: 2.5rem;
+  margin-bottom: var(--spacing-sm);
+}
+
+.coming-soon__subtitle {
+  font-size: 1.5rem;
+  color: var(--color-text-light);
+  font-weight: 600;
+  margin-bottom: var(--spacing-lg);
+}
+
+.coming-soon__description {
+  font-size: 1.125rem;
+  color: var(--color-text);
+  margin-bottom: var(--spacing-md);
+}
+
+.coming-soon__features {
+  list-style: none;
+  padding: 0;
+  margin: var(--spacing-lg) 0;
+  text-align: left;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.coming-soon__features li {
+  padding: var(--spacing-sm) 0;
+  padding-left: var(--spacing-lg);
+  position: relative;
+  color: var(--color-text);
+}
+
+.coming-soon__features li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--color-primary);
+  font-weight: bold;
+  font-size: 1.25rem;
+}
+
+.coming-soon__message {
+  font-size: 1rem;
+  color: var(--color-text-light);
+  margin: var(--spacing-xl) 0;
+  line-height: 1.6;
+}
+
+.coming-soon__contact {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: var(--spacing-xl);
+}
+
 /* Sitemap Page */
 .sitemap {
   max-width: 900px;
@@ -1211,6 +1286,26 @@ a:focus {
   
   .sitemap__link {
     font-size: 1rem;
+  }
+  
+  .coming-soon__title {
+    font-size: 2rem;
+  }
+  
+  .coming-soon__subtitle {
+    font-size: 1.25rem;
+  }
+  
+  .coming-soon__content {
+    padding: var(--spacing-xl);
+  }
+  
+  .coming-soon__contact {
+    flex-direction: column;
+  }
+  
+  .coming-soon__contact .btn {
+    width: 100%;
   }
   
   .privacy-policy__section h2,

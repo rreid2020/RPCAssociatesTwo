@@ -3,7 +3,6 @@ import { Link, useLocation } from 'react-router-dom'
 // Note: Place your logo file at src/assets/rpc-logo.png
 // Using SVG placeholder until PNG is added
 import logo from '../assets/rpc-logo.svg'
-import { PORTAL_URL } from '../config/portal'
 
 const Header: FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -154,15 +153,13 @@ const Header: FC = () => {
               </ul>
             </li>
             <li>
-              <a 
-                href={PORTAL_URL} 
+              <Link 
+                to="/client-portal" 
                 className="header__nav-link header__nav-link--portal"
-                target="_blank"
-                rel="noopener noreferrer"
                 onClick={handleNavClick}
               >
                 Client Portal
-              </a>
+              </Link>
             </li>
           </ul>
           <div className="header__cta-group">

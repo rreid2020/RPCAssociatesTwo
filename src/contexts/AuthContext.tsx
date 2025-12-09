@@ -9,6 +9,7 @@ interface AuthContextType {
   user: KeycloakTokenParsed | null
   login: () => void
   logout: () => void
+  register: () => void
 }
 
 interface KeycloakTokenParsed {
@@ -119,6 +120,12 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     }
   }
 
+  const register = () => {
+    if (keycloak) {
+      keycloak.register()
+    }
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -128,6 +135,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         user,
         login,
         logout,
+        register,
       }}
     >
       {children}

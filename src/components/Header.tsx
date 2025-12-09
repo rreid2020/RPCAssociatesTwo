@@ -10,7 +10,7 @@ const Header: FC = () => {
   const [isResourcesOpen, setIsResourcesOpen] = useState(false)
   const [isArticlesOpen, setIsArticlesOpen] = useState(false)
   const location = useLocation()
-  const { authenticated, user, login, logout } = useAuth()
+  const { authenticated, user, login, logout, keycloak } = useAuth()
 
   const scrollToSection = (id: string) => {
     if (location.pathname !== '/') {
@@ -155,17 +155,35 @@ const Header: FC = () => {
               </ul>
             </li>
             <li>
-              <Link 
-                to="/client-portal" 
-                className="header__nav-link header__nav-link--portal"
-                onClick={handleNavClick}
-              >
-                Client Portal
-              </Link>
+              {authenticated ? (
+                <Link 
+                  to="/client-portal" 
+                  className="header__nav-link header__nav-link--portal"
+                  onClick={handleNavClick}
+                >
+                  Client Portal
+                </Link>
+              ) : (
+                <a 
+                  href="#"
+                  className="header__nav-link header__nav-link--portal"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    if (keycloak) {
+                      login()
+                    } else {
+                      window.location.href = '/client-portal'
+                    }
+                    handleNavClick()
+                  }}
+                >
+                  Client Portal
+                </a>
+              )}
             </li>
           </ul>
           <div className="header__cta-group">
-            {authenticated ? (
+            {authenticated && (
               <>
                 <span className="header__user-name">{user?.name || user?.email || 'User'}</span>
                 <button 
@@ -175,13 +193,6 @@ const Header: FC = () => {
                   Logout
                 </button>
               </>
-            ) : (
-              <button 
-                className="btn btn--secondary"
-                onClick={login}
-              >
-                Login
-              </button>
             )}
             <button 
               className="btn btn--primary"

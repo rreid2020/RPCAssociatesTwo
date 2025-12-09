@@ -43,6 +43,13 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const initKeycloak = async () => {
+      // Only initialize Keycloak if URL is configured (not default placeholder)
+      if (!keycloakConfig.url || keycloakConfig.url.includes('yourdomain.com')) {
+        console.log('Keycloak not configured, skipping initialization')
+        setLoading(false)
+        return
+      }
+
       try {
         const kc = new Keycloak({
           url: keycloakConfig.url,
@@ -80,6 +87,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         }
       } catch (error) {
         console.error('Failed to initialize Keycloak', error)
+        // Don't block the app if Keycloak fails
       } finally {
         setLoading(false)
       }
@@ -91,12 +99,19 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   const login = () => {
     if (keycloak) {
       keycloak.login()
+    } else {
+      // If Keycloak not configured, redirect to login page
+      window.location.href = '/login'
     }
   }
 
   const logout = () => {
     if (keycloak) {
       keycloak.logout()
+    } else {
+      // If Keycloak not configured, just clear local state
+      setAuthenticated(false)
+      setUser(null)
     }
   }
 

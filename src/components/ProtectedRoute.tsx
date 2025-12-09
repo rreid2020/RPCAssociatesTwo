@@ -18,6 +18,11 @@ const ProtectedRoute: FC<ProtectedRouteProps> = ({ children, requiredRole }) => 
     )
   }
 
+  // If Keycloak is not configured, allow access (for development/testing)
+  if (!keycloak) {
+    return <>{children}</>
+  }
+
   if (!authenticated) {
     return <Navigate to="/login" replace />
   }

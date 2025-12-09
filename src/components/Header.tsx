@@ -3,12 +3,14 @@ import { Link, useLocation } from 'react-router-dom'
 // Note: Place your logo file at src/assets/rpc-logo.png
 // Using SVG placeholder until PNG is added
 import logo from '../assets/rpc-logo.svg'
+import { useAuth } from '../contexts/AuthContext'
 
 const Header: FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isResourcesOpen, setIsResourcesOpen] = useState(false)
   const [isArticlesOpen, setIsArticlesOpen] = useState(false)
   const location = useLocation()
+  const { authenticated, user, login, logout } = useAuth()
 
   const scrollToSection = (id: string) => {
     if (location.pathname !== '/') {
@@ -163,12 +165,24 @@ const Header: FC = () => {
             </li>
           </ul>
           <div className="header__cta-group">
-            <button 
-              className="btn btn--secondary"
-              onClick={handleContactClick}
-            >
-              Request a Call
-            </button>
+            {authenticated ? (
+              <>
+                <span className="header__user-name">{user?.name || user?.email || 'User'}</span>
+                <button 
+                  className="btn btn--secondary"
+                  onClick={logout}
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <button 
+                className="btn btn--secondary"
+                onClick={login}
+              >
+                Login
+              </button>
+            )}
             <button 
               className="btn btn--primary"
               onClick={handleContactClick}

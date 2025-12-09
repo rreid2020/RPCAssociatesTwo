@@ -44,7 +44,11 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initKeycloak = async () => {
       // Only initialize Keycloak if URL is configured (not default placeholder)
-      if (!keycloakConfig.url || keycloakConfig.url.includes('yourdomain.com')) {
+      const isConfigured = keycloakConfig.url && 
+                          !keycloakConfig.url.includes('yourdomain.com') &&
+                          keycloakConfig.url !== 'https://keycloak.yourdomain.com'
+      
+      if (!isConfigured) {
         console.log('Keycloak not configured, skipping initialization')
         setLoading(false)
         return

@@ -10,7 +10,7 @@ const Header: FC = () => {
   const [isResourcesOpen, setIsResourcesOpen] = useState(false)
   const [isArticlesOpen, setIsArticlesOpen] = useState(false)
   const location = useLocation()
-  const { authenticated, user, login, logout, keycloak } = useAuth()
+  const { authenticated, user, logout } = useAuth()
 
   const scrollToSection = (id: string) => {
     if (location.pathname !== '/') {
@@ -164,21 +164,13 @@ const Header: FC = () => {
                   Client Portal
                 </Link>
               ) : (
-                <a 
-                  href="#"
+                <Link 
+                  to="/login"
                   className="header__nav-link header__nav-link--portal"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    if (keycloak) {
-                      login()
-                    } else {
-                      window.location.href = '/client-portal'
-                    }
-                    handleNavClick()
-                  }}
+                  onClick={handleNavClick}
                 >
                   Client Portal
-                </a>
+                </Link>
               )}
             </li>
           </ul>

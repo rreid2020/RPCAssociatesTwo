@@ -4,14 +4,17 @@ import { useAuth } from '../contexts/AuthContext'
 import SEO from '../components/SEO'
 
 const Login: FC = () => {
-  const { authenticated, loading, login } = useAuth()
+  const { authenticated, loading, login, keycloak } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
     if (authenticated && !loading) {
       navigate('/client-portal', { replace: true })
+    } else if (!loading && keycloak && !authenticated) {
+      // If Keycloak is configured but user is not authenticated, trigger login
+      login()
     }
-  }, [authenticated, loading, navigate])
+  }, [authenticated, loading, navigate, keycloak, login])
 
   if (loading) {
     return (

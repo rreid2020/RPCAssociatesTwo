@@ -3,14 +3,12 @@ import { Link, useLocation } from 'react-router-dom'
 // Note: Place your logo file at src/assets/rpc-logo.png
 // Using SVG placeholder until PNG is added
 import logo from '../assets/rpc-logo.svg'
-import { useAuth } from '../contexts/AuthContext'
 
 const Header: FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isResourcesOpen, setIsResourcesOpen] = useState(false)
   const [isArticlesOpen, setIsArticlesOpen] = useState(false)
   const location = useLocation()
-  const { authenticated, user, logout } = useAuth()
 
   const scrollToSection = (id: string) => {
     if (location.pathname !== '/') {
@@ -155,37 +153,22 @@ const Header: FC = () => {
               </ul>
             </li>
             <li>
-              {authenticated ? (
-                <Link 
-                  to="/client-portal" 
-                  className="header__nav-link header__nav-link--portal"
-                  onClick={handleNavClick}
-                >
-                  Client Portal
-                </Link>
-              ) : (
-                <Link 
-                  to="/login"
-                  className="header__nav-link header__nav-link--portal"
-                  onClick={handleNavClick}
-                >
-                  Client Portal
-                </Link>
-              )}
+              <Link 
+                to="/client-portal" 
+                className="header__nav-link header__nav-link--portal"
+                onClick={handleNavClick}
+              >
+                Client Portal
+              </Link>
             </li>
           </ul>
           <div className="header__cta-group">
-            {authenticated && (
-              <>
-                <span className="header__user-name">{user?.name || user?.email || 'User'}</span>
-                <button 
-                  className="btn btn--secondary"
-                  onClick={logout}
-                >
-                  Logout
-                </button>
-              </>
-            )}
+            <button 
+              className="btn btn--secondary"
+              onClick={handleContactClick}
+            >
+              Request a Call
+            </button>
             <button 
               className="btn btn--primary"
               onClick={handleContactClick}

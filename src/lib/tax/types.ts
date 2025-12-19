@@ -32,6 +32,10 @@ export interface TaxCalculatorInputs {
   selfEmploymentIncome: number
   otherIncome: number
   rrspContributions: number
+  capitalGains: number
+  eligibleDividends: number
+  ineligibleDividends: number
+  incomeTaxesPaid: number
 }
 
 export interface TaxBreakdown {
@@ -47,5 +51,6 @@ export interface TaxCalculatorResults {
   totalTax: number
   averageTaxRate: number
   marginalTaxRate: number
+  refundOrOwing: number // Positive = refund, Negative = amount owing
 }
 

@@ -1468,6 +1468,14 @@ a:focus {
   margin-top: var(--spacing-sm);
 }
 
+.tax-calculator__result-item-value--refund {
+  color: #28a745;
+}
+
+.tax-calculator__result-item-value--owing {
+  color: #dc3545;
+}
+
 .tax-calculator__result-item-breakdown {
   margin-top: var(--spacing-sm);
   padding-top: var(--spacing-sm);

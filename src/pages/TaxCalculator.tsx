@@ -13,7 +13,11 @@ const TaxCalculator: FC = () => {
     employmentIncome: 0,
     selfEmploymentIncome: 0,
     otherIncome: 0,
-    rrspContributions: 0
+    rrspContributions: 0,
+    capitalGains: 0,
+    eligibleDividends: 0,
+    ineligibleDividends: 0,
+    incomeTaxesPaid: 0
   })
 
   const [results, setResults] = useState<TaxCalculatorResults | null>(null)
@@ -40,7 +44,18 @@ const TaxCalculator: FC = () => {
   }
 
   const handleInputChange = (field: keyof TaxCalculatorInputs, value: string | number) => {
-    if (typeof value === 'string' && (field === 'employmentIncome' || field === 'selfEmploymentIncome' || field === 'otherIncome' || field === 'rrspContributions')) {
+    const numericFields = [
+      'employmentIncome', 
+      'selfEmploymentIncome', 
+      'otherIncome', 
+      'rrspContributions',
+      'capitalGains',
+      'eligibleDividends',
+      'ineligibleDividends',
+      'incomeTaxesPaid'
+    ]
+    
+    if (typeof value === 'string' && numericFields.includes(field)) {
       setInputs(prev => ({
         ...prev,
         [field]: parseNumber(value)
@@ -191,6 +206,51 @@ const TaxCalculator: FC = () => {
                     </div>
 
                     <div className="tax-calculator__field-group">
+                      <label htmlFor="capitalGains" className="tax-calculator__field-label">Capital gains</label>
+                      <p className="tax-calculator__field-description">Half of this amount is included in income.</p>
+                      <input
+                        type="number"
+                        id="capitalGains"
+                        className="tax-calculator__input"
+                        min="0"
+                        step="0.01"
+                        placeholder="0"
+                        value={inputs.capitalGains || ''}
+                        onChange={(e) => handleInputChange('capitalGains', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="tax-calculator__field-group">
+                      <label htmlFor="eligibleDividends" className="tax-calculator__field-label">Eligible dividends</label>
+                      <p className="tax-calculator__field-description">In general, these are dividends received from public Canadian companies. Enter the actual amount of dividends received.</p>
+                      <input
+                        type="number"
+                        id="eligibleDividends"
+                        className="tax-calculator__input"
+                        min="0"
+                        step="0.01"
+                        placeholder="0"
+                        value={inputs.eligibleDividends || ''}
+                        onChange={(e) => handleInputChange('eligibleDividends', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="tax-calculator__field-group">
+                      <label htmlFor="ineligibleDividends" className="tax-calculator__field-label">Ineligible Dividends</label>
+                      <p className="tax-calculator__field-description">In general, these are dividends received from private Canadian companies. Enter the actual amount of dividends received.</p>
+                      <input
+                        type="number"
+                        id="ineligibleDividends"
+                        className="tax-calculator__input"
+                        min="0"
+                        step="0.01"
+                        placeholder="0"
+                        value={inputs.ineligibleDividends || ''}
+                        onChange={(e) => handleInputChange('ineligibleDividends', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="tax-calculator__field-group">
                       <label htmlFor="otherIncome" className="tax-calculator__field-label">Other income</label>
                       <p className="tax-calculator__field-description">All other income (like rental income, interest, tips, EI, CPP, and OAS).</p>
                       <input
@@ -202,6 +262,21 @@ const TaxCalculator: FC = () => {
                         placeholder="0"
                         value={inputs.otherIncome || ''}
                         onChange={(e) => handleInputChange('otherIncome', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="tax-calculator__field-group">
+                      <label htmlFor="incomeTaxesPaid" className="tax-calculator__field-label">Income taxes paid</label>
+                      <p className="tax-calculator__field-description">For example, taxes deducted from your paycheque. Don't include CPP/EI contributions.</p>
+                      <input
+                        type="number"
+                        id="incomeTaxesPaid"
+                        className="tax-calculator__input"
+                        min="0"
+                        step="0.01"
+                        placeholder="0"
+                        value={inputs.incomeTaxesPaid || ''}
+                        onChange={(e) => handleInputChange('incomeTaxesPaid', e.target.value)}
                       />
                     </div>
 
@@ -221,7 +296,16 @@ const TaxCalculator: FC = () => {
                           <span className="tax-calculator__result-item-label">Total income</span>
                           <span className="tax-calculator__result-item-description">Total income entered.</span>
                         </div>
-                        <div className="tax-calculator__result-item-value">{formatCurrency(results.taxableIncome + inputs.rrspContributions)}</div>
+                        <div className="tax-calculator__result-item-value">
+                          {formatCurrency(
+                            inputs.employmentIncome + 
+                            inputs.selfEmploymentIncome + 
+                            inputs.otherIncome + 
+                            inputs.capitalGains + 
+                            inputs.eligibleDividends + 
+                            inputs.ineligibleDividends
+                          )}
+                        </div>
                       </div>
 
                       <div className="tax-calculator__result-item">
@@ -246,8 +330,35 @@ const TaxCalculator: FC = () => {
                           <span className="tax-calculator__result-item-label">After-tax income</span>
                           <span className="tax-calculator__result-item-description">Total income after tax.</span>
                         </div>
-                        <div className="tax-calculator__result-item-value">{formatCurrency((results.taxableIncome + inputs.rrspContributions) - results.totalTax)}</div>
+                        <div className="tax-calculator__result-item-value">
+                          {formatCurrency(
+                            (inputs.employmentIncome + 
+                            inputs.selfEmploymentIncome + 
+                            inputs.otherIncome + 
+                            inputs.capitalGains + 
+                            inputs.eligibleDividends + 
+                            inputs.ineligibleDividends) - results.totalTax
+                          )}
+                        </div>
                       </div>
+
+                      {results.refundOrOwing !== 0 && (
+                        <div className="tax-calculator__result-item">
+                          <div className="tax-calculator__result-item-header">
+                            <span className="tax-calculator__result-item-label">
+                              {results.refundOrOwing > 0 ? 'Estimated refund' : 'Amount owing'}
+                            </span>
+                            <span className="tax-calculator__result-item-description">
+                              {results.refundOrOwing > 0 
+                                ? 'Tax refund after accounting for taxes already paid.'
+                                : 'Additional tax payable after accounting for taxes already paid.'}
+                            </span>
+                          </div>
+                          <div className={`tax-calculator__result-item-value ${results.refundOrOwing > 0 ? 'tax-calculator__result-item-value--refund' : 'tax-calculator__result-item-value--owing'}`}>
+                            {results.refundOrOwing > 0 ? '+' : ''}{formatCurrency(Math.abs(results.refundOrOwing))}
+                          </div>
+                        </div>
+                      )}
 
                       <div className="tax-calculator__result-item">
                         <div className="tax-calculator__result-item-header">

@@ -114,195 +114,177 @@ const TaxCalculator: FC = () => {
       <main className="page-content">
         <div className="container">
           <section className="section">
-            <div className="section__header">
-              <h1 className="section__title">Canadian Personal Income Tax Calculator</h1>
-              <p className="section__subtitle">
-                Estimate your personal income tax for planning purposes. This calculator provides an approximation based on basic income sources and RRSP contributions.
+            <div className="tax-calculator__page-header">
+              <h1 className="tax-calculator__page-title">
+                {inputs.taxYear} {provinces.find(p => p.code === inputs.province)?.name || 'Ontario'} Income Tax Calculator
+              </h1>
+              <p className="tax-calculator__page-subtitle">
+                Plug in a few numbers and we'll give you visibility into your tax bracket, marginal tax rate, average tax rate, and an estimate of your taxes owed in {inputs.taxYear}.
               </p>
             </div>
 
             <div className="tax-calculator">
-              <form className="tax-calculator__form" onSubmit={handleCalculate}>
-                <div className="tax-calculator__row">
-                  <div className="contact__field">
-                    <label htmlFor="taxYear" className="contact__label">Tax Year</label>
-                    <select
-                      id="taxYear"
-                      className="contact__input"
-                      value={inputs.taxYear}
-                      onChange={(e) => handleInputChange('taxYear', parseInt(e.target.value))}
-                    >
-                      <option value={2025}>2025</option>
-                    </select>
-                  </div>
+              <div className="tax-calculator__container">
+                <div className="tax-calculator__inputs-section">
+                  <form className="tax-calculator__form" onSubmit={handleCalculate}>
+                    <div className="tax-calculator__form-header">
+                      <div className="tax-calculator__field-group">
+                        <label htmlFor="province" className="tax-calculator__field-label">Choose province or territory</label>
+                        <select
+                          id="province"
+                          className="tax-calculator__select"
+                          value={inputs.province}
+                          onChange={(e) => handleInputChange('province', e.target.value)}
+                        >
+                          {provinces.map(prov => (
+                            <option key={prov.code} value={prov.code}>
+                              {prov.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
 
-                  <div className="contact__field">
-                    <label htmlFor="province" className="contact__label">Province/Territory</label>
-                    <select
-                      id="province"
-                      className="contact__input"
-                      value={inputs.province}
-                      onChange={(e) => handleInputChange('province', e.target.value)}
-                    >
-                      {provinces.map(prov => (
-                        <option key={prov.code} value={prov.code}>
-                          {prov.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                    <div className="tax-calculator__field-group">
+                      <label htmlFor="employmentIncome" className="tax-calculator__field-label">Employment income</label>
+                      <p className="tax-calculator__field-description">Employment income and taxable benefits.</p>
+                      <input
+                        type="number"
+                        id="employmentIncome"
+                        className="tax-calculator__input"
+                        min="0"
+                        step="0.01"
+                        placeholder="0"
+                        value={inputs.employmentIncome || ''}
+                        onChange={(e) => handleInputChange('employmentIncome', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="tax-calculator__field-group">
+                      <label htmlFor="selfEmploymentIncome" className="tax-calculator__field-label">Self-employment income</label>
+                      <p className="tax-calculator__field-description">Business, professional, commission, partnership, fishing, and farming income.</p>
+                      <input
+                        type="number"
+                        id="selfEmploymentIncome"
+                        className="tax-calculator__input"
+                        min="0"
+                        step="0.01"
+                        placeholder="0"
+                        value={inputs.selfEmploymentIncome || ''}
+                        onChange={(e) => handleInputChange('selfEmploymentIncome', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="tax-calculator__field-group">
+                      <label htmlFor="rrspContributions" className="tax-calculator__field-label">RRSP and FHSA deductions</label>
+                      <p className="tax-calculator__field-description">Keep in mind RRSP and FHSA contributions are subject to annual contribution and deduction limits.</p>
+                      <input
+                        type="number"
+                        id="rrspContributions"
+                        className="tax-calculator__input"
+                        min="0"
+                        step="0.01"
+                        placeholder="0"
+                        value={inputs.rrspContributions || ''}
+                        onChange={(e) => handleInputChange('rrspContributions', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="tax-calculator__field-group">
+                      <label htmlFor="otherIncome" className="tax-calculator__field-label">Other income</label>
+                      <p className="tax-calculator__field-description">All other income (like rental income, interest, tips, EI, CPP, and OAS).</p>
+                      <input
+                        type="number"
+                        id="otherIncome"
+                        className="tax-calculator__input"
+                        min="0"
+                        step="0.01"
+                        placeholder="0"
+                        value={inputs.otherIncome || ''}
+                        onChange={(e) => handleInputChange('otherIncome', e.target.value)}
+                      />
+                    </div>
+
+                    <button type="submit" className="btn btn--primary tax-calculator__calculate-btn">
+                      Calculate
+                    </button>
+                  </form>
                 </div>
 
-                <div className="tax-calculator__row">
-                  <div className="contact__field">
-                    <label htmlFor="employmentIncome" className="contact__label">Employment Income</label>
-                    <input
-                      type="number"
-                      id="employmentIncome"
-                      className="contact__input"
-                      min="0"
-                      step="0.01"
-                      value={inputs.employmentIncome || ''}
-                      onChange={(e) => handleInputChange('employmentIncome', e.target.value)}
-                    />
-                  </div>
+                {hasCalculated && results && (
+                  <div className="tax-calculator__results-section">
+                    <h2 className="tax-calculator__results-title">Your Results</h2>
+                    
+                    <div className="tax-calculator__result-card">
+                      <div className="tax-calculator__result-item">
+                        <div className="tax-calculator__result-item-header">
+                          <span className="tax-calculator__result-item-label">Total income</span>
+                          <span className="tax-calculator__result-item-description">Total income entered.</span>
+                        </div>
+                        <div className="tax-calculator__result-item-value">{formatCurrency(results.taxableIncome + inputs.rrspContributions)}</div>
+                      </div>
 
-                  <div className="contact__field">
-                    <label htmlFor="selfEmploymentIncome" className="contact__label">Self-Employment Income</label>
-                    <input
-                      type="number"
-                      id="selfEmploymentIncome"
-                      className="contact__input"
-                      min="0"
-                      step="0.01"
-                      value={inputs.selfEmploymentIncome || ''}
-                      onChange={(e) => handleInputChange('selfEmploymentIncome', e.target.value)}
-                    />
-                  </div>
-                </div>
+                      <div className="tax-calculator__result-item">
+                        <div className="tax-calculator__result-item-header">
+                          <span className="tax-calculator__result-item-label">Total tax</span>
+                        </div>
+                        <div className="tax-calculator__result-item-value tax-calculator__result-item-value--large">{formatCurrency(results.totalTax)}</div>
+                        <div className="tax-calculator__result-item-breakdown">
+                          <div className="tax-calculator__result-item-breakdown-item">
+                            <span>Federal Tax</span>
+                            <span>{formatCurrency(results.federalTax.net)}</span>
+                          </div>
+                          <div className="tax-calculator__result-item-breakdown-item">
+                            <span>Provincial/Territorial Tax</span>
+                            <span>{formatCurrency(results.provincialTax.net)}</span>
+                          </div>
+                        </div>
+                      </div>
 
-                <div className="tax-calculator__row">
-                  <div className="contact__field">
-                    <label htmlFor="otherIncome" className="contact__label">Other Income</label>
-                    <input
-                      type="number"
-                      id="otherIncome"
-                      className="contact__input"
-                      min="0"
-                      step="0.01"
-                      value={inputs.otherIncome || ''}
-                      onChange={(e) => handleInputChange('otherIncome', e.target.value)}
-                    />
-                  </div>
+                      <div className="tax-calculator__result-item">
+                        <div className="tax-calculator__result-item-header">
+                          <span className="tax-calculator__result-item-label">After-tax income</span>
+                          <span className="tax-calculator__result-item-description">Total income after tax.</span>
+                        </div>
+                        <div className="tax-calculator__result-item-value">{formatCurrency((results.taxableIncome + inputs.rrspContributions) - results.totalTax)}</div>
+                      </div>
 
-                  <div className="contact__field">
-                    <label htmlFor="rrspContributions" className="contact__label">RRSP Contributions</label>
-                    <input
-                      type="number"
-                      id="rrspContributions"
-                      className="contact__input"
-                      min="0"
-                      step="0.01"
-                      value={inputs.rrspContributions || ''}
-                      onChange={(e) => handleInputChange('rrspContributions', e.target.value)}
-                    />
-                  </div>
-                </div>
+                      <div className="tax-calculator__result-item">
+                        <div className="tax-calculator__result-item-header">
+                          <span className="tax-calculator__result-item-label">Average tax rate</span>
+                          <span className="tax-calculator__result-item-description">Total tax divided by total income.</span>
+                        </div>
+                        <div className="tax-calculator__result-item-value">{results.averageTaxRate.toFixed(2)}%</div>
+                      </div>
 
-                <button type="submit" className="btn btn--primary tax-calculator__calculate-btn">
-                  Calculate Tax
-                </button>
-              </form>
-
-              {hasCalculated && results && (
-                <div className="tax-calculator__results">
-                  <h2 className="tax-calculator__results-title">Tax Estimate</h2>
-                  
-                  <div className="tax-calculator__result-section">
-                    <div className="tax-calculator__result-row">
-                      <span className="tax-calculator__result-label">Taxable Income:</span>
-                      <span className="tax-calculator__result-value">{formatCurrency(results.taxableIncome)}</span>
+                      <div className="tax-calculator__result-item">
+                        <div className="tax-calculator__result-item-header">
+                          <span className="tax-calculator__result-item-label">Marginal tax rate</span>
+                          <span className="tax-calculator__result-item-description">Incremental tax paid on incremental income.</span>
+                        </div>
+                        <div className="tax-calculator__result-item-value">{results.marginalTaxRate.toFixed(2)}%</div>
+                      </div>
                     </div>
                   </div>
+                )}
 
-                  <div className="tax-calculator__result-section">
-                    <h3 className="tax-calculator__result-heading">Federal Tax</h3>
-                    <div className="tax-calculator__result-row">
-                      <span className="tax-calculator__result-label">Gross Tax:</span>
-                      <span className="tax-calculator__result-value">{formatCurrency(results.federalTax.gross)}</span>
-                    </div>
-                    <div className="tax-calculator__result-row">
-                      <span className="tax-calculator__result-label">Credits:</span>
-                      <span className="tax-calculator__result-value">-{formatCurrency(results.federalTax.credits)}</span>
-                    </div>
-                    <div className="tax-calculator__result-row tax-calculator__result-row--total">
-                      <span className="tax-calculator__result-label">Net Federal Tax:</span>
-                      <span className="tax-calculator__result-value">{formatCurrency(results.federalTax.net)}</span>
+                {!hasCalculated && (
+                  <div className="tax-calculator__results-section tax-calculator__results-section--placeholder">
+                    <h2 className="tax-calculator__results-title">Your Results</h2>
+                    <div className="tax-calculator__placeholder">
+                      <p>Please enter your income, deductions, gains, dividends, and taxes paid to get a summary of your results.</p>
                     </div>
                   </div>
-
-                  <div className="tax-calculator__result-section">
-                    <h3 className="tax-calculator__result-heading">Provincial/Territorial Tax</h3>
-                    <div className="tax-calculator__result-row">
-                      <span className="tax-calculator__result-label">Gross Tax:</span>
-                      <span className="tax-calculator__result-value">{formatCurrency(results.provincialTax.gross)}</span>
-                    </div>
-                    <div className="tax-calculator__result-row">
-                      <span className="tax-calculator__result-label">Credits:</span>
-                      <span className="tax-calculator__result-value">{formatCurrency(results.provincialTax.credits)}</span>
-                    </div>
-                    <div className="tax-calculator__result-row tax-calculator__result-row--total">
-                      <span className="tax-calculator__result-label">Net Provincial Tax:</span>
-                      <span className="tax-calculator__result-value">{formatCurrency(results.provincialTax.net)}</span>
-                    </div>
-                  </div>
-
-                  <div className="tax-calculator__result-section tax-calculator__result-section--summary">
-                    <div className="tax-calculator__result-row tax-calculator__result-row--major">
-                      <span className="tax-calculator__result-label">Total Estimated Tax:</span>
-                      <span className="tax-calculator__result-value">{formatCurrency(results.totalTax)}</span>
-                    </div>
-                    <div className="tax-calculator__result-row">
-                      <span className="tax-calculator__result-label">Average Tax Rate:</span>
-                      <span className="tax-calculator__result-value">{results.averageTaxRate.toFixed(2)}%</span>
-                    </div>
-                    <div className="tax-calculator__result-row">
-                      <span className="tax-calculator__result-label">Marginal Tax Rate:</span>
-                      <span className="tax-calculator__result-value">{results.marginalTaxRate.toFixed(2)}%</span>
-                    </div>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
 
               <div className="tax-calculator__disclaimer">
-                <h3 className="tax-calculator__disclaimer-title">Important Disclaimer</h3>
                 <p className="tax-calculator__disclaimer-text">
-                  <strong>Estimates only.</strong> This calculator provides approximate tax estimates for planning purposes only. It does not include all deductions, credits, or tax situations. This is not tax advice.
+                  These calculations are approximate and include the following non-refundable tax credits: the basic personal tax amount. After-tax income is your total income net of federal tax and provincial/territorial tax. Rates are current as of January 2025.
                 </p>
                 <p className="tax-calculator__disclaimer-text">
-                  <strong>For planning purposes only—</strong>final tax depends on your complete tax return, including all income sources, deductions, credits, and your specific tax situation.
+                  <strong>Estimates only.</strong> This calculator provides approximate tax estimates for planning purposes only. It does not include all deductions, credits, or tax situations. This is not tax advice. Final tax depends on your complete tax return, including all income sources, deductions, credits, and your specific tax situation.
                 </p>
-                <div className="tax-calculator__disclaimer-details">
-                  <div>
-                    <strong>What's included:</strong>
-                    <ul>
-                      <li>Basic employment, self-employment, and other income</li>
-                      <li>RRSP contribution deductions</li>
-                      <li>Federal Basic Personal Amount (BPA) credit with phase-out</li>
-                      <li>Progressive federal and provincial/territorial tax brackets</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <strong>What's not included:</strong>
-                    <ul>
-                      <li>Provincial/territorial tax credits (excluded for reliability)</li>
-                      <li>Dividend tax credits</li>
-                      <li>Capital gains treatment</li>
-                      <li>Other deductions and credits (CPP, EI, medical expenses, etc.)</li>
-                      <li>Tax on split income, alternative minimum tax, and other special situations</li>
-                    </ul>
-                  </div>
-                </div>
               </div>
 
               <div className="tax-calculator__cta">

@@ -1397,8 +1397,18 @@ a:focus {
     font-size: 1rem;
   }
   
-  .tax-calculator__row {
+  .tax-calculator__page-title {
+    font-size: 2rem;
+  }
+  
+  .tax-calculator__container {
     grid-template-columns: 1fr;
+    gap: var(--spacing-xl);
+  }
+  
+  .tax-calculator__results-section {
+    position: relative;
+    top: 0;
   }
   
   .tax-calculator__disclaimer-details {
@@ -1442,117 +1452,236 @@ a:focus {
     font-size: 1.125rem;
   }
   
-  .tax-calculator__form {
+  .tax-calculator__page-header {
+    text-align: center;
+    margin-bottom: var(--spacing-xxl);
     max-width: 800px;
-    margin: 0 auto var(--spacing-xl);
+    margin-left: auto;
+    margin-right: auto;
   }
   
-  .tax-calculator__row {
+  .tax-calculator__page-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    margin-bottom: var(--spacing-md);
+  }
+  
+  .tax-calculator__page-subtitle {
+    font-size: 1.125rem;
+    color: var(--color-text-light);
+    line-height: 1.6;
+    margin: 0;
+  }
+  
+  .tax-calculator {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  
+  .tax-calculator__container {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: var(--spacing-md);
+    gap: var(--spacing-xxl);
+    align-items: start;
+  }
+  
+  .tax-calculator__inputs-section {
+    background-color: var(--color-white);
+    padding: var(--spacing-xl);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .tax-calculator__form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+  }
+  
+  .tax-calculator__form-header {
     margin-bottom: var(--spacing-md);
+  }
+  
+  .tax-calculator__field-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+  }
+  
+  .tax-calculator__field-label {
+    font-weight: 600;
+    color: var(--color-text);
+    font-size: 0.9375rem;
+    margin-bottom: 0.25rem;
+  }
+  
+  .tax-calculator__field-description {
+    font-size: 0.875rem;
+    color: var(--color-text-light);
+    margin: 0;
+    line-height: 1.4;
+  }
+  
+  .tax-calculator__input,
+  .tax-calculator__select {
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    font-family: inherit;
+    font-size: 1rem;
+    transition: var(--transition);
+    background-color: var(--color-white);
+    color: var(--color-text);
+    width: 100%;
+  }
+  
+  .tax-calculator__input:focus,
+  .tax-calculator__select:focus {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-color: var(--color-primary);
+  }
+  
+  .tax-calculator__input::placeholder {
+    color: var(--color-text-light);
+    opacity: 0.5;
   }
   
   .tax-calculator__calculate-btn {
     width: 100%;
     margin-top: var(--spacing-md);
+    padding: 1rem;
+    font-size: 1rem;
+    font-weight: 600;
   }
   
-  .tax-calculator__results {
-    max-width: 800px;
-    margin: var(--spacing-xl) auto;
+  .tax-calculator__results-section {
     background-color: var(--color-white);
     padding: var(--spacing-xl);
     border-radius: var(--border-radius-lg);
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-sm);
+    position: sticky;
+    top: calc(var(--spacing-md) + 60px);
+  }
+  
+  .tax-calculator__results-section--placeholder {
+    position: relative;
+    top: 0;
   }
   
   .tax-calculator__results-title {
     color: var(--color-primary);
-    font-size: 1.75rem;
+    font-size: 1.5rem;
+    font-weight: 700;
     margin-bottom: var(--spacing-lg);
-    text-align: center;
   }
   
-  .tax-calculator__result-section {
-    margin-bottom: var(--spacing-lg);
+  .tax-calculator__result-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+  }
+  
+  .tax-calculator__result-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
     padding-bottom: var(--spacing-lg);
     border-bottom: 1px solid var(--color-border);
   }
   
-  .tax-calculator__result-section:last-child {
+  .tax-calculator__result-item:last-child {
     border-bottom: none;
-    margin-bottom: 0;
     padding-bottom: 0;
   }
   
-  .tax-calculator__result-section--summary {
-    background-color: var(--color-background);
-    padding: var(--spacing-md);
-    border-radius: var(--border-radius);
-    margin-top: var(--spacing-md);
-  }
-  
-  .tax-calculator__result-heading {
-    color: var(--color-primary);
-    font-size: 1.25rem;
-    margin-bottom: var(--spacing-md);
-  }
-  
-  .tax-calculator__result-row {
+  .tax-calculator__result-item-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--spacing-sm) 0;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .tax-calculator__result-item-label {
+    font-weight: 600;
+    color: var(--color-text);
     font-size: 0.9375rem;
   }
   
-  .tax-calculator__result-row--total {
-    border-top: 1px solid var(--color-border);
-    margin-top: var(--spacing-xs);
-    padding-top: var(--spacing-sm);
-    font-weight: 600;
+  .tax-calculator__result-item-description {
+    font-size: 0.8125rem;
+    color: var(--color-text-light);
+    line-height: 1.4;
   }
   
-  .tax-calculator__result-row--major {
-    font-size: 1.125rem;
+  .tax-calculator__result-item-value {
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--color-primary);
-    padding: var(--spacing-sm) 0;
-    border-bottom: 2px solid var(--color-primary);
-    margin-bottom: var(--spacing-sm);
+    margin-top: var(--spacing-xs);
   }
   
-  .tax-calculator__result-label {
+  .tax-calculator__result-item-value--large {
+    font-size: 2rem;
+    margin-top: var(--spacing-sm);
+  }
+  
+  .tax-calculator__result-item-breakdown {
+    margin-top: var(--spacing-sm);
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+  }
+  
+  .tax-calculator__result-item-breakdown-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+    color: var(--color-text-light);
+  }
+  
+  .tax-calculator__result-item-breakdown-item span:last-child {
+    font-weight: 600;
     color: var(--color-text);
   }
   
-  .tax-calculator__result-value {
-    color: var(--color-primary);
-    font-weight: 600;
-    text-align: right;
+  .tax-calculator__placeholder {
+    padding: var(--spacing-xl) 0;
+    text-align: center;
+    color: var(--color-text-light);
+    font-size: 0.9375rem;
+    line-height: 1.6;
   }
   
   .tax-calculator__disclaimer {
-    max-width: 800px;
-    margin: var(--spacing-xl) auto;
-    background-color: #fff3cd;
-    border: 2px solid #ffc107;
-    border-radius: var(--border-radius-lg);
+    max-width: 1200px;
+    margin: var(--spacing-xxl) auto 0;
     padding: var(--spacing-lg);
+    background-color: var(--color-background);
+    border-radius: var(--border-radius);
+    font-size: 0.875rem;
+    color: var(--color-text-light);
+    line-height: 1.6;
   }
   
   .tax-calculator__disclaimer-title {
-    color: #856404;
-    font-size: 1.25rem;
-    margin-bottom: var(--spacing-md);
+    color: var(--color-text);
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: var(--spacing-sm);
   }
   
   .tax-calculator__disclaimer-text {
-    color: #856404;
-    margin-bottom: var(--spacing-md);
+    color: var(--color-text-light);
+    margin-bottom: var(--spacing-sm);
     line-height: 1.6;
+  }
+  
+  .tax-calculator__disclaimer-text strong {
+    color: var(--color-text);
+    font-weight: 600;
   }
   
   .tax-calculator__disclaimer-details {
@@ -1563,14 +1692,15 @@ a:focus {
   }
   
   .tax-calculator__disclaimer-details > div {
-    font-size: 0.9375rem;
-    color: #856404;
+    font-size: 0.875rem;
+    color: var(--color-text-light);
   }
   
   .tax-calculator__disclaimer-details strong {
     display: block;
     margin-bottom: var(--spacing-xs);
     font-weight: 600;
+    color: var(--color-text);
   }
   
   .tax-calculator__disclaimer-details ul {
@@ -1584,8 +1714,8 @@ a:focus {
   }
   
   .tax-calculator__cta {
-    max-width: 800px;
-    margin: var(--spacing-xl) auto;
+    max-width: 1200px;
+    margin: var(--spacing-xxl) auto 0;
     text-align: center;
     padding: var(--spacing-xl);
     background-color: var(--color-white);

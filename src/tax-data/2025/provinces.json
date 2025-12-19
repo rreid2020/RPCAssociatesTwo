@@ -1,0 +1,123 @@
+{
+  "comment": "Provincial and territorial tax brackets for 2025. Source: https://www.canada.ca/en/revenue-agency/services/tax/individuals/frequently-asked-questions-individuals/canadian-income-tax-rates-individuals-current-previous-years.html",
+  "AB": {
+    "brackets": [
+      { "upTo": 148100, "rate": 0.10 },
+      { "upTo": null, "rate": 0.15 }
+    ],
+    "lowestRate": 0.10
+  },
+  "BC": {
+    "brackets": [
+      { "upTo": 47937, "rate": 0.0506 },
+      { "upTo": 95875, "rate": 0.077 },
+      { "upTo": 110076, "rate": 0.105 },
+      { "upTo": 133664, "rate": 0.1229 },
+      { "upTo": 181232, "rate": 0.147 },
+      { "upTo": 252752, "rate": 0.168 },
+      { "upTo": null, "rate": 0.205 }
+    ],
+    "lowestRate": 0.0506
+  },
+  "MB": {
+    "brackets": [
+      { "upTo": 47000, "rate": 0.108 },
+      { "upTo": 100000, "rate": 0.1275 },
+      { "upTo": null, "rate": 0.174 }
+    ],
+    "lowestRate": 0.108
+  },
+  "NB": {
+    "brackets": [
+      { "upTo": 49958, "rate": 0.094 },
+      { "upTo": 99916, "rate": 0.14 },
+      { "upTo": 185064, "rate": 0.16 },
+      { "upTo": null, "rate": 0.195 }
+    ],
+    "lowestRate": 0.094
+  },
+  "NL": {
+    "brackets": [
+      { "upTo": 43198, "rate": 0.087 },
+      { "upTo": 86395, "rate": 0.145 },
+      { "upTo": 154244, "rate": 0.158 },
+      { "upTo": 215943, "rate": 0.173 },
+      { "upTo": null, "rate": 0.183 }
+    ],
+    "lowestRate": 0.087
+  },
+  "NS": {
+    "brackets": [
+      { "upTo": 29590, "rate": 0.0879 },
+      { "upTo": 59180, "rate": 0.1495 },
+      { "upTo": 93000, "rate": 0.1667 },
+      { "upTo": 150000, "rate": 0.175 },
+      { "upTo": null, "rate": 0.21 }
+    ],
+    "lowestRate": 0.0879
+  },
+  "NT": {
+    "brackets": [
+      { "upTo": 50877, "rate": 0.059 },
+      { "upTo": 101754, "rate": 0.086 },
+      { "upTo": 165429, "rate": 0.122 },
+      { "upTo": null, "rate": 0.1405 }
+    ],
+    "lowestRate": 0.059
+  },
+  "NU": {
+    "brackets": [
+      { "upTo": 50877, "rate": 0.04 },
+      { "upTo": 101754, "rate": 0.07 },
+      { "upTo": 165429, "rate": 0.09 },
+      { "upTo": null, "rate": 0.115 }
+    ],
+    "lowestRate": 0.04
+  },
+  "ON": {
+    "brackets": [
+      { "upTo": 51446, "rate": 0.0505 },
+      { "upTo": 102894, "rate": 0.0915 },
+      { "upTo": 150000, "rate": 0.1116 },
+      { "upTo": 220000, "rate": 0.1216 },
+      { "upTo": null, "rate": 0.1316 }
+    ],
+    "lowestRate": 0.0505
+  },
+  "PE": {
+    "brackets": [
+      { "upTo": 32656, "rate": 0.098 },
+      { "upTo": 65312, "rate": 0.138 },
+      { "upTo": 105000, "rate": 0.167 },
+      { "upTo": null, "rate": 0.18 }
+    ],
+    "lowestRate": 0.098
+  },
+  "QC": {
+    "brackets": [
+      { "upTo": 53080, "rate": 0.14 },
+      { "upTo": 106155, "rate": 0.19 },
+      { "upTo": null, "rate": 0.24 }
+    ],
+    "lowestRate": 0.14
+  },
+  "SK": {
+    "brackets": [
+      { "upTo": 52057, "rate": 0.105 },
+      { "upTo": 148734, "rate": 0.125 },
+      { "upTo": null, "rate": 0.145 }
+    ],
+    "lowestRate": 0.105
+  },
+  "YT": {
+    "brackets": [
+      { "upTo": 55867, "rate": 0.064 },
+      { "upTo": 111733, "rate": 0.09 },
+      { "upTo": 173446, "rate": 0.109 },
+      { "upTo": 500000, "rate": 0.128 },
+      { "upTo": null, "rate": 0.15 }
+    ],
+    "lowestRate": 0.064
+  }
+}
+

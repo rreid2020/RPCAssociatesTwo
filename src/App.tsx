@@ -10,6 +10,7 @@ import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import Sitemap from './pages/Sitemap'
 import ComingSoon from './pages/ComingSoon'
+import TaxCalculator from './pages/TaxCalculator'
 
 const App: FC = () => {
   return (
@@ -19,6 +20,7 @@ const App: FC = () => {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/resources" element={<Resources />} />
+          <Route path="/resources/canadian-personal-income-tax-calculator" element={<TaxCalculator />} />
           <Route path="/articles" element={<Articles />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />

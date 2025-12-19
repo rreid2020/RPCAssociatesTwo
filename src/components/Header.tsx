@@ -109,9 +109,13 @@ const Header: FC = () => {
               </Link>
               <ul className={`header__dropdown header__dropdown--resources ${isResourcesOpen ? 'header__dropdown--open' : ''}`}>
                 <li>
-                  <span className="header__dropdown-item header__dropdown-item--coming-soon">
-                    Canadian Personal Income Tax Calculator <span className="header__coming-soon">*Coming Soon*</span>
-                  </span>
+                  <Link 
+                    to="/resources/canadian-personal-income-tax-calculator" 
+                    className="header__dropdown-item"
+                    onClick={handleNavClick}
+                  >
+                    Canadian Personal Income Tax Calculator
+                  </Link>
                 </li>
               </ul>
             </li>

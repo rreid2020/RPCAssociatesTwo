@@ -1,0 +1,36 @@
+{
+  "year": 2025,
+  "dataLastUpdated": "2025-01-15",
+  "comment": "Federal tax brackets for 2025. Source: https://www.canada.ca/en/revenue-agency/services/tax/individuals/frequently-asked-questions-individuals/canadian-income-tax-rates-individuals-current-previous-years.html",
+  "brackets": [
+    {
+      "upTo": 55867,
+      "rate": 0.15
+    },
+    {
+      "upTo": 111733,
+      "rate": 0.205
+    },
+    {
+      "upTo": 173446,
+      "rate": 0.26
+    },
+    {
+      "upTo": 243446,
+      "rate": 0.29
+    },
+    {
+      "upTo": null,
+      "rate": 0.33
+    }
+  ],
+  "lowestRate": 0.15,
+  "bpa": {
+    "fullAmount": 15705,
+    "phaseOutStart": 173000,
+    "phaseOutEnd": 246752,
+    "minimumAmount": 14000,
+    "comment": "Basic Personal Amount (BPA) for 2025. Source: https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-30000-basic-personal-amount.html"
+  }
+}
+

@@ -211,10 +211,10 @@ const TaxCalculator: FC = () => {
                   </form>
                 </div>
 
-                {hasCalculated && results && (
-                  <div className="tax-calculator__results-section">
-                    <h2 className="tax-calculator__results-title">Your Results</h2>
-                    
+                <div className="tax-calculator__results-section">
+                  <h2 className="tax-calculator__results-title">Your Results</h2>
+                  
+                  {hasCalculated && results ? (
                     <div className="tax-calculator__result-card">
                       <div className="tax-calculator__result-item">
                         <div className="tax-calculator__result-item-header">
@@ -265,18 +265,97 @@ const TaxCalculator: FC = () => {
                         <div className="tax-calculator__result-item-value">{results.marginalTaxRate.toFixed(2)}%</div>
                       </div>
                     </div>
-                  </div>
-                )}
-
-                {!hasCalculated && (
-                  <div className="tax-calculator__results-section tax-calculator__results-section--placeholder">
-                    <h2 className="tax-calculator__results-title">Your Results</h2>
+                  ) : (
                     <div className="tax-calculator__placeholder">
                       <p>Please enter your income, deductions, gains, dividends, and taxes paid to get a summary of your results.</p>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
+
+              {hasCalculated && results && (
+                <div className="tax-calculator__brackets-section">
+                  <h2 className="tax-calculator__brackets-title">
+                    {provinces.find(p => p.code === inputs.province)?.name || 'Provincial'} Provincial and Federal tax brackets
+                  </h2>
+                  <p className="tax-calculator__brackets-subtitle">
+                    Your taxable income places you in the following tax brackets.
+                  </p>
+                  
+                  <div className="tax-calculator__brackets-tables">
+                    <div className="tax-calculator__brackets-table-wrapper">
+                      <h3 className="tax-calculator__brackets-table-title">Canadian federal tax bracket</h3>
+                      <table className="tax-calculator__brackets-table">
+                        <thead>
+                          <tr>
+                            <th>Canadian federal tax bracket</th>
+                            <th>Canadian federal tax rate</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {federalData2025.brackets.map((bracket, index) => {
+                            const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
+                            const rangeStart = prevBracket && prevBracket.upTo ? prevBracket.upTo + 1 : 0
+                            const rangeEnd = bracket.upTo
+                            return (
+                              <tr key={index}>
+                                <td>
+                                  {rangeStart === 0 
+                                    ? `$${rangeEnd?.toLocaleString('en-CA')} or less`
+                                    : rangeEnd === null
+                                    ? `More than $${rangeStart.toLocaleString('en-CA')}`
+                                    : `$${rangeStart.toLocaleString('en-CA')} - $${rangeEnd.toLocaleString('en-CA')}`
+                                  }
+                                </td>
+                                <td>{(bracket.rate * 100).toFixed(1)}%</td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="tax-calculator__brackets-table-wrapper">
+                      <h3 className="tax-calculator__brackets-table-title">
+                        {provinces.find(p => p.code === inputs.province)?.name || 'Provincial'} tax bracket
+                      </h3>
+                      <table className="tax-calculator__brackets-table">
+                        <thead>
+                          <tr>
+                            <th>{provinces.find(p => p.code === inputs.province)?.name || 'Provincial'} tax bracket</th>
+                            <th>{provinces.find(p => p.code === inputs.province)?.name || 'Provincial'} tax rate</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(() => {
+                            const provincesData = provincesData2025 as any
+                            const provincialData = provincesData[inputs.province]
+                            if (!provincialData) return null
+                            return provincialData.brackets.map((bracket: any, index: number) => {
+                              const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
+                              const rangeStart = prevBracket && prevBracket.upTo ? prevBracket.upTo + 1 : 0
+                              const rangeEnd = bracket.upTo
+                              return (
+                                <tr key={index}>
+                                  <td>
+                                    {rangeStart === 0 
+                                      ? `$${rangeEnd?.toLocaleString('en-CA')} or less`
+                                      : rangeEnd === null
+                                      ? `More than $${rangeStart.toLocaleString('en-CA')}`
+                                      : `$${rangeStart.toLocaleString('en-CA')} - $${rangeEnd.toLocaleString('en-CA')}`
+                                    }
+                                  </td>
+                                  <td>{(bracket.rate * 100).toFixed(1)}%</td>
+                                </tr>
+                              )
+                            })
+                          })()}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="tax-calculator__disclaimer">
                 <p className="tax-calculator__disclaimer-text">

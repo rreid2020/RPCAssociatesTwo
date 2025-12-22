@@ -1,11 +1,15 @@
 import imageUrlBuilder from '@sanity/image-url'
 import { SanityImage } from './types'
-import { client } from './client'
+import { client, isSanityConfigured } from './client'
 
-const builder = imageUrlBuilder(client)
+let builder: ReturnType<typeof imageUrlBuilder> | null = null
+
+if (isSanityConfigured()) {
+  builder = imageUrlBuilder(client)
+}
 
 export function urlFor(source: SanityImage | undefined) {
-  if (!source || !source.asset) {
+  if (!source || !source.asset || !builder) {
     return null
   }
   return builder.image(source)
@@ -16,7 +20,7 @@ export function urlForWithSize(
   width: number,
   height?: number
 ) {
-  if (!source || !source.asset) {
+  if (!source || !source.asset || !builder) {
     return null
   }
   const image = builder.image(source)

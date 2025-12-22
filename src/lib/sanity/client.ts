@@ -5,15 +5,22 @@ const dataset = import.meta.env.VITE_SANITY_DATASET || 'production'
 const apiVersion = import.meta.env.VITE_SANITY_API_VERSION || '2024-01-01'
 const useCdn = import.meta.env.VITE_SANITY_USE_CDN === 'true'
 
-if (!projectId) {
-  throw new Error('Missing VITE_SANITY_PROJECT_ID environment variable')
-}
+// Create client only if projectId exists, otherwise create a dummy client that will fail gracefully
+export const client = projectId
+  ? createClient({
+      projectId,
+      dataset,
+      apiVersion,
+      useCdn,
+      // No token needed for read-only access to published content
+    })
+  : createClient({
+      projectId: 'dummy',
+      dataset: 'production',
+      apiVersion: '2024-01-01',
+      useCdn: false,
+    })
 
-export const client = createClient({
-  projectId,
-  dataset,
-  apiVersion,
-  useCdn,
-  // No token needed for read-only access to published content
-})
+// Helper to check if Sanity is configured
+export const isSanityConfigured = () => !!projectId
 

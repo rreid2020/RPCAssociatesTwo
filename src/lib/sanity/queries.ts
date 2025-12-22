@@ -146,10 +146,12 @@ export async function getArticles(options: GetArticlesOptions = {}): Promise<San
         _id,
         title,
         "oldCategory": category->slug.current,
-        "newCategories": categories[]->slug.current
+        "newCategories": categories[]->slug.current,
+        "hasCategory": defined(category),
+        "hasCategories": defined(categories)
       }`
       const debugResults = await client.fetch<any[]>(debugQuery)
-      console.log('[getArticles] Debug - Sample articles and their categories:', debugResults)
+      console.log('[getArticles] Debug - Sample articles and their categories:', JSON.stringify(debugResults, null, 2))
     }
     
     // Normalize the results to the new structure
@@ -329,7 +331,7 @@ export async function getCategoryBySlug(slug: string): Promise<SanityCategory | 
       "slug": slug.current
     }`
     const allCategories = await client.fetch<any[]>(allCategoriesQuery)
-    console.log('[getCategoryBySlug] All categories in Sanity:', allCategories)
+    console.log('[getCategoryBySlug] All categories in Sanity:', JSON.stringify(allCategories, null, 2))
     
     const query = `*[_type == "category" && slug.current == $slug][0] {
       _id,

@@ -38,10 +38,15 @@ export async function getArticles(options: GetArticlesOptions = {}): Promise<San
   try {
     const { limit = 20, categorySlug } = options
     
-    let query = `*[_type == "article" && defined(publishedAt)]`
+    // Support both 'article' and 'post' types for backward compatibility
+    let query = `*[(_type == "article" || _type == "post") && defined(publishedAt)]`
     
     if (categorySlug) {
-      query += ` && defined(categories) && count(categories[@->slug.current == $categorySlug]) > 0`
+      // Handle both new (categories array) and old (single category) structures
+      query += ` && (
+        (defined(categories) && count(categories[@->slug.current == $categorySlug]) > 0) ||
+        (defined(category) && category->slug.current == $categorySlug)
+      )`
     }
     
     query += ` | order(publishedAt desc) [0...$limit] {
@@ -52,6 +57,7 @@ export async function getArticles(options: GetArticlesOptions = {}): Promise<San
       publishedAt,
       updatedAt,
       excerpt,
+      // New structure: categories array
       categories[]-> {
         _id,
         _type,
@@ -59,8 +65,23 @@ export async function getArticles(options: GetArticlesOptions = {}): Promise<San
         slug,
         description
       },
+      // Old structure: single category (convert to array)
+      "categoryOld": category-> {
+        _id,
+        _type,
+        title,
+        slug,
+        description
+      },
       tags,
+      // New structure: featuredImage
       featuredImage {
+        _type,
+        asset,
+        alt
+      },
+      // Old structure: mainImage (map to featuredImage)
+      "mainImageOld": mainImage {
         _type,
         asset,
         alt
@@ -78,6 +99,12 @@ export async function getArticles(options: GetArticlesOptions = {}): Promise<San
             asset,
             alt
           }
+        },
+        // Old structure: ogImage at root level
+        "ogImageOld": ogImage {
+          _type,
+          asset,
+          alt
         }
       },
       author-> {
@@ -99,7 +126,36 @@ export async function getArticles(options: GetArticlesOptions = {}): Promise<San
       params.categorySlug = categorySlug
     }
     
-    return await client.fetch<SanityArticle[]>(query, params)
+    const results = await client.fetch<any[]>(query, params)
+    
+    // Normalize the results to the new structure
+    return results.map((item) => {
+      // Use categories array if available, otherwise convert single category to array
+      const categories = item.categories && item.categories.length > 0
+        ? item.categories
+        : item.categoryOld
+          ? [item.categoryOld]
+          : []
+      
+      // Use featuredImage if available, otherwise use mainImage
+      const featuredImage = item.featuredImage || item.mainImageOld
+      
+      // Normalize SEO structure
+      const seo = item.seo ? {
+        ...item.seo,
+        openGraph: item.seo.openGraph || (item.seo.ogImageOld ? {
+          ogImage: item.seo.ogImageOld
+        } : undefined)
+      } : undefined
+      
+      return {
+        ...item,
+        _type: 'article' as const, // Normalize type
+        categories: categories.length > 0 ? categories : undefined,
+        featuredImage,
+        seo
+      } as SanityArticle
+    })
   } catch (error: any) {
     console.error('Error fetching articles:', error)
     throw new Error(`Failed to fetch articles: ${error?.message || 'Unknown error'}`)
@@ -116,7 +172,8 @@ export async function getArticleBySlug(slug: string): Promise<SanityArticle | nu
   }
   
   try {
-    const query = `*[_type == "article" && slug.current == $slug && defined(publishedAt)][0] {
+    // Support both 'article' and 'post' types for backward compatibility
+    const query = `*[(_type == "article" || _type == "post") && slug.current == $slug && defined(publishedAt)][0] {
       _id,
       _type,
       title,
@@ -124,6 +181,7 @@ export async function getArticleBySlug(slug: string): Promise<SanityArticle | nu
       publishedAt,
       updatedAt,
       excerpt,
+      // New structure: categories array
       categories[]-> {
         _id,
         _type,
@@ -131,8 +189,23 @@ export async function getArticleBySlug(slug: string): Promise<SanityArticle | nu
         slug,
         description
       },
+      // Old structure: single category (convert to array)
+      "categoryOld": category-> {
+        _id,
+        _type,
+        title,
+        slug,
+        description
+      },
       tags,
+      // New structure: featuredImage
       featuredImage {
+        _type,
+        asset,
+        alt
+      },
+      // Old structure: mainImage (map to featuredImage)
+      "mainImageOld": mainImage {
         _type,
         asset,
         alt
@@ -151,8 +224,16 @@ export async function getArticleBySlug(slug: string): Promise<SanityArticle | nu
             asset,
             alt
           }
+        },
+        // Old structure: ogImage at root level
+        "ogImageOld": ogImage {
+          _type,
+          asset,
+          alt
         }
       },
+      // Old structure: canonicalUrl at root level
+      "canonicalUrlOld": canonicalUrl,
       author-> {
         _id,
         _type,
@@ -167,7 +248,36 @@ export async function getArticleBySlug(slug: string): Promise<SanityArticle | nu
       }
     }`
     
-    return await client.fetch<SanityArticle | null>(query, { slug })
+    const result = await client.fetch<any | null>(query, { slug })
+    
+    if (!result) return null
+    
+    // Normalize the result to the new structure
+    const categories = result.categories && result.categories.length > 0
+      ? result.categories
+      : result.categoryOld
+        ? [result.categoryOld]
+        : []
+    
+    const featuredImage = result.featuredImage || result.mainImageOld
+    
+    const seo = result.seo ? {
+      ...result.seo,
+      canonicalUrl: result.seo.canonicalUrl || result.canonicalUrlOld,
+      openGraph: result.seo.openGraph || (result.seo.ogImageOld ? {
+        ogImage: result.seo.ogImageOld
+      } : undefined)
+    } : result.canonicalUrlOld ? {
+      canonicalUrl: result.canonicalUrlOld
+    } : undefined
+    
+    return {
+      ...result,
+      _type: 'article' as const, // Normalize type
+      categories: categories.length > 0 ? categories : undefined,
+      featuredImage,
+      seo
+    } as SanityArticle
   } catch (error: any) {
     console.error('Error fetching article by slug:', error)
     throw new Error(`Failed to fetch article: ${error?.message || 'Unknown error'}`)

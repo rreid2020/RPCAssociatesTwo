@@ -49,10 +49,11 @@ export async function getArticles(options: GetArticlesOptions = {}): Promise<San
       const cleanSlug = categorySlug.split('/').pop() || categorySlug
       console.log('[getArticles] Filtering by category slug:', cleanSlug)
       
+      // Check for both the full path format (/articles/category/slug) and just the slug
       // Use count() to check if any category in the array matches the slug
       filter += ` && (
-        (defined(category) && category->slug.current == $categorySlug) ||
-        (defined(categories) && count(categories[@->slug.current == $categorySlug]) > 0)
+        (defined(category) && (category->slug.current == $categorySlug || category->slug.current == $fullPathSlug)) ||
+        (defined(categories) && (count(categories[@->slug.current == $categorySlug]) > 0 || count(categories[@->slug.current == $fullPathSlug]) > 0))
       )`
     }
     
@@ -133,7 +134,9 @@ export async function getArticles(options: GetArticlesOptions = {}): Promise<San
     const params: any = { limit }
     if (categorySlug) {
       // Use cleaned slug for the query
-      params.categorySlug = categorySlug.split('/').pop() || categorySlug
+      const cleanSlug = categorySlug.split('/').pop() || categorySlug
+      params.categorySlug = cleanSlug
+      params.fullPathSlug = `/articles/category/${cleanSlug}`
     }
     
     console.log('[getArticles] Query params:', params)
@@ -324,16 +327,10 @@ export async function getCategoryBySlug(slug: string): Promise<SanityCategory | 
     const cleanSlug = slug.split('/').pop() || slug
     console.log('[getCategoryBySlug] Looking for category with slug:', cleanSlug)
     
-    // First, let's see what categories exist
-    const allCategoriesQuery = `*[_type == "category"] {
-      _id,
-      title,
-      "slug": slug.current
-    }`
-    const allCategories = await client.fetch<any[]>(allCategoriesQuery)
-    console.log('[getCategoryBySlug] All categories in Sanity:', JSON.stringify(allCategories, null, 2))
+    // Check for both the full path format (/articles/category/slug) and just the slug
+    const fullPathSlug = `/articles/category/${cleanSlug}`
     
-    const query = `*[_type == "category" && slug.current == $slug][0] {
+    const query = `*[_type == "category" && (slug.current == $cleanSlug || slug.current == $fullPathSlug)][0] {
       _id,
       _type,
       title,
@@ -342,7 +339,10 @@ export async function getCategoryBySlug(slug: string): Promise<SanityCategory | 
       order
     }`
     
-    const result = await client.fetch<SanityCategory | null>(query, { slug: cleanSlug })
+    const result = await client.fetch<SanityCategory | null>(query, { 
+      cleanSlug,
+      fullPathSlug 
+    })
     console.log('[getCategoryBySlug] Found category:', result)
     return result
   } catch (error: any) {

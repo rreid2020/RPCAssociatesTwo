@@ -38,16 +38,24 @@ export async function getArticles(options: GetArticlesOptions = {}): Promise<San
   try {
     const { limit = 20, categorySlug } = options
     
+    console.log('[getArticles] Options:', { limit, categorySlug })
+    
     // Support both 'article' and 'post' types for backward compatibility
     let filter = `(_type == "article" || _type == "post") && defined(publishedAt)`
     
     // If filtering by category, check both old (single category) and new (categories array) structures
     if (categorySlug) {
+      // Clean the slug in case it has path segments
+      const cleanSlug = categorySlug.split('/').pop() || categorySlug
+      console.log('[getArticles] Filtering by category slug:', cleanSlug)
+      
       filter += ` && (
         (defined(category) && category->slug.current == $categorySlug) ||
         (defined(categories) && $categorySlug in categories[]->slug.current)
       )`
     }
+    
+    console.log('[getArticles] Query filter:', filter)
     
     const query = `*[${filter}] | order(publishedAt desc) [0...$limit] {
       _id,
@@ -123,10 +131,13 @@ export async function getArticles(options: GetArticlesOptions = {}): Promise<San
     
     const params: any = { limit }
     if (categorySlug) {
-      params.categorySlug = categorySlug
+      // Use cleaned slug for the query
+      params.categorySlug = categorySlug.split('/').pop() || categorySlug
     }
     
+    console.log('[getArticles] Query params:', params)
     const results = await client.fetch<any[]>(query, params)
+    console.log('[getArticles] Results count:', results.length)
     
     // Normalize the results to the new structure
     return results.map((item) => {

@@ -16,23 +16,34 @@ const ArticleCategory: FC = () => {
     async function fetchData() {
       if (!categorySlug) return
       
+      // Clean up the category slug in case it has path segments
+      const cleanSlug = categorySlug.split('/').pop() || categorySlug
+      console.log('[ArticleCategory] Original slug:', categorySlug, 'Cleaned slug:', cleanSlug)
+      
       try {
         setLoading(true)
         setError(null)
         const [articlesData, categoryData] = await Promise.all([
-          getArticles({ limit: 20, categorySlug }),
-          getCategoryBySlug(categorySlug)
+          getArticles({ limit: 20, categorySlug: cleanSlug }),
+          getCategoryBySlug(cleanSlug)
         ])
+        
+        console.log('[ArticleCategory] Articles found:', articlesData.length)
+        console.log('[ArticleCategory] Category data:', categoryData)
+        
         setArticles(articlesData)
         setCategory(categoryData)
         
         if (!categoryData) {
-          setError(`Category "${categorySlug}" not found.`)
+          setError(`Category "${cleanSlug}" not found.`)
+        } else if (articlesData.length === 0) {
+          // Show a message but don't set error - this is a valid state
+          console.log('[ArticleCategory] No articles found for category:', cleanSlug)
         }
       } catch (err: any) {
         const errorMessage = err?.message || 'Unknown error'
-        console.error('Error fetching category articles:', err)
-        console.error('Category slug:', categorySlug)
+        console.error('[ArticleCategory] Error fetching category articles:', err)
+        console.error('[ArticleCategory] Category slug:', cleanSlug)
         setError(`Failed to load articles: ${errorMessage}`)
       } finally {
         setLoading(false)

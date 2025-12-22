@@ -49,9 +49,10 @@ export async function getArticles(options: GetArticlesOptions = {}): Promise<San
       const cleanSlug = categorySlug.split('/').pop() || categorySlug
       console.log('[getArticles] Filtering by category slug:', cleanSlug)
       
+      // Use count() to check if any category in the array matches the slug
       filter += ` && (
         (defined(category) && category->slug.current == $categorySlug) ||
-        (defined(categories) && $categorySlug in categories[]->slug.current)
+        (defined(categories) && count(categories[@->slug.current == $categorySlug]) > 0)
       )`
     }
     
@@ -138,6 +139,18 @@ export async function getArticles(options: GetArticlesOptions = {}): Promise<San
     console.log('[getArticles] Query params:', params)
     const results = await client.fetch<any[]>(query, params)
     console.log('[getArticles] Results count:', results.length)
+    
+    // Debug: Check what categories the articles actually have
+    if (categorySlug && results.length === 0) {
+      const debugQuery = `*[(_type == "article" || _type == "post") && defined(publishedAt)][0...5] {
+        _id,
+        title,
+        "oldCategory": category->slug.current,
+        "newCategories": categories[]->slug.current
+      }`
+      const debugResults = await client.fetch<any[]>(debugQuery)
+      console.log('[getArticles] Debug - Sample articles and their categories:', debugResults)
+    }
     
     // Normalize the results to the new structure
     return results.map((item) => {
@@ -305,6 +318,19 @@ export async function getCategoryBySlug(slug: string): Promise<SanityCategory | 
   }
   
   try {
+    // Clean the slug in case it has path segments
+    const cleanSlug = slug.split('/').pop() || slug
+    console.log('[getCategoryBySlug] Looking for category with slug:', cleanSlug)
+    
+    // First, let's see what categories exist
+    const allCategoriesQuery = `*[_type == "category"] {
+      _id,
+      title,
+      "slug": slug.current
+    }`
+    const allCategories = await client.fetch<any[]>(allCategoriesQuery)
+    console.log('[getCategoryBySlug] All categories in Sanity:', allCategories)
+    
     const query = `*[_type == "category" && slug.current == $slug][0] {
       _id,
       _type,
@@ -314,7 +340,9 @@ export async function getCategoryBySlug(slug: string): Promise<SanityCategory | 
       order
     }`
     
-    return await client.fetch<SanityCategory | null>(query, { slug })
+    const result = await client.fetch<SanityCategory | null>(query, { slug: cleanSlug })
+    console.log('[getCategoryBySlug] Found category:', result)
+    return result
   } catch (error: any) {
     console.error('Error fetching category by slug:', error)
     throw new Error(`Failed to fetch category: ${error?.message || 'Unknown error'}`)

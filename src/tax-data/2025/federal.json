@@ -4,19 +4,19 @@
   "comment": "Federal tax brackets for 2025. Source: https://www.canada.ca/en/revenue-agency/services/tax/individuals/frequently-asked-questions-individuals/canadian-income-tax-rates-individuals-current-previous-years.html",
   "brackets": [
     {
-      "upTo": 55867,
-      "rate": 0.15
+      "upTo": 57375,
+      "rate": 0.145
     },
     {
-      "upTo": 111733,
+      "upTo": 114750,
       "rate": 0.205
     },
     {
-      "upTo": 173446,
+      "upTo": 177882,
       "rate": 0.26
     },
     {
-      "upTo": 243446,
+      "upTo": 253414,
       "rate": 0.29
     },
     {
@@ -24,7 +24,7 @@
       "rate": 0.33
     }
   ],
-  "lowestRate": 0.15,
+  "lowestRate": 0.145,
   "bpa": {
     "fullAmount": 15705,
     "phaseOutStart": 173000,

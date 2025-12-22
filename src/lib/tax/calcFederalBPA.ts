@@ -12,7 +12,7 @@ export function calcFederalBPA(netIncome: number, federalData: FederalTaxData): 
 
   if (netIncome <= phaseOutStart) {
     // Full BPA credit
-    return fullAmount * federalData.lowestRate
+    return Math.round(fullAmount * federalData.lowestRate * 100) / 100
   } else if (netIncome >= phaseOutEnd) {
     // Minimum BPA credit
     return minimumAmount * federalData.lowestRate

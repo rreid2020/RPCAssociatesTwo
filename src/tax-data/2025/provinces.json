@@ -2,10 +2,14 @@
   "comment": "Provincial and territorial tax brackets for 2025. Source: https://www.canada.ca/en/revenue-agency/services/tax/individuals/frequently-asked-questions-individuals/canadian-income-tax-rates-individuals-current-previous-years.html",
   "AB": {
     "brackets": [
-      { "upTo": 148100, "rate": 0.10 },
+      { "upTo": 60000, "rate": 0.08 },
+      { "upTo": 151234, "rate": 0.10 },
+      { "upTo": 181481, "rate": 0.12 },
+      { "upTo": 241974, "rate": 0.13 },
+      { "upTo": 362961, "rate": 0.14 },
       { "upTo": null, "rate": 0.15 }
     ],
-    "lowestRate": 0.10
+    "lowestRate": 0.08
   },
   "BC": {
     "brackets": [
@@ -76,8 +80,8 @@
   },
   "ON": {
     "brackets": [
-      { "upTo": 51446, "rate": 0.0505 },
-      { "upTo": 102894, "rate": 0.0915 },
+      { "upTo": 52886, "rate": 0.0505 },
+      { "upTo": 105775, "rate": 0.0915 },
       { "upTo": 150000, "rate": 0.1116 },
       { "upTo": 220000, "rate": 0.1216 },
       { "upTo": null, "rate": 0.1316 }

@@ -140,19 +140,31 @@ const Header: FC = () => {
               </Link>
               <ul className={`header__dropdown ${isArticlesOpen ? 'header__dropdown--open' : ''}`}>
                 <li>
-                  <span className="header__dropdown-item header__dropdown-item--coming-soon">
-                    Canadian Tax <span className="header__coming-soon">*Coming Soon*</span>
-                  </span>
+                  <Link
+                    to="/articles/category/canadian-tax"
+                    className="header__dropdown-item"
+                    onClick={handleNavClick}
+                  >
+                    Canadian Tax
+                  </Link>
                 </li>
                 <li>
-                  <span className="header__dropdown-item header__dropdown-item--coming-soon">
-                    Accounting <span className="header__coming-soon">*Coming Soon*</span>
-                  </span>
+                  <Link
+                    to="/articles/category/accounting"
+                    className="header__dropdown-item"
+                    onClick={handleNavClick}
+                  >
+                    Accounting
+                  </Link>
                 </li>
                 <li>
-                  <span className="header__dropdown-item header__dropdown-item--coming-soon">
-                    Technology <span className="header__coming-soon">*Coming Soon*</span>
-                  </span>
+                  <Link
+                    to="/articles/category/technology"
+                    className="header__dropdown-item"
+                    onClick={handleNavClick}
+                  >
+                    Technology
+                  </Link>
                 </li>
               </ul>
             </li>

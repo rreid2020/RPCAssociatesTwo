@@ -1,52 +1,73 @@
 import { FC, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 import ArticleCard from '../components/ArticleCard'
-import { getPosts, getCategories } from '../lib/sanity/queries'
+import { getPosts, getCategoryBySlug } from '../lib/sanity/queries'
 import { SanityPost, SanityCategory } from '../lib/sanity/types'
 
-const Articles: FC = () => {
+const ArticleCategory: FC = () => {
+  const { categorySlug } = useParams<{ categorySlug: string }>()
   const [posts, setPosts] = useState<SanityPost[]>([])
-  const [categories, setCategories] = useState<SanityCategory[]>([])
+  const [category, setCategory] = useState<SanityCategory | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchData() {
+      if (!categorySlug) return
+      
       try {
         setLoading(true)
-        const [postsData, categoriesData] = await Promise.all([
-          getPosts({ limit: 12 }),
-          getCategories()
+        const [postsData, categoryData] = await Promise.all([
+          getPosts({ limit: 20, categorySlug }),
+          getCategoryBySlug(categorySlug)
         ])
         setPosts(postsData)
-        setCategories(categoriesData)
+        setCategory(categoryData)
         setError(null)
       } catch (err) {
         setError('Failed to load articles. Please try again later.')
-        console.error('Error fetching articles:', err)
+        console.error('Error fetching category articles:', err)
       } finally {
         setLoading(false)
       }
     }
     fetchData()
-  }, [])
+  }, [categorySlug])
+
+  if (!categorySlug) {
+    return (
+      <>
+        <SEO title="Category Not Found" canonical="/articles" />
+        <main>
+          <section className="section">
+            <div className="container">
+              <h1>Category Not Found</h1>
+              <p>The requested category does not exist.</p>
+            </div>
+          </section>
+        </main>
+      </>
+    )
+  }
 
   return (
     <>
       <SEO
-        title="Articles"
-        description="Insights, tips, and updates on accounting, consulting, and technology from RPC Associates. Stay informed with expert articles and industry news."
-        canonical="/articles"
+        title={category ? `${category.title} Articles` : 'Category'}
+        description={category?.description || `Articles in the ${category?.title || categorySlug} category`}
+        canonical={`/articles/category/${categorySlug}`}
       />
       <main>
         <section className="section">
           <div className="container">
             <div className="section__header">
-              <h1 className="section__title">Articles</h1>
-              <p className="section__subtitle">
-                Insights, tips, and updates on accounting, consulting, and technology.
-              </p>
+              <h1 className="section__title">
+                {category ? category.title : 'Category'}
+              </h1>
+              {category?.description && (
+                <p className="section__subtitle">{category.description}</p>
+              )}
             </div>
 
             {loading && (
@@ -63,29 +84,12 @@ const Articles: FC = () => {
 
             {!loading && !error && (
               <>
-                {categories.length > 0 && (
-                  <div className="articles__categories">
-                    <Link
-                      to="/articles"
-                      className="articles__category-link articles__category-link--active"
-                    >
-                      All
-                    </Link>
-                    {categories.map((category) => (
-                      <Link
-                        key={category._id}
-                        to={`/articles/category/${category.slug.current}`}
-                        className="articles__category-link"
-                      >
-                        {category.title}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-
                 {posts.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: 'var(--spacing-xl) 0' }}>
-                    <p>No articles found. Check back soon for new content!</p>
+                    <p>No articles found in this category. Check back soon for new content!</p>
+                    <Link to="/articles" className="btn btn--primary" style={{ marginTop: 'var(--spacing-md)' }}>
+                      View All Articles
+                    </Link>
                   </div>
                 ) : (
                   <div className="articles__grid">
@@ -103,4 +107,5 @@ const Articles: FC = () => {
   )
 }
 
-export default Articles
+export default ArticleCategory
+

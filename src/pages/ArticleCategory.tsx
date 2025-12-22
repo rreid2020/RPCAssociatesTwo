@@ -2,12 +2,12 @@ import { FC, useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 import ArticleCard from '../components/ArticleCard'
-import { getPosts, getCategoryBySlug } from '../lib/sanity/queries'
-import { SanityPost, SanityCategory } from '../lib/sanity/types'
+import { getArticles, getCategoryBySlug } from '../lib/sanity/queries'
+import { SanityArticle, SanityCategory } from '../lib/sanity/types'
 
 const ArticleCategory: FC = () => {
   const { categorySlug } = useParams<{ categorySlug: string }>()
-  const [posts, setPosts] = useState<SanityPost[]>([])
+  const [articles, setArticles] = useState<SanityArticle[]>([])
   const [category, setCategory] = useState<SanityCategory | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -18,16 +18,22 @@ const ArticleCategory: FC = () => {
       
       try {
         setLoading(true)
-        const [postsData, categoryData] = await Promise.all([
-          getPosts({ limit: 20, categorySlug }),
+        setError(null)
+        const [articlesData, categoryData] = await Promise.all([
+          getArticles({ limit: 20, categorySlug }),
           getCategoryBySlug(categorySlug)
         ])
-        setPosts(postsData)
+        setArticles(articlesData)
         setCategory(categoryData)
-        setError(null)
-      } catch (err) {
-        setError('Failed to load articles. Please try again later.')
+        
+        if (!categoryData) {
+          setError(`Category "${categorySlug}" not found.`)
+        }
+      } catch (err: any) {
+        const errorMessage = err?.message || 'Unknown error'
         console.error('Error fetching category articles:', err)
+        console.error('Category slug:', categorySlug)
+        setError(`Failed to load articles: ${errorMessage}`)
       } finally {
         setLoading(false)
       }
@@ -84,7 +90,7 @@ const ArticleCategory: FC = () => {
 
             {!loading && !error && (
               <>
-                {posts.length === 0 ? (
+                {articles.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: 'var(--spacing-xl) 0' }}>
                     <p>No articles found in this category. Check back soon for new content!</p>
                     <Link to="/articles" className="btn btn--primary" style={{ marginTop: 'var(--spacing-md)' }}>
@@ -93,8 +99,8 @@ const ArticleCategory: FC = () => {
                   </div>
                 ) : (
                   <div className="articles__grid">
-                    {posts.map((post) => (
-                      <ArticleCard key={post._id} post={post} />
+                    {articles.map((article) => (
+                      <ArticleCard key={article._id} article={article} />
                     ))}
                   </div>
                 )}

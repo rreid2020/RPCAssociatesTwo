@@ -58,6 +58,19 @@ const PortableText: FC<PortableTextProps> = ({ content }) => {
           </figure>
         )
       },
+      code: ({ value }) => {
+        if (!value?.code) return null
+        return (
+          <pre className="portable-text__code">
+            {value.filename && (
+              <div className="portable-text__code-filename">{value.filename}</div>
+            )}
+            <code className={`portable-text__code-block language-${value.language || 'text'}`}>
+              {value.code}
+            </code>
+          </pre>
+        )
+      },
     },
   }
 

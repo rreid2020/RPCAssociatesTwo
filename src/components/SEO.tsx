@@ -8,6 +8,7 @@ interface SEOProps {
   canonical?: string
   ogImage?: string
   type?: string
+  noIndex?: boolean
 }
 
 const SEO: FC<SEOProps> = ({
@@ -16,7 +17,8 @@ const SEO: FC<SEOProps> = ({
   keywords = 'accounting, consulting, tech solutions, CPA, CMA, CGAP, tax preparation, financial advisory, business consulting, Canada',
   canonical = 'https://rpcassociates.co',
   ogImage = 'https://rpcassociates.co/og-image.jpg',
-  type = 'website'
+  type = 'website',
+  noIndex = false
 }) => {
   const fullTitle = title.includes('RPC Associates') ? title : `${title} | RPC Associates`
   const fullCanonical = canonical.startsWith('http') ? canonical : `https://rpcassociates.co${canonical}`
@@ -46,7 +48,7 @@ const SEO: FC<SEOProps> = ({
       <meta property="twitter:image" content={ogImage} />
 
       {/* Additional SEO */}
-      <meta name="robots" content="index, follow" />
+      <meta name="robots" content={noIndex ? "noindex, nofollow" : "index, follow"} />
       <meta name="language" content="English" />
       <meta name="author" content="RPC Associates" />
       <meta name="geo.region" content="CA-ON" />

@@ -2,27 +2,27 @@ import { FC, useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 import PortableText from '../components/PortableText'
-import { getPostBySlug } from '../lib/sanity/queries'
-import { SanityPost } from '../lib/sanity/types'
+import { getArticleBySlug } from '../lib/sanity/queries'
+import { SanityArticle } from '../lib/sanity/types'
 import { urlFor } from '../lib/sanity/image'
 
 const ArticleDetail: FC = () => {
   const { slug } = useParams<{ slug: string }>()
-  const [post, setPost] = useState<SanityPost | null>(null)
+  const [article, setArticle] = useState<SanityArticle | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    async function fetchPost() {
+    async function fetchArticle() {
       if (!slug) return
       
       try {
         setLoading(true)
-        const postData = await getPostBySlug(slug)
-        if (!postData) {
+        const articleData = await getArticleBySlug(slug)
+        if (!articleData) {
           setError('Article not found')
         } else {
-          setPost(postData)
+          setArticle(articleData)
           setError(null)
         }
       } catch (err) {
@@ -32,7 +32,7 @@ const ArticleDetail: FC = () => {
         setLoading(false)
       }
     }
-    fetchPost()
+    fetchArticle()
   }, [slug])
 
   if (!slug) {
@@ -71,7 +71,7 @@ const ArticleDetail: FC = () => {
     )
   }
 
-  if (error || !post) {
+  if (error || !article) {
     return (
       <>
         <SEO title="Article Not Found" canonical="/articles" />
@@ -90,25 +90,30 @@ const ArticleDetail: FC = () => {
     )
   }
 
-  const publishedDate = new Date(post.publishedAt).toLocaleDateString('en-US', {
+  const publishedDate = new Date(article.publishedAt).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
   })
+  
+  const primaryCategory = article.categories && article.categories.length > 0 
+    ? article.categories[0] 
+    : null
 
-  const imageUrl = post.mainImage ? urlFor(post.mainImage)?.width(1200).url() : null
-  const ogImageUrl = post.seo?.ogImage 
-    ? urlFor(post.seo.ogImage)?.width(1200).url()
+  const imageUrl = article.featuredImage ? urlFor(article.featuredImage)?.width(1200).url() : null
+  const ogImageUrl = article.seo?.openGraph?.ogImage 
+    ? urlFor(article.seo.openGraph.ogImage)?.width(1200).url()
     : imageUrl || undefined
 
   return (
     <>
       <SEO
-        title={post.seo?.metaTitle || post.title}
-        description={post.seo?.metaDescription || post.excerpt}
-        canonical={post.canonicalUrl || `/articles/${post.slug.current}`}
+        title={article.seo?.metaTitle || article.title}
+        description={article.seo?.metaDescription || article.excerpt}
+        canonical={article.seo?.canonicalUrl || `/articles/${article.slug.current}`}
         ogImage={ogImageUrl || undefined}
         type="article"
+        noIndex={article.seo?.noIndex}
       />
       <main>
         <article className="article-detail">
@@ -120,37 +125,39 @@ const ArticleDetail: FC = () => {
                 </Link>
                 
                 <div className="article-detail__meta">
-                  <Link
-                    to={`/articles/category/${post.category.slug.current}`}
-                    className="article-detail__category"
-                  >
-                    {post.category.title}
-                  </Link>
+                  {primaryCategory && (
+                    <Link
+                      to={`/articles/category/${primaryCategory.slug.current}`}
+                      className="article-detail__category"
+                    >
+                      {primaryCategory.title}
+                    </Link>
+                  )}
                   <span className="article-detail__date">{publishedDate}</span>
-                  {post.author && (
-                    <span className="article-detail__author">By {post.author.name}</span>
+                  {article.author && (
+                    <span className="article-detail__author">By {article.author.name}</span>
                   )}
                 </div>
 
-                <h1 className="article-detail__title">{post.title}</h1>
+                <h1 className="article-detail__title">{article.title}</h1>
                 
-                {post.excerpt && (
-                  <p className="article-detail__excerpt">{post.excerpt}</p>
+                {article.excerpt && (
+                  <p className="article-detail__excerpt">{article.excerpt}</p>
                 )}
               </div>
 
-              {imageUrl && post.mainImage && (
+              {imageUrl && article.featuredImage && (
                 <div className="article-detail__image-wrapper">
                   <img
                     src={imageUrl}
-                    alt={post.mainImage.alt || post.title}
+                    alt={article.featuredImage.alt || article.title}
                     className="article-detail__image"
                   />
                 </div>
               )}
 
               <div className="article-detail__content">
-                <PortableText content={post.body} />
+                <PortableText content={article.body} />
               </div>
 
               <div className="article-detail__cta">

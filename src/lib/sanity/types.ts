@@ -27,26 +27,35 @@ export interface SanityAuthor {
   bio?: string
 }
 
-export interface SanitySEO {
-  metaTitle?: string
-  metaDescription?: string
+export interface SanityOpenGraph {
+  ogTitle?: string
+  ogDescription?: string
   ogImage?: SanityImage
 }
 
-export interface SanityPost {
+export interface SanitySEO {
+  metaTitle?: string
+  metaDescription?: string
+  canonicalUrl?: string
+  noIndex?: boolean
+  openGraph?: SanityOpenGraph
+}
+
+export interface SanityArticle {
   _id: string
-  _type: 'post'
+  _type: 'article'
   title: string
   slug: {
     current: string
   }
   publishedAt: string
-  excerpt: string
-  category: SanityCategory
-  mainImage?: SanityImage
+  updatedAt?: string
+  excerpt?: string
+  categories?: SanityCategory[]
+  tags?: string[]
+  featuredImage?: SanityImage
   body: any[] // Portable Text
   seo?: SanitySEO
   author?: SanityAuthor
-  canonicalUrl?: string
 }
 

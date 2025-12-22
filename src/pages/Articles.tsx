@@ -2,11 +2,11 @@ import { FC, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 import ArticleCard from '../components/ArticleCard'
-import { getPosts, getCategories } from '../lib/sanity/queries'
-import { SanityPost, SanityCategory } from '../lib/sanity/types'
+import { getArticles, getCategories } from '../lib/sanity/queries'
+import { SanityArticle, SanityCategory } from '../lib/sanity/types'
 
 const Articles: FC = () => {
-  const [posts, setPosts] = useState<SanityPost[]>([])
+  const [articles, setArticles] = useState<SanityArticle[]>([])
   const [categories, setCategories] = useState<SanityCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -15,16 +15,23 @@ const Articles: FC = () => {
     async function fetchData() {
       try {
         setLoading(true)
-        const [postsData, categoriesData] = await Promise.all([
-          getPosts({ limit: 12 }),
+        const [articlesData, categoriesData] = await Promise.all([
+          getArticles({ limit: 12 }),
           getCategories()
         ])
-        setPosts(postsData)
+        setArticles(articlesData)
         setCategories(categoriesData)
         setError(null)
-      } catch (err) {
-        setError('Failed to load articles. Please try again later.')
+      } catch (err: any) {
+        const errorMessage = err?.message || 'Unknown error'
         console.error('Error fetching articles:', err)
+        console.error('Error details:', {
+          message: errorMessage,
+          projectId: import.meta.env.VITE_SANITY_PROJECT_ID,
+          dataset: import.meta.env.VITE_SANITY_DATASET,
+          hasProjectId: !!import.meta.env.VITE_SANITY_PROJECT_ID
+        })
+        setError(`Failed to load articles: ${errorMessage}. Please check your Sanity configuration.`)
       } finally {
         setLoading(false)
       }
@@ -83,14 +90,14 @@ const Articles: FC = () => {
                   </div>
                 )}
 
-                {posts.length === 0 ? (
+                {articles.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: 'var(--spacing-xl) 0' }}>
                     <p>No articles found. Check back soon for new content!</p>
                   </div>
                 ) : (
                   <div className="articles__grid">
-                    {posts.map((post) => (
-                      <ArticleCard key={post._id} post={post} />
+                    {articles.map((article) => (
+                      <ArticleCard key={article._id} article={article} />
                     ))}
                   </div>
                 )}

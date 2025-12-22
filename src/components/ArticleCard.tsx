@@ -1,40 +1,47 @@
 import { FC } from 'react'
 import { Link } from 'react-router-dom'
-import { SanityPost } from '../lib/sanity/types'
+import { SanityArticle } from '../lib/sanity/types'
 import { urlFor } from '../lib/sanity/image'
 
 interface ArticleCardProps {
-  post: SanityPost
+  article: SanityArticle
 }
 
-const ArticleCard: FC<ArticleCardProps> = ({ post }) => {
-  const imageUrl = post.mainImage ? urlFor(post.mainImage)?.width(600).height(400).url() : null
-  const publishedDate = new Date(post.publishedAt).toLocaleDateString('en-US', {
+const ArticleCard: FC<ArticleCardProps> = ({ article }) => {
+  const imageUrl = article.featuredImage ? urlFor(article.featuredImage)?.width(600).height(400).url() : null
+  const publishedDate = new Date(article.publishedAt).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
   })
+  
+  // Get first category or default
+  const primaryCategory = article.categories && article.categories.length > 0 
+    ? article.categories[0] 
+    : null
 
   return (
     <article className="article-card">
-      <Link to={`/articles/${post.slug.current}`} className="article-card__link">
-        {imageUrl && post.mainImage && (
+      <Link to={`/articles/${article.slug.current}`} className="article-card__link">
+        {imageUrl && article.featuredImage && (
           <div className="article-card__image-wrapper">
             <img
               src={imageUrl}
-              alt={post.mainImage.alt || post.title}
+              alt={article.featuredImage.alt || article.title}
               className="article-card__image"
             />
           </div>
         )}
         <div className="article-card__content">
           <div className="article-card__meta">
-            <span className="article-card__category">{post.category.title}</span>
+            {primaryCategory && (
+              <span className="article-card__category">{primaryCategory.title}</span>
+            )}
             <span className="article-card__date">{publishedDate}</span>
           </div>
-          <h2 className="article-card__title">{post.title}</h2>
-          {post.excerpt && (
-            <p className="article-card__excerpt">{post.excerpt}</p>
+          <h2 className="article-card__title">{article.title}</h2>
+          {article.excerpt && (
+            <p className="article-card__excerpt">{article.excerpt}</p>
           )}
         </div>
       </Link>

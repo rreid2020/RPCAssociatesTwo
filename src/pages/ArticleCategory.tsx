@@ -2,13 +2,14 @@ import { FC, useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 import ArticleCard from '../components/ArticleCard'
-import { getArticles, getCategoryBySlug } from '../lib/sanity/queries'
+import { getArticles, getCategoryBySlug, getCategories } from '../lib/sanity/queries'
 import { SanityArticle, SanityCategory } from '../lib/sanity/types'
 
 const ArticleCategory: FC = () => {
   const { categorySlug } = useParams<{ categorySlug: string }>()
   const [articles, setArticles] = useState<SanityArticle[]>([])
   const [category, setCategory] = useState<SanityCategory | null>(null)
+  const [categories, setCategories] = useState<SanityCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -23,9 +24,10 @@ const ArticleCategory: FC = () => {
       try {
         setLoading(true)
         setError(null)
-        const [articlesData, categoryData] = await Promise.all([
+        const [articlesData, categoryData, categoriesData] = await Promise.all([
           getArticles({ limit: 20, categorySlug: cleanSlug }),
-          getCategoryBySlug(cleanSlug)
+          getCategoryBySlug(cleanSlug),
+          getCategories()
         ])
         
         console.log('[ArticleCategory] Articles found:', articlesData.length)
@@ -33,6 +35,7 @@ const ArticleCategory: FC = () => {
         
         setArticles(articlesData)
         setCategory(categoryData)
+        setCategories(categoriesData)
         
         if (!categoryData) {
           setError(`Category "${cleanSlug}" not found.`)
@@ -101,6 +104,35 @@ const ArticleCategory: FC = () => {
 
             {!loading && !error && (
               <>
+                {categories.length > 0 && (() => {
+                  // Clean the current category slug for comparison
+                  const currentSlug = categorySlug ? categorySlug.split('/').pop() || categorySlug : ''
+                  return (
+                    <div className="articles__categories">
+                      <Link
+                        to="/articles"
+                        className="articles__category-link"
+                      >
+                        All
+                      </Link>
+                      {categories.map((cat) => {
+                        // Ensure we only use the slug part, not any path that might be included
+                        const slug = cat.slug.current.split('/').pop() || cat.slug.current
+                        const isActive = currentSlug === slug
+                        return (
+                          <Link
+                            key={cat._id}
+                            to={`/articles/category/${slug}`}
+                            className={`articles__category-link ${isActive ? 'articles__category-link--active' : ''}`}
+                          >
+                            {cat.title}
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  )
+                })()}
+
                 {articles.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: 'var(--spacing-xl) 0' }}>
                     <p>No articles found in this category. Check back soon for new content!</p>

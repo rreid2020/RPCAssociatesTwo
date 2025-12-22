@@ -125,14 +125,18 @@ const ArticleDetail: FC = () => {
                 </Link>
                 
                 <div className="article-detail__meta">
-                  {primaryCategory && (
-                    <Link
-                      to={`/articles/category/${primaryCategory.slug.current}`}
-                      className="article-detail__category"
-                    >
-                      {primaryCategory.title}
-                    </Link>
-                  )}
+                  {primaryCategory && (() => {
+                    // Ensure we only use the slug part, not any path that might be included
+                    const slug = primaryCategory.slug.current.split('/').pop() || primaryCategory.slug.current
+                    return (
+                      <Link
+                        to={`/articles/category/${slug}`}
+                        className="article-detail__category"
+                      >
+                        {primaryCategory.title}
+                      </Link>
+                    )
+                  })()}
                   <span className="article-detail__date">{publishedDate}</span>
                   {article.author && (
                     <span className="article-detail__author">By {article.author.name}</span>

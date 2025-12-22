@@ -78,15 +78,19 @@ const Articles: FC = () => {
                     >
                       All
                     </Link>
-                    {categories.map((category) => (
-                      <Link
-                        key={category._id}
-                        to={`/articles/category/${category.slug.current}`}
-                        className="articles__category-link"
-                      >
-                        {category.title}
-                      </Link>
-                    ))}
+                    {categories.map((category) => {
+                      // Ensure we only use the slug part, not any path that might be included
+                      const slug = category.slug.current.split('/').pop() || category.slug.current
+                      return (
+                        <Link
+                          key={category._id}
+                          to={`/articles/category/${slug}`}
+                          className="articles__category-link"
+                        >
+                          {category.title}
+                        </Link>
+                      )
+                    })}
                   </div>
                 )}
 

@@ -43,7 +43,7 @@ export interface SanityPost {
   publishedAt: string
   excerpt: string
   category: SanityCategory
-  mainImage: SanityImage
+  mainImage?: SanityImage
   body: any[] // Portable Text
   seo?: SanitySEO
   author?: SanityAuthor

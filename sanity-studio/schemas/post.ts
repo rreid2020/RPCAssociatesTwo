@@ -53,11 +53,10 @@ export default defineType({
         {
           name: 'alt',
           title: 'Alt Text',
-          type: 'string',
-          validation: Rule => Rule.required()
+          type: 'string'
         }
       ],
-      validation: Rule => Rule.required()
+      description: 'Optional featured image for the article'
     }),
     defineField({
       name: 'body',

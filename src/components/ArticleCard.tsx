@@ -8,7 +8,7 @@ interface ArticleCardProps {
 }
 
 const ArticleCard: FC<ArticleCardProps> = ({ post }) => {
-  const imageUrl = urlFor(post.mainImage)?.width(600).height(400).url()
+  const imageUrl = post.mainImage ? urlFor(post.mainImage)?.width(600).height(400).url() : null
   const publishedDate = new Date(post.publishedAt).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -18,7 +18,7 @@ const ArticleCard: FC<ArticleCardProps> = ({ post }) => {
   return (
     <article className="article-card">
       <Link to={`/articles/${post.slug.current}`} className="article-card__link">
-        {imageUrl && (
+        {imageUrl && post.mainImage && (
           <div className="article-card__image-wrapper">
             <img
               src={imageUrl}

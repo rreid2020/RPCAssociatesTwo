@@ -7,9 +7,9 @@ import { structure } from './desk/structure'
 export default defineConfig({
   name: 'default',
   title: 'RPC Associates CMS',
-  projectId: process.env.SANITY_STUDIO_PROJECT_ID || '',
+  projectId: process.env.SANITY_STUDIO_PROJECT_ID || 't3zpylpm',
   dataset: process.env.SANITY_STUDIO_DATASET || 'production',
-  basePath: '/studio',
+  // basePath removed for hosted studio deployment - studio will be at root URL
   plugins: [
     structureTool({ structure }),
     visionTool()

@@ -9,10 +9,12 @@
     "start": "sanity start"
   },
   "dependencies": {
+    "@sanity/vision": "^3.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-is": "^19.2.3",
     "sanity": "^3.0.0",
-    "@sanity/vision": "^3.0.0"
+    "styled-components": "^6.1.19"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",
@@ -20,4 +22,3 @@
     "typescript": "^5.2.2"
   }
 }
-

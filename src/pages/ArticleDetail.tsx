@@ -96,10 +96,10 @@ const ArticleDetail: FC = () => {
     day: 'numeric'
   })
 
-  const imageUrl = urlFor(post.mainImage)?.width(1200).url()
+  const imageUrl = post.mainImage ? urlFor(post.mainImage)?.width(1200).url() : null
   const ogImageUrl = post.seo?.ogImage 
     ? urlFor(post.seo.ogImage)?.width(1200).url()
-    : imageUrl
+    : imageUrl || undefined
 
   return (
     <>
@@ -139,7 +139,7 @@ const ArticleDetail: FC = () => {
                 )}
               </div>
 
-              {imageUrl && (
+              {imageUrl && post.mainImage && (
                 <div className="article-detail__image-wrapper">
                   <img
                     src={imageUrl}

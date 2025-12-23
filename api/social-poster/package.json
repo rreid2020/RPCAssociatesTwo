@@ -1,0 +1,14 @@
+{
+  "name": "sanity-social-poster",
+  "version": "1.0.0",
+  "description": "Serverless function to post Sanity content to LinkedIn and Twitter",
+  "main": "index.js",
+  "dependencies": {
+    "twitter-api-v2": "^1.15.0",
+    "linkedin-api": "^2.0.0"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
+

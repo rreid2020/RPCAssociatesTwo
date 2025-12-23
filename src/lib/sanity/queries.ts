@@ -14,13 +14,73 @@ export async function getCategories(): Promise<SanityCategory[]> {
       title,
       slug,
       description,
-      order
+      order,
+      parent-> {
+        _id,
+        _type,
+        title,
+        slug,
+        description
+      }
     }`
     
     return await client.fetch<SanityCategory[]>(query)
   } catch (error: any) {
     console.error('Error fetching categories:', error)
     throw new Error(`Failed to fetch categories: ${error?.message || 'Unknown error'}`)
+  }
+}
+
+export async function getTopLevelCategories(): Promise<SanityCategory[]> {
+  if (!isSanityConfigured()) {
+    console.warn('Sanity is not configured. Returning empty categories.')
+    return []
+  }
+  
+  try {
+    const query = `*[_type == "category" && !defined(parent)] | order(order asc, title asc) {
+      _id,
+      _type,
+      title,
+      slug,
+      description,
+      order
+    }`
+    
+    return await client.fetch<SanityCategory[]>(query)
+  } catch (error: any) {
+    console.error('Error fetching top-level categories:', error)
+    throw new Error(`Failed to fetch top-level categories: ${error?.message || 'Unknown error'}`)
+  }
+}
+
+export async function getChildCategories(parentId: string): Promise<SanityCategory[]> {
+  if (!isSanityConfigured()) {
+    console.warn('Sanity is not configured. Returning empty categories.')
+    return []
+  }
+  
+  try {
+    const query = `*[_type == "category" && parent._ref == $parentId] | order(order asc, title asc) {
+      _id,
+      _type,
+      title,
+      slug,
+      description,
+      order,
+      parent-> {
+        _id,
+        _type,
+        title,
+        slug,
+        description
+      }
+    }`
+    
+    return await client.fetch<SanityCategory[]>(query, { parentId })
+  } catch (error: any) {
+    console.error('Error fetching child categories:', error)
+    throw new Error(`Failed to fetch child categories: ${error?.message || 'Unknown error'}`)
   }
 }
 
@@ -99,16 +159,36 @@ export async function getArticles(options: GetArticlesOptions = {}): Promise<San
       seo {
         metaTitle,
         metaDescription,
+        keywords,
+        focusKeyword,
         canonicalUrl,
         noIndex,
+        noFollow,
         openGraph {
           ogTitle,
           ogDescription,
+          ogType,
           ogImage {
             _type,
             asset,
             alt
           }
+        },
+        twitter {
+          card,
+          title,
+          description,
+          image {
+            _type,
+            asset,
+            alt
+          }
+        },
+        schema {
+          articleType,
+          authorName,
+          publisherName,
+          publisherLogo
         },
         // Old structure: ogImage at root level
         "ogImageOld": ogImage {
@@ -240,19 +320,61 @@ export async function getArticleBySlug(slug: string): Promise<SanityArticle | nu
         alt
       },
       body,
+      downloads[] {
+        _key,
+        title,
+        description,
+        buttonText,
+        file {
+          asset-> {
+            _id,
+            url,
+            originalFilename,
+            size,
+            mimeType
+          }
+        }
+      },
+      relatedLinks[] {
+        _key,
+        title,
+        url,
+        description,
+        isExternal
+      },
       seo {
         metaTitle,
         metaDescription,
+        keywords,
+        focusKeyword,
         canonicalUrl,
         noIndex,
+        noFollow,
         openGraph {
           ogTitle,
           ogDescription,
+          ogType,
           ogImage {
             _type,
             asset,
             alt
           }
+        },
+        twitter {
+          card,
+          title,
+          description,
+          image {
+            _type,
+            asset,
+            alt
+          }
+        },
+        schema {
+          articleType,
+          authorName,
+          publisherName,
+          publisherLogo
         },
         // Old structure: ogImage at root level
         "ogImageOld": ogImage {
@@ -336,7 +458,14 @@ export async function getCategoryBySlug(slug: string): Promise<SanityCategory | 
       title,
       slug,
       description,
-      order
+      order,
+      parent-> {
+        _id,
+        _type,
+        title,
+        slug,
+        description
+      }
     }`
     
     const result = await client.fetch<SanityCategory | null>(query, { 

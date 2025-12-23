@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "api/social-poster/index.js": {
+      "runtime": "nodejs18.x"
+    }
+  }
+}
+

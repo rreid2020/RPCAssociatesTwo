@@ -5,11 +5,11 @@ export const structure = (S: StructureBuilder) =>
     .title('Content')
     .items([
       S.listItem()
-        .title('Articles')
+        .title('Posts')
         .child(
-          S.documentTypeList('article')
-            .title('Articles')
-            .filter('_type == "article"')
+          S.documentTypeList('post')
+            .title('Posts')
+            .filter('_type == "post"')
             .defaultOrdering([{ field: 'publishedAt', direction: 'desc' }])
         ),
       S.divider(),

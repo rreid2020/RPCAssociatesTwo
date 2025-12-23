@@ -2,6 +2,8 @@ import { FC, useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 import PortableText from '../components/PortableText'
+import DownloadButton from '../components/DownloadButton'
+import RelatedLinks from '../components/RelatedLinks'
 import { getArticleBySlug } from '../lib/sanity/queries'
 import { SanityArticle } from '../lib/sanity/types'
 import { urlFor } from '../lib/sanity/image'
@@ -104,16 +106,33 @@ const ArticleDetail: FC = () => {
   const ogImageUrl = article.seo?.openGraph?.ogImage 
     ? urlFor(article.seo.openGraph.ogImage)?.width(1200).url()
     : imageUrl || undefined
+  
+  const twitterImageUrl = article.seo?.twitter?.image
+    ? urlFor(article.seo.twitter.image)?.width(1200).url()
+    : ogImageUrl || undefined
 
   return (
     <>
       <SEO
         title={article.seo?.metaTitle || article.title}
         description={article.seo?.metaDescription || article.excerpt}
+        keywords={article.seo?.keywords || article.tags}
         canonical={article.seo?.canonicalUrl || `/articles/${article.slug.current}`}
         ogImage={ogImageUrl || undefined}
+        ogType={article.seo?.openGraph?.ogType}
         type="article"
         noIndex={article.seo?.noIndex}
+        noFollow={article.seo?.noFollow}
+        twitterCard={article.seo?.twitter?.card}
+        twitterTitle={article.seo?.twitter?.title}
+        twitterDescription={article.seo?.twitter?.description}
+        twitterImage={twitterImageUrl}
+        schemaType={article.seo?.schema?.articleType}
+        schemaAuthor={article.seo?.schema?.authorName || article.author?.name}
+        schemaPublisher={article.seo?.schema?.publisherName}
+        schemaPublisherLogo={article.seo?.schema?.publisherLogo}
+        publishedDate={article.publishedAt}
+        modifiedDate={article.updatedAt}
       />
       <main>
         <article className="article-detail">
@@ -163,6 +182,21 @@ const ArticleDetail: FC = () => {
               <div className="article-detail__content">
                 <PortableText content={article.body} />
               </div>
+
+              {article.downloads && article.downloads.length > 0 && (
+                <div className="article-detail__downloads">
+                  <h2 className="article-detail__downloads-title">Downloads</h2>
+                  <div className="article-detail__downloads-list">
+                    {article.downloads.map((download) => (
+                      <DownloadButton key={download._key} download={download} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {article.relatedLinks && article.relatedLinks.length > 0 && (
+                <RelatedLinks links={article.relatedLinks} />
+              )}
 
               <div className="article-detail__cta">
                 <h2 className="article-detail__cta-title">Ready to Get Started?</h2>

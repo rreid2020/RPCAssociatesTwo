@@ -1,4 +1,5 @@
 import { FC } from 'react'
+import { Link } from 'react-router-dom'
 import { PortableText as PortableTextRenderer, PortableTextComponents } from '@portabletext/react'
 import { urlFor } from '../lib/sanity/image'
 import { SanityImage } from '../lib/sanity/types'
@@ -25,14 +26,32 @@ const PortableText: FC<PortableTextProps> = ({ content }) => {
     },
     marks: {
       link: ({ value, children }) => {
-        const target = value?.href?.startsWith('http') ? '_blank' : undefined
+        const href = value?.href || ''
+        
+        // Check if it's an internal link (starts with / and doesn't start with http)
+        const isInternal = href.startsWith('/') && !href.startsWith('http')
+        
+        if (isInternal) {
+          // Use React Router Link for internal links
+          return (
+            <Link
+              to={href}
+              className="portable-text__link portable-text__link--internal"
+            >
+              {children}
+            </Link>
+          )
+        }
+        
+        // External links
+        const target = href.startsWith('http') ? '_blank' : undefined
         const rel = target === '_blank' ? 'noopener noreferrer' : undefined
         return (
           <a
-            href={value?.href}
+            href={href}
             target={target}
             rel={rel}
-            className="portable-text__link"
+            className="portable-text__link portable-text__link--external"
           >
             {children}
           </a>

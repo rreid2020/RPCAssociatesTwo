@@ -62,9 +62,17 @@ export interface SanitySEO {
   schema?: SanitySchema
 }
 
+export interface SanityFileAsset {
+  _id: string
+  url: string
+  originalFilename?: string
+  size?: number
+  mimeType?: string
+}
+
 export interface SanityFile {
   _type: 'file'
-  asset: {
+  asset: SanityFileAsset | {
     _ref: string
     _type: 'reference'
   }
@@ -74,7 +82,9 @@ export interface SanityDownload {
   _key: string
   title: string
   description?: string
-  file: SanityFile
+  file: {
+    asset: SanityFileAsset
+  }
   buttonText?: string
 }
 

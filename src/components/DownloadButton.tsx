@@ -1,20 +1,23 @@
 import { FC } from 'react'
-import { SanityDownload } from '../lib/sanity/types'
+import { SanityDownload, SanityFileAsset } from '../lib/sanity/types'
 
 interface DownloadButtonProps {
   download: SanityDownload
 }
 
 const DownloadButton: FC<DownloadButtonProps> = ({ download }) => {
-  if (!download.file?.asset?.url) {
+  // Type guard to check if asset is dereferenced (has url)
+  const asset = download.file?.asset as SanityFileAsset | undefined
+  
+  if (!asset || !asset.url) {
     return null
   }
 
-  const fileUrl = download.file.asset.url
-  const filename = download.file.asset.originalFilename || 'download'
+  const fileUrl = asset.url
+  const filename = asset.originalFilename || 'download'
   const buttonText = download.buttonText || 'Download'
-  const fileSize = download.file.asset.size
-    ? `${(download.file.asset.size / 1024).toFixed(1)} KB`
+  const fileSize = asset.size
+    ? `${(asset.size / 1024).toFixed(1)} KB`
     : null
 
   return (

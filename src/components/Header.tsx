@@ -171,7 +171,7 @@ const Header: FC = () => {
             <li>
               <Link 
                 to="/client-portal" 
-                className="text-primary font-semibold border border-primary px-sm py-xs rounded-lg transition-all hover:bg-primary hover:text-white"
+                className="text-primary font-semibold border border-primary px-3 py-1.5 rounded-lg transition-all hover:bg-primary hover:text-white whitespace-nowrap"
                 onClick={handleNavClick}
               >
                 Client Portal

@@ -983,7 +983,8 @@ const TaxCalculator: FC = () => {
                                 <th className="px-2 py-2 text-left font-semibold text-text border border-[#d0d0d0]">Line</th>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
-                                  const rangeStart = prevBracket && prevBracket.upTo ? prevBracket.upTo + 1 : 0
+                                  // For display, use the previous bracket's upTo value (not +1) to match tax form format
+                                  const rangeStartDisplay = prevBracket && prevBracket.upTo ? prevBracket.upTo : 0
                                   const rangeEnd = bracket.upTo
                                   const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
                                   const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
@@ -996,18 +997,52 @@ const TaxCalculator: FC = () => {
                                         isActive ? 'bg-[#fff9c4]' : ''
                                       }`}
                                     >
-                                      {index === 0 
-                                        ? `Line 1 is $${(rangeEnd || 0).toLocaleString('en-CA')} or less`
-                                        : bracket.upTo === null
-                                        ? `Line 1 is more than $${rangeStart.toLocaleString('en-CA')}`
-                                        : `Line 1 is more than $${rangeStart.toLocaleString('en-CA')} but not more than $${(rangeEnd || 0).toLocaleString('en-CA')}`
-                                      }
+                                      {index === 0 ? (
+                                        <>
+                                          <div>Line 1 is</div>
+                                          <div className="font-normal">${(rangeEnd || 0).toLocaleString('en-CA')} or less</div>
+                                        </>
+                                      ) : bracket.upTo === null ? (
+                                        <>
+                                          <div>Line 1 is more</div>
+                                          <div className="font-normal">than ${rangeStartDisplay.toLocaleString('en-CA')}</div>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <div>Line 1 is more than</div>
+                                          <div className="font-normal">${rangeStartDisplay.toLocaleString('en-CA')} but not more than ${(rangeEnd || 0).toLocaleString('en-CA')}</div>
+                                        </>
+                                      )}
                                     </th>
                                   )
                                 })}
                               </tr>
                             </thead>
                             <tbody>
+                              {/* Line 1: Taxable income from line 26000 */}
+                              <tr>
+                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
+                                  <div>1</div>
+                                  <div className="text-xs text-text-light font-normal mt-0.5">Taxable income from line 26000 of your return:</div>
+                                </td>
+                                {provincialData.brackets.map((bracket: any, index: number) => {
+                                  const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
+                                  const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
+                                  const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
+                                                 (bracket.upTo === null || taxableIncome <= bracket.upTo)
+                                  return (
+                                    <td 
+                                      key={index} 
+                                      className={`px-2 py-2 text-right border border-[#d0d0d0] ${
+                                        isActive ? 'bg-[#fff9c4] font-semibold' : ''
+                                      }`}
+                                    >
+                                      {isActive ? formatCurrency(taxableIncome) : ''}
+                                    </td>
+                                  )
+                                })}
+                              </tr>
+                              
                               {/* Line 2: Amount from line 1 */}
                               <tr>
                                 <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">

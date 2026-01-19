@@ -1032,11 +1032,11 @@ const TaxCalculator: FC = () => {
                                 })}
                               </tr>
                               
-                              {/* Line 3: Threshold */}
+                              {/* Line 3: Threshold - show for ALL columns */}
                               <tr>
                                 <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
                                   <div>3</div>
-                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 3</div>
+                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 2 minus line 3 (cannot be negative)</div>
                                 </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
@@ -1083,7 +1083,7 @@ const TaxCalculator: FC = () => {
                                 })}
                               </tr>
                               
-                              {/* Line 5: Percentage rate */}
+                              {/* Line 5: Percentage rate - show for ALL columns */}
                               <tr>
                                 <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
                                   <div>5</div>

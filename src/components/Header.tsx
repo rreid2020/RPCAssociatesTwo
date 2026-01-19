@@ -32,7 +32,7 @@ const Header: FC = () => {
   }
 
   return (
-    <header className="sticky top-0 bg-white shadow-sm z-[1000]">
+    <header className="sticky top-0 bg-white shadow-sm z-[1000] py-4">
       <div className="max-w-[1200px] mx-auto px-md flex justify-between items-center gap-md">
         <Link to="/" aria-label="RPC Associates Home" className="flex items-center gap-sm no-underline">
           <img src={logo} alt="RPC Associates" className="h-10 w-10 flex-shrink-0" />

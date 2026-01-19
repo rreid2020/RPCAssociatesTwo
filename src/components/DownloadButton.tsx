@@ -23,7 +23,7 @@ const DownloadButton: FC<DownloadButtonProps> = ({ download }) => {
   return (
     <div className="flex items-start justify-between gap-md p-md bg-gray-50 rounded-lg border border-border transition-all hover:border-primary hover:shadow-sm flex-col md:flex-row md:items-start">
       <div className="flex-1">
-        <h3 className="text-lg font-semibold text-text mb-xs">{download.title || fileName}</h3>
+        <h3 className="text-lg font-semibold text-text mb-xs">{download.title || filename}</h3>
         {download.description && (
           <p className="text-text-light text-[0.9375rem] mb-xs leading-relaxed">{download.description}</p>
         )}

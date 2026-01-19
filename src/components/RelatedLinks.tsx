@@ -16,7 +16,7 @@ const RelatedLinks: FC<RelatedLinksProps> = ({ links }) => {
       <h2 className="text-2xl font-semibold text-primary mb-lg">Related Resources</h2>
       <ul className="list-none p-0 m-0 flex flex-col gap-sm">
         {links.map((link) => {
-          const isExternal = link.external || link.url.startsWith('http')
+          const isExternal = link.isExternal || link.url.startsWith('http')
           
           if (isExternal) {
             return (

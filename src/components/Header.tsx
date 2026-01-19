@@ -24,10 +24,6 @@ const Header: FC = () => {
     setIsMenuOpen(false)
   }
 
-  const handleContactClick = () => {
-    scrollToSection('contact')
-  }
-
   const handleNavClick = () => {
     setIsMenuOpen(false)
   }
@@ -180,12 +176,6 @@ const Header: FC = () => {
             </li>
           </ul>
           <div className="flex gap-sm items-center ml-xs lg:flex hidden lg:flex">
-            <button 
-              className="btn btn--secondary whitespace-nowrap"
-              onClick={handleContactClick}
-            >
-              Request a Call
-            </button>
             <CalendlyButton className="btn btn--primary whitespace-nowrap" />
           </div>
         </nav>

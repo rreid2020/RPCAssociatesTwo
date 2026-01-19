@@ -93,16 +93,6 @@ const TaxCalculator: FC = () => {
     }
   }
 
-  const scrollToContact = () => {
-    if (window.location.pathname !== '/') {
-      window.location.href = '/#contact'
-    } else {
-      const element = document.getElementById('contact')
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth' })
-      }
-    }
-  }
 
   const provinces = [
     { code: 'AB', name: 'Alberta' },
@@ -485,10 +475,10 @@ const TaxCalculator: FC = () => {
                   Need help with your tax planning or filing? Our team can provide personalized advice.
                 </p>
                 <div className="flex gap-md justify-center flex-wrap">
-                  <button className="btn btn--secondary" onClick={scrollToContact}>
-                    Request a Call
-                  </button>
                   <CalendlyButton />
+                  <a href="tel:6138840208" className="btn btn--secondary">
+                    Call: 613-884-0208
+                  </a>
                 </div>
               </div>
             </div>

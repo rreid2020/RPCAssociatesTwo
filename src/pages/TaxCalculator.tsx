@@ -27,6 +27,7 @@ const TaxCalculator: FC = () => {
 
   const [results, setResults] = useState<TaxCalculatorResults | null>(null)
   const [hasCalculated, setHasCalculated] = useState(false)
+  const [inputValues, setInputValues] = useState<{ [key: string]: string }>({})
 
   // Run self-checks in dev mode
   useEffect(() => {
@@ -43,9 +44,14 @@ const TaxCalculator: FC = () => {
   }
 
   const parseNumber = (value: string): number => {
-    // Remove currency symbols, commas, and spaces
-    const cleaned = value.replace(/[$,\s]/g, '')
-    const parsed = parseFloat(cleaned)
+    // Remove currency symbols, commas, and spaces, but keep decimal point
+    const cleaned = value.replace(/[$,\s]/g, '').replace(/[^\d.-]/g, '')
+    // Handle multiple decimal points - keep only the first one
+    const parts = cleaned.split('.')
+    const cleanedValue = parts.length > 2 
+      ? parts[0] + '.' + parts.slice(1).join('')
+      : cleaned
+    const parsed = parseFloat(cleanedValue)
     if (isNaN(parsed) || parsed < 0) return 0
     return parsed
   }
@@ -58,6 +64,32 @@ const TaxCalculator: FC = () => {
       minimumFractionDigits: 0,
       maximumFractionDigits: 2
     }).format(amount)
+  }
+
+  const getInputValue = (field: string, numericValue: number): string => {
+    // If user is currently typing in this field, use the raw value
+    if (inputValues[field] !== undefined) {
+      return inputValues[field]
+    }
+    // Otherwise, format the numeric value
+    return formatCurrencyInput(numericValue)
+  }
+
+  const handleInputFocus = (field: string, numericValue: number) => {
+    // When focusing, show the raw numeric value (or empty if 0)
+    const rawValue = numericValue === 0 ? '' : numericValue.toString()
+    setInputValues(prev => ({ ...prev, [field]: rawValue }))
+  }
+
+  const handleInputBlur = (field: keyof TaxCalculatorInputs, value: string) => {
+    const num = parseNumber(value)
+    setInputs(prev => ({ ...prev, [field]: num }))
+    // Clear the raw input value so it formats on next render
+    setInputValues(prev => {
+      const newValues = { ...prev }
+      delete newValues[field]
+      return newValues
+    })
   }
 
   const handleInputChange = (field: keyof TaxCalculatorInputs, value: string | number) => {
@@ -77,9 +109,13 @@ const TaxCalculator: FC = () => {
     ]
     
     if (typeof value === 'string' && numericFields.includes(field)) {
+      // Store the raw input value while typing
+      setInputValues(prev => ({ ...prev, [field]: value }))
+      // Also update the numeric value for calculations
+      const num = parseNumber(value)
       setInputs(prev => ({
         ...prev,
-        [field]: parseNumber(value)
+        [field]: num
       }))
     } else {
       setInputs(prev => ({
@@ -187,12 +223,10 @@ const TaxCalculator: FC = () => {
                               id="employmentIncome"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
                               placeholder="$0.00"
-                              value={formatCurrencyInput(inputs.employmentIncome)}
+                              value={getInputValue('employmentIncome', inputs.employmentIncome)}
                               onChange={(e) => handleInputChange('employmentIncome', e.target.value)}
-                              onBlur={(e) => {
-                                const num = parseNumber(e.target.value)
-                                setInputs(prev => ({ ...prev, employmentIncome: num }))
-                              }}
+                              onFocus={() => handleInputFocus('employmentIncome', inputs.employmentIncome)}
+                              onBlur={(e) => handleInputBlur('employmentIncome', e.target.value)}
                             />
                           </div>
 
@@ -204,12 +238,10 @@ const TaxCalculator: FC = () => {
                               id="interestAndInvestmentIncome"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
                               placeholder="$0.00"
-                              value={formatCurrencyInput(inputs.interestAndInvestmentIncome)}
+                              value={getInputValue('interestAndInvestmentIncome', inputs.interestAndInvestmentIncome)}
                               onChange={(e) => handleInputChange('interestAndInvestmentIncome', e.target.value)}
-                              onBlur={(e) => {
-                                const num = parseNumber(e.target.value)
-                                setInputs(prev => ({ ...prev, interestAndInvestmentIncome: num }))
-                              }}
+                              onFocus={() => handleInputFocus('interestAndInvestmentIncome', inputs.interestAndInvestmentIncome)}
+                              onBlur={(e) => handleInputBlur('interestAndInvestmentIncome', e.target.value)}
                             />
                           </div>
 
@@ -221,12 +253,10 @@ const TaxCalculator: FC = () => {
                               id="selfEmploymentIncome"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
                               placeholder="$0.00"
-                              value={formatCurrencyInput(inputs.selfEmploymentIncome)}
+                              value={getInputValue('selfEmploymentIncome', inputs.selfEmploymentIncome)}
                               onChange={(e) => handleInputChange('selfEmploymentIncome', e.target.value)}
-                              onBlur={(e) => {
-                                const num = parseNumber(e.target.value)
-                                setInputs(prev => ({ ...prev, selfEmploymentIncome: num }))
-                              }}
+                              onFocus={() => handleInputFocus('selfEmploymentIncome', inputs.selfEmploymentIncome)}
+                              onBlur={(e) => handleInputBlur('selfEmploymentIncome', e.target.value)}
                             />
                           </div>
 
@@ -238,12 +268,10 @@ const TaxCalculator: FC = () => {
                               id="capitalGains"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
                               placeholder="$0.00"
-                              value={formatCurrencyInput(inputs.capitalGains)}
+                              value={getInputValue('capitalGains', inputs.capitalGains)}
                               onChange={(e) => handleInputChange('capitalGains', e.target.value)}
-                              onBlur={(e) => {
-                                const num = parseNumber(e.target.value)
-                                setInputs(prev => ({ ...prev, capitalGains: num }))
-                              }}
+                              onFocus={() => handleInputFocus('capitalGains', inputs.capitalGains)}
+                              onBlur={(e) => handleInputBlur('capitalGains', e.target.value)}
                             />
                           </div>
 
@@ -255,12 +283,10 @@ const TaxCalculator: FC = () => {
                               id="eligibleDividends"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
                               placeholder="$0.00"
-                              value={formatCurrencyInput(inputs.eligibleDividends)}
+                              value={getInputValue('eligibleDividends', inputs.eligibleDividends)}
                               onChange={(e) => handleInputChange('eligibleDividends', e.target.value)}
-                              onBlur={(e) => {
-                                const num = parseNumber(e.target.value)
-                                setInputs(prev => ({ ...prev, eligibleDividends: num }))
-                              }}
+                              onFocus={() => handleInputFocus('eligibleDividends', inputs.eligibleDividends)}
+                              onBlur={(e) => handleInputBlur('eligibleDividends', e.target.value)}
                             />
                           </div>
 
@@ -272,12 +298,10 @@ const TaxCalculator: FC = () => {
                               id="ineligibleDividends"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
                               placeholder="$0.00"
-                              value={formatCurrencyInput(inputs.ineligibleDividends)}
+                              value={getInputValue('ineligibleDividends', inputs.ineligibleDividends)}
                               onChange={(e) => handleInputChange('ineligibleDividends', e.target.value)}
-                              onBlur={(e) => {
-                                const num = parseNumber(e.target.value)
-                                setInputs(prev => ({ ...prev, ineligibleDividends: num }))
-                              }}
+                              onFocus={() => handleInputFocus('ineligibleDividends', inputs.ineligibleDividends)}
+                              onBlur={(e) => handleInputBlur('ineligibleDividends', e.target.value)}
                             />
                           </div>
 
@@ -289,12 +313,10 @@ const TaxCalculator: FC = () => {
                               id="otherIncome"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
                               placeholder="$0.00"
-                              value={formatCurrencyInput(inputs.otherIncome)}
+                              value={getInputValue('otherIncome', inputs.otherIncome)}
                               onChange={(e) => handleInputChange('otherIncome', e.target.value)}
-                              onBlur={(e) => {
-                                const num = parseNumber(e.target.value)
-                                setInputs(prev => ({ ...prev, otherIncome: num }))
-                              }}
+                              onFocus={() => handleInputFocus('otherIncome', inputs.otherIncome)}
+                              onBlur={(e) => handleInputBlur('otherIncome', e.target.value)}
                             />
                           </div>
                         </div>
@@ -311,12 +333,10 @@ const TaxCalculator: FC = () => {
                               id="rrspContributions"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
                               placeholder="$0.00"
-                              value={formatCurrencyInput(inputs.rrspContributions)}
+                              value={getInputValue('rrspContributions', inputs.rrspContributions)}
                               onChange={(e) => handleInputChange('rrspContributions', e.target.value)}
-                              onBlur={(e) => {
-                                const num = parseNumber(e.target.value)
-                                setInputs(prev => ({ ...prev, rrspContributions: num }))
-                              }}
+                              onFocus={() => handleInputFocus('rrspContributions', inputs.rrspContributions)}
+                              onBlur={(e) => handleInputBlur('rrspContributions', e.target.value)}
                             />
                           </div>
 
@@ -328,12 +348,10 @@ const TaxCalculator: FC = () => {
                               id="fhsaContributions"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
                               placeholder="$0.00"
-                              value={formatCurrencyInput(inputs.fhsaContributions)}
+                              value={getInputValue('fhsaContributions', inputs.fhsaContributions)}
                               onChange={(e) => handleInputChange('fhsaContributions', e.target.value)}
-                              onBlur={(e) => {
-                                const num = parseNumber(e.target.value)
-                                setInputs(prev => ({ ...prev, fhsaContributions: num }))
-                              }}
+                              onFocus={() => handleInputFocus('fhsaContributions', inputs.fhsaContributions)}
+                              onBlur={(e) => handleInputBlur('fhsaContributions', e.target.value)}
                             />
                           </div>
                         </div>
@@ -350,12 +368,10 @@ const TaxCalculator: FC = () => {
                               id="cppContributions"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
                               placeholder="$0.00"
-                              value={formatCurrencyInput(inputs.cppContributions)}
+                              value={getInputValue('cppContributions', inputs.cppContributions)}
                               onChange={(e) => handleInputChange('cppContributions', e.target.value)}
-                              onBlur={(e) => {
-                                const num = parseNumber(e.target.value)
-                                setInputs(prev => ({ ...prev, cppContributions: num }))
-                              }}
+                              onFocus={() => handleInputFocus('cppContributions', inputs.cppContributions)}
+                              onBlur={(e) => handleInputBlur('cppContributions', e.target.value)}
                             />
                           </div>
 
@@ -367,12 +383,10 @@ const TaxCalculator: FC = () => {
                               id="donations"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
                               placeholder="$0.00"
-                              value={formatCurrencyInput(inputs.donations)}
+                              value={getInputValue('donations', inputs.donations)}
                               onChange={(e) => handleInputChange('donations', e.target.value)}
-                              onBlur={(e) => {
-                                const num = parseNumber(e.target.value)
-                                setInputs(prev => ({ ...prev, donations: num }))
-                              }}
+                              onFocus={() => handleInputFocus('donations', inputs.donations)}
+                              onBlur={(e) => handleInputBlur('donations', e.target.value)}
                             />
                           </div>
                         </div>
@@ -388,12 +402,10 @@ const TaxCalculator: FC = () => {
                               id="incomeTaxesPaid"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
                               placeholder="$0.00"
-                              value={formatCurrencyInput(inputs.incomeTaxesPaid)}
+                              value={getInputValue('incomeTaxesPaid', inputs.incomeTaxesPaid)}
                               onChange={(e) => handleInputChange('incomeTaxesPaid', e.target.value)}
-                              onBlur={(e) => {
-                                const num = parseNumber(e.target.value)
-                                setInputs(prev => ({ ...prev, incomeTaxesPaid: num }))
-                              }}
+                              onFocus={() => handleInputFocus('incomeTaxesPaid', inputs.incomeTaxesPaid)}
+                              onBlur={(e) => handleInputBlur('incomeTaxesPaid', e.target.value)}
                             />
                         </div>
                       </div>

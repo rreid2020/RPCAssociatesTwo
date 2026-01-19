@@ -7,7 +7,7 @@ const Footer: FC = () => {
   return (
     <footer className="bg-primary text-white py-xl mt-xxl">
       <div className="max-w-[1200px] mx-auto px-md">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-xl items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-xl items-start">
           <div>
             <div className="text-sm opacity-90">
               © {currentYear} RPC Associates. All rights reserved.
@@ -33,19 +33,49 @@ const Footer: FC = () => {
               </li>
             </ul>
           </div>
-          <div className="text-right md:text-right">
+          <div className="text-center md:text-left">
+            <h3 className="text-xl mb-md font-semibold text-white">Resources</h3>
+            <ul className="flex flex-col gap-sm list-none m-0 p-0">
+              <li>
+                <a href="https://www.canadian-accountant.com/" target="_blank" rel="noopener noreferrer" className="text-white opacity-90 text-sm no-underline transition-all hover:opacity-100 hover:underline">
+                  Canadian Accountant
+                </a>
+              </li>
+              <li>
+                <a href="https://www.canada.ca/en/revenue-agency.html" target="_blank" rel="noopener noreferrer" className="text-white opacity-90 text-sm no-underline transition-all hover:opacity-100 hover:underline">
+                  Canada Revenue Agency
+                </a>
+              </li>
+              <li>
+                <a href="https://www.ctf.ca/EN/EN/Home.aspx" target="_blank" rel="noopener noreferrer" className="text-white opacity-90 text-sm no-underline transition-all hover:opacity-100 hover:underline">
+                  Canadian Tax Foundation
+                </a>
+              </li>
+              <li>
+                <a href="https://www.cpacanada.ca/" target="_blank" rel="noopener noreferrer" className="text-white opacity-90 text-sm no-underline transition-all hover:opacity-100 hover:underline">
+                  CPA Canada
+                </a>
+              </li>
+              <li>
+                <a href="https://cpab-ccrc.ca/" target="_blank" rel="noopener noreferrer" className="text-white opacity-90 text-sm no-underline transition-all hover:opacity-100 hover:underline">
+                  CPAB
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div className="text-center md:text-right lg:text-right">
             <h3 className="text-xl mb-md font-semibold text-white">Contact</h3>
-            <div className="flex flex-col gap-sm items-end md:items-end">
+            <div className="flex flex-col gap-sm items-center md:items-end lg:items-end">
               <div className="text-sm">
                 <span>Roger Reid, CPA, CMA, CGAP</span>
               </div>
-              <div className="text-sm flex flex-row gap-xs items-baseline md:flex-row">
+              <div className="text-sm flex flex-row gap-xs items-baseline">
                 <span className="font-semibold opacity-90">Phone/Text:</span>
                 <a href="tel:6138840208" className="text-white opacity-90 no-underline transition-all hover:opacity-100 hover:underline">
                   613-884-0208
                 </a>
               </div>
-              <div className="text-sm flex flex-row gap-xs items-baseline md:flex-row">
+              <div className="text-sm flex flex-row gap-xs items-baseline">
                 <span className="font-semibold opacity-90">Email:</span>
                 <a href="mailto:roger.reid@rpcassociates.co" className="text-white opacity-90 no-underline transition-all hover:opacity-100 hover:underline">
                   roger.reid@rpcassociates.co

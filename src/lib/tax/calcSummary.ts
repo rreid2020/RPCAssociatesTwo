@@ -20,8 +20,9 @@ export function calcSummary(
   federalData: FederalTaxData,
   provincialData: ProvincialTaxData
 ): TaxCalculatorResults {
-  // Calculate regular income (employment, self-employment, other)
-  const regularIncome = inputs.employmentIncome + inputs.selfEmploymentIncome + inputs.otherIncome
+  // Calculate regular income (employment, self-employment, interest/investment, other)
+  const regularIncome = inputs.employmentIncome + inputs.selfEmploymentIncome + 
+    inputs.interestAndInvestmentIncome + inputs.otherIncome
   
   // Capital gains: 50% inclusion rate (only half is taxable)
   const capitalGainsTaxable = inputs.capitalGains * 0.5
@@ -31,10 +32,11 @@ export function calcSummary(
   const ineligibleDividend = calcIneligibleDividendCredit(inputs.ineligibleDividends)
   
   // Calculate total taxable income
-  // Include: regular income + capital gains (50%) + grossed-up dividends - RRSP
-  const totalIncomeBeforeRRSP = regularIncome + capitalGainsTaxable + 
+  // Include: regular income + capital gains (50%) + grossed-up dividends - RRSP - FHSA
+  const totalIncomeBeforeDeductions = regularIncome + capitalGainsTaxable + 
     eligibleDividend.grossedUpAmount + ineligibleDividend.grossedUpAmount
-  const taxableIncome = Math.max(0, totalIncomeBeforeRRSP - inputs.rrspContributions)
+  const totalDeductions = inputs.rrspContributions + inputs.fhsaContributions
+  const taxableIncome = Math.max(0, totalIncomeBeforeDeductions - totalDeductions)
 
   // Calculate federal tax on taxable income
   const federalTaxBeforeCredits = calcFederalTax(taxableIncome, federalData)
@@ -102,25 +104,31 @@ export function calcSummary(
     ? federalData.bpa.minimumAmount
     : federalData.bpa.fullAmount - ((federalData.bpa.fullAmount - federalData.bpa.minimumAmount) * ((taxableIncome - federalData.bpa.phaseOutStart) / (federalData.bpa.phaseOutEnd - federalData.bpa.phaseOutStart)))
 
-  // Estimate CPP contributions (simplified - actual calculation is more complex)
-  // CPP is typically deducted from employment income at source, but we'll estimate it
-  const estimatedCPPContributions = Math.min(inputs.employmentIncome * 0.0595, 3867.50) // 2025 max CPP contribution
-  const cppCredit = estimatedCPPContributions * federalData.lowestRate
+  // Use actual CPP contributions if provided, otherwise estimate
+  const cppContributions = inputs.cppContributions > 0 
+    ? inputs.cppContributions 
+    : Math.min(inputs.employmentIncome * 0.0595, 3867.50) // 2025 max CPP contribution estimate
+  const cppCredit = cppContributions * federalData.lowestRate
 
   // Canada Employment Amount (for 2025: $1,433)
   const canadaEmploymentAmount = 1433
   const canadaEmploymentCredit = canadaEmploymentAmount * federalData.lowestRate
 
+  // Calculate donations credit (15% on first $200, 29% on remainder)
+  const donationsCredit = inputs.donations > 0
+    ? Math.min(inputs.donations, 200) * 0.15 + Math.max(0, inputs.donations - 200) * 0.29
+    : 0
+
   // Sum of federal credits (before 15% multiplication)
-  const sumOfCredits = bpaAmount + estimatedCPPContributions + canadaEmploymentAmount
+  const sumOfCredits = bpaAmount + cppContributions + canadaEmploymentAmount
   const creditsAt15Percent = sumOfCredits * federalData.lowestRate
 
-  // Total federal credits (BPA + CPP + Canada Employment + Dividend credits)
-  const totalFederalCredits = bpaCredit + cppCredit + canadaEmploymentCredit + totalFederalDividendCredit
+  // Total federal credits (BPA + CPP + Canada Employment + Dividend credits + Donations)
+  const totalFederalCredits = bpaCredit + cppCredit + canadaEmploymentCredit + totalFederalDividendCredit + donationsCredit
 
   // Calculate net income (total income minus deductions)
   // Note: totalIncome was already calculated above for average tax rate
-  const netIncomeBeforeAdjustments = totalIncome - inputs.rrspContributions
+  const netIncomeBeforeAdjustments = totalIncome - totalDeductions
   const netIncome = netIncomeBeforeAdjustments // Simplified - no other adjustments in MVP
 
   // Estimate CPP contributions payable on self-employment (simplified)
@@ -132,7 +140,7 @@ export function calcSummary(
   const detailedBreakdown: DetailedBreakdown = {
     totalIncome: {
       employmentIncome: inputs.employmentIncome,
-      interestAndInvestmentIncome: inputs.otherIncome, // Simplified - other income includes interest
+      interestAndInvestmentIncome: inputs.interestAndInvestmentIncome,
       netBusinessIncome: inputs.selfEmploymentIncome,
       capitalGains: inputs.capitalGains,
       eligibleDividends: inputs.eligibleDividends,
@@ -142,17 +150,18 @@ export function calcSummary(
     netIncome: {
       totalIncome: totalIncome,
       rrspDeduction: inputs.rrspContributions,
-      fhsaDeduction: 0, // Not currently in inputs
+      fhsaDeduction: inputs.fhsaContributions,
       cppDeduction: 0, // CPP is not a deduction, it's a credit
-      totalDeductions: inputs.rrspContributions,
+      totalDeductions: totalDeductions,
       netIncomeBeforeAdjustments: netIncomeBeforeAdjustments,
       netIncome: netIncome
     },
     taxableIncome: Math.round(taxableIncome * 100) / 100,
     federalCredits: {
       basicPersonalAmount: Math.round(bpaAmount * 100) / 100,
-      cppContributions: Math.round(estimatedCPPContributions * 100) / 100,
+      cppContributions: Math.round(cppContributions * 100) / 100,
       canadaEmploymentAmount: canadaEmploymentAmount,
+      donationsCredit: Math.round(donationsCredit * 100) / 100,
       sumOfCredits: Math.round(sumOfCredits * 100) / 100,
       creditsAt15Percent: Math.round(creditsAt15Percent * 100) / 100,
       totalFederalCredits: Math.round(totalFederalCredits * 100) / 100

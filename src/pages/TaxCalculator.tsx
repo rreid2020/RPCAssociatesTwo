@@ -13,11 +13,15 @@ const TaxCalculator: FC = () => {
     province: 'ON',
     employmentIncome: 0,
     selfEmploymentIncome: 0,
+    interestAndInvestmentIncome: 0,
     otherIncome: 0,
     rrspContributions: 0,
+    fhsaContributions: 0,
     capitalGains: 0,
     eligibleDividends: 0,
     ineligibleDividends: 0,
+    cppContributions: 0,
+    donations: 0,
     incomeTaxesPaid: 0
   })
 
@@ -47,12 +51,16 @@ const TaxCalculator: FC = () => {
   const handleInputChange = (field: keyof TaxCalculatorInputs, value: string | number) => {
     const numericFields = [
       'employmentIncome', 
-      'selfEmploymentIncome', 
+      'selfEmploymentIncome',
+      'interestAndInvestmentIncome',
       'otherIncome', 
       'rrspContributions',
+      'fhsaContributions',
       'capitalGains',
       'eligibleDividends',
       'ineligibleDividends',
+      'cppContributions',
+      'donations',
       'incomeTaxesPaid'
     ]
     
@@ -134,149 +142,230 @@ const TaxCalculator: FC = () => {
 
             <div className="max-w-[1200px] mx-auto">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-xxl items-start">
-                <div className="bg-white p-lg rounded-xl">
+                <div className="bg-[#f8f8f8] p-lg rounded-xl lg:sticky lg:top-[calc(1.5rem+60px)]">
+                  <h2 className="text-2xl font-bold text-primary mb-md lg:mb-lg">Your Inputs</h2>
                   <form className="flex flex-col gap-md" onSubmit={handleCalculate}>
-                    <div className="mb-md">
-                      <div className="flex flex-col gap-1">
-                        <label htmlFor="province" className="font-semibold text-text text-sm mb-1">Choose province or territory</label>
-                        <select
-                          id="province"
-                          className="px-3.5 py-3 border border-[#d0d0d0] rounded-lg font-sans text-base transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary"
-                          value={inputs.province}
-                          onChange={(e) => handleInputChange('province', e.target.value)}
-                        >
-                          {provinces.map(prov => (
-                            <option key={prov.code} value={prov.code}>
-                              {prov.name}
-                            </option>
-                          ))}
-                        </select>
+                    <div className="bg-white p-md rounded-lg">
+                      <div className="mb-md">
+                        <div className="flex flex-col gap-1">
+                          <label htmlFor="province" className="font-semibold text-text text-sm mb-1">Choose province or territory</label>
+                          <select
+                            id="province"
+                            className="px-3.5 py-3 border border-[#d0d0d0] rounded-lg font-sans text-base transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary"
+                            value={inputs.province}
+                            onChange={(e) => handleInputChange('province', e.target.value)}
+                          >
+                            {provinces.map(prov => (
+                              <option key={prov.code} value={prov.code}>
+                                {prov.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="flex flex-col gap-1">
-                      <label htmlFor="employmentIncome" className="font-semibold text-text text-sm mb-1">Employment income</label>
-                      <p className="text-sm text-text-light m-0 leading-snug mb-1">Employment income and taxable benefits.</p>
-                      <input
-                        type="number"
-                        id="employmentIncome"
-                        className="px-3.5 py-3 border border-[#d0d0d0] rounded-lg font-sans text-base transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
-                        min="0"
-                        step="0.01"
-                        placeholder="0"
-                        value={inputs.employmentIncome || ''}
-                        onChange={(e) => handleInputChange('employmentIncome', e.target.value)}
-                      />
-                    </div>
+                      <div className="mb-md">
+                        <h3 className="text-sm font-semibold text-primary mb-xs bg-[#e8f5e9] px-2 py-1 rounded text-xs">Income</h3>
+                        <div className="space-y-md">
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="employmentIncome" className="font-semibold text-text text-xs mb-1">Employment income (Line 10100)</label>
+                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Employment income and taxable benefits.</p>
+                            <input
+                              type="number"
+                              id="employmentIncome"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
+                              min="0"
+                              step="0.01"
+                              placeholder="0"
+                              value={inputs.employmentIncome || ''}
+                              onChange={(e) => handleInputChange('employmentIncome', e.target.value)}
+                            />
+                          </div>
 
-                    <div className="flex flex-col gap-1">
-                      <label htmlFor="selfEmploymentIncome" className="font-semibold text-text text-sm mb-1">Self-employment income</label>
-                      <p className="text-sm text-text-light m-0 leading-snug mb-1">Business, professional, commission, partnership, fishing, and farming income.</p>
-                      <input
-                        type="number"
-                        id="selfEmploymentIncome"
-                        className="px-3.5 py-3 border border-[#d0d0d0] rounded-lg font-sans text-base transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
-                        min="0"
-                        step="0.01"
-                        placeholder="0"
-                        value={inputs.selfEmploymentIncome || ''}
-                        onChange={(e) => handleInputChange('selfEmploymentIncome', e.target.value)}
-                      />
-                    </div>
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="interestAndInvestmentIncome" className="font-semibold text-text text-xs mb-1">Interest and investment income (Line 12100)</label>
+                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Interest, dividends from foreign sources, and other investment income.</p>
+                            <input
+                              type="number"
+                              id="interestAndInvestmentIncome"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
+                              min="0"
+                              step="0.01"
+                              placeholder="0"
+                              value={inputs.interestAndInvestmentIncome || ''}
+                              onChange={(e) => handleInputChange('interestAndInvestmentIncome', e.target.value)}
+                            />
+                          </div>
 
-                    <div className="flex flex-col gap-1">
-                      <label htmlFor="rrspContributions" className="font-semibold text-text text-sm mb-1">RRSP and FHSA deductions</label>
-                      <p className="text-sm text-text-light m-0 leading-snug mb-1">Keep in mind RRSP and FHSA contributions are subject to annual contribution and deduction limits.</p>
-                      <input
-                        type="number"
-                        id="rrspContributions"
-                        className="px-3.5 py-3 border border-[#d0d0d0] rounded-lg font-sans text-base transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
-                        min="0"
-                        step="0.01"
-                        placeholder="0"
-                        value={inputs.rrspContributions || ''}
-                        onChange={(e) => handleInputChange('rrspContributions', e.target.value)}
-                      />
-                    </div>
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="selfEmploymentIncome" className="font-semibold text-text text-xs mb-1">Net business income (Line 13500)</label>
+                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Business, professional, commission, partnership, fishing, and farming income.</p>
+                            <input
+                              type="number"
+                              id="selfEmploymentIncome"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
+                              min="0"
+                              step="0.01"
+                              placeholder="0"
+                              value={inputs.selfEmploymentIncome || ''}
+                              onChange={(e) => handleInputChange('selfEmploymentIncome', e.target.value)}
+                            />
+                          </div>
 
-                    <div className="flex flex-col gap-1">
-                      <label htmlFor="capitalGains" className="font-semibold text-text text-sm mb-1">Capital gains</label>
-                      <p className="text-sm text-text-light m-0 leading-snug mb-1">Half of this amount is included in income.</p>
-                      <input
-                        type="number"
-                        id="capitalGains"
-                        className="px-3.5 py-3 border border-[#d0d0d0] rounded-lg font-sans text-base transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
-                        min="0"
-                        step="0.01"
-                        placeholder="0"
-                        value={inputs.capitalGains || ''}
-                        onChange={(e) => handleInputChange('capitalGains', e.target.value)}
-                      />
-                    </div>
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="capitalGains" className="font-semibold text-text text-xs mb-1">Capital gains</label>
+                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Half of this amount is included in income.</p>
+                            <input
+                              type="number"
+                              id="capitalGains"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
+                              min="0"
+                              step="0.01"
+                              placeholder="0"
+                              value={inputs.capitalGains || ''}
+                              onChange={(e) => handleInputChange('capitalGains', e.target.value)}
+                            />
+                          </div>
 
-                    <div className="flex flex-col gap-1">
-                      <label htmlFor="eligibleDividends" className="font-semibold text-text text-sm mb-1">Eligible dividends</label>
-                      <p className="text-sm text-text-light m-0 leading-snug mb-1">In general, these are dividends received from public Canadian companies. Enter the actual amount of dividends received.</p>
-                      <input
-                        type="number"
-                        id="eligibleDividends"
-                        className="px-3.5 py-3 border border-[#d0d0d0] rounded-lg font-sans text-base transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
-                        min="0"
-                        step="0.01"
-                        placeholder="0"
-                        value={inputs.eligibleDividends || ''}
-                        onChange={(e) => handleInputChange('eligibleDividends', e.target.value)}
-                      />
-                    </div>
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="eligibleDividends" className="font-semibold text-text text-xs mb-1">Eligible dividends</label>
+                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Dividends from public Canadian companies. Enter the actual amount received.</p>
+                            <input
+                              type="number"
+                              id="eligibleDividends"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
+                              min="0"
+                              step="0.01"
+                              placeholder="0"
+                              value={inputs.eligibleDividends || ''}
+                              onChange={(e) => handleInputChange('eligibleDividends', e.target.value)}
+                            />
+                          </div>
 
-                    <div className="flex flex-col gap-1">
-                      <label htmlFor="ineligibleDividends" className="font-semibold text-text text-sm mb-1">Ineligible Dividends</label>
-                      <p className="text-sm text-text-light m-0 leading-snug mb-1">In general, these are dividends received from private Canadian companies. Enter the actual amount of dividends received.</p>
-                      <input
-                        type="number"
-                        id="ineligibleDividends"
-                        className="px-3.5 py-3 border border-[#d0d0d0] rounded-lg font-sans text-base transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
-                        min="0"
-                        step="0.01"
-                        placeholder="0"
-                        value={inputs.ineligibleDividends || ''}
-                        onChange={(e) => handleInputChange('ineligibleDividends', e.target.value)}
-                      />
-                    </div>
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="ineligibleDividends" className="font-semibold text-text text-xs mb-1">Ineligible dividends</label>
+                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Dividends from private Canadian companies. Enter the actual amount received.</p>
+                            <input
+                              type="number"
+                              id="ineligibleDividends"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
+                              min="0"
+                              step="0.01"
+                              placeholder="0"
+                              value={inputs.ineligibleDividends || ''}
+                              onChange={(e) => handleInputChange('ineligibleDividends', e.target.value)}
+                            />
+                          </div>
 
-                    <div className="flex flex-col gap-1">
-                      <label htmlFor="otherIncome" className="font-semibold text-text text-sm mb-1">Other income</label>
-                      <p className="text-sm text-text-light m-0 leading-snug mb-1">All other income (like rental income, interest, tips, EI, CPP, and OAS).</p>
-                      <input
-                        type="number"
-                        id="otherIncome"
-                        className="px-3.5 py-3 border border-[#d0d0d0] rounded-lg font-sans text-base transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
-                        min="0"
-                        step="0.01"
-                        placeholder="0"
-                        value={inputs.otherIncome || ''}
-                        onChange={(e) => handleInputChange('otherIncome', e.target.value)}
-                      />
-                    </div>
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="otherIncome" className="font-semibold text-text text-xs mb-1">Other income</label>
+                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Rental income, tips, EI, CPP, OAS, and other income sources.</p>
+                            <input
+                              type="number"
+                              id="otherIncome"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
+                              min="0"
+                              step="0.01"
+                              placeholder="0"
+                              value={inputs.otherIncome || ''}
+                              onChange={(e) => handleInputChange('otherIncome', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
 
-                    <div className="flex flex-col gap-1">
-                      <label htmlFor="incomeTaxesPaid" className="font-semibold text-text text-sm mb-1">Income taxes paid</label>
-                      <p className="text-sm text-text-light m-0 leading-snug mb-1">For example, taxes deducted from your paycheque. Don't include CPP/EI contributions.</p>
-                      <input
-                        type="number"
-                        id="incomeTaxesPaid"
-                        className="px-3.5 py-3 border border-[#d0d0d0] rounded-lg font-sans text-base transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
-                        min="0"
-                        step="0.01"
-                        placeholder="0"
-                        value={inputs.incomeTaxesPaid || ''}
-                        onChange={(e) => handleInputChange('incomeTaxesPaid', e.target.value)}
-                      />
-                    </div>
+                      <div className="mb-md">
+                        <h3 className="text-sm font-semibold text-primary mb-xs bg-[#e8f5e9] px-2 py-1 rounded text-xs">Deductions</h3>
+                        <div className="space-y-md">
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="rrspContributions" className="font-semibold text-text text-xs mb-1">RRSP deduction (Line 20800)</label>
+                            <p className="text-xs text-text-light m-0 leading-snug mb-1">RRSP contributions subject to annual limits.</p>
+                            <input
+                              type="number"
+                              id="rrspContributions"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
+                              min="0"
+                              step="0.01"
+                              placeholder="0"
+                              value={inputs.rrspContributions || ''}
+                              onChange={(e) => handleInputChange('rrspContributions', e.target.value)}
+                            />
+                          </div>
 
-                    <button type="submit" className="btn btn--primary w-full mt-md py-4 text-base font-semibold">
-                      Calculate
-                    </button>
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="fhsaContributions" className="font-semibold text-text text-xs mb-1">FHSA deduction (Line 20805)</label>
+                            <p className="text-xs text-text-light m-0 leading-snug mb-1">First Home Savings Account contributions.</p>
+                            <input
+                              type="number"
+                              id="fhsaContributions"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
+                              min="0"
+                              step="0.01"
+                              placeholder="0"
+                              value={inputs.fhsaContributions || ''}
+                              onChange={(e) => handleInputChange('fhsaContributions', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mb-md">
+                        <h3 className="text-sm font-semibold text-primary mb-xs bg-[#e8f5e9] px-2 py-1 rounded text-xs">Tax Credits</h3>
+                        <div className="space-y-md">
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="cppContributions" className="font-semibold text-text text-xs mb-1">CPP contributions (Line 30800)</label>
+                            <p className="text-xs text-text-light m-0 leading-snug mb-1">CPP or QPP contributions through employment.</p>
+                            <input
+                              type="number"
+                              id="cppContributions"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
+                              min="0"
+                              step="0.01"
+                              placeholder="0"
+                              value={inputs.cppContributions || ''}
+                              onChange={(e) => handleInputChange('cppContributions', e.target.value)}
+                            />
+                          </div>
+
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="donations" className="font-semibold text-text text-xs mb-1">Donations and gifts (Schedule 9)</label>
+                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Charitable donations and gifts.</p>
+                            <input
+                              type="number"
+                              id="donations"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
+                              min="0"
+                              step="0.01"
+                              placeholder="0"
+                              value={inputs.donations || ''}
+                              onChange={(e) => handleInputChange('donations', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mb-md">
+                        <h3 className="text-sm font-semibold text-primary mb-xs bg-[#e8f5e9] px-2 py-1 rounded text-xs">Taxes Paid</h3>
+                        <div className="flex flex-col gap-1">
+                          <label htmlFor="incomeTaxesPaid" className="font-semibold text-text text-xs mb-1">Income taxes paid (Line 43700)</label>
+                          <p className="text-xs text-text-light m-0 leading-snug mb-1">Taxes deducted from paycheque. Don't include CPP/EI contributions.</p>
+                          <input
+                            type="number"
+                            id="incomeTaxesPaid"
+                            className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
+                            min="0"
+                            step="0.01"
+                            placeholder="0"
+                            value={inputs.incomeTaxesPaid || ''}
+                            onChange={(e) => handleInputChange('incomeTaxesPaid', e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <button type="submit" className="btn btn--primary w-full mt-md py-3 text-base font-semibold">
+                        Calculate
+                      </button>
+                    </div>
                   </form>
                 </div>
 
@@ -368,6 +457,12 @@ const TaxCalculator: FC = () => {
                             <span className="text-text">Canada employment (31260)</span>
                             <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.federalCredits.canadaEmploymentAmount)}</span>
                           </div>
+                          {results.detailedBreakdown.federalCredits.donationsCredit > 0 && (
+                            <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                              <span className="text-text">Donations (34900)</span>
+                              <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.federalCredits.donationsCredit)}</span>
+                            </div>
+                          )}
                           <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
                             <span className="text-text font-semibold">Total credits (35000)</span>
                             <span className="font-bold text-primary">{formatCurrency(results.detailedBreakdown.federalCredits.totalFederalCredits)}</span>

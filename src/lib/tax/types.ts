@@ -30,11 +30,15 @@ export interface TaxCalculatorInputs {
   province: string
   employmentIncome: number
   selfEmploymentIncome: number
+  interestAndInvestmentIncome: number
   otherIncome: number
   rrspContributions: number
+  fhsaContributions: number
   capitalGains: number
   eligibleDividends: number
   ineligibleDividends: number
+  cppContributions: number
+  donations: number
   incomeTaxesPaid: number
 }
 
@@ -72,6 +76,7 @@ export interface DetailedBreakdown {
     basicPersonalAmount: number
     cppContributions: number
     canadaEmploymentAmount: number
+    donationsCredit: number
     sumOfCredits: number
     creditsAt15Percent: number
     totalFederalCredits: number

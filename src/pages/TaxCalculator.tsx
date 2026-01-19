@@ -376,6 +376,565 @@ const TaxCalculator: FC = () => {
                 </div>
               </div>
 
+              {hasCalculated && results && results.detailedBreakdown && (
+                <div className="max-w-[1200px] mx-auto mt-xxl pt-xxl border-t border-border">
+                  <h2 className="text-3xl lg:text-4xl font-bold text-primary mb-md text-center">
+                    Tax Return Summary - Detailed Breakdown
+                  </h2>
+                  <p className="text-base text-text-light mb-xl text-center">
+                    Line-by-line breakdown for {inputs.taxYear} taxation year
+                  </p>
+
+                  <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
+                    {/* Total Income Section */}
+                    <div className="mb-lg">
+                      <h3 className="text-xl font-semibold text-primary mb-md bg-[#e8f5e9] p-sm rounded">Total income</h3>
+                      <div className="space-y-sm">
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Employment income (Line 10100)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.totalIncome.employmentIncome)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Interest and other investment income (Line 12100)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.totalIncome.interestAndInvestmentIncome)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Net business income (Line 13500)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.totalIncome.netBusinessIncome)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Capital gains (50% taxable)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.totalIncome.capitalGains)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Eligible dividends</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.totalIncome.eligibleDividends)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Ineligible dividends</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.totalIncome.ineligibleDividends)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-md border-t-2 border-primary mt-sm">
+                          <div className="flex-1">
+                            <span className="text-text font-semibold">This is your total Income. (Line 15000)</span>
+                          </div>
+                          <div className="text-right font-bold text-primary text-lg">
+                            {formatCurrency(results.detailedBreakdown.totalIncome.total)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Net Income Section */}
+                    <div className="mb-lg">
+                      <h3 className="text-xl font-semibold text-primary mb-md bg-[#e8f5e9] p-sm rounded">Net income</h3>
+                      <div className="space-y-sm">
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">RRSP deduction (Line 20800)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.netIncome.rrspDeduction)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">FHSA deduction (Line 20805)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.netIncome.fhsaDeduction)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Sum of deductions (Line 23300)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.netIncome.totalDeductions)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">This is your net Income before adjustments. (Line 23400)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.netIncome.netIncomeBeforeAdjustments)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-md border-t-2 border-primary mt-sm">
+                          <div className="flex-1">
+                            <span className="text-text font-semibold">This is your net Income. (Line 23600)</span>
+                          </div>
+                          <div className="text-right font-bold text-primary text-lg">
+                            {formatCurrency(results.detailedBreakdown.netIncome.netIncome)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Taxable Income Section */}
+                    <div className="mb-lg">
+                      <h3 className="text-xl font-semibold text-primary mb-md bg-[#e8f5e9] p-sm rounded">Taxable income</h3>
+                      <div className="flex justify-between items-center py-md border-b-2 border-primary">
+                        <div className="flex-1">
+                          <span className="text-text font-semibold">This is your taxable Income. (Line 26000)</span>
+                        </div>
+                        <div className="text-right font-bold text-primary text-lg">
+                          {formatCurrency(results.detailedBreakdown.taxableIncome)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Federal Non-Refundable Tax Credits Section */}
+                    <div className="mb-lg">
+                      <h3 className="text-xl font-semibold text-primary mb-md bg-[#e8f5e9] p-sm rounded">Federal non-refundable tax credits</h3>
+                      <div className="space-y-sm">
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Basic personal amount (Line 30000)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.federalCredits.basicPersonalAmount)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">CPP or QPP contributions: through employment (Line 30800)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.federalCredits.cppContributions)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Canada employment amount (Line 31260)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.federalCredits.canadaEmploymentAmount)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Sum of credits (Line 33500)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.federalCredits.sumOfCredits)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Multiply the amount on line 33500 by 15% (Line 33800)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.federalCredits.creditsAt15Percent)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-md border-t-2 border-primary mt-sm">
+                          <div className="flex-1">
+                            <span className="text-text font-semibold">Total federal non-refundable tax credits (Line 35000)</span>
+                          </div>
+                          <div className="text-right font-bold text-primary text-lg">
+                            {formatCurrency(results.detailedBreakdown.federalCredits.totalFederalCredits)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Net Federal Tax Section */}
+                    <div className="mb-lg">
+                      <h3 className="text-xl font-semibold text-primary mb-md bg-[#e8f5e9] p-sm rounded">Net federal tax</h3>
+                      <div className="space-y-sm">
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Tax on taxable income (C)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.federalTax.taxOnTaxableIncome)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Basic federal tax (if negative, enter "0") (Line 42900)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.federalTax.basicFederalTax)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Federal foreign tax credit (Line 40500)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.federalTax.federalForeignTaxCredit)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-md border-t-2 border-primary mt-sm">
+                          <div className="flex-1">
+                            <span className="text-text font-semibold">Federal tax (Line 40600)</span>
+                          </div>
+                          <div className="text-right font-bold text-primary text-lg">
+                            {formatCurrency(results.detailedBreakdown.federalTax.netFederalTax)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Refund or Balance Owing Section */}
+                    <div className="mb-lg">
+                      <h3 className="text-xl font-semibold text-primary mb-md bg-[#e8f5e9] p-sm rounded">Refund or Balance owing</h3>
+                      <div className="space-y-sm">
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Net federal tax (Line 42000)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.refundOrOwing.netFederalTax)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">CPP contributions payable on self-employment and other earnings (Line 42100)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.refundOrOwing.cppContributionsPayable)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Provincial or territorial tax (Line 42800)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.refundOrOwing.provincialTax)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">This is your total payable. (Line 43500)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.refundOrOwing.totalPayable)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Total income tax deducted (Line 43700)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.refundOrOwing.totalIncomeTaxDeducted)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">These are your total credits. (Line 48200)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.refundOrOwing.totalCredits)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Line 43500 minus line 48200</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.refundOrOwing.totalPayable - results.detailedBreakdown.refundOrOwing.totalCredits)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Refund (Line 48400)</span>
+                          </div>
+                          <div className={`text-right font-semibold ${results.detailedBreakdown.refundOrOwing.refund > 0 ? 'text-green-600' : 'text-text'}`}>
+                            {formatCurrency(results.detailedBreakdown.refundOrOwing.refund)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-md border-t-2 border-primary mt-sm">
+                          <div className="flex-1">
+                            <span className="text-text font-semibold">Balance owing (Line 48500)</span>
+                          </div>
+                          <div className={`text-right font-bold text-lg ${results.detailedBreakdown.refundOrOwing.balanceOwing > 0 ? 'text-red-600' : 'text-primary'}`}>
+                            {formatCurrency(results.detailedBreakdown.refundOrOwing.balanceOwing)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Additional Information Section */}
+                    <div>
+                      <h3 className="text-xl font-semibold text-primary mb-md bg-[#e8f5e9] p-sm rounded">Additional information</h3>
+                      <div className="space-y-sm">
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Marginal tax rate</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {results.detailedBreakdown.additionalInfo.marginalTaxRate.toFixed(2)}%
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Average tax rate (total income taxes paid + total income)</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {results.detailedBreakdown.additionalInfo.averageTaxRate.toFixed(2)}%
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Total RRSP deduction limit - 2025</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {results.detailedBreakdown.additionalInfo.totalRRSPDeductionLimit > 0 
+                              ? formatCurrency(results.detailedBreakdown.additionalInfo.totalRRSPDeductionLimit)
+                              : 'N/A'}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Unused RRSP contributions</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {results.detailedBreakdown.additionalInfo.unusedRRSPContributions > 0
+                              ? formatCurrency(results.detailedBreakdown.additionalInfo.unusedRRSPContributions)
+                              : 'N/A'}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Total instalments payable in 2025</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {results.detailedBreakdown.additionalInfo.totalInstalmentsPayable > 0
+                              ? formatCurrency(results.detailedBreakdown.additionalInfo.totalInstalmentsPayable)
+                              : 'N/A'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {hasCalculated && results && results.detailedBreakdown && (
+                <div className="max-w-[1200px] mx-auto mt-xxl pt-xxl border-t border-border">
+                  <div className="bg-white p-lg rounded-xl shadow-sm">
+                    {/* Header */}
+                    <div className="flex justify-between items-center mb-lg pb-md border-b-2 border-primary">
+                      <h2 className="text-2xl lg:text-3xl font-bold text-primary">
+                        Tax return Summary - Combined for {inputs.taxYear} taxation year
+                      </h2>
+                      <div className="flex items-center gap-sm">
+                        <span className="text-text font-semibold">Taxpayer</span>
+                        <div className="w-32 h-8 border border-[#d0d0d0] rounded bg-white"></div>
+                      </div>
+                    </div>
+
+                    {/* Line 41700 */}
+                    <div className="mb-lg">
+                      <div className="flex justify-between items-center py-md border-b border-[#e5e5e5]">
+                        <div className="flex-1">
+                          <span className="text-text text-sm">Line 40600 minus line 41600 (if negative, enter "0")</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-text text-xs mr-sm">41700</span>
+                          <span className="font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.federalTax.netFederalTax)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Refund or Balance owing Section */}
+                    <div className="mb-lg">
+                      <h3 className="text-xl font-semibold text-primary mb-md bg-[#e8f5e9] p-sm rounded">Refund or Balance owing</h3>
+                      <div className="space-y-sm">
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Net federal tax:</span>
+                            <span className="text-text text-xs ml-sm text-text-light">add lines 41700, 41500 and 41800.</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-text text-xs mr-sm">42000</span>
+                            <span className="font-semibold text-text">
+                              {formatCurrency(results.detailedBreakdown.refundOrOwing.netFederalTax)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">CPP contributions payable on self-employment and other earnings:</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-text text-xs mr-sm">42100</span>
+                            <span className="font-semibold text-text">
+                              {formatCurrency(results.detailedBreakdown.refundOrOwing.cppContributionsPayable)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Provincial or territorial tax:</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-text text-xs mr-sm">42800</span>
+                            <span className="font-semibold text-text">
+                              {formatCurrency(results.detailedBreakdown.refundOrOwing.provincialTax)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text font-semibold">This is your total payable.</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-text text-xs mr-sm">43500</span>
+                            <span className="font-bold text-primary text-lg">
+                              {formatCurrency(results.detailedBreakdown.refundOrOwing.totalPayable)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Total income tax deducted:</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-text text-xs mr-sm">43700</span>
+                            <span className="font-semibold text-text">
+                              {formatCurrency(results.detailedBreakdown.refundOrOwing.totalIncomeTaxDeducted)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text font-semibold">These are your total credits.</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-text text-xs mr-sm">48200</span>
+                            <span className="font-semibold text-text">
+                              {formatCurrency(results.detailedBreakdown.refundOrOwing.totalCredits)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Line 43500 minus line 48200</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {formatCurrency(results.detailedBreakdown.refundOrOwing.totalPayable - results.detailedBreakdown.refundOrOwing.totalCredits)}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Refund:</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-text text-xs mr-sm">48400</span>
+                            <span className={`font-semibold ${results.detailedBreakdown.refundOrOwing.refund > 0 ? 'text-green-600' : 'text-text'}`}>
+                              {formatCurrency(results.detailedBreakdown.refundOrOwing.refund)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-md border-t-2 border-primary mt-sm">
+                          <div className="flex-1">
+                            <span className="text-text font-semibold">Balance owing:</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-text text-xs mr-sm">48500</span>
+                            <span className={`font-bold text-lg ${results.detailedBreakdown.refundOrOwing.balanceOwing > 0 ? 'text-red-600' : 'text-primary'}`}>
+                              {formatCurrency(results.detailedBreakdown.refundOrOwing.balanceOwing)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Additional information Section */}
+                    <div>
+                      <h3 className="text-xl font-semibold text-primary mb-md bg-[#e8f5e9] p-sm rounded">Additional information</h3>
+                      <div className="space-y-sm">
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Marginal tax rate:</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {results.detailedBreakdown.additionalInfo.marginalTaxRate.toFixed(2)}%
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Average tax rate (total income taxes paid + total income):</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {results.detailedBreakdown.additionalInfo.averageTaxRate.toFixed(2)}%
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Canada child benefit:</span>
+                          </div>
+                          <div className="text-right">
+                            <div className="w-24 h-6 border border-[#d0d0d0] rounded bg-white inline-block"></div>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Total RRSP deduction limit - 2025:</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {results.detailedBreakdown.additionalInfo.totalRRSPDeductionLimit > 0 
+                              ? formatCurrency(results.detailedBreakdown.additionalInfo.totalRRSPDeductionLimit)
+                              : 'N/A'}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs border-b border-[#e5e5e5]">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Unused RRSP contributions:</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {results.detailedBreakdown.additionalInfo.unusedRRSPContributions > 0
+                              ? formatCurrency(results.detailedBreakdown.additionalInfo.unusedRRSPContributions)
+                              : 'N/A'}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-xs">
+                          <div className="flex-1">
+                            <span className="text-text text-sm">Total instalments payable in 2025:</span>
+                          </div>
+                          <div className="text-right font-semibold text-text">
+                            {results.detailedBreakdown.additionalInfo.totalInstalmentsPayable > 0
+                              ? formatCurrency(results.detailedBreakdown.additionalInfo.totalInstalmentsPayable)
+                              : 'N/A'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {hasCalculated && results && (
                 <div className="max-w-[1200px] mx-auto mt-xxl pt-xxl border-t border-border">
                   <h2 className="text-3xl lg:text-4xl font-bold text-primary mb-sm">

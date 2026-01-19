@@ -1,6 +1,7 @@
-import { TaxCalculatorInputs, TaxCalculatorResults, FederalTaxData, ProvincialTaxData } from './types'
+import { TaxCalculatorInputs, TaxCalculatorResults, FederalTaxData, ProvincialTaxData, DetailedBreakdown } from './types'
 import { calcFederalTax } from './calcFederalTax'
 import { calcProvincialTax } from './calcProvincialTax'
+import { calcFederalBPA } from './calcFederalBPA'
 import { 
   calcEligibleDividendCredit, 
   calcIneligibleDividendCredit,
@@ -93,6 +94,99 @@ export function calcSummary(
 
   const marginalTaxRate = Math.round((marginalFederalRate + marginalProvincialRate) * 10000) / 100
 
+  // Calculate detailed breakdown
+  const bpaCredit = calcFederalBPA(taxableIncome, federalData)
+  const bpaAmount = taxableIncome <= federalData.bpa.phaseOutStart 
+    ? federalData.bpa.fullAmount 
+    : taxableIncome >= federalData.bpa.phaseOutEnd
+    ? federalData.bpa.minimumAmount
+    : federalData.bpa.fullAmount - ((federalData.bpa.fullAmount - federalData.bpa.minimumAmount) * ((taxableIncome - federalData.bpa.phaseOutStart) / (federalData.bpa.phaseOutEnd - federalData.bpa.phaseOutStart)))
+
+  // Estimate CPP contributions (simplified - actual calculation is more complex)
+  // CPP is typically deducted from employment income at source, but we'll estimate it
+  const estimatedCPPContributions = Math.min(inputs.employmentIncome * 0.0595, 3867.50) // 2025 max CPP contribution
+  const cppCredit = estimatedCPPContributions * federalData.lowestRate
+
+  // Canada Employment Amount (for 2025: $1,433)
+  const canadaEmploymentAmount = 1433
+  const canadaEmploymentCredit = canadaEmploymentAmount * federalData.lowestRate
+
+  // Sum of federal credits (before 15% multiplication)
+  const sumOfCredits = bpaAmount + estimatedCPPContributions + canadaEmploymentAmount
+  const creditsAt15Percent = sumOfCredits * federalData.lowestRate
+
+  // Total federal credits (BPA + CPP + Canada Employment + Dividend credits)
+  const totalFederalCredits = bpaCredit + cppCredit + canadaEmploymentCredit + totalFederalDividendCredit
+
+  // Calculate net income (total income minus deductions)
+  // Note: totalIncome was already calculated above for average tax rate
+  const netIncomeBeforeAdjustments = totalIncome - inputs.rrspContributions
+  const netIncome = netIncomeBeforeAdjustments // Simplified - no other adjustments in MVP
+
+  // Estimate CPP contributions payable on self-employment (simplified)
+  const cppSelfEmploymentPayable = inputs.selfEmploymentIncome > 0 
+    ? Math.min(inputs.selfEmploymentIncome * 0.119, 7735.00) * 0.5 // Self-employed pay both employee and employer portions
+    : 0
+
+  // Detailed breakdown
+  const detailedBreakdown: DetailedBreakdown = {
+    totalIncome: {
+      employmentIncome: inputs.employmentIncome,
+      interestAndInvestmentIncome: inputs.otherIncome, // Simplified - other income includes interest
+      netBusinessIncome: inputs.selfEmploymentIncome,
+      capitalGains: inputs.capitalGains,
+      eligibleDividends: inputs.eligibleDividends,
+      ineligibleDividends: inputs.ineligibleDividends,
+      total: totalIncome
+    },
+    netIncome: {
+      totalIncome: totalIncome,
+      rrspDeduction: inputs.rrspContributions,
+      fhsaDeduction: 0, // Not currently in inputs
+      cppDeduction: 0, // CPP is not a deduction, it's a credit
+      totalDeductions: inputs.rrspContributions,
+      netIncomeBeforeAdjustments: netIncomeBeforeAdjustments,
+      netIncome: netIncome
+    },
+    taxableIncome: Math.round(taxableIncome * 100) / 100,
+    federalCredits: {
+      basicPersonalAmount: Math.round(bpaAmount * 100) / 100,
+      cppContributions: Math.round(estimatedCPPContributions * 100) / 100,
+      canadaEmploymentAmount: canadaEmploymentAmount,
+      sumOfCredits: Math.round(sumOfCredits * 100) / 100,
+      creditsAt15Percent: Math.round(creditsAt15Percent * 100) / 100,
+      totalFederalCredits: Math.round(totalFederalCredits * 100) / 100
+    },
+    federalTax: {
+      taxOnTaxableIncome: Math.round(federalTaxBeforeCredits.gross * 100) / 100,
+      basicFederalTax: Math.round(federalTaxAfterDividendCredits.net * 100) / 100,
+      federalForeignTaxCredit: 0, // Not calculated in MVP
+      netFederalTax: Math.round(federalTaxAfterDividendCredits.net * 100) / 100
+    },
+    provincialTax: {
+      gross: Math.round(provincialTaxBeforeCredits.gross * 100) / 100,
+      credits: Math.round(totalProvincialDividendCredit * 100) / 100,
+      net: Math.round(provincialTaxAfterDividendCredits.net * 100) / 100
+    },
+    refundOrOwing: {
+      netFederalTax: Math.round(federalTaxAfterDividendCredits.net * 100) / 100,
+      cppContributionsPayable: Math.round(cppSelfEmploymentPayable * 100) / 100,
+      provincialTax: Math.round(provincialTaxAfterDividendCredits.net * 100) / 100,
+      totalPayable: Math.round((federalTaxAfterDividendCredits.net + provincialTaxAfterDividendCredits.net + cppSelfEmploymentPayable) * 100) / 100,
+      totalIncomeTaxDeducted: inputs.incomeTaxesPaid,
+      totalCredits: inputs.incomeTaxesPaid,
+      refund: refundOrOwing > 0 ? Math.round(refundOrOwing * 100) / 100 : 0,
+      balanceOwing: refundOrOwing < 0 ? Math.round(Math.abs(refundOrOwing) * 100) / 100 : 0
+    },
+    additionalInfo: {
+      marginalTaxRate: marginalTaxRate,
+      averageTaxRate: averageTaxRate,
+      totalRRSPDeductionLimit: 0, // Would need previous year's data to calculate
+      unusedRRSPContributions: 0, // Would need contribution history
+      totalInstalmentsPayable: 0 // Would need to estimate based on current year
+    }
+  }
+
   return {
     taxableIncome: Math.round(taxableIncome * 100) / 100,
     federalTax: federalTaxAfterDividendCredits,
@@ -100,7 +194,8 @@ export function calcSummary(
     totalTax: Math.round(totalTax * 100) / 100,
     averageTaxRate,
     marginalTaxRate,
-    refundOrOwing: Math.round(refundOrOwing * 100) / 100
+    refundOrOwing: Math.round(refundOrOwing * 100) / 100,
+    detailedBreakdown
   }
 }
 

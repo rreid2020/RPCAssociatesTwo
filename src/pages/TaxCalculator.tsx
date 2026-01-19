@@ -754,7 +754,10 @@ const TaxCalculator: FC = () => {
                         <tbody>
                           {/* Line 75: Amount from line 26000 */}
                           <tr>
-                            <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">75</td>
+                            <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
+                              <div>75</div>
+                              <div className="text-xs text-text-light font-normal mt-0.5">Amount from line 26000</div>
+                            </td>
                             {federalData2025.brackets.map((bracket, index) => {
                               const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
                               const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
@@ -773,9 +776,12 @@ const TaxCalculator: FC = () => {
                             })}
                           </tr>
                           
-                          {/* Line 76: Line 75 minus line 76 (threshold) */}
+                          {/* Line 76: Threshold */}
                           <tr>
-                            <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">76</td>
+                            <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
+                              <div>76</div>
+                              <div className="text-xs text-text-light font-normal mt-0.5">Line 76</div>
+                            </td>
                             {federalData2025.brackets.map((bracket, index) => {
                               const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
                               const threshold = prevBracket?.upTo || 0
@@ -797,7 +803,10 @@ const TaxCalculator: FC = () => {
                           
                           {/* Line 77: Line 75 minus line 76 */}
                           <tr>
-                            <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">77</td>
+                            <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
+                              <div>77</div>
+                              <div className="text-xs text-text-light font-normal mt-0.5">Line 75 minus line 76</div>
+                            </td>
                             {federalData2025.brackets.map((bracket, index) => {
                               const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
                               const threshold = prevBracket?.upTo || 0
@@ -820,7 +829,10 @@ const TaxCalculator: FC = () => {
                           
                           {/* Line 78: Percentage rate */}
                           <tr>
-                            <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">78</td>
+                            <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
+                              <div>78</div>
+                              <div className="text-xs text-text-light font-normal mt-0.5">Line 77 multiplied by the percentage from line 78</div>
+                            </td>
                             {federalData2025.brackets.map((bracket, index) => {
                               const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
                               const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
@@ -841,7 +853,10 @@ const TaxCalculator: FC = () => {
                           
                           {/* Line 79: Line 77 multiplied by percentage */}
                           <tr>
-                            <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">79</td>
+                            <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
+                              <div>79</div>
+                              <div className="text-xs text-text-light font-normal mt-0.5">Line 77 multiplied by the percentage from line 78</div>
+                            </td>
                             {federalData2025.brackets.map((bracket, index) => {
                               const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
                               const threshold = prevBracket?.upTo || 0
@@ -865,19 +880,25 @@ const TaxCalculator: FC = () => {
                           
                           {/* Line 80: Base tax amount */}
                           <tr>
-                            <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">80</td>
+                            <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
+                              <div>80</div>
+                              <div className="text-xs text-text-light font-normal mt-0.5">Line 79 plus line 80</div>
+                            </td>
                             {federalData2025.brackets.map((bracket, index) => {
                               const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
                               const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
                               const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
                                              (bracket.upTo === null || taxableIncome <= bracket.upTo)
-                              // Calculate cumulative tax from previous brackets
+                              // Calculate cumulative tax from previous brackets (each bracket filled completely)
                               let baseTax = 0
                               for (let i = 0; i < index; i++) {
                                 const prevB = i > 0 ? federalData2025.brackets[i - 1] : null
                                 const prevThreshold = prevB?.upTo || 0
-                                const bracketSize = federalData2025.brackets[i].upTo! - prevThreshold
-                                baseTax += bracketSize * federalData2025.brackets[i].rate
+                                const currentBracket = federalData2025.brackets[i]
+                                if (currentBracket.upTo !== null) {
+                                  const bracketSize = currentBracket.upTo - prevThreshold
+                                  baseTax += bracketSize * currentBracket.rate
+                                }
                               }
                               return (
                                 <td 
@@ -886,7 +907,7 @@ const TaxCalculator: FC = () => {
                                     isActive ? 'bg-[#fff9c4]' : ''
                                   }`}
                                 >
-                                  {formatCurrency(baseTax)}
+                                  {formatCurrency(Math.round(baseTax * 100) / 100)}
                                 </td>
                               )
                             })}
@@ -894,7 +915,10 @@ const TaxCalculator: FC = () => {
                           
                           {/* Line 81: Federal tax on taxable income */}
                           <tr className="bg-[#e8f5e9]">
-                            <td className="px-2 py-2 text-text border border-[#d0d0d0] font-bold">81</td>
+                            <td className="px-2 py-2 text-text border border-[#d0d0d0] font-bold">
+                              <div>81</div>
+                              <div className="text-xs text-text-light font-normal mt-0.5">Federal tax on taxable income</div>
+                            </td>
                             {federalData2025.brackets.map((bracket, index) => {
                               const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
                               const threshold = prevBracket?.upTo || 0
@@ -903,13 +927,16 @@ const TaxCalculator: FC = () => {
                                              (bracket.upTo === null || taxableIncome <= bracket.upTo)
                               const line77Value = isActive ? Math.max(0, taxableIncome - threshold) : 0
                               const line79Value = isActive ? line77Value * bracket.rate : 0
-                              // Calculate base tax
+                              // Calculate base tax (cumulative tax from all previous brackets filled completely)
                               let baseTax = 0
                               for (let i = 0; i < index; i++) {
                                 const prevB = i > 0 ? federalData2025.brackets[i - 1] : null
                                 const prevThreshold = prevB?.upTo || 0
-                                const bracketSize = federalData2025.brackets[i].upTo! - prevThreshold
-                                baseTax += bracketSize * federalData2025.brackets[i].rate
+                                const currentBracket = federalData2025.brackets[i]
+                                if (currentBracket.upTo !== null) {
+                                  const bracketSize = currentBracket.upTo - prevThreshold
+                                  baseTax += bracketSize * currentBracket.rate
+                                }
                               }
                               const line81Value = isActive ? line79Value + baseTax : 0
                               return (
@@ -983,7 +1010,10 @@ const TaxCalculator: FC = () => {
                             <tbody>
                               {/* Line 2: Amount from line 1 */}
                               <tr>
-                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">2</td>
+                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
+                                  <div>2</div>
+                                  <div className="text-xs text-text-light font-normal mt-0.5">Amount from line 1</div>
+                                </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
                                   const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
@@ -1004,7 +1034,10 @@ const TaxCalculator: FC = () => {
                               
                               {/* Line 3: Threshold */}
                               <tr>
-                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">3</td>
+                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
+                                  <div>3</div>
+                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 3</div>
+                                </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
                                   const threshold = prevBracket?.upTo || 0
@@ -1026,7 +1059,10 @@ const TaxCalculator: FC = () => {
                               
                               {/* Line 4: Line 2 minus line 3 */}
                               <tr>
-                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">4</td>
+                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
+                                  <div>4</div>
+                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 2 minus line 3 (cannot be negative)</div>
+                                </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
                                   const threshold = prevBracket?.upTo || 0
@@ -1049,7 +1085,10 @@ const TaxCalculator: FC = () => {
                               
                               {/* Line 5: Percentage rate */}
                               <tr>
-                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">5</td>
+                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
+                                  <div>5</div>
+                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 5</div>
+                                </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
                                   const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
@@ -1070,7 +1109,10 @@ const TaxCalculator: FC = () => {
                               
                               {/* Line 6: Line 4 multiplied by percentage */}
                               <tr>
-                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">6</td>
+                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
+                                  <div>6</div>
+                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 4 multiplied by the percentage from line 5</div>
+                                </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
                                   const threshold = prevBracket?.upTo || 0
@@ -1094,19 +1136,25 @@ const TaxCalculator: FC = () => {
                               
                               {/* Line 7: Base tax amount */}
                               <tr>
-                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">7</td>
+                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
+                                  <div>7</div>
+                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 6 plus line 7</div>
+                                </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
                                   const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
                                   const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
                                                  (bracket.upTo === null || taxableIncome <= bracket.upTo)
-                                  // Calculate cumulative tax from previous brackets
+                                  // Calculate cumulative tax from previous brackets (each bracket filled completely)
                                   let baseTax = 0
                                   for (let i = 0; i < index; i++) {
                                     const prevB = i > 0 ? provincialData.brackets[i - 1] : null
                                     const prevThreshold = prevB?.upTo || 0
-                                    const bracketSize = provincialData.brackets[i].upTo! - prevThreshold
-                                    baseTax += bracketSize * provincialData.brackets[i].rate
+                                    const currentBracket = provincialData.brackets[i]
+                                    if (currentBracket.upTo !== null) {
+                                      const bracketSize = currentBracket.upTo - prevThreshold
+                                      baseTax += bracketSize * currentBracket.rate
+                                    }
                                   }
                                   return (
                                     <td 
@@ -1115,7 +1163,7 @@ const TaxCalculator: FC = () => {
                                         isActive ? 'bg-[#fff9c4]' : ''
                                       }`}
                                     >
-                                      {formatCurrency(baseTax)}
+                                      {formatCurrency(Math.round(baseTax * 100) / 100)}
                                     </td>
                                   )
                                 })}
@@ -1123,7 +1171,10 @@ const TaxCalculator: FC = () => {
                               
                               {/* Line 8: Provincial tax on taxable income */}
                               <tr className="bg-[#e8f5e9]">
-                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-bold">8</td>
+                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-bold">
+                                  <div>8</div>
+                                  <div className="text-xs text-text-light font-normal mt-0.5">{provinces.find(p => p.code === inputs.province)?.name || 'Provincial'} tax on taxable income</div>
+                                </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
                                   const threshold = prevBracket?.upTo || 0
@@ -1132,13 +1183,16 @@ const TaxCalculator: FC = () => {
                                                  (bracket.upTo === null || taxableIncome <= bracket.upTo)
                                   const line4Value = isActive ? Math.max(0, taxableIncome - threshold) : 0
                                   const line6Value = isActive ? line4Value * bracket.rate : 0
-                                  // Calculate base tax
+                                  // Calculate base tax (cumulative tax from all previous brackets filled completely)
                                   let baseTax = 0
                                   for (let i = 0; i < index; i++) {
                                     const prevB = i > 0 ? provincialData.brackets[i - 1] : null
                                     const prevThreshold = prevB?.upTo || 0
-                                    const bracketSize = provincialData.brackets[i].upTo! - prevThreshold
-                                    baseTax += bracketSize * provincialData.brackets[i].rate
+                                    const currentBracket = provincialData.brackets[i]
+                                    if (currentBracket.upTo !== null) {
+                                      const bracketSize = currentBracket.upTo - prevThreshold
+                                      baseTax += bracketSize * currentBracket.rate
+                                    }
                                   }
                                   const line8Value = isActive ? line6Value + baseTax : 0
                                   return (
@@ -1148,7 +1202,7 @@ const TaxCalculator: FC = () => {
                                         isActive ? 'bg-[#fff9c4]' : ''
                                       }`}
                                     >
-                                      {isActive ? formatCurrency(line8Value) : ''}
+                                      {isActive ? formatCurrency(Math.round(line8Value * 100) / 100) : ''}
                                     </td>
                                   )
                                 })}

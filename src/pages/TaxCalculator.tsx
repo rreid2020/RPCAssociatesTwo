@@ -967,20 +967,12 @@ const TaxCalculator: FC = () => {
                       <div className="bg-white p-lg rounded-xl shadow-sm">
                         <h3 className="text-2xl font-semibold text-primary mb-md">Part A - {provinces.find(p => p.code === inputs.province)?.name || 'Provincial'} tax on taxable income</h3>
                         <p className="text-sm text-text-light mb-md">Enter your taxable income from line 26000 of your return.</p>
-                        <p className="text-sm text-text-light mb-md">Use the amount from line 1 to complete the appropriate column below.</p>
-                        
-                        <div className="mb-md">
-                          <div className="flex justify-between items-center py-2 border-b border-[#d0d0d0]">
-                            <span className="font-semibold text-text">1</span>
-                            <span className="font-semibold text-primary">{formatCurrency(results.detailedBreakdown?.taxableIncome || 0)}</span>
-                          </div>
-                        </div>
                         
                         <div className="overflow-x-auto">
                           <table className="w-full border-collapse text-xs">
                             <thead>
                               <tr className="bg-[#e8f5e9]">
-                                <th className="px-2 py-2 text-left font-semibold text-text border border-[#d0d0d0]">Line</th>
+                                <th className="px-2 py-2 text-left font-semibold text-text border border-[#d0d0d0]"></th>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
                                   // For display, use the previous bracket's upTo value (not +1) to match tax form format
@@ -1016,14 +1008,14 @@ const TaxCalculator: FC = () => {
                                     </th>
                                   )
                                 })}
+                                <th className="px-2 py-2 text-right font-semibold text-text border border-[#d0d0d0]"></th>
                               </tr>
                             </thead>
                             <tbody>
                               {/* Line 1: Taxable income from line 26000 */}
                               <tr>
-                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
-                                  <div>1</div>
-                                  <div className="text-xs text-text-light font-normal mt-0.5">Taxable income from line 26000 of your return:</div>
+                                <td className="px-2 py-2 text-text border border-[#d0d0d0]">
+                                  <div className="text-xs text-text-light font-normal">Taxable income from line 26000 of your return:</div>
                                 </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
@@ -1041,13 +1033,13 @@ const TaxCalculator: FC = () => {
                                     </td>
                                   )
                                 })}
+                                <td className="px-2 py-2 text-right border border-[#d0d0d0] font-semibold">1</td>
                               </tr>
                               
                               {/* Line 2: Amount from line 1 */}
                               <tr>
                                 <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
-                                  <div>2</div>
-                                  <div className="text-xs text-text-light font-normal mt-0.5">Amount from line 1</div>
+                                  <div className="text-xs text-text-light font-normal">Amount from line 1</div>
                                 </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
@@ -1065,13 +1057,13 @@ const TaxCalculator: FC = () => {
                                     </td>
                                   )
                                 })}
+                                <td className="px-2 py-2 text-right border border-[#d0d0d0] font-semibold">2</td>
                               </tr>
                               
                               {/* Line 3: Threshold - fixed amounts to subtract, show for ALL columns */}
                               <tr>
                                 <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
-                                  <div>3</div>
-                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 3</div>
+                                  <div className="text-xs text-text-light font-normal">Line 3</div>
                                 </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
@@ -1090,13 +1082,13 @@ const TaxCalculator: FC = () => {
                                     </td>
                                   )
                                 })}
+                                <td className="px-2 py-2 text-right border border-[#d0d0d0] font-semibold">3</td>
                               </tr>
                               
                               {/* Line 4: Line 2 minus line 3 */}
                               <tr>
                                 <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
-                                  <div>4</div>
-                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 2 minus line 3 (cannot be negative)</div>
+                                  <div className="text-xs text-text-light font-normal">Line 2 minus line 3 (cannot be negative)</div>
                                 </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
@@ -1116,13 +1108,13 @@ const TaxCalculator: FC = () => {
                                     </td>
                                   )
                                 })}
+                                <td className="px-2 py-2 text-right border border-[#d0d0d0] font-semibold">4</td>
                               </tr>
                               
                               {/* Line 5: Percentage rate - show for ALL columns */}
                               <tr>
                                 <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
-                                  <div>5</div>
-                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 5</div>
+                                  <div className="text-xs text-text-light font-normal">Line 5</div>
                                 </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
@@ -1140,13 +1132,13 @@ const TaxCalculator: FC = () => {
                                     </td>
                                   )
                                 })}
+                                <td className="px-2 py-2 text-right border border-[#d0d0d0] font-semibold">5</td>
                               </tr>
                               
                               {/* Line 6: Line 4 multiplied by percentage */}
                               <tr>
                                 <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
-                                  <div>6</div>
-                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 4 multiplied by the percentage from line 5</div>
+                                  <div className="text-xs text-text-light font-normal">Line 4 multiplied by the percentage from line 5</div>
                                 </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
@@ -1167,13 +1159,13 @@ const TaxCalculator: FC = () => {
                                     </td>
                                   )
                                 })}
+                                <td className="px-2 py-2 text-right border border-[#d0d0d0] font-semibold">6</td>
                               </tr>
                               
                               {/* Line 7: Base tax amount */}
                               <tr>
                                 <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
-                                  <div>7</div>
-                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 7</div>
+                                  <div className="text-xs text-text-light font-normal">Line 7</div>
                                 </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
@@ -1207,13 +1199,13 @@ const TaxCalculator: FC = () => {
                                     </td>
                                   )
                                 })}
+                                <td className="px-2 py-2 text-right border border-[#d0d0d0] font-semibold">7</td>
                               </tr>
                               
                               {/* Line 8: Provincial tax on taxable income (Line 6 + Line 7) */}
                               <tr className="bg-[#e8f5e9]">
                                 <td className="px-2 py-2 text-text border border-[#d0d0d0] font-bold">
-                                  <div>8</div>
-                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 6 plus line 7</div>
+                                  <div className="text-xs text-text-light font-normal">Line 6 plus line 7</div>
                                 </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
@@ -1252,6 +1244,7 @@ const TaxCalculator: FC = () => {
                                     </td>
                                   )
                                 })}
+                                <td className="px-2 py-2 text-right border border-[#d0d0d0] font-bold">8</td>
                               </tr>
                             </tbody>
                           </table>

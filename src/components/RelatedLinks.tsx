@@ -12,40 +12,39 @@ const RelatedLinks: FC<RelatedLinksProps> = ({ links }) => {
   }
 
   return (
-    <div className="related-links">
-      <h2 className="related-links__title">Related Links</h2>
-      <ul className="related-links__list">
+    <div className="bg-white p-xl rounded-xl shadow-sm mb-xxl border border-border">
+      <h2 className="text-2xl font-semibold text-primary mb-lg">Related Resources</h2>
+      <ul className="list-none p-0 m-0 flex flex-col gap-sm">
         {links.map((link) => {
-          const isExternal = link.isExternal || link.url.startsWith('http')
+          const isExternal = link.external || link.url.startsWith('http')
           
           if (isExternal) {
             return (
-              <li key={link._key} className="related-links__item">
+              <li key={link._key} className="m-0">
                 <a
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="related-links__link related-links__link--external"
+                  className="flex items-start gap-sm p-md bg-gray-50 rounded-lg border border-border no-underline text-text transition-all hover:border-primary hover:bg-white hover:shadow-sm flex-col md:flex-row"
                 >
-                  <span className="related-links__link-title">{link.title}</span>
+                  <span className="font-semibold text-primary flex-1">{link.title} ↗</span>
                   {link.description && (
-                    <span className="related-links__link-description">{link.description}</span>
+                    <span className="block text-[0.9375rem] text-text-light mt-xs md:mt-0 leading-relaxed">{link.description}</span>
                   )}
-                  <span className="related-links__link-icon" aria-label="External link">↗</span>
                 </a>
               </li>
             )
           }
 
           return (
-            <li key={link._key} className="related-links__item">
+            <li key={link._key} className="m-0">
               <Link
                 to={link.url}
-                className="related-links__link related-links__link--internal"
+                className="flex items-start gap-sm p-md bg-gray-50 rounded-lg border border-border no-underline text-text transition-all hover:border-primary hover:bg-white hover:shadow-sm flex-col md:flex-row"
               >
-                <span className="related-links__link-title">{link.title}</span>
+                <span className="font-semibold text-primary flex-1">{link.title}</span>
                 {link.description && (
-                  <span className="related-links__link-description">{link.description}</span>
+                  <span className="block text-[0.9375rem] text-text-light mt-xs md:mt-0 leading-relaxed">{link.description}</span>
                 )}
               </Link>
             </li>
@@ -57,4 +56,5 @@ const RelatedLinks: FC<RelatedLinksProps> = ({ links }) => {
 }
 
 export default RelatedLinks
+
 

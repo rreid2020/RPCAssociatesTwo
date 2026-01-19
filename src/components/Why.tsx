@@ -31,34 +31,36 @@ const Why: FC = () => {
   ]
 
   return (
-    <section id="why" className="section">
-      <div className="container">
-        <div className="section__header">
-          <h2 className="section__title">Why Hiring a Great Accountant Matters</h2>
-          <p className="section__subtitle">
+    <section id="why" className="py-xxl">
+      <div className="max-w-[1200px] mx-auto px-md">
+        <div className="text-center mb-xl max-w-[800px] mx-auto">
+          <h2 className="mb-md">Why Hiring a Great Accountant Matters</h2>
+          <p className="text-lg text-text-light">
             A great accountant is more than a bookkeeper or tax filer. They become a strategic partner who helps you understand where you stand today and what it will take to get where you want to go.
           </p>
         </div>
-        <div className="why__container">
-          <div className="why__content">
-            <h3>Beyond compliance: real support for your decisions</h3>
-            <p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-xxl items-start">
+          <div>
+            <h3 className="mb-md">Beyond compliance: real support for your decisions</h3>
+            <p className="mb-md">
               Clean, accurate financials give you a true picture of your business. With reliable numbers, you can see what is profitable, what is not, and where your cash is really going. That clarity supports better decisions around pricing, staffing, and investment.
             </p>
-            <p>
+            <p className="mb-md">
               Offloading bookkeeping, reconciliations, and tax deadlines frees up your time to focus on sales, operations, and strategy. You are no longer buried in spreadsheets or chasing paperwork.
             </p>
             <p>
               Tax rules and reporting requirements change regularly. A strong accounting partner helps you stay compliant, reduce the risk of errors, and avoid avoidable penalties—while also focusing on proactive planning instead of last-minute clean-up.
             </p>
           </div>
-          <div className="why__reasons">
+          <div className="flex flex-col gap-lg">
             {reasons.map((reason) => (
-              <div key={reason.number} className="why__reason">
-                <div className="why__reason-number">{reason.number}</div>
-                <div className="why__reason-content">
-                  <h4>{reason.title}</h4>
-                  <p>{reason.description}</p>
+              <div key={reason.number} className="flex gap-md">
+                <div className="flex-shrink-0 w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center font-bold text-lg">
+                  {reason.number}
+                </div>
+                <div>
+                  <h4 className="text-lg mb-xs">{reason.title}</h4>
+                  <p className="text-[0.9375rem] text-text-light mb-0">{reason.description}</p>
                 </div>
               </div>
             ))}

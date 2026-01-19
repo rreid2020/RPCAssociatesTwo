@@ -60,8 +60,8 @@ const ArticleCategory: FC = () => {
       <>
         <SEO title="Category Not Found" canonical="/articles" />
         <main>
-          <section className="section">
-            <div className="container">
+          <section className="py-xxl">
+            <div className="max-w-[1200px] mx-auto px-md">
               <h1>Category Not Found</h1>
               <p>The requested category does not exist.</p>
             </div>
@@ -79,25 +79,25 @@ const ArticleCategory: FC = () => {
         canonical={`/articles/category/${categorySlug}`}
       />
       <main>
-        <section className="section">
-          <div className="container">
-            <div className="section__header">
-              <h1 className="section__title">
+        <section className="py-xxl">
+          <div className="max-w-[1200px] mx-auto px-md">
+            <div className="text-center mb-xl max-w-[800px] mx-auto">
+              <h1 className="mb-md">
                 {category ? category.title : 'Category'}
               </h1>
               {category?.description && (
-                <p className="section__subtitle">{category.description}</p>
+                <p className="text-lg text-text-light">{category.description}</p>
               )}
             </div>
 
             {loading && (
-              <div style={{ textAlign: 'center', padding: 'var(--spacing-xl) 0' }}>
+              <div className="text-center py-xl">
                 <p>Loading articles...</p>
               </div>
             )}
 
             {error && (
-              <div style={{ textAlign: 'center', padding: 'var(--spacing-xl) 0', color: '#dc3545' }}>
+              <div className="text-center py-xl text-red-600">
                 <p>{error}</p>
               </div>
             )}
@@ -108,10 +108,10 @@ const ArticleCategory: FC = () => {
                   // Clean the current category slug for comparison
                   const currentSlug = categorySlug ? categorySlug.split('/').pop() || categorySlug : ''
                   return (
-                    <div className="articles__categories">
+                    <div className="flex gap-sm flex-wrap mb-xl pb-md border-b border-border">
                       <Link
                         to="/articles"
-                        className="articles__category-link"
+                        className="px-md py-xs rounded-lg bg-white text-text no-underline border border-border transition-all text-[0.9375rem] hover:bg-primary hover:text-white hover:border-primary"
                       >
                         All
                       </Link>
@@ -123,7 +123,11 @@ const ArticleCategory: FC = () => {
                           <Link
                             key={cat._id}
                             to={`/articles/category/${slug}`}
-                            className={`articles__category-link ${isActive ? 'articles__category-link--active' : ''}`}
+                            className={`px-md py-xs rounded-lg no-underline border transition-all text-[0.9375rem] ${
+                              isActive 
+                                ? 'bg-primary text-white border-primary' 
+                                : 'bg-white text-text border-border hover:bg-primary hover:text-white hover:border-primary'
+                            }`}
                           >
                             {cat.title}
                           </Link>
@@ -134,14 +138,14 @@ const ArticleCategory: FC = () => {
                 })()}
 
                 {articles.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: 'var(--spacing-xl) 0' }}>
+                  <div className="text-center py-xl">
                     <p>No articles found in this category. Check back soon for new content!</p>
-                    <Link to="/articles" className="btn btn--primary" style={{ marginTop: 'var(--spacing-md)' }}>
+                    <Link to="/articles" className="btn btn--primary mt-md">
                       View All Articles
                     </Link>
                   </div>
                 ) : (
-                  <div className="articles__grid">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg mt-lg">
                     {articles.map((article) => (
                       <ArticleCard key={article._id} article={article} />
                     ))}

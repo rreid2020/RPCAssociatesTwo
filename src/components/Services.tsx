@@ -78,23 +78,23 @@ const Services: FC = () => {
   ]
 
   return (
-    <section id="services" className="section">
-      <div className="container">
-        <div className="section__header">
-          <h2 className="section__title">Services</h2>
-          <p className="section__subtitle">
+    <section id="services" className="py-xxl">
+      <div className="max-w-[1200px] mx-auto px-md">
+        <div className="text-center mb-xl max-w-[800px] mx-auto">
+          <h2 className="mb-md">Services</h2>
+          <p className="text-lg text-text-light">
             Bringing together accounting, consulting, and technology so you have accurate numbers, practical advice, and modern systems working together.
           </p>
         </div>
-        <div className="services__grid">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
           {services.map((service, index) => (
-            <div key={index} className="service-card">
-              <span className="service-card__pill">{service.pill}</span>
-              <h3 className="service-card__title">{service.title}</h3>
-              <p className="service-card__intro">{service.intro}</p>
-              <ul className="service-card__list">
+            <div key={index} className="bg-white p-lg rounded-xl shadow-sm transition-all hover:shadow-md hover:-translate-y-1">
+              <span className="inline-block px-3 py-1 bg-primary text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-md">{service.pill}</span>
+              <h3 className="text-xl mb-sm">{service.title}</h3>
+              <p className="text-text-light mb-md text-[0.9375rem]">{service.intro}</p>
+              <ul className="list-none">
                 {service.bullets.map((bullet, bulletIndex) => (
-                  <li key={bulletIndex} className="service-card__item">{bullet}</li>
+                  <li key={bulletIndex} className="pl-md mb-xs relative before:content-['•'] before:absolute before:left-0 before:text-primary before:font-bold text-[0.9375rem]">{bullet}</li>
                 ))}
               </ul>
             </div>

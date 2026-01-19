@@ -21,27 +21,27 @@ const ArticleCard: FC<ArticleCardProps> = ({ article }) => {
     : null
 
   return (
-    <article className="article-card">
-      <Link to={`/articles/${article.slug.current}`} className="article-card__link">
+    <article className="bg-white rounded-xl overflow-hidden shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
+      <Link to={`/articles/${article.slug.current}`} className="no-underline text-inherit block">
         {imageUrl && article.featuredImage && (
-          <div className="article-card__image-wrapper">
+          <div className="w-full h-[200px] overflow-hidden bg-background">
             <img
               src={imageUrl}
               alt={article.featuredImage.alt || article.title}
-              className="article-card__image"
+              className="w-full h-full object-cover transition-transform hover:scale-105"
             />
           </div>
         )}
-        <div className="article-card__content">
-          <div className="article-card__meta">
+        <div className="p-md">
+          <div className="flex gap-sm items-center mb-sm text-sm text-text-light flex-wrap">
             {primaryCategory && (
-              <span className="article-card__category">{primaryCategory.title}</span>
+              <span className="bg-primary text-white px-xs py-1 rounded font-medium">{primaryCategory.title}</span>
             )}
-            <span className="article-card__date">{publishedDate}</span>
+            <span className="text-text-light">{publishedDate}</span>
           </div>
-          <h2 className="article-card__title">{article.title}</h2>
+          <h2 className="text-xl font-semibold text-primary mb-xs leading-tight">{article.title}</h2>
           {article.excerpt && (
-            <p className="article-card__excerpt">{article.excerpt}</p>
+            <p className="text-text-light text-[0.9375rem] leading-relaxed m-0">{article.excerpt}</p>
           )}
         </div>
       </Link>

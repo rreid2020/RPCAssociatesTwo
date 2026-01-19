@@ -21,20 +21,22 @@ const DownloadButton: FC<DownloadButtonProps> = ({ download }) => {
     : null
 
   return (
-    <div className="download-item">
-      <div className="download-item__content">
-        <h3 className="download-item__title">{download.title}</h3>
+    <div className="flex items-start justify-between gap-md p-md bg-gray-50 rounded-lg border border-border transition-all hover:border-primary hover:shadow-sm flex-col md:flex-row md:items-start">
+      <div className="flex-1">
+        <h3 className="text-lg font-semibold text-text mb-xs">{download.title || fileName}</h3>
         {download.description && (
-          <p className="download-item__description">{download.description}</p>
+          <p className="text-text-light text-[0.9375rem] mb-xs leading-relaxed">{download.description}</p>
         )}
         {fileSize && (
-          <p className="download-item__size">File size: {fileSize}</p>
+          <p className="text-text-light text-sm m-0">({fileSize})</p>
         )}
       </div>
       <a
         href={fileUrl}
         download={filename}
-        className="btn btn--primary download-item__button"
+        className="btn btn--primary flex-shrink-0 whitespace-nowrap w-full md:w-auto text-center"
+        target="_blank"
+        rel="noopener noreferrer"
       >
         {buttonText}
       </a>

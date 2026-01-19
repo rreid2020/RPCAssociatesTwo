@@ -41,3 +41,4 @@ export function calcTaxFromBrackets(income: number, brackets: TaxBracket[]): num
   return Math.round(tax * 100) / 100 // Round to 2 decimals
 }
 
+

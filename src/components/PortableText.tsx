@@ -11,18 +11,18 @@ interface PortableTextProps {
 const PortableText: FC<PortableTextProps> = ({ content }) => {
   const components: PortableTextComponents = {
     block: {
-      h2: ({ children }) => <h2 className="portable-text__heading portable-text__heading--h2">{children}</h2>,
-      h3: ({ children }) => <h3 className="portable-text__heading portable-text__heading--h3">{children}</h3>,
-      h4: ({ children }) => <h4 className="portable-text__heading portable-text__heading--h4">{children}</h4>,
-      normal: ({ children }) => <p className="portable-text__paragraph">{children}</p>,
+      h2: ({ children }) => <h2 className="font-semibold text-primary mt-xl mb-md text-3xl lg:text-4xl">{children}</h2>,
+      h3: ({ children }) => <h3 className="font-semibold text-primary mt-xl mb-md text-2xl lg:text-3xl">{children}</h3>,
+      h4: ({ children }) => <h4 className="font-semibold text-primary mt-xl mb-md text-xl lg:text-2xl">{children}</h4>,
+      normal: ({ children }) => <p className="mb-md">{children}</p>,
     },
     list: {
-      bullet: ({ children }) => <ul className="portable-text__list portable-text__list--bullet">{children}</ul>,
-      number: ({ children }) => <ol className="portable-text__list portable-text__list--number">{children}</ol>,
+      bullet: ({ children }) => <ul className="my-md pl-lg">{children}</ul>,
+      number: ({ children }) => <ol className="my-md pl-lg">{children}</ol>,
     },
     listItem: {
-      bullet: ({ children }) => <li className="portable-text__list-item">{children}</li>,
-      number: ({ children }) => <li className="portable-text__list-item">{children}</li>,
+      bullet: ({ children }) => <li className="mb-xs leading-relaxed">{children}</li>,
+      number: ({ children }) => <li className="mb-xs leading-relaxed">{children}</li>,
     },
     marks: {
       link: ({ value, children }) => {
@@ -36,7 +36,7 @@ const PortableText: FC<PortableTextProps> = ({ content }) => {
           return (
             <Link
               to={href}
-              className="portable-text__link portable-text__link--internal"
+              className="text-primary underline border-b border-primary no-underline transition-all hover:border-primary-dark"
             >
               {children}
             </Link>
@@ -51,7 +51,7 @@ const PortableText: FC<PortableTextProps> = ({ content }) => {
             href={href}
             target={target}
             rel={rel}
-            className="portable-text__link portable-text__link--external"
+            className="text-primary underline transition-all hover:opacity-80 after:content-['_↗'] after:text-sm after:opacity-70"
           >
             {children}
           </a>
@@ -65,14 +65,14 @@ const PortableText: FC<PortableTextProps> = ({ content }) => {
         if (!imageUrl) return null
         
         return (
-          <figure className="portable-text__image">
+          <figure className="my-xl text-center">
             <img
               src={imageUrl.width(800).url()}
               alt={value.alt || ''}
-              className="portable-text__image-img"
+              className="max-w-full h-auto rounded-lg"
             />
             {value.alt && (
-              <figcaption className="portable-text__image-caption">{value.alt}</figcaption>
+              <figcaption className="text-sm text-text-light mt-xs italic">{value.alt}</figcaption>
             )}
           </figure>
         )
@@ -80,11 +80,11 @@ const PortableText: FC<PortableTextProps> = ({ content }) => {
       code: ({ value }) => {
         if (!value?.code) return null
         return (
-          <pre className="portable-text__code">
+          <pre className="my-lg bg-[#1e1e1e] rounded-lg overflow-hidden shadow-md">
             {value.filename && (
-              <div className="portable-text__code-filename">{value.filename}</div>
+              <div className="bg-[#2d2d2d] px-4 py-2 text-sm text-gray-400 font-mono border-b border-[#3d3d3d]">{value.filename}</div>
             )}
-            <code className={`portable-text__code-block language-${value.language || 'text'}`}>
+            <code className={`block p-md overflow-x-auto font-mono text-sm leading-relaxed text-[#d4d4d4] bg-[#1e1e1e] language-${value.language || 'text'}`}>
               {value.code}
             </code>
           </pre>
@@ -94,7 +94,7 @@ const PortableText: FC<PortableTextProps> = ({ content }) => {
   }
 
   return (
-    <div className="portable-text">
+    <div className="text-lg leading-relaxed text-text">
       <PortableTextRenderer value={content} components={components} />
     </div>
   )

@@ -42,11 +42,11 @@ const ArticleDetail: FC = () => {
       <>
         <SEO title="Article Not Found" canonical="/articles" />
         <main>
-          <section className="section">
-            <div className="container">
+          <section className="py-xxl">
+            <div className="max-w-[1200px] mx-auto px-md">
               <h1>Article Not Found</h1>
               <p>The requested article does not exist.</p>
-              <Link to="/articles" className="btn btn--primary" style={{ marginTop: 'var(--spacing-md)' }}>
+              <Link to="/articles" className="btn btn--primary mt-md">
                 Back to Articles
               </Link>
             </div>
@@ -61,9 +61,9 @@ const ArticleDetail: FC = () => {
       <>
         <SEO title="Loading..." canonical="/articles" />
         <main>
-          <section className="section">
-            <div className="container">
-              <div style={{ textAlign: 'center', padding: 'var(--spacing-xl) 0' }}>
+          <section className="py-xxl">
+            <div className="max-w-[1200px] mx-auto px-md">
+              <div className="text-center py-xl">
                 <p>Loading article...</p>
               </div>
             </div>
@@ -78,11 +78,11 @@ const ArticleDetail: FC = () => {
       <>
         <SEO title="Article Not Found" canonical="/articles" />
         <main>
-          <section className="section">
-            <div className="container">
+          <section className="py-xxl">
+            <div className="max-w-[1200px] mx-auto px-md">
               <h1>Article Not Found</h1>
               <p>{error || 'The requested article does not exist.'}</p>
-              <Link to="/articles" className="btn btn--primary" style={{ marginTop: 'var(--spacing-md)' }}>
+              <Link to="/articles" className="btn btn--primary mt-md">
                 Back to Articles
               </Link>
             </div>
@@ -135,58 +135,58 @@ const ArticleDetail: FC = () => {
         modifiedDate={article.updatedAt}
       />
       <main>
-        <article className="article-detail">
-          <section className="section">
-            <div className="container">
-              <div className="article-detail__header">
-                <Link to="/articles" className="article-detail__back-link">
+        <article className="max-w-[800px] mx-auto">
+          <section className="py-xxl">
+            <div className="max-w-[1200px] mx-auto px-md">
+              <div className="mb-xl">
+                <Link to="/articles" className="inline-block text-primary no-underline mb-md text-[0.9375rem] transition-all hover:underline">
                   ← Back to Articles
                 </Link>
                 
-                <div className="article-detail__meta">
+                <div className="flex gap-md items-center mb-md text-sm text-text-light flex-wrap">
                   {primaryCategory && (() => {
                     // Ensure we only use the slug part, not any path that might be included
                     const slug = primaryCategory.slug.current.split('/').pop() || primaryCategory.slug.current
                     return (
                       <Link
                         to={`/articles/category/${slug}`}
-                        className="article-detail__category"
+                        className="bg-primary text-white px-xs py-1 rounded no-underline font-medium transition-all hover:opacity-90"
                       >
                         {primaryCategory.title}
                       </Link>
                     )
                   })()}
-                  <span className="article-detail__date">{publishedDate}</span>
+                  <span className="text-text-light">{publishedDate}</span>
                   {article.author && (
-                    <span className="article-detail__author">By {article.author.name}</span>
+                    <span className="text-text-light">By {article.author.name}</span>
                   )}
                 </div>
 
-                <h1 className="article-detail__title">{article.title}</h1>
+                <h1 className="text-4xl lg:text-5xl font-bold text-primary mb-md leading-tight">{article.title}</h1>
                 
                 {article.excerpt && (
-                  <p className="article-detail__excerpt">{article.excerpt}</p>
+                  <p className="text-xl text-text-light leading-relaxed mb-lg">{article.excerpt}</p>
                 )}
               </div>
 
               {imageUrl && article.featuredImage && (
-                <div className="article-detail__image-wrapper">
+                <div className="w-full mb-xl rounded-xl overflow-hidden">
                   <img
                     src={imageUrl}
                     alt={article.featuredImage.alt || article.title}
-                    className="article-detail__image"
+                    className="w-full h-auto block"
                   />
                 </div>
               )}
 
-              <div className="article-detail__content">
+              <div className="mb-xxl">
                 <PortableText content={article.body} />
               </div>
 
               {article.downloads && article.downloads.length > 0 && (
-                <div className="article-detail__downloads">
-                  <h2 className="article-detail__downloads-title">Downloads</h2>
-                  <div className="article-detail__downloads-list">
+                <div className="bg-white p-xl rounded-xl shadow-sm mb-xxl border border-border">
+                  <h2 className="text-2xl font-semibold text-primary mb-lg">Downloads</h2>
+                  <div className="flex flex-col gap-md">
                     {article.downloads.map((download) => (
                       <DownloadButton key={download._key} download={download} />
                     ))}
@@ -198,12 +198,12 @@ const ArticleDetail: FC = () => {
                 <RelatedLinks links={article.relatedLinks} />
               )}
 
-              <div className="article-detail__cta">
-                <h2 className="article-detail__cta-title">Ready to Get Started?</h2>
-                <p className="article-detail__cta-description">
+              <div className="bg-white p-xl rounded-xl shadow-sm text-center mt-xxl">
+                <h2 className="text-2xl font-semibold text-primary mb-sm">Ready to Get Started?</h2>
+                <p className="text-text-light mb-lg">
                   Let's discuss how we can help with your accounting, consulting, or technology needs.
                 </p>
-                <div className="article-detail__cta-buttons">
+                <div className="flex gap-md justify-center flex-wrap">
                   <a href="/#contact" className="btn btn--primary">
                     Book a Consultation
                   </a>

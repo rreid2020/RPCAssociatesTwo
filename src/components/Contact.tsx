@@ -58,54 +58,54 @@ const Contact: FC = () => {
   }
 
   return (
-    <section id="contact" className="section">
-      <div className="container">
-        <div className="contact__container">
-          <form className="contact__form" onSubmit={handleSubmit}>
-            <div className="contact__field">
-              <label htmlFor="name" className="contact__label">Name</label>
+    <section id="contact" className="py-xxl">
+      <div className="max-w-[1200px] mx-auto px-md">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-xxl">
+          <form className="flex flex-col gap-md" onSubmit={handleSubmit}>
+            <div className="flex flex-col gap-xs">
+              <label htmlFor="name" className="font-medium text-text">Name</label>
               <input
                 type="text"
                 id="name"
                 name="name"
-                className="contact__input"
+                className="px-3 py-3 border border-border rounded-lg font-sans text-base transition-all focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary"
                 placeholder="Your name"
                 value={formData.name}
                 onChange={handleChange}
                 required
               />
             </div>
-            <div className="contact__field">
-              <label htmlFor="email" className="contact__label">Email</label>
+            <div className="flex flex-col gap-xs">
+              <label htmlFor="email" className="font-medium text-text">Email</label>
               <input
                 type="email"
                 id="email"
                 name="email"
-                className="contact__input"
+                className="px-3 py-3 border border-border rounded-lg font-sans text-base transition-all focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary"
                 placeholder="your.email@example.com"
                 value={formData.email}
                 onChange={handleChange}
                 required
               />
             </div>
-            <div className="contact__field">
-              <label htmlFor="company" className="contact__label">Company</label>
+            <div className="flex flex-col gap-xs">
+              <label htmlFor="company" className="font-medium text-text">Company</label>
               <input
                 type="text"
                 id="company"
                 name="company"
-                className="contact__input"
+                className="px-3 py-3 border border-border rounded-lg font-sans text-base transition-all focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary"
                 placeholder="Your company name"
                 value={formData.company}
                 onChange={handleChange}
               />
             </div>
-            <div className="contact__field">
-              <label htmlFor="message" className="contact__label">Message</label>
+            <div className="flex flex-col gap-xs">
+              <label htmlFor="message" className="font-medium text-text">Message</label>
               <textarea
                 id="message"
                 name="message"
-                className="contact__textarea"
+                className="px-3 py-3 border border-border rounded-lg font-sans text-base min-h-[120px] resize-y transition-all focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary"
                 placeholder="Tell us about your business and what you're looking for support with..."
                 value={formData.message}
                 onChange={handleChange}
@@ -120,32 +120,32 @@ const Contact: FC = () => {
               {isSubmitting ? 'Sending...' : 'Send message'}
             </button>
             {submitStatus === 'success' && (
-              <div className="contact__message contact__message--success">
+              <div className="p-md rounded-lg mt-sm text-[0.9375rem] bg-green-100 text-green-800 border border-green-300">
                 Thank you for your message! We will get back to you soon.
               </div>
             )}
             {submitStatus === 'error' && (
-              <div className="contact__message contact__message--error">
+              <div className="p-md rounded-lg mt-sm text-[0.9375rem] bg-red-100 text-red-800 border border-red-300">
                 {errorMessage || 'Something went wrong. Please try again or email us directly at info@rpcassociates.ca'}
               </div>
             )}
           </form>
-          <div className="contact__details">
-            <h3>Let's talk</h3>
-            <p>
+          <div className="bg-white p-xl rounded-xl shadow-sm">
+            <h3 className="mb-md">Let's talk</h3>
+            <p className="mb-lg">
               Tell me a bit about your business and what you are looking for support with. I will follow up to schedule a short introductory call.
             </p>
-            <div className="contact__info">
-              <div className="contact__info-item">
-                <span className="contact__info-label">Email:</span>
+            <div className="flex flex-col gap-md">
+              <div className="text-[0.9375rem]">
+                <span className="font-semibold text-primary mr-xs">Email:</span>
                 info@rpcassociates.ca
               </div>
-              <div className="contact__info-item">
-                <span className="contact__info-label">Service area:</span>
+              <div className="text-[0.9375rem]">
+                <span className="font-semibold text-primary mr-xs">Service area:</span>
                 Based in Canada · Serving clients remotely
               </div>
-              <div className="contact__info-item">
-                <span className="contact__info-label">Typical response time:</span>
+              <div className="text-[0.9375rem]">
+                <span className="font-semibold text-primary mr-xs">Typical response time:</span>
                 Usually within 1–2 business days
               </div>
             </div>

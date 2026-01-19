@@ -21,31 +21,31 @@ const Remote: FC = () => {
   ]
 
   return (
-    <section id="remote" className="section">
-      <div className="container">
-        <div className="section__header">
-          <h2 className="section__title">Remote & Online Services</h2>
-          <p className="section__subtitle">
+    <section id="remote" className="py-xxl">
+      <div className="max-w-[1200px] mx-auto px-md">
+        <div className="text-center mb-xl max-w-[800px] mx-auto">
+          <h2 className="mb-md">Remote & Online Services</h2>
+          <p className="text-lg text-text-light">
             Most of our services are designed to be delivered fully remotely, so you can work with us wherever you are without sacrificing security or personal service.
           </p>
         </div>
-        <div className="remote__container">
-          <div className="remote__content">
-            <p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-xl items-start mb-lg max-w-[1000px] mx-auto">
+          <div className="flex flex-col justify-start min-h-full">
+            <p className="mb-0 leading-relaxed">
               Our services are delivered remotely using secure cloud tools that ensure your data is protected while providing seamless collaboration and real-time access to your financial information.
             </p>
           </div>
-          <div className="remote__list-wrapper">
-            <ul className="remote__list">
+          <div className="flex flex-col justify-start">
+            <ul className="list-none m-0 p-0">
               {services.map((service, index) => (
-                <li key={index} className="remote__item">
-                  <strong>{service.label}</strong> {service.text}
+                <li key={index} className="mb-md pl-md relative leading-relaxed before:content-['•'] before:absolute before:left-0 before:text-primary before:font-bold last:mb-0">
+                  <strong className="text-primary">{service.label}</strong> {service.text}
                 </li>
               ))}
             </ul>
           </div>
         </div>
-        <p className="remote__closing">
+        <p className="text-center italic text-text-light mt-xl max-w-[800px] mx-auto">
           Whether you are across town or across the country, you can work with us as if we were down the hall.
         </p>
       </div>

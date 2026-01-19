@@ -32,21 +32,21 @@ const Header: FC = () => {
   }
 
   return (
-    <header className="header">
-      <div className="header__container">
-        <Link to="/" aria-label="RPC Associates Home" className="header__logo-link">
-          <img src={logo} alt="RPC Associates" className="header__logo" />
-          <div className="header__logo-text-wrapper">
-            <span className="header__logo-text">RPC Associates</span>
-            <span className="header__logo-tagline">Accounting · Consulting · Tech Solutions</span>
+    <header className="sticky top-0 bg-white shadow-sm z-[1000]">
+      <div className="max-w-[1200px] mx-auto px-md flex justify-between items-center gap-md">
+        <Link to="/" aria-label="RPC Associates Home" className="flex items-center gap-sm no-underline">
+          <img src={logo} alt="RPC Associates" className="h-10 w-10 flex-shrink-0" />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xl font-semibold text-primary whitespace-nowrap leading-tight">RPC Associates</span>
+            <span className="text-xs font-normal text-text-light whitespace-nowrap leading-tight">Accounting · Consulting · Tech Solutions</span>
           </div>
         </Link>
-        <nav className={`header__nav ${isMenuOpen ? 'header__nav--open' : ''}`}>
-          <ul className="header__nav-links">
+        <nav className={`lg:flex lg:items-center lg:gap-lg ${isMenuOpen ? 'absolute top-full left-0 right-0 bg-white shadow-md p-md flex flex-col gap-md lg:static lg:shadow-none lg:p-0' : 'hidden lg:flex'}`}>
+          <ul className="flex lg:flex-row flex-col list-none gap-md lg:items-center lg:gap-md">
             <li>
               <a 
                 href="#services" 
-                className="header__nav-link"
+                className="text-text font-medium py-xs whitespace-nowrap hover:text-primary transition-colors"
                 onClick={(e) => { e.preventDefault(); scrollToSection('services') }}
               >
                 Services
@@ -55,7 +55,7 @@ const Header: FC = () => {
             <li>
               <a 
                 href="#why" 
-                className="header__nav-link"
+                className="text-text font-medium py-xs whitespace-nowrap hover:text-primary transition-colors"
                 onClick={(e) => { e.preventDefault(); scrollToSection('why') }}
               >
                 Why Hire an Accountant
@@ -64,7 +64,7 @@ const Header: FC = () => {
             <li>
               <a 
                 href="#about" 
-                className="header__nav-link"
+                className="text-text font-medium py-xs whitespace-nowrap hover:text-primary transition-colors"
                 onClick={(e) => { e.preventDefault(); scrollToSection('about') }}
               >
                 About
@@ -73,7 +73,7 @@ const Header: FC = () => {
             <li>
               <a 
                 href="#remote" 
-                className="header__nav-link"
+                className="text-text font-medium py-xs whitespace-nowrap hover:text-primary transition-colors"
                 onClick={(e) => { e.preventDefault(); scrollToSection('remote') }}
               >
                 Remote
@@ -82,22 +82,22 @@ const Header: FC = () => {
             <li>
               <a 
                 href="#contact" 
-                className="header__nav-link"
+                className="text-text font-medium py-xs whitespace-nowrap hover:text-primary transition-colors"
                 onClick={(e) => { e.preventDefault(); scrollToSection('contact') }}
               >
                 Contact
               </a>
             </li>
             <li 
-              className="header__nav-item--dropdown"
+              className="relative"
               onMouseEnter={() => setIsResourcesOpen(true)}
               onMouseLeave={() => setIsResourcesOpen(false)}
             >
               <Link 
                 to="/resources" 
-                className="header__nav-link"
+                className="text-text font-medium py-xs whitespace-nowrap hover:text-primary transition-colors"
                 onClick={(e) => {
-                  if (window.innerWidth <= 900) {
+                  if (window.innerWidth <= 1024) {
                     e.preventDefault()
                     setIsResourcesOpen(!isResourcesOpen)
                   } else {
@@ -107,11 +107,11 @@ const Header: FC = () => {
               >
                 Resources
               </Link>
-              <ul className={`header__dropdown header__dropdown--resources ${isResourcesOpen ? 'header__dropdown--open' : ''}`}>
+              <ul className={`absolute top-full left-0 bg-white shadow-md rounded-lg list-none p-xs mt-xs min-w-[240px] lg:min-w-[360px] transition-all z-[1000] ${isResourcesOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2.5'}`}>
                 <li>
                   <Link 
                     to="/resources/canadian-personal-income-tax-calculator" 
-                    className="header__dropdown-item"
+                    className="block px-md py-sm text-text text-[0.9375rem] cursor-default whitespace-nowrap hover:bg-gray-50 rounded transition-colors"
                     onClick={handleNavClick}
                   >
                     Canadian Personal Income Tax Calculator
@@ -120,15 +120,15 @@ const Header: FC = () => {
               </ul>
             </li>
             <li 
-              className="header__nav-item--dropdown"
+              className="relative"
               onMouseEnter={() => setIsArticlesOpen(true)}
               onMouseLeave={() => setIsArticlesOpen(false)}
             >
               <Link 
                 to="/articles" 
-                className="header__nav-link"
+                className="text-text font-medium py-xs whitespace-nowrap hover:text-primary transition-colors"
                 onClick={(e) => {
-                  if (window.innerWidth <= 900) {
+                  if (window.innerWidth <= 1024) {
                     e.preventDefault()
                     setIsArticlesOpen(!isArticlesOpen)
                   } else {
@@ -138,11 +138,11 @@ const Header: FC = () => {
               >
                 Articles
               </Link>
-              <ul className={`header__dropdown ${isArticlesOpen ? 'header__dropdown--open' : ''}`}>
+              <ul className={`absolute top-full left-0 bg-white shadow-md rounded-lg list-none p-xs mt-xs min-w-[240px] transition-all z-[1000] ${isArticlesOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2.5'}`}>
                 <li>
                   <Link
                     to="/articles/category/canadian-tax"
-                    className="header__dropdown-item"
+                    className="block px-md py-sm text-text text-[0.9375rem] cursor-default whitespace-nowrap hover:bg-gray-50 rounded transition-colors"
                     onClick={handleNavClick}
                   >
                     Canadian Tax
@@ -151,7 +151,7 @@ const Header: FC = () => {
                 <li>
                   <Link
                     to="/articles/category/accounting"
-                    className="header__dropdown-item"
+                    className="block px-md py-sm text-text text-[0.9375rem] cursor-default whitespace-nowrap hover:bg-gray-50 rounded transition-colors"
                     onClick={handleNavClick}
                   >
                     Accounting
@@ -160,7 +160,7 @@ const Header: FC = () => {
                 <li>
                   <Link
                     to="/articles/category/technology"
-                    className="header__dropdown-item"
+                    className="block px-md py-sm text-text text-[0.9375rem] cursor-default whitespace-nowrap hover:bg-gray-50 rounded transition-colors"
                     onClick={handleNavClick}
                   >
                     Technology
@@ -171,14 +171,14 @@ const Header: FC = () => {
             <li>
               <Link 
                 to="/client-portal" 
-                className="header__nav-link header__nav-link--portal"
+                className="text-primary font-semibold border border-primary px-sm py-xs rounded-lg transition-all hover:bg-primary hover:text-white"
                 onClick={handleNavClick}
               >
                 Client Portal
               </Link>
             </li>
           </ul>
-          <div className="header__cta-group">
+          <div className="flex gap-sm items-center ml-xs lg:flex hidden lg:flex">
             <button 
               className="btn btn--secondary"
               onClick={handleContactClick}
@@ -194,14 +194,14 @@ const Header: FC = () => {
           </div>
         </nav>
         <button 
-          className="header__hamburger"
+          className="lg:hidden flex flex-col gap-1 bg-transparent border-none cursor-pointer p-xs"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
           aria-label="Toggle menu"
           aria-expanded={isMenuOpen}
         >
-          <span></span>
-          <span></span>
-          <span></span>
+          <span className="w-6 h-0.5 bg-primary transition-all"></span>
+          <span className="w-6 h-0.5 bg-primary transition-all"></span>
+          <span className="w-6 h-0.5 bg-primary transition-all"></span>
         </button>
       </div>
     </header>

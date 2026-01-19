@@ -47,23 +47,23 @@ const Articles: FC = () => {
         canonical="/articles"
       />
       <main>
-        <section className="section">
-          <div className="container">
-            <div className="section__header">
-              <h1 className="section__title">Articles</h1>
-              <p className="section__subtitle">
+        <section className="py-xxl">
+          <div className="max-w-[1200px] mx-auto px-md">
+            <div className="text-center mb-xl max-w-[800px] mx-auto">
+              <h1 className="mb-md">Articles</h1>
+              <p className="text-lg text-text-light">
                 Insights, tips, and updates on accounting, consulting, and technology.
               </p>
             </div>
 
             {loading && (
-              <div style={{ textAlign: 'center', padding: 'var(--spacing-xl) 0' }}>
+              <div className="text-center py-xl">
                 <p>Loading articles...</p>
               </div>
             )}
 
             {error && (
-              <div style={{ textAlign: 'center', padding: 'var(--spacing-xl) 0', color: '#dc3545' }}>
+              <div className="text-center py-xl text-red-600">
                 <p>{error}</p>
               </div>
             )}
@@ -71,10 +71,10 @@ const Articles: FC = () => {
             {!loading && !error && (
               <>
                 {categories.length > 0 && (
-                  <div className="articles__categories">
+                  <div className="flex gap-sm flex-wrap mb-xl pb-md border-b border-border">
                     <Link
                       to="/articles"
-                      className="articles__category-link articles__category-link--active"
+                      className="px-md py-xs rounded-lg bg-primary text-white no-underline border border-primary transition-all text-[0.9375rem] hover:bg-primary-dark"
                     >
                       All
                     </Link>
@@ -85,7 +85,7 @@ const Articles: FC = () => {
                         <Link
                           key={category._id}
                           to={`/articles/category/${slug}`}
-                          className="articles__category-link"
+                          className="px-md py-xs rounded-lg bg-white text-text no-underline border border-border transition-all text-[0.9375rem] hover:bg-primary hover:text-white hover:border-primary"
                         >
                           {category.title}
                         </Link>
@@ -95,11 +95,11 @@ const Articles: FC = () => {
                 )}
 
                 {articles.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: 'var(--spacing-xl) 0' }}>
+                  <div className="text-center py-xl">
                     <p>No articles found. Check back soon for new content!</p>
                   </div>
                 ) : (
-                  <div className="articles__grid">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg mt-lg">
                     {articles.map((article) => (
                       <ArticleCard key={article._id} article={article} />
                     ))}

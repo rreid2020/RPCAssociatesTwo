@@ -66,3 +66,4 @@ async function seedCategories() {
 
 seedCategories().catch(console.error)
 
+

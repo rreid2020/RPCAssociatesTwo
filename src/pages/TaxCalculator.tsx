@@ -966,18 +966,27 @@ const TaxCalculator: FC = () => {
                     return (
                       <div className="bg-white p-lg rounded-xl shadow-sm">
                         <h3 className="text-2xl font-semibold text-primary mb-md">Part A - {provinces.find(p => p.code === inputs.province)?.name || 'Provincial'} tax on taxable income</h3>
-                        <p className="text-sm text-text-light mb-md">Enter your <strong>taxable income</strong> from line 26000 of your return.</p>
-                        <p className="text-sm text-text-light mb-md">Use the amount from line 1 to complete the appropriate column below.</p>
                         
                         {/* Line 1: Taxable income from line 26000 */}
                         <div className="flex justify-between items-center py-2 border-b border-[#d0d0d0] mb-md">
                           <span className="text-sm text-text-light">Enter your <strong>taxable income</strong> from line 26000 of your return.</span>
-                          <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown?.taxableIncome || 0)}</span>
-                          <span className="font-semibold text-text">1</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown?.taxableIncome || 0)}</span>
+                            <span className="font-semibold text-text">1</span>
+                          </div>
                         </div>
                         
                         <div className="overflow-x-auto">
-                          <table className="w-full border-collapse text-xs">
+                          <table className="w-full border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
+                            <colgroup>
+                              <col style={{ width: '35%' }} />
+                              <col style={{ width: '13%' }} />
+                              <col style={{ width: '13%' }} />
+                              <col style={{ width: '13%' }} />
+                              <col style={{ width: '13%' }} />
+                              <col style={{ width: '13%' }} />
+                              <col style={{ width: '3%' }} />
+                            </colgroup>
                             <thead>
                               <tr className="bg-[#e8f5e9]">
                                 <th className="px-2 py-2 text-left font-semibold text-text border border-[#d0d0d0]"></th>

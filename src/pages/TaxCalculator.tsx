@@ -1032,11 +1032,11 @@ const TaxCalculator: FC = () => {
                                 })}
                               </tr>
                               
-                              {/* Line 3: Threshold - show for ALL columns */}
+                              {/* Line 3: Threshold - fixed amounts to subtract, show for ALL columns */}
                               <tr>
                                 <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
                                   <div>3</div>
-                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 2 minus line 3 (cannot be negative)</div>
+                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 3</div>
                                 </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
@@ -1087,7 +1087,7 @@ const TaxCalculator: FC = () => {
                               <tr>
                                 <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
                                   <div>5</div>
-                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 4 multiplied by the percentage from line 5</div>
+                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 5</div>
                                 </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
@@ -1101,7 +1101,7 @@ const TaxCalculator: FC = () => {
                                         isActive ? 'bg-[#fff9c4]' : ''
                                       }`}
                                     >
-                                      {(bracket.rate * 100).toFixed(2)}%
+                                      x {(bracket.rate * 100).toFixed(2)}%
                                     </td>
                                   )
                                 })}
@@ -1138,7 +1138,7 @@ const TaxCalculator: FC = () => {
                               <tr>
                                 <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
                                   <div>7</div>
-                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 6 plus line 7</div>
+                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 7</div>
                                 </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
@@ -1170,11 +1170,11 @@ const TaxCalculator: FC = () => {
                                 })}
                               </tr>
                               
-                              {/* Line 8: Provincial tax on taxable income */}
+                              {/* Line 8: Provincial tax on taxable income (Line 6 + Line 7) */}
                               <tr className="bg-[#e8f5e9]">
                                 <td className="px-2 py-2 text-text border border-[#d0d0d0] font-bold">
                                   <div>8</div>
-                                  <div className="text-xs text-text-light font-normal mt-0.5">{provinces.find(p => p.code === inputs.province)?.name || 'Provincial'} tax on taxable income</div>
+                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 6 plus line 7</div>
                                 </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
@@ -1185,6 +1185,7 @@ const TaxCalculator: FC = () => {
                                   const line4Value = isActive ? Math.max(0, taxableIncome - threshold) : 0
                                   const line6Value = isActive ? line4Value * bracket.rate : 0
                                   // Calculate base tax (cumulative tax from all previous brackets filled completely)
+                                  // This is Line 7 - show for ALL columns
                                   let baseTax = 0
                                   for (let i = 0; i < index; i++) {
                                     const prevB = i > 0 ? provincialData.brackets[i - 1] : null
@@ -1195,7 +1196,8 @@ const TaxCalculator: FC = () => {
                                       baseTax += bracketSize * currentBracket.rate
                                     }
                                   }
-                                  const line8Value = isActive ? line6Value + baseTax : 0
+                                  // Line 8 = Line 6 + Line 7 (show for ALL columns)
+                                  const line8Value = line6Value + baseTax
                                   return (
                                     <td 
                                       key={index} 
@@ -1203,7 +1205,7 @@ const TaxCalculator: FC = () => {
                                         isActive ? 'bg-[#fff9c4]' : ''
                                       }`}
                                     >
-                                      {isActive ? formatCurrency(Math.round(line8Value * 100) / 100) : ''}
+                                      {formatCurrency(Math.round(line8Value * 100) / 100)}
                                     </td>
                                   )
                                 })}

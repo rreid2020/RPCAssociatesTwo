@@ -86,7 +86,8 @@
       { "upTo": 220000, "rate": 0.1216 },
       { "upTo": null, "rate": 0.1316 }
     ],
-    "lowestRate": 0.0505
+    "lowestRate": 0.0505,
+    "baseTax": [0, 2598.02, 7305.52, 12562.54, 21074.54]
   },
   "PE": {
     "brackets": [

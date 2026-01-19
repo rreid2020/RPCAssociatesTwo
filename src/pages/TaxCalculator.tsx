@@ -1145,16 +1145,20 @@ const TaxCalculator: FC = () => {
                                   const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
                                   const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
                                                  (bracket.upTo === null || taxableIncome <= bracket.upTo)
-                                  // Calculate cumulative tax from previous brackets (each bracket filled completely)
-                                  // This is the base tax that applies to this bracket - show for ALL columns
+                                  // Use static base tax amounts if available, otherwise calculate
                                   let baseTax = 0
-                                  for (let i = 0; i < index; i++) {
-                                    const prevB = i > 0 ? provincialData.brackets[i - 1] : null
-                                    const prevThreshold = prevB?.upTo || 0
-                                    const currentBracket = provincialData.brackets[i]
-                                    if (currentBracket.upTo !== null) {
-                                      const bracketSize = currentBracket.upTo - prevThreshold
-                                      baseTax += bracketSize * currentBracket.rate
+                                  if ((provincialData as any).baseTax && Array.isArray((provincialData as any).baseTax)) {
+                                    baseTax = (provincialData as any).baseTax[index] || 0
+                                  } else {
+                                    // Calculate cumulative tax from previous brackets (each bracket filled completely)
+                                    for (let i = 0; i < index; i++) {
+                                      const prevB = i > 0 ? provincialData.brackets[i - 1] : null
+                                      const prevThreshold = prevB?.upTo || 0
+                                      const currentBracket = provincialData.brackets[i]
+                                      if (currentBracket.upTo !== null) {
+                                        const bracketSize = currentBracket.upTo - prevThreshold
+                                        baseTax += bracketSize * currentBracket.rate
+                                      }
                                     }
                                   }
                                   return (
@@ -1184,16 +1188,20 @@ const TaxCalculator: FC = () => {
                                                  (bracket.upTo === null || taxableIncome <= bracket.upTo)
                                   const line4Value = isActive ? Math.max(0, taxableIncome - threshold) : 0
                                   const line6Value = isActive ? line4Value * bracket.rate : 0
-                                  // Calculate base tax (cumulative tax from all previous brackets filled completely)
-                                  // This is Line 7 - show for ALL columns
+                                  // Use static base tax amounts if available (Line 7), otherwise calculate
                                   let baseTax = 0
-                                  for (let i = 0; i < index; i++) {
-                                    const prevB = i > 0 ? provincialData.brackets[i - 1] : null
-                                    const prevThreshold = prevB?.upTo || 0
-                                    const currentBracket = provincialData.brackets[i]
-                                    if (currentBracket.upTo !== null) {
-                                      const bracketSize = currentBracket.upTo - prevThreshold
-                                      baseTax += bracketSize * currentBracket.rate
+                                  if ((provincialData as any).baseTax && Array.isArray((provincialData as any).baseTax)) {
+                                    baseTax = (provincialData as any).baseTax[index] || 0
+                                  } else {
+                                    // Calculate cumulative tax from all previous brackets filled completely
+                                    for (let i = 0; i < index; i++) {
+                                      const prevB = i > 0 ? provincialData.brackets[i - 1] : null
+                                      const prevThreshold = prevB?.upTo || 0
+                                      const currentBracket = provincialData.brackets[i]
+                                      if (currentBracket.upTo !== null) {
+                                        const bracketSize = currentBracket.upTo - prevThreshold
+                                        baseTax += bracketSize * currentBracket.rate
+                                      }
                                     }
                                   }
                                   // Line 8 = Line 6 + Line 7 (show for ALL columns)

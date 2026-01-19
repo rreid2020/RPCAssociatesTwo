@@ -1,4 +1,4 @@
-import { FC, useEffect } from 'react'
+import { FC, useEffect, useState } from 'react'
 import { CALENDLY_URL } from '../config/calendly'
 
 interface CalendlyButtonProps {
@@ -15,20 +15,94 @@ const CalendlyButton: FC<CalendlyButtonProps> = ({
   className = 'btn btn--primary',
   prefill
 }) => {
+  const [scriptLoaded, setScriptLoaded] = useState(false)
+
   useEffect(() => {
+    // Check if Calendly is already available
+    if (window.Calendly) {
+      setScriptLoaded(true)
+      return
+    }
+
+    // Check if script is already in the DOM
+    const existingScript = document.querySelector('script[src*="calendly.com"]')
+    if (existingScript) {
+      // Script exists, wait for it to load
+      const checkCalendly = setInterval(() => {
+        if (window.Calendly) {
+          setScriptLoaded(true)
+          clearInterval(checkCalendly)
+        }
+      }, 100)
+      
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        clearInterval(checkCalendly)
+      }, 5000)
+      
+      return () => clearInterval(checkCalendly)
+    }
+
     // Load Calendly widget script
-    if (!document.querySelector('script[src*="calendly.com"]')) {
-      const script = document.createElement('script')
-      script.src = 'https://assets.calendly.com/assets/external/widget.js'
-      script.async = true
-      document.body.appendChild(script)
+    const script = document.createElement('script')
+    script.src = 'https://assets.calendly.com/assets/external/widget.js'
+    script.async = true
+    
+    script.onload = () => {
+      setScriptLoaded(true)
+    }
+    
+    script.onerror = () => {
+      console.error('Failed to load Calendly script')
+    }
+    
+    document.body.appendChild(script)
+
+    return () => {
+      // Cleanup if component unmounts
     }
   }, [])
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    // If Calendly is available, use popup widget
+    if (window.Calendly) {
+      openCalendly()
+      return
+    }
+
+    // If script is still loading, wait a moment and try again
+    if (!scriptLoaded) {
+      console.log('Calendly script loading, please wait...')
+      let attempts = 0
+      const maxAttempts = 30 // 3 seconds max
+      
+      const retryInterval = setInterval(() => {
+        attempts++
+        if (window.Calendly) {
+          clearInterval(retryInterval)
+          openCalendly()
+        } else if (attempts >= maxAttempts) {
+          clearInterval(retryInterval)
+          console.warn('Calendly script failed to load, opening direct link')
+          window.open(CALENDLY_URL, '_blank', 'noopener,noreferrer')
+        }
+      }, 100)
+      
+      return
+    }
+
+    // Fallback: open in new window
+    window.open(CALENDLY_URL, '_blank', 'noopener,noreferrer')
+  }
+
+  const openCalendly = () => {
     if (!window.Calendly) {
-      // If script hasn't loaded yet, wait a bit and try again
-      setTimeout(handleClick, 100)
+      console.error('Calendly is not available')
+      // Fallback: open in new window
+      window.open(CALENDLY_URL, '_blank', 'noopener,noreferrer')
       return
     }
 
@@ -46,9 +120,15 @@ const CalendlyButton: FC<CalendlyButtonProps> = ({
       calendlyUrl = url.toString()
     }
 
-    window.Calendly.initPopupWidget({
-      url: calendlyUrl
-    })
+    try {
+      window.Calendly.initPopupWidget({
+        url: calendlyUrl
+      })
+    } catch (error) {
+      console.error('Error opening Calendly:', error)
+      // Fallback: open in new window
+      window.open(calendlyUrl, '_blank', 'noopener,noreferrer')
+    }
   }
 
   return (

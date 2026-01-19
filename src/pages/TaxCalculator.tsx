@@ -1,5 +1,6 @@
 import { FC, useState, useEffect } from 'react'
 import SEO from '../components/SEO'
+import CalendlyButton from '../components/CalendlyButton'
 import { TaxCalculatorInputs, TaxCalculatorResults } from '../lib/tax/types'
 import { calcSummary } from '../lib/tax/calcSummary'
 import federalData2025 from '../tax-data/2025/federal.json'
@@ -487,9 +488,7 @@ const TaxCalculator: FC = () => {
                   <button className="btn btn--secondary" onClick={scrollToContact}>
                     Request a Call
                   </button>
-                  <button className="btn btn--primary" onClick={scrollToContact}>
-                    Book a Consultation
-                  </button>
+                  <CalendlyButton />
                 </div>
               </div>
             </div>

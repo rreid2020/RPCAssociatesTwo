@@ -1,4 +1,5 @@
 import { FC } from 'react'
+import CalendlyButton from './CalendlyButton'
 
 const Hero: FC = () => {
   const scrollToSection = (id: string) => {
@@ -19,12 +20,7 @@ const Hero: FC = () => {
               RPC Associates helps entrepreneurs and organizations gain control of their numbers, strengthen internal controls, and implement practical tech solutions—so they can focus on running and growing the business.
             </p>
             <div className="flex gap-md mb-lg flex-wrap">
-              <button 
-                className="btn btn--primary"
-                onClick={() => scrollToSection('contact')}
-              >
-                Schedule a Free Consultation
-              </button>
+              <CalendlyButton text="Schedule a Free Consultation" />
               <button 
                 className="btn btn--secondary"
                 onClick={() => scrollToSection('services')}

@@ -4,6 +4,7 @@ import SEO from '../components/SEO'
 import PortableText from '../components/PortableText'
 import DownloadButton from '../components/DownloadButton'
 import RelatedLinks from '../components/RelatedLinks'
+import CalendlyButton from '../components/CalendlyButton'
 import { getArticleBySlug } from '../lib/sanity/queries'
 import { SanityArticle } from '../lib/sanity/types'
 import { urlFor } from '../lib/sanity/image'
@@ -204,9 +205,7 @@ const ArticleDetail: FC = () => {
                   Let's discuss how we can help with your accounting, consulting, or technology needs.
                 </p>
                 <div className="flex gap-md justify-center flex-wrap">
-                  <a href="/#contact" className="btn btn--primary">
-                    Book a Consultation
-                  </a>
+                  <CalendlyButton />
                   <a href="tel:6138840208" className="btn btn--secondary">
                     Call: 613-884-0208
                   </a>

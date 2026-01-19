@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 // Note: Place your logo file at src/assets/rpc-logo.png
 // Using SVG placeholder until PNG is added
 import logo from '../assets/rpc-logo.svg'
+import CalendlyButton from './CalendlyButton'
 
 const Header: FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -185,12 +186,7 @@ const Header: FC = () => {
             >
               Request a Call
             </button>
-            <button 
-              className="btn btn--primary"
-              onClick={handleContactClick}
-            >
-              Book a Consultation
-            </button>
+            <CalendlyButton />
           </div>
         </nav>
         <button 

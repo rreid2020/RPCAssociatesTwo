@@ -26,7 +26,7 @@ interface SEOProps {
 const SEO: FC<SEOProps> = ({
   title = 'RPC Associates | Accounting, Consulting & Tech Solutions',
   description = 'RPC Associates provides accounting, consulting, and tech solutions for growing businesses. Get financial clarity, modern systems, and strategic guidance.',
-  keywords = 'accounting, consulting, tech solutions, CPA, CMA, CGAP, tax preparation, financial advisory, business consulting, Canada',
+  keywords = 'accounting, consulting, tech solutions, CPA, CMA, CGAP, tax preparation, financial advisory, business consulting, Canada, Canadian Income Tax, Ottawa accountant, Ottawa accounting services, Ottawa tax services, Ontario accountant',
   canonical = 'https://rpcassociates.co',
   ogImage = 'https://rpcassociates.co/og-image.jpg',
   ogType,
@@ -89,7 +89,9 @@ const SEO: FC<SEOProps> = ({
       <meta name="language" content="English" />
       <meta name="author" content="RPC Associates" />
       <meta name="geo.region" content="CA-ON" />
-      <meta name="geo.placename" content="Canada" />
+      <meta name="geo.placename" content="Ottawa, Ontario, Canada" />
+      <meta name="geo.position" content="45.4215;-75.6972" />
+      <meta name="ICBM" content="45.4215, -75.6972" />
 
       {/* Structured Data */}
       <script type="application/ld+json">
@@ -127,30 +129,67 @@ const SEO: FC<SEOProps> = ({
                 }
               }
             : {
-                '@type': 'AccountingService',
+                '@type': ['AccountingService', 'LocalBusiness'],
                 name: 'RPC Associates',
                 description: description,
                 url: 'https://rpcassociates.co',
                 logo: 'https://rpcassociates.co/logo.png',
+                image: 'https://rpcassociates.co/logo.png',
+                telephone: '+1-613-884-0208',
+                email: 'roger.reid@rpcassociates.co',
+                priceRange: '$$',
                 contactPoint: {
                   '@type': 'ContactPoint',
                   telephone: '+1-613-884-0208',
                   contactType: 'Customer Service',
                   email: 'roger.reid@rpcassociates.co',
-                  areaServed: 'CA',
+                  areaServed: ['CA', 'CA-ON'],
                   availableLanguage: 'English'
                 },
                 address: {
                   '@type': 'PostalAddress',
+                  addressLocality: 'Ottawa',
+                  addressRegion: 'ON',
                   addressCountry: 'CA',
-                  addressRegion: 'ON'
+                  addressCountryName: 'Canada'
+                },
+                geo: {
+                  '@type': 'GeoCoordinates',
+                  latitude: 45.4215,
+                  longitude: -75.6972
                 },
                 sameAs: [
                   'https://rpcassociates.co'
                 ],
-                areaServed: {
-                  '@type': 'Country',
-                  name: 'Canada'
+                areaServed: [
+                  {
+                    '@type': 'City',
+                    name: 'Ottawa',
+                    containedIn: {
+                      '@type': 'State',
+                      name: 'Ontario'
+                    }
+                  },
+                  {
+                    '@type': 'State',
+                    name: 'Ontario'
+                  },
+                  {
+                    '@type': 'Country',
+                    name: 'Canada'
+                  }
+                ],
+                serviceArea: {
+                  '@type': 'GeoCircle',
+                  geoMidpoint: {
+                    '@type': 'GeoCoordinates',
+                    latitude: 45.4215,
+                    longitude: -75.6972
+                  },
+                  geoRadius: {
+                    '@type': 'Distance',
+                    name: 'Canada-wide'
+                  }
                 }
               }
         })}

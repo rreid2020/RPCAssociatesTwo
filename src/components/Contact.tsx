@@ -141,8 +141,8 @@ const Contact: FC = () => {
                 info@rpcassociates.ca
               </div>
               <div className="text-[0.9375rem]">
-                <span className="font-semibold text-primary mr-xs">Service area:</span>
-                Based in Canada · Serving clients remotely
+                <span className="font-semibold text-primary mr-xs">Location:</span>
+                Ottawa, Ontario, Canada · Serving clients across Canada remotely
               </div>
               <div className="text-[0.9375rem]">
                 <span className="font-semibold text-primary mr-xs">Typical response time:</span>

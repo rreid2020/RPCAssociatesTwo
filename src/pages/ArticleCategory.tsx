@@ -76,6 +76,9 @@ const ArticleCategory: FC = () => {
       <SEO
         title={category ? `${category.title} Articles` : 'Category'}
         description={category?.description || `Articles in the ${category?.title || categorySlug} category`}
+        keywords={category?.title?.toLowerCase().includes('tax') || categorySlug?.toLowerCase().includes('tax') 
+          ? `Canadian Income Tax, ${category?.title || categorySlug}, tax articles, tax advice, tax planning, Ottawa tax services, Ottawa accountant`
+          : `${category?.title || categorySlug}, accounting articles, business advice, Canadian Income Tax, Ottawa accountant, Ottawa accounting services`}
         canonical={`/articles/category/${categorySlug}`}
       />
       <main>

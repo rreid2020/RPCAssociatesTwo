@@ -13,7 +13,7 @@ const Home: FC = () => {
       <SEO
         title="RPC Associates | Accounting, Consulting & Tech Solutions"
         description="RPC Associates provides professional accounting, consulting, and tech solutions for growing businesses. Expert CPA services, tax preparation, financial advisory, and modern technology solutions across Canada."
-        keywords="accounting services, CPA, CMA, CGAP, tax preparation, business consulting, tech solutions, financial advisory, Canada accounting"
+        keywords="accounting services, CPA, CMA, CGAP, tax preparation, business consulting, tech solutions, financial advisory, Canada accounting, Canadian Income Tax, Ottawa accountant, Ottawa accounting, Ottawa tax services, Ontario accountant, accounting services Ottawa"
         canonical="/"
       />
       <main>

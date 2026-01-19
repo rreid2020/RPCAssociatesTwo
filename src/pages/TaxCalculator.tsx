@@ -124,30 +124,31 @@ const TaxCalculator: FC = () => {
       <SEO
         title="Canadian Personal Income Tax Calculator"
         description="Estimate your Canadian personal income tax with our free calculator. Calculate federal and provincial taxes for 2025 and other tax years."
+        keywords="Canadian Income Tax, income tax calculator, Canadian tax calculator, tax planning, federal tax, provincial tax, tax brackets, tax rates, Canada tax, personal income tax, Ottawa tax calculator, Ontario tax calculator"
         canonical="/resources/canadian-personal-income-tax-calculator"
       />
-      <main className="page-content">
-        <div className="container">
-          <section className="section">
-            <div className="tax-calculator__page-header">
-              <h1 className="tax-calculator__page-title">
+      <main className="py-xxl min-h-[60vh]">
+        <div className="max-w-[1200px] mx-auto px-md">
+          <section className="py-xxl">
+            <div className="text-center mb-xxl max-w-[800px] mx-auto">
+              <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-md">
                 {inputs.taxYear} {provinces.find(p => p.code === inputs.province)?.name || 'Ontario'} Income Tax Calculator
               </h1>
-              <p className="tax-calculator__page-subtitle">
+              <p className="text-lg text-text-light leading-relaxed m-0">
                 Plug in a few numbers and we'll give you visibility into your tax bracket, marginal tax rate, average tax rate, and an estimate of your taxes owed in {inputs.taxYear}.
               </p>
             </div>
 
-            <div className="tax-calculator">
-              <div className="tax-calculator__container">
-                <div className="tax-calculator__inputs-section">
-                  <form className="tax-calculator__form" onSubmit={handleCalculate}>
-                    <div className="tax-calculator__form-header">
-                      <div className="tax-calculator__field-group">
-                        <label htmlFor="province" className="tax-calculator__field-label">Choose province or territory</label>
+            <div className="max-w-[1200px] mx-auto">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-xxl items-start">
+                <div className="bg-white p-lg rounded-xl">
+                  <form className="flex flex-col gap-md" onSubmit={handleCalculate}>
+                    <div className="mb-md">
+                      <div className="flex flex-col gap-1">
+                        <label htmlFor="province" className="font-semibold text-text text-sm mb-1">Choose province or territory</label>
                         <select
                           id="province"
-                          className="tax-calculator__select"
+                          className="px-3.5 py-3 border border-[#d0d0d0] rounded-lg font-sans text-base transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary"
                           value={inputs.province}
                           onChange={(e) => handleInputChange('province', e.target.value)}
                         >
@@ -160,13 +161,13 @@ const TaxCalculator: FC = () => {
                       </div>
                     </div>
 
-                    <div className="tax-calculator__field-group">
-                      <label htmlFor="employmentIncome" className="tax-calculator__field-label">Employment income</label>
-                      <p className="tax-calculator__field-description">Employment income and taxable benefits.</p>
+                    <div className="flex flex-col gap-1">
+                      <label htmlFor="employmentIncome" className="font-semibold text-text text-sm mb-1">Employment income</label>
+                      <p className="text-sm text-text-light m-0 leading-snug mb-1">Employment income and taxable benefits.</p>
                       <input
                         type="number"
                         id="employmentIncome"
-                        className="tax-calculator__input"
+                        className="px-3.5 py-3 border border-[#d0d0d0] rounded-lg font-sans text-base transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
                         min="0"
                         step="0.01"
                         placeholder="0"
@@ -175,13 +176,13 @@ const TaxCalculator: FC = () => {
                       />
                     </div>
 
-                    <div className="tax-calculator__field-group">
-                      <label htmlFor="selfEmploymentIncome" className="tax-calculator__field-label">Self-employment income</label>
-                      <p className="tax-calculator__field-description">Business, professional, commission, partnership, fishing, and farming income.</p>
+                    <div className="flex flex-col gap-1">
+                      <label htmlFor="selfEmploymentIncome" className="font-semibold text-text text-sm mb-1">Self-employment income</label>
+                      <p className="text-sm text-text-light m-0 leading-snug mb-1">Business, professional, commission, partnership, fishing, and farming income.</p>
                       <input
                         type="number"
                         id="selfEmploymentIncome"
-                        className="tax-calculator__input"
+                        className="px-3.5 py-3 border border-[#d0d0d0] rounded-lg font-sans text-base transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
                         min="0"
                         step="0.01"
                         placeholder="0"
@@ -190,13 +191,13 @@ const TaxCalculator: FC = () => {
                       />
                     </div>
 
-                    <div className="tax-calculator__field-group">
-                      <label htmlFor="rrspContributions" className="tax-calculator__field-label">RRSP and FHSA deductions</label>
-                      <p className="tax-calculator__field-description">Keep in mind RRSP and FHSA contributions are subject to annual contribution and deduction limits.</p>
+                    <div className="flex flex-col gap-1">
+                      <label htmlFor="rrspContributions" className="font-semibold text-text text-sm mb-1">RRSP and FHSA deductions</label>
+                      <p className="text-sm text-text-light m-0 leading-snug mb-1">Keep in mind RRSP and FHSA contributions are subject to annual contribution and deduction limits.</p>
                       <input
                         type="number"
                         id="rrspContributions"
-                        className="tax-calculator__input"
+                        className="px-3.5 py-3 border border-[#d0d0d0] rounded-lg font-sans text-base transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
                         min="0"
                         step="0.01"
                         placeholder="0"
@@ -205,13 +206,13 @@ const TaxCalculator: FC = () => {
                       />
                     </div>
 
-                    <div className="tax-calculator__field-group">
-                      <label htmlFor="capitalGains" className="tax-calculator__field-label">Capital gains</label>
-                      <p className="tax-calculator__field-description">Half of this amount is included in income.</p>
+                    <div className="flex flex-col gap-1">
+                      <label htmlFor="capitalGains" className="font-semibold text-text text-sm mb-1">Capital gains</label>
+                      <p className="text-sm text-text-light m-0 leading-snug mb-1">Half of this amount is included in income.</p>
                       <input
                         type="number"
                         id="capitalGains"
-                        className="tax-calculator__input"
+                        className="px-3.5 py-3 border border-[#d0d0d0] rounded-lg font-sans text-base transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
                         min="0"
                         step="0.01"
                         placeholder="0"
@@ -220,13 +221,13 @@ const TaxCalculator: FC = () => {
                       />
                     </div>
 
-                    <div className="tax-calculator__field-group">
-                      <label htmlFor="eligibleDividends" className="tax-calculator__field-label">Eligible dividends</label>
-                      <p className="tax-calculator__field-description">In general, these are dividends received from public Canadian companies. Enter the actual amount of dividends received.</p>
+                    <div className="flex flex-col gap-1">
+                      <label htmlFor="eligibleDividends" className="font-semibold text-text text-sm mb-1">Eligible dividends</label>
+                      <p className="text-sm text-text-light m-0 leading-snug mb-1">In general, these are dividends received from public Canadian companies. Enter the actual amount of dividends received.</p>
                       <input
                         type="number"
                         id="eligibleDividends"
-                        className="tax-calculator__input"
+                        className="px-3.5 py-3 border border-[#d0d0d0] rounded-lg font-sans text-base transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
                         min="0"
                         step="0.01"
                         placeholder="0"
@@ -235,13 +236,13 @@ const TaxCalculator: FC = () => {
                       />
                     </div>
 
-                    <div className="tax-calculator__field-group">
-                      <label htmlFor="ineligibleDividends" className="tax-calculator__field-label">Ineligible Dividends</label>
-                      <p className="tax-calculator__field-description">In general, these are dividends received from private Canadian companies. Enter the actual amount of dividends received.</p>
+                    <div className="flex flex-col gap-1">
+                      <label htmlFor="ineligibleDividends" className="font-semibold text-text text-sm mb-1">Ineligible Dividends</label>
+                      <p className="text-sm text-text-light m-0 leading-snug mb-1">In general, these are dividends received from private Canadian companies. Enter the actual amount of dividends received.</p>
                       <input
                         type="number"
                         id="ineligibleDividends"
-                        className="tax-calculator__input"
+                        className="px-3.5 py-3 border border-[#d0d0d0] rounded-lg font-sans text-base transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
                         min="0"
                         step="0.01"
                         placeholder="0"
@@ -250,13 +251,13 @@ const TaxCalculator: FC = () => {
                       />
                     </div>
 
-                    <div className="tax-calculator__field-group">
-                      <label htmlFor="otherIncome" className="tax-calculator__field-label">Other income</label>
-                      <p className="tax-calculator__field-description">All other income (like rental income, interest, tips, EI, CPP, and OAS).</p>
+                    <div className="flex flex-col gap-1">
+                      <label htmlFor="otherIncome" className="font-semibold text-text text-sm mb-1">Other income</label>
+                      <p className="text-sm text-text-light m-0 leading-snug mb-1">All other income (like rental income, interest, tips, EI, CPP, and OAS).</p>
                       <input
                         type="number"
                         id="otherIncome"
-                        className="tax-calculator__input"
+                        className="px-3.5 py-3 border border-[#d0d0d0] rounded-lg font-sans text-base transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
                         min="0"
                         step="0.01"
                         placeholder="0"
@@ -265,13 +266,13 @@ const TaxCalculator: FC = () => {
                       />
                     </div>
 
-                    <div className="tax-calculator__field-group">
-                      <label htmlFor="incomeTaxesPaid" className="tax-calculator__field-label">Income taxes paid</label>
-                      <p className="tax-calculator__field-description">For example, taxes deducted from your paycheque. Don't include CPP/EI contributions.</p>
+                    <div className="flex flex-col gap-1">
+                      <label htmlFor="incomeTaxesPaid" className="font-semibold text-text text-sm mb-1">Income taxes paid</label>
+                      <p className="text-sm text-text-light m-0 leading-snug mb-1">For example, taxes deducted from your paycheque. Don't include CPP/EI contributions.</p>
                       <input
                         type="number"
                         id="incomeTaxesPaid"
-                        className="tax-calculator__input"
+                        className="px-3.5 py-3 border border-[#d0d0d0] rounded-lg font-sans text-base transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
                         min="0"
                         step="0.01"
                         placeholder="0"
@@ -280,23 +281,23 @@ const TaxCalculator: FC = () => {
                       />
                     </div>
 
-                    <button type="submit" className="btn btn--primary tax-calculator__calculate-btn">
+                    <button type="submit" className="btn btn--primary w-full mt-md py-4 text-base font-semibold">
                       Calculate
                     </button>
                   </form>
                 </div>
 
-                <div className="tax-calculator__results-section">
-                  <h2 className="tax-calculator__results-title">Your Results</h2>
+                <div className="bg-[#f8f8f8] p-lg rounded-xl lg:sticky lg:top-[calc(1.5rem+60px)]">
+                  <h2 className="text-2xl font-bold text-primary mb-md lg:mb-lg">Your Results</h2>
                   
                   {hasCalculated && results ? (
-                    <div className="tax-calculator__result-card">
-                      <div className="tax-calculator__result-item">
-                        <div className="tax-calculator__result-item-header">
-                          <span className="tax-calculator__result-item-label">Total income</span>
-                          <span className="tax-calculator__result-item-description">Total income entered.</span>
+                    <div className="flex flex-col gap-md bg-white p-md rounded-lg">
+                      <div className="flex flex-col gap-1 pb-md border-b border-[#e5e5e5] last:border-b-0 last:pb-0">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-semibold text-text text-sm">Total income</span>
+                          <span className="text-xs text-text-light leading-snug">Total income entered.</span>
                         </div>
-                        <div className="tax-calculator__result-item-value">
+                        <div className="text-2xl font-bold text-primary mt-1">
                           {formatCurrency(
                             inputs.employmentIncome + 
                             inputs.selfEmploymentIncome + 
@@ -308,29 +309,29 @@ const TaxCalculator: FC = () => {
                         </div>
                       </div>
 
-                      <div className="tax-calculator__result-item">
-                        <div className="tax-calculator__result-item-header">
-                          <span className="tax-calculator__result-item-label">Total tax</span>
+                      <div className="flex flex-col gap-1 pb-md border-b border-[#e5e5e5] last:border-b-0 last:pb-0">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-semibold text-text text-sm">Total tax</span>
                         </div>
-                        <div className="tax-calculator__result-item-value tax-calculator__result-item-value--large">{formatCurrency(results.totalTax)}</div>
-                        <div className="tax-calculator__result-item-breakdown">
-                          <div className="tax-calculator__result-item-breakdown-item">
+                        <div className="text-3xl lg:text-4xl font-bold text-primary mt-2">{formatCurrency(results.totalTax)}</div>
+                        <div className="mt-2 pt-2 border-t border-[#e5e5e5] flex flex-col gap-1">
+                          <div className="flex justify-between text-sm text-text-light">
                             <span>Federal Tax</span>
-                            <span>{formatCurrency(results.federalTax.net)}</span>
+                            <span className="font-semibold text-text">{formatCurrency(results.federalTax.net)}</span>
                           </div>
-                          <div className="tax-calculator__result-item-breakdown-item">
+                          <div className="flex justify-between text-sm text-text-light">
                             <span>Provincial/Territorial Tax</span>
-                            <span>{formatCurrency(results.provincialTax.net)}</span>
+                            <span className="font-semibold text-text">{formatCurrency(results.provincialTax.net)}</span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="tax-calculator__result-item">
-                        <div className="tax-calculator__result-item-header">
-                          <span className="tax-calculator__result-item-label">After-tax income</span>
-                          <span className="tax-calculator__result-item-description">Total income after tax.</span>
+                      <div className="flex flex-col gap-1 pb-md border-b border-[#e5e5e5] last:border-b-0 last:pb-0">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-semibold text-text text-sm">After-tax income</span>
+                          <span className="text-xs text-text-light leading-snug">Total income after tax.</span>
                         </div>
-                        <div className="tax-calculator__result-item-value">
+                        <div className="text-2xl font-bold text-primary mt-1">
                           {formatCurrency(
                             (inputs.employmentIncome + 
                             inputs.selfEmploymentIncome + 
@@ -343,64 +344,64 @@ const TaxCalculator: FC = () => {
                       </div>
 
                       {results.refundOrOwing !== 0 && (
-                        <div className="tax-calculator__result-item">
-                          <div className="tax-calculator__result-item-header">
-                            <span className="tax-calculator__result-item-label">
+                        <div className="flex flex-col gap-1 pb-md border-b border-[#e5e5e5] last:border-b-0 last:pb-0">
+                          <div className="flex flex-col gap-1">
+                            <span className="font-semibold text-text text-sm">
                               {results.refundOrOwing > 0 ? 'Estimated refund' : 'Amount owing'}
                             </span>
-                            <span className="tax-calculator__result-item-description">
+                            <span className="text-xs text-text-light leading-snug">
                               {results.refundOrOwing > 0 
                                 ? 'Tax refund after accounting for taxes already paid.'
                                 : 'Additional tax payable after accounting for taxes already paid.'}
                             </span>
                           </div>
-                          <div className={`tax-calculator__result-item-value ${results.refundOrOwing > 0 ? 'tax-calculator__result-item-value--refund' : 'tax-calculator__result-item-value--owing'}`}>
+                          <div className={`text-2xl font-bold mt-1 ${results.refundOrOwing > 0 ? 'text-green-600' : 'text-red-600'}`}>
                             {results.refundOrOwing > 0 ? '+' : ''}{formatCurrency(Math.abs(results.refundOrOwing))}
                           </div>
                         </div>
                       )}
 
-                      <div className="tax-calculator__result-item">
-                        <div className="tax-calculator__result-item-header">
-                          <span className="tax-calculator__result-item-label">Average tax rate</span>
-                          <span className="tax-calculator__result-item-description">Total tax divided by total income.</span>
+                      <div className="flex flex-col gap-1 pb-md border-b border-[#e5e5e5] last:border-b-0 last:pb-0">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-semibold text-text text-sm">Average tax rate</span>
+                          <span className="text-xs text-text-light leading-snug">Total tax divided by total income.</span>
                         </div>
-                        <div className="tax-calculator__result-item-value">{results.averageTaxRate.toFixed(2)}%</div>
+                        <div className="text-2xl font-bold text-primary mt-1">{results.averageTaxRate.toFixed(2)}%</div>
                       </div>
 
-                      <div className="tax-calculator__result-item">
-                        <div className="tax-calculator__result-item-header">
-                          <span className="tax-calculator__result-item-label">Marginal tax rate</span>
-                          <span className="tax-calculator__result-item-description">Incremental tax paid on incremental income.</span>
+                      <div className="flex flex-col gap-1 pb-md border-b border-[#e5e5e5] last:border-b-0 last:pb-0">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-semibold text-text text-sm">Marginal tax rate</span>
+                          <span className="text-xs text-text-light leading-snug">Incremental tax paid on incremental income.</span>
                         </div>
-                        <div className="tax-calculator__result-item-value">{results.marginalTaxRate.toFixed(2)}%</div>
+                        <div className="text-2xl font-bold text-primary mt-1">{results.marginalTaxRate.toFixed(2)}%</div>
                       </div>
                     </div>
                   ) : (
-                    <div className="tax-calculator__placeholder">
-                      <p>Please enter your income, deductions, gains, dividends, and taxes paid to get a summary of your results.</p>
+                    <div className="text-left text-text-light text-sm leading-relaxed bg-white p-lg rounded-lg">
+                      <p className="m-0">Please enter your income, deductions, gains, dividends, and taxes paid to get a summary of your results.</p>
                     </div>
                   )}
                 </div>
               </div>
 
               {hasCalculated && results && (
-                <div className="tax-calculator__brackets-section">
-                  <h2 className="tax-calculator__brackets-title">
+                <div className="max-w-[1200px] mx-auto mt-xxl pt-xxl border-t border-border">
+                  <h2 className="text-3xl lg:text-4xl font-bold text-primary mb-sm">
                     {provinces.find(p => p.code === inputs.province)?.name || 'Provincial'} Provincial and Federal tax brackets
                   </h2>
-                  <p className="tax-calculator__brackets-subtitle">
+                  <p className="text-base text-text-light mb-xl">
                     Your taxable income places you in the following tax brackets.
                   </p>
                   
-                  <div className="tax-calculator__brackets-tables">
-                    <div className="tax-calculator__brackets-table-wrapper">
-                      <h3 className="tax-calculator__brackets-table-title">Canadian federal tax bracket</h3>
-                      <table className="tax-calculator__brackets-table">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-xl">
+                    <div className="bg-white p-lg rounded-lg shadow-sm">
+                      <h3 className="text-lg font-semibold text-primary mb-md">Canadian federal tax bracket</h3>
+                      <table className="w-full border-collapse text-sm">
                         <thead>
-                          <tr>
-                            <th>Canadian federal tax bracket</th>
-                            <th>Canadian federal tax rate</th>
+                          <tr className="bg-background">
+                            <th className="px-md py-sm text-left font-semibold text-text border-b-2 border-border">Canadian federal tax bracket</th>
+                            <th className="px-md py-sm text-left font-semibold text-text border-b-2 border-border">Canadian federal tax rate</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -409,8 +410,8 @@ const TaxCalculator: FC = () => {
                             const rangeStart = prevBracket && prevBracket.upTo ? prevBracket.upTo + 1 : 0
                             const rangeEnd = bracket.upTo
                             return (
-                              <tr key={index}>
-                                <td>
+                              <tr key={index} className="last:border-b-0">
+                                <td className="px-md py-sm border-b border-border text-text">
                                   {rangeStart === 0 
                                     ? `$${rangeEnd?.toLocaleString('en-CA')} or less`
                                     : rangeEnd === null
@@ -418,7 +419,7 @@ const TaxCalculator: FC = () => {
                                     : `$${rangeStart.toLocaleString('en-CA')} - $${rangeEnd.toLocaleString('en-CA')}`
                                   }
                                 </td>
-                                <td>{(bracket.rate * 100).toFixed(1)}%</td>
+                                <td className="px-md py-sm border-b border-border text-text">{(bracket.rate * 100).toFixed(1)}%</td>
                               </tr>
                             )
                           })}
@@ -426,15 +427,15 @@ const TaxCalculator: FC = () => {
                       </table>
                     </div>
 
-                    <div className="tax-calculator__brackets-table-wrapper">
-                      <h3 className="tax-calculator__brackets-table-title">
+                    <div className="bg-white p-lg rounded-lg shadow-sm">
+                      <h3 className="text-lg font-semibold text-primary mb-md">
                         {provinces.find(p => p.code === inputs.province)?.name || 'Provincial'} tax bracket
                       </h3>
-                      <table className="tax-calculator__brackets-table">
+                      <table className="w-full border-collapse text-sm">
                         <thead>
-                          <tr>
-                            <th>{provinces.find(p => p.code === inputs.province)?.name || 'Provincial'} tax bracket</th>
-                            <th>{provinces.find(p => p.code === inputs.province)?.name || 'Provincial'} tax rate</th>
+                          <tr className="bg-background">
+                            <th className="px-md py-sm text-left font-semibold text-text border-b-2 border-border">{provinces.find(p => p.code === inputs.province)?.name || 'Provincial'} tax bracket</th>
+                            <th className="px-md py-sm text-left font-semibold text-text border-b-2 border-border">{provinces.find(p => p.code === inputs.province)?.name || 'Provincial'} tax rate</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -447,8 +448,8 @@ const TaxCalculator: FC = () => {
                               const rangeStart = prevBracket && prevBracket.upTo ? prevBracket.upTo + 1 : 0
                               const rangeEnd = bracket.upTo
                               return (
-                                <tr key={index}>
-                                  <td>
+                                <tr key={index} className="last:border-b-0">
+                                  <td className="px-md py-sm border-b border-border text-text">
                                     {rangeStart === 0 
                                       ? `$${rangeEnd?.toLocaleString('en-CA')} or less`
                                       : rangeEnd === null
@@ -456,7 +457,7 @@ const TaxCalculator: FC = () => {
                                       : `$${rangeStart.toLocaleString('en-CA')} - $${rangeEnd.toLocaleString('en-CA')}`
                                     }
                                   </td>
-                                  <td>{(bracket.rate * 100).toFixed(1)}%</td>
+                                  <td className="px-md py-sm border-b border-border text-text">{(bracket.rate * 100).toFixed(1)}%</td>
                                 </tr>
                               )
                             })
@@ -468,20 +469,21 @@ const TaxCalculator: FC = () => {
                 </div>
               )}
 
-              <div className="tax-calculator__disclaimer">
-                <p className="tax-calculator__disclaimer-text">
+              <div className="max-w-[1200px] mx-auto mt-xxl p-lg bg-background rounded-lg text-sm text-text-light leading-relaxed">
+                <p className="text-text font-semibold text-base mb-sm">Disclaimer</p>
+                <p className="mb-sm">
                   These calculations are approximate and include the following non-refundable tax credits: the basic personal tax amount. After-tax income is your total income net of federal tax and provincial/territorial tax. Rates are current as of January 2025.
                 </p>
-                <p className="tax-calculator__disclaimer-text">
-                  <strong>Estimates only.</strong> This calculator provides approximate tax estimates for planning purposes only. It does not include all deductions, credits, or tax situations. This is not tax advice. Final tax depends on your complete tax return, including all income sources, deductions, credits, and your specific tax situation.
+                <p className="mb-0">
+                  <strong className="text-text font-semibold">Estimates only.</strong> This calculator provides approximate tax estimates for planning purposes only. It does not include all deductions, credits, or tax situations. This is not tax advice. Final tax depends on your complete tax return, including all income sources, deductions, credits, and your specific tax situation.
                 </p>
               </div>
 
-              <div className="tax-calculator__cta">
-                <p className="tax-calculator__cta-text">
+              <div className="max-w-[1200px] mx-auto mt-xxl text-center p-xl bg-white rounded-xl shadow-sm">
+                <p className="text-lg text-text mb-lg">
                   Need help with your tax planning or filing? Our team can provide personalized advice.
                 </p>
-                <div className="tax-calculator__cta-buttons">
+                <div className="flex gap-md justify-center flex-wrap">
                   <button className="btn btn--secondary" onClick={scrollToContact}>
                     Request a Call
                   </button>

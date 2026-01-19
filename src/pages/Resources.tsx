@@ -10,15 +10,15 @@ const Resources: FC = () => {
         canonical="/resources"
       />
       <main>
-      <section className="section">
-        <div className="container">
-          <div className="section__header">
-            <h1 className="section__title">Resources</h1>
-            <p className="section__subtitle">
+      <section className="py-xxl">
+        <div className="max-w-[1200px] mx-auto px-md">
+          <div className="text-center mb-xl max-w-[800px] mx-auto">
+            <h1 className="mb-md">Resources</h1>
+            <p className="text-lg text-text-light">
               Helpful resources, tools, and guides for your business.
             </p>
           </div>
-          <div style={{ textAlign: 'center', padding: 'var(--spacing-xl) 0' }}>
+          <div className="text-center py-xl">
             <p>Resources content coming soon.</p>
           </div>
         </div>

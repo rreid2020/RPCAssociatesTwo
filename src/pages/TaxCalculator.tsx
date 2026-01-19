@@ -43,9 +43,21 @@ const TaxCalculator: FC = () => {
   }
 
   const parseNumber = (value: string): number => {
-    const parsed = parseFloat(value)
+    // Remove currency symbols, commas, and spaces
+    const cleaned = value.replace(/[$,\s]/g, '')
+    const parsed = parseFloat(cleaned)
     if (isNaN(parsed) || parsed < 0) return 0
     return parsed
+  }
+
+  const formatCurrencyInput = (amount: number): string => {
+    if (amount === 0) return ''
+    return new Intl.NumberFormat('en-CA', {
+      style: 'currency',
+      currency: 'CAD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(amount)
   }
 
   const handleInputChange = (field: keyof TaxCalculatorInputs, value: string | number) => {
@@ -171,14 +183,16 @@ const TaxCalculator: FC = () => {
                             <label htmlFor="employmentIncome" className="font-semibold text-text text-xs mb-1">Employment income (Line 10100)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Employment income and taxable benefits.</p>
                             <input
-                              type="number"
+                              type="text"
                               id="employmentIncome"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
-                              min="0"
-                              step="0.01"
-                              placeholder="0"
-                              value={inputs.employmentIncome || ''}
+                              placeholder="$0.00"
+                              value={formatCurrencyInput(inputs.employmentIncome)}
                               onChange={(e) => handleInputChange('employmentIncome', e.target.value)}
+                              onBlur={(e) => {
+                                const num = parseNumber(e.target.value)
+                                setInputs(prev => ({ ...prev, employmentIncome: num }))
+                              }}
                             />
                           </div>
 
@@ -186,14 +200,16 @@ const TaxCalculator: FC = () => {
                             <label htmlFor="interestAndInvestmentIncome" className="font-semibold text-text text-xs mb-1">Interest and investment income (Line 12100)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Interest, dividends from foreign sources, and other investment income.</p>
                             <input
-                              type="number"
+                              type="text"
                               id="interestAndInvestmentIncome"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
-                              min="0"
-                              step="0.01"
-                              placeholder="0"
-                              value={inputs.interestAndInvestmentIncome || ''}
+                              placeholder="$0.00"
+                              value={formatCurrencyInput(inputs.interestAndInvestmentIncome)}
                               onChange={(e) => handleInputChange('interestAndInvestmentIncome', e.target.value)}
+                              onBlur={(e) => {
+                                const num = parseNumber(e.target.value)
+                                setInputs(prev => ({ ...prev, interestAndInvestmentIncome: num }))
+                              }}
                             />
                           </div>
 
@@ -201,14 +217,16 @@ const TaxCalculator: FC = () => {
                             <label htmlFor="selfEmploymentIncome" className="font-semibold text-text text-xs mb-1">Net business income (Line 13500)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Business, professional, commission, partnership, fishing, and farming income.</p>
                             <input
-                              type="number"
+                              type="text"
                               id="selfEmploymentIncome"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
-                              min="0"
-                              step="0.01"
-                              placeholder="0"
-                              value={inputs.selfEmploymentIncome || ''}
+                              placeholder="$0.00"
+                              value={formatCurrencyInput(inputs.selfEmploymentIncome)}
                               onChange={(e) => handleInputChange('selfEmploymentIncome', e.target.value)}
+                              onBlur={(e) => {
+                                const num = parseNumber(e.target.value)
+                                setInputs(prev => ({ ...prev, selfEmploymentIncome: num }))
+                              }}
                             />
                           </div>
 
@@ -216,14 +234,16 @@ const TaxCalculator: FC = () => {
                             <label htmlFor="capitalGains" className="font-semibold text-text text-xs mb-1">Capital gains</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Half of this amount is included in income.</p>
                             <input
-                              type="number"
+                              type="text"
                               id="capitalGains"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
-                              min="0"
-                              step="0.01"
-                              placeholder="0"
-                              value={inputs.capitalGains || ''}
+                              placeholder="$0.00"
+                              value={formatCurrencyInput(inputs.capitalGains)}
                               onChange={(e) => handleInputChange('capitalGains', e.target.value)}
+                              onBlur={(e) => {
+                                const num = parseNumber(e.target.value)
+                                setInputs(prev => ({ ...prev, capitalGains: num }))
+                              }}
                             />
                           </div>
 
@@ -231,14 +251,16 @@ const TaxCalculator: FC = () => {
                             <label htmlFor="eligibleDividends" className="font-semibold text-text text-xs mb-1">Eligible dividends</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Dividends from public Canadian companies. Enter the actual amount received.</p>
                             <input
-                              type="number"
+                              type="text"
                               id="eligibleDividends"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
-                              min="0"
-                              step="0.01"
-                              placeholder="0"
-                              value={inputs.eligibleDividends || ''}
+                              placeholder="$0.00"
+                              value={formatCurrencyInput(inputs.eligibleDividends)}
                               onChange={(e) => handleInputChange('eligibleDividends', e.target.value)}
+                              onBlur={(e) => {
+                                const num = parseNumber(e.target.value)
+                                setInputs(prev => ({ ...prev, eligibleDividends: num }))
+                              }}
                             />
                           </div>
 
@@ -246,14 +268,16 @@ const TaxCalculator: FC = () => {
                             <label htmlFor="ineligibleDividends" className="font-semibold text-text text-xs mb-1">Ineligible dividends</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Dividends from private Canadian companies. Enter the actual amount received.</p>
                             <input
-                              type="number"
+                              type="text"
                               id="ineligibleDividends"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
-                              min="0"
-                              step="0.01"
-                              placeholder="0"
-                              value={inputs.ineligibleDividends || ''}
+                              placeholder="$0.00"
+                              value={formatCurrencyInput(inputs.ineligibleDividends)}
                               onChange={(e) => handleInputChange('ineligibleDividends', e.target.value)}
+                              onBlur={(e) => {
+                                const num = parseNumber(e.target.value)
+                                setInputs(prev => ({ ...prev, ineligibleDividends: num }))
+                              }}
                             />
                           </div>
 
@@ -261,14 +285,16 @@ const TaxCalculator: FC = () => {
                             <label htmlFor="otherIncome" className="font-semibold text-text text-xs mb-1">Other income</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Rental income, tips, EI, CPP, OAS, and other income sources.</p>
                             <input
-                              type="number"
+                              type="text"
                               id="otherIncome"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
-                              min="0"
-                              step="0.01"
-                              placeholder="0"
-                              value={inputs.otherIncome || ''}
+                              placeholder="$0.00"
+                              value={formatCurrencyInput(inputs.otherIncome)}
                               onChange={(e) => handleInputChange('otherIncome', e.target.value)}
+                              onBlur={(e) => {
+                                const num = parseNumber(e.target.value)
+                                setInputs(prev => ({ ...prev, otherIncome: num }))
+                              }}
                             />
                           </div>
                         </div>
@@ -281,14 +307,16 @@ const TaxCalculator: FC = () => {
                             <label htmlFor="rrspContributions" className="font-semibold text-text text-xs mb-1">RRSP deduction (Line 20800)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">RRSP contributions subject to annual limits.</p>
                             <input
-                              type="number"
+                              type="text"
                               id="rrspContributions"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
-                              min="0"
-                              step="0.01"
-                              placeholder="0"
-                              value={inputs.rrspContributions || ''}
+                              placeholder="$0.00"
+                              value={formatCurrencyInput(inputs.rrspContributions)}
                               onChange={(e) => handleInputChange('rrspContributions', e.target.value)}
+                              onBlur={(e) => {
+                                const num = parseNumber(e.target.value)
+                                setInputs(prev => ({ ...prev, rrspContributions: num }))
+                              }}
                             />
                           </div>
 
@@ -296,14 +324,16 @@ const TaxCalculator: FC = () => {
                             <label htmlFor="fhsaContributions" className="font-semibold text-text text-xs mb-1">FHSA deduction (Line 20805)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">First Home Savings Account contributions.</p>
                             <input
-                              type="number"
+                              type="text"
                               id="fhsaContributions"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
-                              min="0"
-                              step="0.01"
-                              placeholder="0"
-                              value={inputs.fhsaContributions || ''}
+                              placeholder="$0.00"
+                              value={formatCurrencyInput(inputs.fhsaContributions)}
                               onChange={(e) => handleInputChange('fhsaContributions', e.target.value)}
+                              onBlur={(e) => {
+                                const num = parseNumber(e.target.value)
+                                setInputs(prev => ({ ...prev, fhsaContributions: num }))
+                              }}
                             />
                           </div>
                         </div>
@@ -316,14 +346,16 @@ const TaxCalculator: FC = () => {
                             <label htmlFor="cppContributions" className="font-semibold text-text text-xs mb-1">CPP contributions (Line 30800)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">CPP or QPP contributions through employment.</p>
                             <input
-                              type="number"
+                              type="text"
                               id="cppContributions"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
-                              min="0"
-                              step="0.01"
-                              placeholder="0"
-                              value={inputs.cppContributions || ''}
+                              placeholder="$0.00"
+                              value={formatCurrencyInput(inputs.cppContributions)}
                               onChange={(e) => handleInputChange('cppContributions', e.target.value)}
+                              onBlur={(e) => {
+                                const num = parseNumber(e.target.value)
+                                setInputs(prev => ({ ...prev, cppContributions: num }))
+                              }}
                             />
                           </div>
 
@@ -331,14 +363,16 @@ const TaxCalculator: FC = () => {
                             <label htmlFor="donations" className="font-semibold text-text text-xs mb-1">Donations and gifts (Schedule 9)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Charitable donations and gifts.</p>
                             <input
-                              type="number"
+                              type="text"
                               id="donations"
                               className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
-                              min="0"
-                              step="0.01"
-                              placeholder="0"
-                              value={inputs.donations || ''}
+                              placeholder="$0.00"
+                              value={formatCurrencyInput(inputs.donations)}
                               onChange={(e) => handleInputChange('donations', e.target.value)}
+                              onBlur={(e) => {
+                                const num = parseNumber(e.target.value)
+                                setInputs(prev => ({ ...prev, donations: num }))
+                              }}
                             />
                           </div>
                         </div>
@@ -349,16 +383,18 @@ const TaxCalculator: FC = () => {
                         <div className="flex flex-col gap-1">
                           <label htmlFor="incomeTaxesPaid" className="font-semibold text-text text-xs mb-1">Income taxes paid (Line 43700)</label>
                           <p className="text-xs text-text-light m-0 leading-snug mb-1">Taxes deducted from paycheque. Don't include CPP/EI contributions.</p>
-                          <input
-                            type="number"
-                            id="incomeTaxesPaid"
-                            className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
-                            min="0"
-                            step="0.01"
-                            placeholder="0"
-                            value={inputs.incomeTaxesPaid || ''}
-                            onChange={(e) => handleInputChange('incomeTaxesPaid', e.target.value)}
-                          />
+                            <input
+                              type="text"
+                              id="incomeTaxesPaid"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
+                              placeholder="$0.00"
+                              value={formatCurrencyInput(inputs.incomeTaxesPaid)}
+                              onChange={(e) => handleInputChange('incomeTaxesPaid', e.target.value)}
+                              onBlur={(e) => {
+                                const num = parseNumber(e.target.value)
+                                setInputs(prev => ({ ...prev, incomeTaxesPaid: num }))
+                              }}
+                            />
                         </div>
                       </div>
 
@@ -660,6 +696,460 @@ const TaxCalculator: FC = () => {
               </div>
 
               {/* Detailed breakdown now shown in right column above */}
+
+              {hasCalculated && results && results.detailedBreakdown && (
+                <div className="max-w-[1200px] mx-auto mt-xxl pt-xxl border-t border-border">
+                  <h2 className="text-3xl lg:text-4xl font-bold text-primary mb-md text-center">
+                    Marginal Tax Calculation Tables
+                  </h2>
+                  
+                  {/* Federal Tax Calculation Table */}
+                  <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
+                    <h3 className="text-2xl font-semibold text-primary mb-md">Part A - Federal tax on taxable income</h3>
+                    <p className="text-sm text-text-light mb-md">Use the amount from line 26000 to complete the appropriate column below.</p>
+                    
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-[#e8f5e9]">
+                            <th className="px-2 py-2 text-left font-semibold text-text border border-[#d0d0d0]">Line</th>
+                            {federalData2025.brackets.map((bracket, index) => {
+                              const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
+                              const rangeStart = prevBracket && prevBracket.upTo ? prevBracket.upTo + 1 : 0
+                              const rangeEnd = bracket.upTo
+                              const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
+                              const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
+                                             (bracket.upTo === null || taxableIncome <= bracket.upTo)
+                              
+                              return (
+                                <th 
+                                  key={index} 
+                                  className={`px-2 py-2 text-left font-semibold text-text border border-[#d0d0d0] ${
+                                    isActive ? 'bg-[#fff9c4]' : ''
+                                  }`}
+                                >
+                                  {index === 0 
+                                    ? `Line 26000 is $${(rangeEnd || 0).toLocaleString('en-CA')} or less`
+                                    : bracket.upTo === null
+                                    ? `Line 26000 is more than $${rangeStart.toLocaleString('en-CA')}`
+                                    : `Line 26000 is more than $${rangeStart.toLocaleString('en-CA')} but not more than ${(rangeEnd || 0).toLocaleString('en-CA')}`
+                                  }
+                                </th>
+                              )
+                            })}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {/* Line 75: Amount from line 26000 */}
+                          <tr>
+                            <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">75</td>
+                            {federalData2025.brackets.map((bracket, index) => {
+                              const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
+                              const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
+                              const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
+                                             (bracket.upTo === null || taxableIncome <= bracket.upTo)
+                              return (
+                                <td 
+                                  key={index} 
+                                  className={`px-2 py-2 text-right border border-[#d0d0d0] ${
+                                    isActive ? 'bg-[#fff9c4] font-semibold' : ''
+                                  }`}
+                                >
+                                  {isActive ? formatCurrency(taxableIncome) : ''}
+                                </td>
+                              )
+                            })}
+                          </tr>
+                          
+                          {/* Line 76: Line 75 minus line 76 (threshold) */}
+                          <tr>
+                            <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">76</td>
+                            {federalData2025.brackets.map((bracket, index) => {
+                              const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
+                              const threshold = prevBracket?.upTo || 0
+                              const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
+                              const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
+                                             (bracket.upTo === null || taxableIncome <= bracket.upTo)
+                              return (
+                                <td 
+                                  key={index} 
+                                  className={`px-2 py-2 text-right border border-[#d0d0d0] ${
+                                    isActive ? 'bg-[#fff9c4]' : ''
+                                  }`}
+                                >
+                                  {formatCurrency(threshold)}
+                                </td>
+                              )
+                            })}
+                          </tr>
+                          
+                          {/* Line 77: Line 75 minus line 76 */}
+                          <tr>
+                            <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">77</td>
+                            {federalData2025.brackets.map((bracket, index) => {
+                              const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
+                              const threshold = prevBracket?.upTo || 0
+                              const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
+                              const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
+                                             (bracket.upTo === null || taxableIncome <= bracket.upTo)
+                              const line77Value = isActive ? Math.max(0, taxableIncome - threshold) : 0
+                              return (
+                                <td 
+                                  key={index} 
+                                  className={`px-2 py-2 text-right border border-[#d0d0d0] ${
+                                    isActive ? 'bg-[#fff9c4] font-semibold' : ''
+                                  }`}
+                                >
+                                  {isActive ? formatCurrency(line77Value) : ''}
+                                </td>
+                              )
+                            })}
+                          </tr>
+                          
+                          {/* Line 78: Percentage rate */}
+                          <tr>
+                            <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">78</td>
+                            {federalData2025.brackets.map((bracket, index) => {
+                              const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
+                              const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
+                              const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
+                                             (bracket.upTo === null || taxableIncome <= bracket.upTo)
+                              return (
+                                <td 
+                                  key={index} 
+                                  className={`px-2 py-2 text-right border border-[#d0d0d0] ${
+                                    isActive ? 'bg-[#fff9c4]' : ''
+                                  }`}
+                                >
+                                  {(bracket.rate * 100).toFixed(1)}%
+                                </td>
+                              )
+                            })}
+                          </tr>
+                          
+                          {/* Line 79: Line 77 multiplied by percentage */}
+                          <tr>
+                            <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">79</td>
+                            {federalData2025.brackets.map((bracket, index) => {
+                              const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
+                              const threshold = prevBracket?.upTo || 0
+                              const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
+                              const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
+                                             (bracket.upTo === null || taxableIncome <= bracket.upTo)
+                              const line77Value = isActive ? Math.max(0, taxableIncome - threshold) : 0
+                              const line79Value = isActive ? line77Value * bracket.rate : 0
+                              return (
+                                <td 
+                                  key={index} 
+                                  className={`px-2 py-2 text-right border border-[#d0d0d0] ${
+                                    isActive ? 'bg-[#fff9c4] font-semibold' : ''
+                                  }`}
+                                >
+                                  {isActive ? formatCurrency(line79Value) : ''}
+                                </td>
+                              )
+                            })}
+                          </tr>
+                          
+                          {/* Line 80: Base tax amount */}
+                          <tr>
+                            <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">80</td>
+                            {federalData2025.brackets.map((bracket, index) => {
+                              const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
+                              const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
+                              const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
+                                             (bracket.upTo === null || taxableIncome <= bracket.upTo)
+                              // Calculate cumulative tax from previous brackets
+                              let baseTax = 0
+                              for (let i = 0; i < index; i++) {
+                                const prevB = i > 0 ? federalData2025.brackets[i - 1] : null
+                                const prevThreshold = prevB?.upTo || 0
+                                const bracketSize = federalData2025.brackets[i].upTo! - prevThreshold
+                                baseTax += bracketSize * federalData2025.brackets[i].rate
+                              }
+                              return (
+                                <td 
+                                  key={index} 
+                                  className={`px-2 py-2 text-right border border-[#d0d0d0] ${
+                                    isActive ? 'bg-[#fff9c4]' : ''
+                                  }`}
+                                >
+                                  {formatCurrency(baseTax)}
+                                </td>
+                              )
+                            })}
+                          </tr>
+                          
+                          {/* Line 81: Federal tax on taxable income */}
+                          <tr className="bg-[#e8f5e9]">
+                            <td className="px-2 py-2 text-text border border-[#d0d0d0] font-bold">81</td>
+                            {federalData2025.brackets.map((bracket, index) => {
+                              const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
+                              const threshold = prevBracket?.upTo || 0
+                              const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
+                              const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
+                                             (bracket.upTo === null || taxableIncome <= bracket.upTo)
+                              const line77Value = isActive ? Math.max(0, taxableIncome - threshold) : 0
+                              const line79Value = isActive ? line77Value * bracket.rate : 0
+                              // Calculate base tax
+                              let baseTax = 0
+                              for (let i = 0; i < index; i++) {
+                                const prevB = i > 0 ? federalData2025.brackets[i - 1] : null
+                                const prevThreshold = prevB?.upTo || 0
+                                const bracketSize = federalData2025.brackets[i].upTo! - prevThreshold
+                                baseTax += bracketSize * federalData2025.brackets[i].rate
+                              }
+                              const line81Value = isActive ? line79Value + baseTax : 0
+                              return (
+                                <td 
+                                  key={index} 
+                                  className={`px-2 py-2 text-right border border-[#d0d0d0] font-bold ${
+                                    isActive ? 'bg-[#fff9c4]' : ''
+                                  }`}
+                                >
+                                  {isActive ? formatCurrency(line81Value) : ''}
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="text-xs text-text-light mt-md italic">Enter the amount from line 81 on line 124 and continue at line 82.</p>
+                  </div>
+
+                  {/* Provincial Tax Calculation Table */}
+                  {(() => {
+                    const provincesData = provincesData2025 as any
+                    const provincialData = provincesData[inputs.province]
+                    if (!provincialData) return null
+                    
+                    return (
+                      <div className="bg-white p-lg rounded-xl shadow-sm">
+                        <h3 className="text-2xl font-semibold text-primary mb-md">Part A - {provinces.find(p => p.code === inputs.province)?.name || 'Provincial'} tax on taxable income</h3>
+                        <p className="text-sm text-text-light mb-md">Enter your taxable income from line 26000 of your return.</p>
+                        <p className="text-sm text-text-light mb-md">Use the amount from line 1 to complete the appropriate column below.</p>
+                        
+                        <div className="mb-md">
+                          <div className="flex justify-between items-center py-2 border-b border-[#d0d0d0]">
+                            <span className="font-semibold text-text">1</span>
+                            <span className="font-semibold text-primary">{formatCurrency(results.detailedBreakdown?.taxableIncome || 0)}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="overflow-x-auto">
+                          <table className="w-full border-collapse text-xs">
+                            <thead>
+                              <tr className="bg-[#e8f5e9]">
+                                <th className="px-2 py-2 text-left font-semibold text-text border border-[#d0d0d0]">Line</th>
+                                {provincialData.brackets.map((bracket: any, index: number) => {
+                                  const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
+                                  const rangeStart = prevBracket && prevBracket.upTo ? prevBracket.upTo + 1 : 0
+                                  const rangeEnd = bracket.upTo
+                                  const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
+                                  const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
+                                                 (bracket.upTo === null || taxableIncome <= bracket.upTo)
+                                  
+                                  return (
+                                    <th 
+                                      key={index} 
+                                      className={`px-2 py-2 text-left font-semibold text-text border border-[#d0d0d0] ${
+                                        isActive ? 'bg-[#fff9c4]' : ''
+                                      }`}
+                                    >
+                                      {index === 0 
+                                        ? `Line 1 is $${(rangeEnd || 0).toLocaleString('en-CA')} or less`
+                                        : bracket.upTo === null
+                                        ? `Line 1 is more than $${rangeStart.toLocaleString('en-CA')}`
+                                        : `Line 1 is more than $${rangeStart.toLocaleString('en-CA')} but not more than $${(rangeEnd || 0).toLocaleString('en-CA')}`
+                                      }
+                                    </th>
+                                  )
+                                })}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {/* Line 2: Amount from line 1 */}
+                              <tr>
+                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">2</td>
+                                {provincialData.brackets.map((bracket: any, index: number) => {
+                                  const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
+                                  const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
+                                  const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
+                                                 (bracket.upTo === null || taxableIncome <= bracket.upTo)
+                                  return (
+                                    <td 
+                                      key={index} 
+                                      className={`px-2 py-2 text-right border border-[#d0d0d0] ${
+                                        isActive ? 'bg-[#fff9c4] font-semibold' : ''
+                                      }`}
+                                    >
+                                      {isActive ? formatCurrency(taxableIncome) : ''}
+                                    </td>
+                                  )
+                                })}
+                              </tr>
+                              
+                              {/* Line 3: Threshold */}
+                              <tr>
+                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">3</td>
+                                {provincialData.brackets.map((bracket: any, index: number) => {
+                                  const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
+                                  const threshold = prevBracket?.upTo || 0
+                                  const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
+                                  const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
+                                                 (bracket.upTo === null || taxableIncome <= bracket.upTo)
+                                  return (
+                                    <td 
+                                      key={index} 
+                                      className={`px-2 py-2 text-right border border-[#d0d0d0] ${
+                                        isActive ? 'bg-[#fff9c4]' : ''
+                                      }`}
+                                    >
+                                      {formatCurrency(threshold)}
+                                    </td>
+                                  )
+                                })}
+                              </tr>
+                              
+                              {/* Line 4: Line 2 minus line 3 */}
+                              <tr>
+                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">4</td>
+                                {provincialData.brackets.map((bracket: any, index: number) => {
+                                  const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
+                                  const threshold = prevBracket?.upTo || 0
+                                  const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
+                                  const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
+                                                 (bracket.upTo === null || taxableIncome <= bracket.upTo)
+                                  const line4Value = isActive ? Math.max(0, taxableIncome - threshold) : 0
+                                  return (
+                                    <td 
+                                      key={index} 
+                                      className={`px-2 py-2 text-right border border-[#d0d0d0] ${
+                                        isActive ? 'bg-[#fff9c4] font-semibold' : ''
+                                      }`}
+                                    >
+                                      {isActive ? formatCurrency(line4Value) : ''}
+                                    </td>
+                                  )
+                                })}
+                              </tr>
+                              
+                              {/* Line 5: Percentage rate */}
+                              <tr>
+                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">5</td>
+                                {provincialData.brackets.map((bracket: any, index: number) => {
+                                  const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
+                                  const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
+                                  const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
+                                                 (bracket.upTo === null || taxableIncome <= bracket.upTo)
+                                  return (
+                                    <td 
+                                      key={index} 
+                                      className={`px-2 py-2 text-right border border-[#d0d0d0] ${
+                                        isActive ? 'bg-[#fff9c4]' : ''
+                                      }`}
+                                    >
+                                      {(bracket.rate * 100).toFixed(2)}%
+                                    </td>
+                                  )
+                                })}
+                              </tr>
+                              
+                              {/* Line 6: Line 4 multiplied by percentage */}
+                              <tr>
+                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">6</td>
+                                {provincialData.brackets.map((bracket: any, index: number) => {
+                                  const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
+                                  const threshold = prevBracket?.upTo || 0
+                                  const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
+                                  const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
+                                                 (bracket.upTo === null || taxableIncome <= bracket.upTo)
+                                  const line4Value = isActive ? Math.max(0, taxableIncome - threshold) : 0
+                                  const line6Value = isActive ? line4Value * bracket.rate : 0
+                                  return (
+                                    <td 
+                                      key={index} 
+                                      className={`px-2 py-2 text-right border border-[#d0d0d0] ${
+                                        isActive ? 'bg-[#fff9c4] font-semibold' : ''
+                                      }`}
+                                    >
+                                      {isActive ? formatCurrency(line6Value) : ''}
+                                    </td>
+                                  )
+                                })}
+                              </tr>
+                              
+                              {/* Line 7: Base tax amount */}
+                              <tr>
+                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">7</td>
+                                {provincialData.brackets.map((bracket: any, index: number) => {
+                                  const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
+                                  const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
+                                  const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
+                                                 (bracket.upTo === null || taxableIncome <= bracket.upTo)
+                                  // Calculate cumulative tax from previous brackets
+                                  let baseTax = 0
+                                  for (let i = 0; i < index; i++) {
+                                    const prevB = i > 0 ? provincialData.brackets[i - 1] : null
+                                    const prevThreshold = prevB?.upTo || 0
+                                    const bracketSize = provincialData.brackets[i].upTo! - prevThreshold
+                                    baseTax += bracketSize * provincialData.brackets[i].rate
+                                  }
+                                  return (
+                                    <td 
+                                      key={index} 
+                                      className={`px-2 py-2 text-right border border-[#d0d0d0] ${
+                                        isActive ? 'bg-[#fff9c4]' : ''
+                                      }`}
+                                    >
+                                      {formatCurrency(baseTax)}
+                                    </td>
+                                  )
+                                })}
+                              </tr>
+                              
+                              {/* Line 8: Provincial tax on taxable income */}
+                              <tr className="bg-[#e8f5e9]">
+                                <td className="px-2 py-2 text-text border border-[#d0d0d0] font-bold">8</td>
+                                {provincialData.brackets.map((bracket: any, index: number) => {
+                                  const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
+                                  const threshold = prevBracket?.upTo || 0
+                                  const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
+                                  const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
+                                                 (bracket.upTo === null || taxableIncome <= bracket.upTo)
+                                  const line4Value = isActive ? Math.max(0, taxableIncome - threshold) : 0
+                                  const line6Value = isActive ? line4Value * bracket.rate : 0
+                                  // Calculate base tax
+                                  let baseTax = 0
+                                  for (let i = 0; i < index; i++) {
+                                    const prevB = i > 0 ? provincialData.brackets[i - 1] : null
+                                    const prevThreshold = prevB?.upTo || 0
+                                    const bracketSize = provincialData.brackets[i].upTo! - prevThreshold
+                                    baseTax += bracketSize * provincialData.brackets[i].rate
+                                  }
+                                  const line8Value = isActive ? line6Value + baseTax : 0
+                                  return (
+                                    <td 
+                                      key={index} 
+                                      className={`px-2 py-2 text-right border border-[#d0d0d0] font-bold ${
+                                        isActive ? 'bg-[#fff9c4]' : ''
+                                      }`}
+                                    >
+                                      {isActive ? formatCurrency(line8Value) : ''}
+                                    </td>
+                                  )
+                                })}
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                        <p className="text-xs text-text-light mt-md italic">Enter the amount from line 8 on line 51 and continue at line 9.</p>
+                      </div>
+                    )
+                  })()}
+                </div>
+              )}
 
               {hasCalculated && results && (
                 <div className="max-w-[1200px] mx-auto mt-xxl pt-xxl border-t border-border">

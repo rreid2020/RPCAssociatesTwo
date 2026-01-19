@@ -1036,7 +1036,7 @@ const TaxCalculator: FC = () => {
                               <tr>
                                 <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
                                   <div>3</div>
-                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 3</div>
+                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 2 minus line 3 (cannot be negative)</div>
                                 </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
@@ -1087,7 +1087,7 @@ const TaxCalculator: FC = () => {
                               <tr>
                                 <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
                                   <div>5</div>
-                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 5</div>
+                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 4 multiplied by the percentage from line 5</div>
                                 </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null
@@ -1146,6 +1146,7 @@ const TaxCalculator: FC = () => {
                                   const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
                                                  (bracket.upTo === null || taxableIncome <= bracket.upTo)
                                   // Calculate cumulative tax from previous brackets (each bracket filled completely)
+                                  // This is the base tax that applies to this bracket - show for ALL columns
                                   let baseTax = 0
                                   for (let i = 0; i < index; i++) {
                                     const prevB = i > 0 ? provincialData.brackets[i - 1] : null

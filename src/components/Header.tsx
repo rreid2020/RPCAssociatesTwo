@@ -172,7 +172,7 @@ const Header: FC = () => {
             <li>
               <Link 
                 to="/client-portal" 
-                className="text-primary font-semibold border border-primary px-3 py-1.5 rounded-lg transition-all hover:bg-primary hover:text-white whitespace-nowrap"
+                className="btn btn--secondary whitespace-nowrap"
                 onClick={handleNavClick}
               >
                 Client Portal
@@ -181,12 +181,12 @@ const Header: FC = () => {
           </ul>
           <div className="flex gap-sm items-center ml-xs lg:flex hidden lg:flex">
             <button 
-              className="btn btn--secondary"
+              className="btn btn--secondary whitespace-nowrap"
               onClick={handleContactClick}
             >
               Request a Call
             </button>
-            <CalendlyButton />
+            <CalendlyButton className="btn btn--primary whitespace-nowrap" />
           </div>
         </nav>
         <button 

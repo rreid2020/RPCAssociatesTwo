@@ -9,18 +9,24 @@ const Articles: FC = () => {
   const [articles, setArticles] = useState<SanityArticle[]>([])
   const [categories, setCategories] = useState<SanityCategory[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [hasMore, setHasMore] = useState(true)
+  const [currentLimit, setCurrentLimit] = useState(6) // Start with 6 articles
+  const ARTICLES_PER_PAGE = 6 // Load 6 more articles each time
 
   useEffect(() => {
     async function fetchData() {
       try {
         setLoading(true)
         const [articlesData, categoriesData] = await Promise.all([
-          getArticles({ limit: 12 }),
+          getArticles({ limit: currentLimit }),
           getCategories()
         ])
         setArticles(articlesData)
         setCategories(categoriesData)
+        // Check if we got fewer articles than requested (no more to load)
+        setHasMore(articlesData.length >= currentLimit)
         setError(null)
       } catch (err: any) {
         const errorMessage = err?.message || 'Unknown error'
@@ -37,7 +43,26 @@ const Articles: FC = () => {
       }
     }
     fetchData()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only run on initial mount
+
+  const handleLoadMore = async () => {
+    try {
+      setLoadingMore(true)
+      const newLimit = currentLimit + ARTICLES_PER_PAGE
+      const newArticles = await getArticles({ limit: newLimit })
+      
+      setArticles(newArticles)
+      setCurrentLimit(newLimit)
+      // Check if we got fewer articles than requested (no more to load)
+      setHasMore(newArticles.length >= newLimit)
+    } catch (err: any) {
+      console.error('Error loading more articles:', err)
+      setError('Failed to load more articles. Please try again.')
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   return (
     <>
@@ -100,11 +125,40 @@ const Articles: FC = () => {
                     <p>No articles found. Check back soon for new content!</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg mt-lg">
-                    {articles.map((article) => (
-                      <ArticleCard key={article._id} article={article} />
-                    ))}
-                  </div>
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg mt-lg">
+                      {articles.map((article) => (
+                        <ArticleCard key={article._id} article={article} />
+                      ))}
+                    </div>
+                    
+                    {hasMore && (
+                      <div className="text-center mt-xl">
+                        <button
+                          onClick={handleLoadMore}
+                          disabled={loadingMore}
+                          className="btn btn--primary px-xl py-md text-base font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          {loadingMore ? (
+                            <span className="flex items-center gap-sm">
+                              <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                              Loading...
+                            </span>
+                          ) : (
+                            'Load More Articles'
+                          )}
+                        </button>
+                      </div>
+                    )}
+                    
+                    {!hasMore && articles.length > 0 && (
+                      <div className="text-center mt-xl pt-md border-t border-border">
+                        <p className="text-text-light text-sm">
+                          You've reached the end. Check back soon for new articles!
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}

@@ -1036,7 +1036,7 @@ const TaxCalculator: FC = () => {
                               <tr>
                                 <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
                                   <div>3</div>
-                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 2 minus line 3 (cannot be negative)</div>
+                                  <div className="text-xs text-text-light font-normal mt-0.5">Line 3</div>
                                 </td>
                                 {provincialData.brackets.map((bracket: any, index: number) => {
                                   const prevBracket = index > 0 ? provincialData.brackets[index - 1] : null

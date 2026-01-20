@@ -1005,22 +1005,48 @@ const TaxCalculator: FC = () => {
                   </p>
                   
                   <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
-                    <h3 className="text-2xl font-semibold text-primary mb-md">Lines 12000 and 12010 – Taxable amount of dividends</h3>
+                    <h3 className="text-2xl font-semibold text-primary mb-md">Lines 12000 and 12010 – Taxable amount of dividends from taxable Canadian corporations</h3>
+                    <p className="text-sm text-text-light mb-md">Special rules apply for income from property (including shares) that one family member lends or transfers to another. For more information, about loans and transfers of property, go to canada.ca/line-12000.</p>
+                    <p className="text-sm text-text-light mb-md">You may be able to claim a dividend tax credit for dividends you received from taxable Canadian corporations. See line 40425 of this worksheet.</p>
+                    
                     <div className="space-y-md">
                       <div className="bg-[#f8f8f8] p-md rounded-lg">
                         <h4 className="text-sm font-semibold text-primary mb-xs">Taxable amount of dividends (other than eligible)</h4>
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
-                            <span className="text-text">Actual amount of ineligible dividends received</span>
-                            <span className="font-semibold text-text">{formatCurrency(inputs.ineligibleDividends)}</span>
+                            <span className="text-text">Box 32 of all T3 slips</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                              <span className="text-text">1</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
-                            <span className="text-text">Applicable rate</span>
-                            <span className="font-semibold text-text">× 115%</span>
+                            <span className="text-text">Box 25 of all T4PS slips</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                              <span className="text-text">2</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Box 11 of all T5 slips</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                              <span className="text-text">3</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Box 130 of all T5013 slips</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                              <span className="text-text">4</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
-                            <span className="text-text font-semibold">Line 12010</span>
-                            <span className="font-bold text-primary">{formatCurrency(inputs.ineligibleDividends * 1.15)}</span>
+                            <span className="text-text font-semibold">Add lines 1 to 4. Enter this amount on line 12010 of your return.</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-primary">{formatCurrency(inputs.ineligibleDividends * 1.15)}</span>
+                              <span className="text-text font-semibold">5</span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1029,24 +1055,98 @@ const TaxCalculator: FC = () => {
                         <h4 className="text-sm font-semibold text-primary mb-xs">Taxable amount of dividends (eligible and other than eligible)</h4>
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Boxes 32 and 50 of all T3 slips</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                              <span className="text-text">6</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Boxes 25 and 31 of all T4PS slips</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                              <span className="text-text">7</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Boxes 11 and 25 of all T5 slips</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                              <span className="text-text">8</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Boxes 130 and 133 of all T5013 slips</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                              <span className="text-text">9</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
+                            <span className="text-text font-semibold">Add lines 6 to 9. Enter this amount on line 12000 of your return.</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-primary">{formatCurrency((inputs.eligibleDividends * 1.38) + (inputs.ineligibleDividends * 1.15))}</span>
+                              <span className="text-text font-semibold">10</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-[#f8f8f8] p-md rounded-lg">
+                        <h4 className="text-sm font-semibold text-primary mb-xs">Taxable amount of dividends if you did not receive an information slip</h4>
+                        <div className="space-y-1 text-xs">
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                             <span className="text-text">Actual amount of eligible dividends received</span>
-                            <span className="font-semibold text-text">{formatCurrency(inputs.eligibleDividends)}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(inputs.eligibleDividends)}</span>
+                              <span className="text-text">11</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                             <span className="text-text">Applicable rate</span>
-                            <span className="font-semibold text-text">× 138%</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">× 138%</span>
+                              <span className="text-text">12</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
-                            <span className="text-text">Eligible dividends grossed up</span>
-                            <span className="font-semibold text-text">{formatCurrency(inputs.eligibleDividends * 1.38)}</span>
+                            <span className="text-text">Line 11 multiplied by the percentage from line 12</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(inputs.eligibleDividends * 1.38)}</span>
+                              <span className="text-text">13</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
-                            <span className="text-text">Line 12010 (from above)</span>
-                            <span className="font-semibold text-text">{formatCurrency(inputs.ineligibleDividends * 1.15)}</span>
+                            <span className="text-text">Actual amount of dividends other than eligible dividends received</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(inputs.ineligibleDividends)}</span>
+                              <span className="text-text">14</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Applicable rate</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">× 115%</span>
+                              <span className="text-text">15</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Line 14 multiplied by the percentage from line 15</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(inputs.ineligibleDividends * 1.15)}</span>
+                              <span className="text-text">16</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text text-italic">Include this amount on line 12010 of your return.</span>
+                            <span className="text-text"></span>
                           </div>
                           <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
-                            <span className="text-text font-semibold">Line 12000</span>
-                            <span className="font-bold text-primary">{formatCurrency((inputs.eligibleDividends * 1.38) + (inputs.ineligibleDividends * 1.15))}</span>
+                            <span className="text-text font-semibold">Line 13 plus line 16. Include this amount on line 12000 of your return.</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-primary">{formatCurrency((inputs.eligibleDividends * 1.38) + (inputs.ineligibleDividends * 1.15))}</span>
+                              <span className="text-text font-semibold">17</span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1059,47 +1159,80 @@ const TaxCalculator: FC = () => {
                       <div className="space-y-1 text-xs">
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Box 25 of all T3 slips</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">1</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Boxes 13, 14, 15, and 30 of all T5 slips</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">2</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Boxes 128, 135, and 146 of all T5013 slips</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">3</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Amounts credited to you that you did not receive (such as reinvestments)</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">4</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
-                          <span className="text-text">Interest on any tax refund you received in 2025</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <span className="text-text">Interest on any tax refund you received in 2025 as shown on your notice of assessment or reassessment</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">5</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Income from foreign sources, including foreign dividends, in Canadian dollars</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">6</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
-                          <span className="text-text">Interest or income earned from bank accounts, term deposits, GICs, and other similar investments</span>
-                          <span className="font-semibold text-text">{formatCurrency(inputs.interestAndInvestmentIncome)}</span>
+                          <span className="text-text">Interest or income earned from bank accounts, term deposits, guaranteed investment certificates (GICs), and other similar investments, treasury bills or life insurance policies not reported on any information slip</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(inputs.interestAndInvestmentIncome)}</span>
+                            <span className="text-text">7</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Royalties not included on line 10400 or line 13500 of your return</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">8</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Add lines 1 to 8</span>
-                          <span className="font-semibold text-text">{formatCurrency(inputs.interestAndInvestmentIncome)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(inputs.interestAndInvestmentIncome)}</span>
+                            <span className="text-text">9</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Interest and other investment income, included on line 9, received and reported in previous years</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">10</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
-                          <span className="text-text font-semibold">Line 12100</span>
-                          <span className="font-bold text-primary">{formatCurrency(inputs.interestAndInvestmentIncome)}</span>
+                          <span className="text-text font-semibold">Line 9 minus line 10. Enter this amount on line 12100 of your return.</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-primary">{formatCurrency(inputs.interestAndInvestmentIncome)}</span>
+                            <span className="text-text font-semibold">11</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1111,19 +1244,31 @@ const TaxCalculator: FC = () => {
                       <div className="space-y-1 text-xs">
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Total carrying charges</span>
-                          <span className="font-semibold text-text">{formatCurrency(inputs.carryingCharges || 0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(inputs.carryingCharges || 0)}</span>
+                            <span className="text-text">1</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Total interest expenses</span>
-                          <span className="font-semibold text-text">{formatCurrency(inputs.interestExpenses || 0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(inputs.interestExpenses || 0)}</span>
+                            <span className="text-text">2</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Total other expenses</span>
-                          <span className="font-semibold text-text">{formatCurrency(inputs.otherExpenses || 0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(inputs.otherExpenses || 0)}</span>
+                            <span className="text-text">3</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
-                          <span className="text-text font-semibold">Line 22100</span>
-                          <span className="font-bold text-primary">{formatCurrency((inputs.carryingCharges || 0) + (inputs.interestExpenses || 0) + (inputs.otherExpenses || 0))}</span>
+                          <span className="text-text font-semibold">Add lines 1 to 3. Enter this amount on line 22100 of your return.</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-primary">{formatCurrency((inputs.carryingCharges || 0) + (inputs.interestExpenses || 0) + (inputs.otherExpenses || 0))}</span>
+                            <span className="text-text font-semibold">4</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1151,43 +1296,73 @@ const TaxCalculator: FC = () => {
                       <div className="space-y-1 text-xs">
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Amount from line 23400 of your return (if negative, enter "0")</span>
-                          <span className="font-semibold text-text">{formatCurrency(Math.max(0, results.detailedBreakdown.netIncome.netIncomeBeforeAdjustments))}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(Math.max(0, results.detailedBreakdown.netIncome.netIncomeBeforeAdjustments))}</span>
+                            <span className="text-text">1</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Amount from line 11700 of your return</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">2</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Amount from line 12500 of your return</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">3</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Line 2 plus line 3</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">4</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Line 1 minus line 4</span>
-                          <span className="font-semibold text-text">{formatCurrency(Math.max(0, results.detailedBreakdown.netIncome.netIncomeBeforeAdjustments))}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(Math.max(0, results.detailedBreakdown.netIncome.netIncomeBeforeAdjustments))}</span>
+                            <span className="text-text">5</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Amount from line 21300 of your return</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">6</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">RDSP income repayment (included in the amount on line 23200 of your return)</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">7</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Line 6 plus line 7</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">8</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Line 5 plus line 8</span>
-                          <span className="font-semibold text-text">{formatCurrency(Math.max(0, results.detailedBreakdown.netIncome.netIncomeBeforeAdjustments))}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(Math.max(0, results.detailedBreakdown.netIncome.netIncomeBeforeAdjustments))}</span>
+                            <span className="text-text">9</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
-                          <span className="text-text font-semibold">Line 25000</span>
-                          <span className="font-bold text-primary">{formatCurrency(inputs.otherPaymentsDeduction || 0)}</span>
+                          <span className="text-text font-semibold">If the amount on line 9 is more than $93,454, go to canada.ca/line-25000 to find out how much you can deduct. Otherwise, enter the amount from line 14700 of your return on line 25000 of your return.</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-primary">{formatCurrency(inputs.otherPaymentsDeduction || 0)}</span>
+                            <span className="text-text font-semibold">Line 25000</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1195,35 +1370,62 @@ const TaxCalculator: FC = () => {
 
                   <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
                     <h3 className="text-2xl font-semibold text-primary mb-md">Line 30000 – Basic personal amount</h3>
+                    <p className="text-sm text-text-light mb-md">If the amount from line 23600 of your return is:</p>
+                    <ul className="text-sm text-text-light mb-md list-disc list-inside">
+                      <li>$177,882 or less, enter $16,129 on line 30000 of your return</li>
+                      <li>$253,414 or more, enter $14,538 on line 30000 of your return</li>
+                      <li>Otherwise, complete the calculation below.</li>
+                    </ul>
                     <div className="bg-[#f8f8f8] p-md rounded-lg">
                       <div className="space-y-1 text-xs">
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Base amount</span>
-                          <span className="font-semibold text-text">$14,538.00</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">$14,538.00</span>
+                            <span className="text-text">1</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Supplement amount</span>
-                          <span className="font-semibold text-text">$1,591.00</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">$1,591.00</span>
+                            <span className="text-text">2</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Amount from line 23600 of your return</span>
-                          <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.netIncome.netIncome)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.netIncome.netIncome)}</span>
+                            <span className="text-text">3</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Income threshold</span>
-                          <span className="font-semibold text-text">$177,882.00</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">$177,882.00</span>
+                            <span className="text-text">4</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Line 3 minus line 4</span>
-                          <span className="font-semibold text-text">{formatCurrency(Math.max(0, results.detailedBreakdown.netIncome.netIncome - 177882))}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(Math.max(0, results.detailedBreakdown.netIncome.netIncome - 177882))}</span>
+                            <span className="text-text">5</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">÷ 75,532.00</span>
-                          <span className="font-semibold text-text">{formatCurrency(Math.max(0, results.detailedBreakdown.netIncome.netIncome - 177882) / 75532)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(Math.max(0, results.detailedBreakdown.netIncome.netIncome - 177882) / 75532)}</span>
+                            <span className="text-text">6</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
                           <span className="text-text font-semibold">Line 30000</span>
-                          <span className="font-bold text-primary">{formatCurrency(results.detailedBreakdown.federalCredits.basicPersonalAmount)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-primary">{formatCurrency(results.detailedBreakdown.federalCredits.basicPersonalAmount)}</span>
+                            <span className="text-text font-semibold">Line 30000</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1237,61 +1439,102 @@ const TaxCalculator: FC = () => {
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                             <span className="text-text">Boxes 39 and 51 of all T3 slips</span>
-                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                              <span className="text-text">1</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                             <span className="text-text">Boxes 26 and 32 of all T4PS slips</span>
-                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                              <span className="text-text">2</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                             <span className="text-text">Boxes 12 and 26 of all T5 slips</span>
-                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                              <span className="text-text">3</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                             <span className="text-text">Boxes 131 and 134 of all T5013 slips</span>
-                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                              <span className="text-text">4</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
-                            <span className="text-text font-semibold">Add lines 1 to 4</span>
-                            <span className="font-bold text-primary">{formatCurrency(0)}</span>
+                            <span className="text-text font-semibold">Add lines 1 to 4. If you did not receive an information slip for some of the dividends that you received, continue at line A. Otherwise, enter the amount from line 5 on line 40425 of your return.</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-primary">{formatCurrency(0)}</span>
+                              <span className="text-text font-semibold">5</span>
+                            </div>
                           </div>
                         </div>
                       </div>
                       
                       <div className="bg-[#f8f8f8] p-md rounded-lg">
                         <h4 className="text-sm font-semibold text-primary mb-xs">Calculation of the federal dividend tax credit if you did not receive an information slip</h4>
+                        <p className="text-xs text-text-light mb-xs italic">Note: Foreign dividends do not qualify for this credit.</p>
+                        <p className="text-xs text-text-light mb-xs italic">(1) Enter only the amount of dividends that were not shown on an information slip.</p>
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
-                            <span className="text-text">Amount from line 12000 of your return</span>
-                            <span className="font-semibold text-text">{formatCurrency((inputs.eligibleDividends * 1.38) + (inputs.ineligibleDividends * 1.15))}</span>
+                            <span className="text-text">Amount from line 12000 of your return (1)</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency((inputs.eligibleDividends * 1.38) + (inputs.ineligibleDividends * 1.15))}</span>
+                              <span className="text-text">A</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
-                            <span className="text-text">Amount from line 12010 of your return</span>
-                            <span className="font-semibold text-text">{formatCurrency(inputs.ineligibleDividends * 1.15)}</span>
+                            <span className="text-text">Amount from line 12010 of your return (1)</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(inputs.ineligibleDividends * 1.15)}</span>
+                              <span className="text-text">B</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                             <span className="text-text">× 9.0301%</span>
-                            <span className="font-semibold text-text">{formatCurrency((inputs.ineligibleDividends * 1.15) * 0.090301)}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency((inputs.ineligibleDividends * 1.15) * 0.090301)}</span>
+                              <span className="text-text">6</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                             <span className="text-text">Amount A minus amount B</span>
-                            <span className="font-semibold text-text">{formatCurrency((inputs.eligibleDividends * 1.38))}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency((inputs.eligibleDividends * 1.38))}</span>
+                              <span className="text-text">C</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                             <span className="text-text">× 15.0198%</span>
-                            <span className="font-semibold text-text">{formatCurrency((inputs.eligibleDividends * 1.38) * 0.150198)}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency((inputs.eligibleDividends * 1.38) * 0.150198)}</span>
+                              <span className="text-text">7</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                             <span className="text-text">Line 6 plus line 7</span>
-                            <span className="font-semibold text-text">{formatCurrency(((inputs.ineligibleDividends * 1.15) * 0.090301) + ((inputs.eligibleDividends * 1.38) * 0.150198))}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(((inputs.ineligibleDividends * 1.15) * 0.090301) + ((inputs.eligibleDividends * 1.38) * 0.150198))}</span>
+                              <span className="text-text">8</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                             <span className="text-text">Line 5 plus line 8</span>
-                            <span className="font-semibold text-text">{formatCurrency(((inputs.ineligibleDividends * 1.15) * 0.090301) + ((inputs.eligibleDividends * 1.38) * 0.150198))}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(((inputs.ineligibleDividends * 1.15) * 0.090301) + ((inputs.eligibleDividends * 1.38) * 0.150198))}</span>
+                              <span className="text-text">9</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
-                            <span className="text-text font-semibold">Line 40425</span>
-                            <span className="font-bold text-primary">{formatCurrency(((inputs.ineligibleDividends * 1.15) * 0.090301) + ((inputs.eligibleDividends * 1.38) * 0.150198))}</span>
+                            <span className="text-text font-semibold">Enter this amount on line 40425 of your return.</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-primary">{formatCurrency(((inputs.ineligibleDividends * 1.15) * 0.090301) + ((inputs.eligibleDividends * 1.38) * 0.150198))}</span>
+                              <span className="text-text font-semibold">Line 40425</span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1300,91 +1543,159 @@ const TaxCalculator: FC = () => {
 
                   <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
                     <h3 className="text-2xl font-semibold text-primary mb-md">Line 23500 – Social benefits repayment</h3>
+                    <p className="text-sm text-text-light mb-md">Complete the chart below if one or both of the following applies:</p>
+                    <ul className="text-sm text-text-light mb-md list-disc list-inside">
+                      <li>You entered an amount on line 11900 of your return and the amount on line 23400 is more than $82,125</li>
+                      <li>You entered an amount on line 11300 or line 14600 of your return and the amount on line 23400 is more than $93,454</li>
+                    </ul>
                     <div className="bg-[#f8f8f8] p-md rounded-lg">
                       <div className="space-y-1 text-xs">
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Old age security (OAS) pension from line 11300 of your return</span>
-                          <span className="font-semibold text-text">{formatCurrency(inputs.oasPension || 0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(inputs.oasPension || 0)}</span>
+                            <span className="text-text">1</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Net federal supplements paid from line 14600 of your return</span>
-                          <span className="font-semibold text-text">{formatCurrency(inputs.netFederalSupplements || 0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(inputs.netFederalSupplements || 0)}</span>
+                            <span className="text-text">2</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Line 1 plus line 2</span>
-                          <span className="font-semibold text-text">{formatCurrency((inputs.oasPension || 0) + (inputs.netFederalSupplements || 0))}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency((inputs.oasPension || 0) + (inputs.netFederalSupplements || 0))}</span>
+                            <span className="text-text">3</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Overpayment of OAS benefits recovered (box 20 of your T4A(OAS) slip)</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">4</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Line 3 minus line 4 (if negative, enter "0")</span>
-                          <span className="font-semibold text-text">{formatCurrency(Math.max(0, (inputs.oasPension || 0) + (inputs.netFederalSupplements || 0)))}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(Math.max(0, (inputs.oasPension || 0) + (inputs.netFederalSupplements || 0)))}</span>
+                            <span className="text-text">5</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Net income before adjustments from line 23400 of your return</span>
-                          <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.netIncome.netIncomeBeforeAdjustments)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.netIncome.netIncomeBeforeAdjustments)}</span>
+                            <span className="text-text">6</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">EI benefits repayment from line 4 of the repayment chart on your T4E slip, if any</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">7</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Universal child care benefit (UCCB) from line 11700 of your return</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">8</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Registered disability savings plan (RDSP) income from line 12500 of your return</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">9</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Add lines 7 to 9</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">10</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Line 6 minus line 10</span>
-                          <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.netIncome.netIncomeBeforeAdjustments)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.netIncome.netIncomeBeforeAdjustments)}</span>
+                            <span className="text-text">11</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">UCCB repayment from line 21300 of your return</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">12</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">RDSP income repayment (included in the amount on line 23200 of your return)</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">13</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Line 12 plus line 13</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">14</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Line 11 plus line 14 (Adjusted net income)</span>
-                          <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.netIncome.netIncomeBeforeAdjustments)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.netIncome.netIncomeBeforeAdjustments)}</span>
+                            <span className="text-text">15</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">OAS benefits base amount</span>
-                          <span className="font-semibold text-text">$93,454.00</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">$93,454.00</span>
+                            <span className="text-text">16</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Line 15 minus line 16 (if negative, enter "0")</span>
-                          <span className="font-semibold text-text">{formatCurrency(Math.max(0, results.detailedBreakdown.netIncome.netIncomeBeforeAdjustments - 93454))}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(Math.max(0, results.detailedBreakdown.netIncome.netIncomeBeforeAdjustments - 93454))}</span>
+                            <span className="text-text">17</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Amount from line 17 × 15%</span>
-                          <span className="font-semibold text-text">{formatCurrency(Math.max(0, results.detailedBreakdown.netIncome.netIncomeBeforeAdjustments - 93454) * 0.15)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(Math.max(0, results.detailedBreakdown.netIncome.netIncomeBeforeAdjustments - 93454) * 0.15)}</span>
+                            <span className="text-text">18</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Enter whichever is less: amount from line 5 or line 18</span>
-                          <span className="font-semibold text-text">{formatCurrency(Math.min(Math.max(0, (inputs.oasPension || 0) + (inputs.netFederalSupplements || 0)), Math.max(0, results.detailedBreakdown.netIncome.netIncomeBeforeAdjustments - 93454) * 0.15))}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(Math.min(Math.max(0, (inputs.oasPension || 0) + (inputs.netFederalSupplements || 0)), Math.max(0, results.detailedBreakdown.netIncome.netIncomeBeforeAdjustments - 93454) * 0.15))}</span>
+                            <span className="text-text">19</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                           <span className="text-text">Amount from line 7, if any</span>
-                          <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <span className="text-text">20</span>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
-                          <span className="text-text font-semibold">Line 23500</span>
-                          <span className="font-bold text-primary">{formatCurrency(results.detailedBreakdown.netIncome.socialBenefitsRepayment)}</span>
+                          <span className="text-text font-semibold">Line 19 plus line 20. Enter this amount on line 23500 and line 42200 of your return.</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-primary">{formatCurrency(results.detailedBreakdown.netIncome.socialBenefitsRepayment)}</span>
+                            <span className="text-text font-semibold">21</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1409,16 +1720,40 @@ const TaxCalculator: FC = () => {
                           </thead>
                           <tbody>
                             <tr>
+                              <td className="px-2 py-1 border border-[#d0d0d0]">Total federal political contributions from line 40900 of your return</td>
+                              <td className="px-2 py-1 text-right border border-[#d0d0d0]">{formatCurrency(inputs.politicalContributions || 0)}</td>
+                              <td className="px-2 py-1 text-right border border-[#d0d0d0]">{formatCurrency(inputs.politicalContributions || 0)}</td>
+                              <td className="px-2 py-1 text-right border border-[#d0d0d0]">{formatCurrency(inputs.politicalContributions || 0)}</td>
+                            </tr>
+                            <tr>
+                              <td className="px-2 py-1 border border-[#d0d0d0]"></td>
+                              <td className="px-2 py-1 text-right border border-[#d0d0d0]">- 0.00</td>
+                              <td className="px-2 py-1 text-right border border-[#d0d0d0]">- 400.00</td>
+                              <td className="px-2 py-1 text-right border border-[#d0d0d0]">- 750.00</td>
+                            </tr>
+                            <tr>
                               <td className="px-2 py-1 border border-[#d0d0d0]">Line 1 minus line 2 (if negative, enter "0")</td>
                               <td className="px-2 py-1 text-right border border-[#d0d0d0]">{formatCurrency(Math.max(0, (inputs.politicalContributions || 0) - 0))}</td>
                               <td className="px-2 py-1 text-right border border-[#d0d0d0]">{formatCurrency(Math.max(0, (inputs.politicalContributions || 0) - 400))}</td>
                               <td className="px-2 py-1 text-right border border-[#d0d0d0]">{formatCurrency(Math.max(0, (inputs.politicalContributions || 0) - 750))}</td>
                             </tr>
                             <tr>
+                              <td className="px-2 py-1 border border-[#d0d0d0]"></td>
+                              <td className="px-2 py-1 text-right border border-[#d0d0d0]">× 75%</td>
+                              <td className="px-2 py-1 text-right border border-[#d0d0d0]">× 50%</td>
+                              <td className="px-2 py-1 text-right border border-[#d0d0d0]">× 33.33%</td>
+                            </tr>
+                            <tr>
                               <td className="px-2 py-1 border border-[#d0d0d0]">Line 3 multiplied by the percentage from line 4</td>
                               <td className="px-2 py-1 text-right border border-[#d0d0d0]">{formatCurrency(Math.max(0, (inputs.politicalContributions || 0) - 0) * 0.75)}</td>
                               <td className="px-2 py-1 text-right border border-[#d0d0d0]">{formatCurrency(Math.max(0, (inputs.politicalContributions || 0) - 400) * 0.50)}</td>
                               <td className="px-2 py-1 text-right border border-[#d0d0d0]">{formatCurrency(Math.max(0, (inputs.politicalContributions || 0) - 750) * 0.3333)}</td>
+                            </tr>
+                            <tr>
+                              <td className="px-2 py-1 border border-[#d0d0d0]"></td>
+                              <td className="px-2 py-1 text-right border border-[#d0d0d0]">+ 0.00</td>
+                              <td className="px-2 py-1 text-right border border-[#d0d0d0]">+ 300.00</td>
+                              <td className="px-2 py-1 text-right border border-[#d0d0d0]">+ 475.00</td>
                             </tr>
                             <tr>
                               <td className="px-2 py-1 border border-[#d0d0d0]">Line 5 plus line 6</td>
@@ -1429,8 +1764,11 @@ const TaxCalculator: FC = () => {
                           </tbody>
                         </table>
                         <div className="flex justify-between items-center py-1 border-t border-primary mt-2">
-                          <span className="text-text font-semibold">Line 41000</span>
-                          <span className="font-bold text-primary">{formatCurrency(results.detailedBreakdown.federalCredits.politicalContributionCredit)}</span>
+                          <span className="text-text font-semibold">Enter this amount on line 41000 of your return.</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-primary">{formatCurrency(results.detailedBreakdown.federalCredits.politicalContributionCredit)}</span>
+                            <span className="text-text font-semibold">Line 41000</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1479,43 +1817,80 @@ const TaxCalculator: FC = () => {
                         <div className="mt-2 space-y-1">
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                             <span className="text-text">Add the amounts from line 5 of columns 1 and 2. Adjusted family net income</span>
-                            <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.netIncome.netIncome)}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.netIncome.netIncome)}</span>
+                              <span className="text-text">6</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                             <span className="text-text">Income threshold</span>
-                            <span className="font-semibold text-text">$33,294.00</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">$33,294.00</span>
+                              <span className="text-text">7</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                             <span className="text-text">Line 6 minus line 7 (if negative, enter "0")</span>
-                            <span className="font-semibold text-text">{formatCurrency(Math.max(0, results.detailedBreakdown.netIncome.netIncome - 33294))}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(Math.max(0, results.detailedBreakdown.netIncome.netIncome - 33294))}</span>
+                              <span className="text-text">8</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                             <span className="text-text">Amount from line 21500 of your return</span>
-                            <span className="font-semibold text-text">{formatCurrency(inputs.medicalExpenses || 0)}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(inputs.medicalExpenses || 0)}</span>
+                              <span className="text-text">9</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                             <span className="text-text">Amount from line 33200 of your return</span>
-                            <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(0)}</span>
+                              <span className="text-text">10</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                             <span className="text-text">Line 9 plus line 10</span>
-                            <span className="font-semibold text-text">{formatCurrency(inputs.medicalExpenses || 0)}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(inputs.medicalExpenses || 0)}</span>
+                              <span className="text-text">11</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                             <span className="text-text">Applicable rate × 25%</span>
-                            <span className="font-semibold text-text">{formatCurrency((inputs.medicalExpenses || 0) * 0.25)}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency((inputs.medicalExpenses || 0) * 0.25)}</span>
+                              <span className="text-text">12</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Line 11 multiplied by the percentage from line 12</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency((inputs.medicalExpenses || 0) * 0.25)}</span>
+                              <span className="text-text">13</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                             <span className="text-text">Enter whichever is less: amount from line 13 or $1,504</span>
-                            <span className="font-semibold text-text">{formatCurrency(Math.min((inputs.medicalExpenses || 0) * 0.25, 1504))}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(Math.min((inputs.medicalExpenses || 0) * 0.25, 1504))}</span>
+                              <span className="text-text">14</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                             <span className="text-text">Amount from line 8 × 5%</span>
-                            <span className="font-semibold text-text">{formatCurrency(Math.max(0, results.detailedBreakdown.netIncome.netIncome - 33294) * 0.05)}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{formatCurrency(Math.max(0, results.detailedBreakdown.netIncome.netIncome - 33294) * 0.05)}</span>
+                              <span className="text-text">15</span>
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
-                            <span className="text-text font-semibold">Line 45200</span>
-                            <span className="font-bold text-primary">{formatCurrency(results.detailedBreakdown.federalCredits.medicalExpenseSupplement)}</span>
+                            <span className="text-text font-semibold">Line 14 minus line 15 (if negative, enter "0"). Enter this amount on line 45200 of your return.</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-primary">{formatCurrency(results.detailedBreakdown.federalCredits.medicalExpenseSupplement)}</span>
+                              <span className="text-text font-semibold">16</span>
+                            </div>
                           </div>
                         </div>
                       </div>

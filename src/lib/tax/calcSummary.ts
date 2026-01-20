@@ -7,6 +7,13 @@ import {
   calcIneligibleDividendCredit,
   calcProvincialDividendCredit 
 } from './calcDividendTax'
+import {
+  calcFederalDividendTaxCredit,
+  calcCarryingCharges,
+  calcSocialBenefitsRepayment,
+  calcPoliticalContributionCredit,
+  calcMedicalExpenseSupplement
+} from './calcWorksheet'
 
 /**
  * Main calculation function that returns all calculator outputs
@@ -31,22 +38,41 @@ export function calcSummary(
   const eligibleDividend = calcEligibleDividendCredit(inputs.eligibleDividends)
   const ineligibleDividend = calcIneligibleDividendCredit(inputs.ineligibleDividends)
   
+  // Calculate worksheet deductions
+  const carryingChargesDeduction = calcCarryingCharges(
+    inputs.carryingCharges || 0,
+    inputs.interestExpenses || 0,
+    inputs.otherExpenses || 0
+  )
+  
   // Calculate total taxable income
-  // Include: regular income + capital gains (50%) + grossed-up dividends - RRSP - FHSA
+  // Include: regular income + capital gains (50%) + grossed-up dividends - RRSP - FHSA - carrying charges
   const totalIncomeBeforeDeductions = regularIncome + capitalGainsTaxable + 
     eligibleDividend.grossedUpAmount + ineligibleDividend.grossedUpAmount
-  const totalDeductions = inputs.rrspContributions + inputs.fhsaContributions
+  const totalDeductions = inputs.rrspContributions + inputs.fhsaContributions + carryingChargesDeduction
   const taxableIncome = Math.max(0, totalIncomeBeforeDeductions - totalDeductions)
 
   // Calculate federal tax on taxable income
   const federalTaxBeforeCredits = calcFederalTax(taxableIncome, federalData)
   
-  // Apply dividend tax credits to federal tax
-  const totalFederalDividendCredit = eligibleDividend.federalCredit + ineligibleDividend.federalCredit
+  // Calculate federal dividend tax credit using worksheet (Line 40425)
+  const worksheetDividendCredit = calcFederalDividendTaxCredit(
+    inputs.eligibleDividends,
+    inputs.ineligibleDividends
+  )
+  
+  // Use worksheet calculation if it differs, otherwise use standard calculation
+  const totalFederalDividendCredit = worksheetDividendCredit > 0 
+    ? worksheetDividendCredit 
+    : eligibleDividend.federalCredit + ineligibleDividend.federalCredit
+  
+  // Calculate additional credits from worksheet
+  const politicalContributionCredit = calcPoliticalContributionCredit(inputs.politicalContributions || 0)
+  
   const federalTaxAfterDividendCredits = {
     gross: federalTaxBeforeCredits.gross,
-    credits: federalTaxBeforeCredits.credits + totalFederalDividendCredit,
-    net: Math.max(0, federalTaxBeforeCredits.net - totalFederalDividendCredit)
+    credits: federalTaxBeforeCredits.credits + totalFederalDividendCredit + politicalContributionCredit,
+    net: Math.max(0, federalTaxBeforeCredits.net - totalFederalDividendCredit - politicalContributionCredit)
   }
 
   // Calculate provincial tax on taxable income
@@ -123,13 +149,28 @@ export function calcSummary(
   const sumOfCredits = bpaAmount + cppContributions + canadaEmploymentAmount
   const creditsAt15Percent = sumOfCredits * federalData.lowestRate
 
-  // Total federal credits (BPA + CPP + Canada Employment + Dividend credits + Donations)
-  const totalFederalCredits = bpaCredit + cppCredit + canadaEmploymentCredit + totalFederalDividendCredit + donationsCredit
-
   // Calculate net income (total income minus deductions)
   // Note: totalIncome was already calculated above for average tax rate
   const netIncomeBeforeAdjustments = totalIncome - totalDeductions
-  const netIncome = netIncomeBeforeAdjustments // Simplified - no other adjustments in MVP
+  
+  // Calculate social benefits repayment (Line 23500)
+  const socialBenefitsRepayment = calcSocialBenefitsRepayment(
+    netIncomeBeforeAdjustments,
+    inputs.oasPension || 0,
+    inputs.netFederalSupplements || 0
+  )
+  
+  const netIncome = Math.max(0, netIncomeBeforeAdjustments - socialBenefitsRepayment)
+
+  // Calculate medical expense supplement (Line 45200) - needs netIncome
+  const medicalExpenseSupplement = calcMedicalExpenseSupplement(
+    inputs.medicalExpenses || 0,
+    netIncome,
+    inputs.employmentIncome
+  )
+  
+  // Total federal credits (BPA + CPP + Canada Employment + Dividend credits + Donations + Political + Medical supplement)
+  const totalFederalCredits = bpaCredit + cppCredit + canadaEmploymentCredit + totalFederalDividendCredit + donationsCredit + politicalContributionCredit + medicalExpenseSupplement
 
   // Estimate CPP contributions payable on self-employment (simplified)
   const cppSelfEmploymentPayable = inputs.selfEmploymentIncome > 0 
@@ -152,8 +193,10 @@ export function calcSummary(
       rrspDeduction: inputs.rrspContributions,
       fhsaDeduction: inputs.fhsaContributions,
       cppDeduction: 0, // CPP is not a deduction, it's a credit
+      carryingChargesDeduction: carryingChargesDeduction,
       totalDeductions: totalDeductions,
       netIncomeBeforeAdjustments: netIncomeBeforeAdjustments,
+      socialBenefitsRepayment: socialBenefitsRepayment,
       netIncome: netIncome
     },
     taxableIncome: Math.round(taxableIncome * 100) / 100,
@@ -162,6 +205,9 @@ export function calcSummary(
       cppContributions: Math.round(cppContributions * 100) / 100,
       canadaEmploymentAmount: canadaEmploymentAmount,
       donationsCredit: Math.round(donationsCredit * 100) / 100,
+      dividendTaxCredit: Math.round(totalFederalDividendCredit * 100) / 100, // Line 40425
+      politicalContributionCredit: Math.round(politicalContributionCredit * 100) / 100, // Line 41000
+      medicalExpenseSupplement: Math.round(medicalExpenseSupplement * 100) / 100, // Line 45200
       sumOfCredits: Math.round(sumOfCredits * 100) / 100,
       creditsAt15Percent: Math.round(creditsAt15Percent * 100) / 100,
       totalFederalCredits: Math.round(totalFederalCredits * 100) / 100

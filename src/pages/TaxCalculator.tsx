@@ -25,7 +25,14 @@ const TaxCalculator: FC = () => {
     ineligibleDividends: 0,
     cppContributions: 0,
     donations: 0,
-    incomeTaxesPaid: 0
+    incomeTaxesPaid: 0,
+    carryingCharges: 0,
+    interestExpenses: 0,
+    otherExpenses: 0,
+    oasPension: 0,
+    netFederalSupplements: 0,
+    politicalContributions: 0,
+    medicalExpenses: 0
   })
 
   const [results, setResults] = useState<TaxCalculatorResults | null>(null)
@@ -109,7 +116,14 @@ const TaxCalculator: FC = () => {
       'cppContributions',
       'donations',
       'incomeTaxesPaid',
-      'numberOfDependents'
+      'numberOfDependents',
+      'carryingCharges',
+      'interestExpenses',
+      'otherExpenses',
+      'oasPension',
+      'netFederalSupplements',
+      'politicalContributions',
+      'medicalExpenses'
     ]
     
     if (typeof value === 'string' && numericFields.includes(field)) {
@@ -441,6 +455,122 @@ const TaxCalculator: FC = () => {
                       </div>
 
                       <div className="mb-md">
+                        <h3 className="text-sm font-semibold text-primary mb-xs bg-[#e8f5e9] px-2 py-1 rounded text-xs">Deductions (Worksheet)</h3>
+                        <div className="space-y-md">
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="carryingCharges" className="font-semibold text-text text-xs mb-1">Carrying charges (Line 22100)</label>
+                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Investment-related expenses like safety deposit box, accounting fees.</p>
+                            <input
+                              type="text"
+                              id="carryingCharges"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
+                              placeholder="$0.00"
+                              value={getInputValue('carryingCharges', inputs.carryingCharges || 0)}
+                              onChange={(e) => handleInputChange('carryingCharges', e.target.value)}
+                              onFocus={() => handleInputFocus('carryingCharges', inputs.carryingCharges || 0)}
+                              onBlur={(e) => handleInputBlur('carryingCharges', e.target.value)}
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="interestExpenses" className="font-semibold text-text text-xs mb-1">Interest expenses (Line 22100)</label>
+                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Interest paid on money borrowed to earn investment income.</p>
+                            <input
+                              type="text"
+                              id="interestExpenses"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
+                              placeholder="$0.00"
+                              value={getInputValue('interestExpenses', inputs.interestExpenses || 0)}
+                              onChange={(e) => handleInputChange('interestExpenses', e.target.value)}
+                              onFocus={() => handleInputFocus('interestExpenses', inputs.interestExpenses || 0)}
+                              onBlur={(e) => handleInputBlur('interestExpenses', e.target.value)}
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="otherExpenses" className="font-semibold text-text text-xs mb-1">Other expenses (Line 22100)</label>
+                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Other investment-related expenses.</p>
+                            <input
+                              type="text"
+                              id="otherExpenses"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
+                              placeholder="$0.00"
+                              value={getInputValue('otherExpenses', inputs.otherExpenses || 0)}
+                              onChange={(e) => handleInputChange('otherExpenses', e.target.value)}
+                              onFocus={() => handleInputFocus('otherExpenses', inputs.otherExpenses || 0)}
+                              onBlur={(e) => handleInputBlur('otherExpenses', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mb-md">
+                        <h3 className="text-sm font-semibold text-primary mb-xs bg-[#e8f5e9] px-2 py-1 rounded text-xs">Social Benefits</h3>
+                        <div className="space-y-md">
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="oasPension" className="font-semibold text-text text-xs mb-1">OAS pension (Line 11300)</label>
+                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Old Age Security pension amount.</p>
+                            <input
+                              type="text"
+                              id="oasPension"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
+                              placeholder="$0.00"
+                              value={getInputValue('oasPension', inputs.oasPension || 0)}
+                              onChange={(e) => handleInputChange('oasPension', e.target.value)}
+                              onFocus={() => handleInputFocus('oasPension', inputs.oasPension || 0)}
+                              onBlur={(e) => handleInputBlur('oasPension', e.target.value)}
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="netFederalSupplements" className="font-semibold text-text text-xs mb-1">Net federal supplements (Line 14600)</label>
+                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Guaranteed Income Supplement and Allowance amounts.</p>
+                            <input
+                              type="text"
+                              id="netFederalSupplements"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
+                              placeholder="$0.00"
+                              value={getInputValue('netFederalSupplements', inputs.netFederalSupplements || 0)}
+                              onChange={(e) => handleInputChange('netFederalSupplements', e.target.value)}
+                              onFocus={() => handleInputFocus('netFederalSupplements', inputs.netFederalSupplements || 0)}
+                              onBlur={(e) => handleInputBlur('netFederalSupplements', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mb-md">
+                        <h3 className="text-sm font-semibold text-primary mb-xs bg-[#e8f5e9] px-2 py-1 rounded text-xs">Tax Credits (Worksheet)</h3>
+                        <div className="space-y-md">
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="politicalContributions" className="font-semibold text-text text-xs mb-1">Political contributions (Line 40900)</label>
+                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Contributions to registered federal political parties.</p>
+                            <input
+                              type="text"
+                              id="politicalContributions"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
+                              placeholder="$0.00"
+                              value={getInputValue('politicalContributions', inputs.politicalContributions || 0)}
+                              onChange={(e) => handleInputChange('politicalContributions', e.target.value)}
+                              onFocus={() => handleInputFocus('politicalContributions', inputs.politicalContributions || 0)}
+                              onBlur={(e) => handleInputBlur('politicalContributions', e.target.value)}
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="medicalExpenses" className="font-semibold text-text text-xs mb-1">Medical expenses (Line 21500)</label>
+                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Eligible medical expenses for refundable supplement calculation.</p>
+                            <input
+                              type="text"
+                              id="medicalExpenses"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
+                              placeholder="$0.00"
+                              value={getInputValue('medicalExpenses', inputs.medicalExpenses || 0)}
+                              onChange={(e) => handleInputChange('medicalExpenses', e.target.value)}
+                              onFocus={() => handleInputFocus('medicalExpenses', inputs.medicalExpenses || 0)}
+                              onBlur={(e) => handleInputBlur('medicalExpenses', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mb-md">
                         <h3 className="text-sm font-semibold text-primary mb-xs bg-[#e8f5e9] px-2 py-1 rounded text-xs">Taxes Paid</h3>
                         <div className="flex flex-col gap-1">
                           <label htmlFor="incomeTaxesPaid" className="font-semibold text-text text-xs mb-1">Income taxes paid (Line 43700)</label>
@@ -540,10 +670,26 @@ const TaxCalculator: FC = () => {
                             <span className="text-text">FHSA deduction (20805)</span>
                             <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.netIncome.fhsaDeduction)}</span>
                           </div>
+                          {results.detailedBreakdown.netIncome.carryingChargesDeduction > 0 && (
+                            <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                              <span className="text-text">Carrying charges (22100)</span>
+                              <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.netIncome.carryingChargesDeduction)}</span>
+                            </div>
+                          )}
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                             <span className="text-text">Total deductions (23300)</span>
                             <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.netIncome.totalDeductions)}</span>
                           </div>
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Net income before adjustments (23400)</span>
+                            <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.netIncome.netIncomeBeforeAdjustments)}</span>
+                          </div>
+                          {results.detailedBreakdown.netIncome.socialBenefitsRepayment > 0 && (
+                            <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                              <span className="text-text">Social benefits repayment (23500)</span>
+                              <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.netIncome.socialBenefitsRepayment)}</span>
+                            </div>
+                          )}
                           <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
                             <span className="text-text font-semibold">Net Income (23600)</span>
                             <span className="font-bold text-primary">{formatCurrency(results.detailedBreakdown.netIncome.netIncome)}</span>
@@ -580,6 +726,24 @@ const TaxCalculator: FC = () => {
                             <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
                               <span className="text-text">Donations (34900)</span>
                               <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.federalCredits.donationsCredit)}</span>
+                            </div>
+                          )}
+                          {results.detailedBreakdown.federalCredits.dividendTaxCredit > 0 && (
+                            <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                              <span className="text-text">Dividend tax credit (40425)</span>
+                              <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.federalCredits.dividendTaxCredit)}</span>
+                            </div>
+                          )}
+                          {results.detailedBreakdown.federalCredits.politicalContributionCredit > 0 && (
+                            <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                              <span className="text-text">Political contribution credit (41000)</span>
+                              <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.federalCredits.politicalContributionCredit)}</span>
+                            </div>
+                          )}
+                          {results.detailedBreakdown.federalCredits.medicalExpenseSupplement > 0 && (
+                            <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                              <span className="text-text">Medical expense supplement (45200)</span>
+                              <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.federalCredits.medicalExpenseSupplement)}</span>
                             </div>
                           )}
                           <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
@@ -799,6 +963,177 @@ const TaxCalculator: FC = () => {
               </div>
 
               {/* Detailed breakdown now shown in right column above */}
+
+              {/* Federal Tax Worksheet */}
+              {hasCalculated && results && results.detailedBreakdown && (
+                <div className="max-w-[1200px] mx-auto mt-xxl pt-xxl border-t border-border">
+                  <h2 className="text-3xl lg:text-4xl font-bold text-primary mb-md text-center">
+                    Federal Tax Worksheet (T1-2024)
+                  </h2>
+                  <p className="text-center text-text-light mb-xl">
+                    Use this worksheet to calculate the amounts to enter on your return.
+                  </p>
+                  
+                  <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
+                    <h3 className="text-2xl font-semibold text-primary mb-md">Lines 12000 and 12010 – Taxable amount of dividends</h3>
+                    <div className="space-y-md">
+                      <div className="bg-[#f8f8f8] p-md rounded-lg">
+                        <h4 className="text-sm font-semibold text-primary mb-xs">Taxable amount of dividends (other than eligible)</h4>
+                        <div className="space-y-1 text-xs">
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Actual amount of ineligible dividends received</span>
+                            <span className="font-semibold text-text">{formatCurrency(inputs.ineligibleDividends)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Applicable rate</span>
+                            <span className="font-semibold text-text">× 115%</span>
+                          </div>
+                          <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
+                            <span className="text-text font-semibold">Line 12010</span>
+                            <span className="font-bold text-primary">{formatCurrency(inputs.ineligibleDividends * 1.15)}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-[#f8f8f8] p-md rounded-lg">
+                        <h4 className="text-sm font-semibold text-primary mb-xs">Taxable amount of dividends (eligible and other than eligible)</h4>
+                        <div className="space-y-1 text-xs">
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Actual amount of eligible dividends received</span>
+                            <span className="font-semibold text-text">{formatCurrency(inputs.eligibleDividends)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Applicable rate</span>
+                            <span className="font-semibold text-text">× 138%</span>
+                          </div>
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Eligible dividends grossed up</span>
+                            <span className="font-semibold text-text">{formatCurrency(inputs.eligibleDividends * 1.38)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Line 12010 (from above)</span>
+                            <span className="font-semibold text-text">{formatCurrency(inputs.ineligibleDividends * 1.15)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
+                            <span className="text-text font-semibold">Line 12000</span>
+                            <span className="font-bold text-primary">{formatCurrency((inputs.eligibleDividends * 1.38) + (inputs.ineligibleDividends * 1.15))}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
+                    <h3 className="text-2xl font-semibold text-primary mb-md">Line 22100 – Carrying charges, interest expenses, and other expenses</h3>
+                    <div className="bg-[#f8f8f8] p-md rounded-lg">
+                      <div className="space-y-1 text-xs">
+                        <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                          <span className="text-text">Total carrying charges</span>
+                          <span className="font-semibold text-text">{formatCurrency(inputs.carryingCharges || 0)}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                          <span className="text-text">Total interest expenses</span>
+                          <span className="font-semibold text-text">{formatCurrency(inputs.interestExpenses || 0)}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                          <span className="text-text">Total other expenses</span>
+                          <span className="font-semibold text-text">{formatCurrency(inputs.otherExpenses || 0)}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
+                          <span className="text-text font-semibold">Line 22100</span>
+                          <span className="font-bold text-primary">{formatCurrency((inputs.carryingCharges || 0) + (inputs.interestExpenses || 0) + (inputs.otherExpenses || 0))}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
+                    <h3 className="text-2xl font-semibold text-primary mb-md">Line 40425 – Federal dividend tax credit</h3>
+                    <div className="bg-[#f8f8f8] p-md rounded-lg">
+                      <div className="space-y-1 text-xs">
+                        <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                          <span className="text-text">Amount from line 12010</span>
+                          <span className="font-semibold text-text">{formatCurrency(inputs.ineligibleDividends)}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                          <span className="text-text">× 9.0301%</span>
+                          <span className="font-semibold text-text">{formatCurrency(inputs.ineligibleDividends * 0.090301)}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                          <span className="text-text">Amount from line 12000 minus line 12010</span>
+                          <span className="font-semibold text-text">{formatCurrency(inputs.eligibleDividends)}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                          <span className="text-text">× 15.0198%</span>
+                          <span className="font-semibold text-text">{formatCurrency(inputs.eligibleDividends * 0.150198)}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
+                          <span className="text-text font-semibold">Line 40425</span>
+                          <span className="font-bold text-primary">{formatCurrency((inputs.ineligibleDividends * 0.090301) + (inputs.eligibleDividends * 0.150198))}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {(inputs.politicalContributions || 0) > 0 && (
+                    <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
+                      <h3 className="text-2xl font-semibold text-primary mb-md">Line 41000 – Federal political contribution tax credit</h3>
+                      <div className="bg-[#f8f8f8] p-md rounded-lg">
+                        <div className="space-y-1 text-xs">
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Total federal political contributions from line 40900</span>
+                            <span className="font-semibold text-text">{formatCurrency(inputs.politicalContributions || 0)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
+                            <span className="text-text font-semibold">Line 41000</span>
+                            <span className="font-bold text-primary">{formatCurrency(results.detailedBreakdown.federalCredits.politicalContributionCredit)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {(inputs.oasPension || 0) > 0 && results.detailedBreakdown.netIncome.socialBenefitsRepayment > 0 && (
+                    <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
+                      <h3 className="text-2xl font-semibold text-primary mb-md">Line 23500 – Social benefits repayment</h3>
+                      <div className="bg-[#f8f8f8] p-md rounded-lg">
+                        <div className="space-y-1 text-xs">
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">OAS pension from line 11300</span>
+                            <span className="font-semibold text-text">{formatCurrency(inputs.oasPension || 0)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Net federal supplements from line 14600</span>
+                            <span className="font-semibold text-text">{formatCurrency(inputs.netFederalSupplements || 0)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
+                            <span className="text-text font-semibold">Line 23500</span>
+                            <span className="font-bold text-primary">{formatCurrency(results.detailedBreakdown.netIncome.socialBenefitsRepayment)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {(inputs.medicalExpenses || 0) > 0 && results.detailedBreakdown.federalCredits.medicalExpenseSupplement > 0 && (
+                    <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
+                      <h3 className="text-2xl font-semibold text-primary mb-md">Line 45200 – Refundable medical expense supplement</h3>
+                      <div className="bg-[#f8f8f8] p-md rounded-lg">
+                        <div className="space-y-1 text-xs">
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Amount from line 21500</span>
+                            <span className="font-semibold text-text">{formatCurrency(inputs.medicalExpenses || 0)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
+                            <span className="text-text font-semibold">Line 45200</span>
+                            <span className="font-bold text-primary">{formatCurrency(results.detailedBreakdown.federalCredits.medicalExpenseSupplement)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {hasCalculated && results && results.detailedBreakdown && (
                 <div className="max-w-[1200px] mx-auto mt-xxl pt-xxl border-t border-border">

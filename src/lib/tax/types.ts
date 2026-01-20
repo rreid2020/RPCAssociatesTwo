@@ -43,6 +43,14 @@ export interface TaxCalculatorInputs {
   cppContributions: number
   donations: number
   incomeTaxesPaid: number
+  // Worksheet fields
+  carryingCharges: number // Line 22100
+  interestExpenses: number // Line 22100
+  otherExpenses: number // Line 22100
+  oasPension: number // Line 11300 - for Line 23500 calculation
+  netFederalSupplements: number // Line 14600 - for Line 23500 calculation
+  politicalContributions: number // Line 40900 - for Line 41000 calculation
+  medicalExpenses: number // Line 21500 - for Line 45200 calculation
 }
 
 export interface TaxBreakdown {
@@ -68,8 +76,10 @@ export interface DetailedBreakdown {
     rrspDeduction: number
     fhsaDeduction: number
     cppDeduction: number
+    carryingChargesDeduction: number // Line 22100
     totalDeductions: number
     netIncomeBeforeAdjustments: number
+    socialBenefitsRepayment: number // Line 23500
     netIncome: number
   }
   // Taxable Income
@@ -80,6 +90,9 @@ export interface DetailedBreakdown {
     cppContributions: number
     canadaEmploymentAmount: number
     donationsCredit: number
+    dividendTaxCredit: number // Line 40425
+    politicalContributionCredit: number // Line 41000
+    medicalExpenseSupplement: number // Line 45200
     sumOfCredits: number
     creditsAt15Percent: number
     totalFederalCredits: number

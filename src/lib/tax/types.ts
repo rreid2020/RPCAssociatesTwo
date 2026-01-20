@@ -51,6 +51,8 @@ export interface TaxCalculatorInputs {
   netFederalSupplements: number // Line 14600 - for Line 23500 calculation
   politicalContributions: number // Line 40900 - for Line 41000 calculation
   medicalExpenses: number // Line 21500 - for Line 45200 calculation
+  securityOptionsDeduction: number // Line 24901 - Additional security options deduction
+  otherPaymentsDeduction: number // Line 25000 - Other payments deduction
 }
 
 export interface TaxBreakdown {

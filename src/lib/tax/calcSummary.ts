@@ -46,10 +46,11 @@ export function calcSummary(
   )
   
   // Calculate total taxable income
-  // Include: regular income + capital gains (50%) + grossed-up dividends - RRSP - FHSA - carrying charges
+  // Include: regular income + capital gains (50%) + grossed-up dividends - RRSP - FHSA - carrying charges - security options - other payments
   const totalIncomeBeforeDeductions = regularIncome + capitalGainsTaxable + 
     eligibleDividend.grossedUpAmount + ineligibleDividend.grossedUpAmount
-  const totalDeductions = inputs.rrspContributions + inputs.fhsaContributions + carryingChargesDeduction
+  const totalDeductions = inputs.rrspContributions + inputs.fhsaContributions + carryingChargesDeduction +
+    (inputs.securityOptionsDeduction || 0) + (inputs.otherPaymentsDeduction || 0)
   const taxableIncome = Math.max(0, totalIncomeBeforeDeductions - totalDeductions)
 
   // Calculate federal tax on taxable income

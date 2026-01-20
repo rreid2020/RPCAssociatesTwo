@@ -32,7 +32,9 @@ const TaxCalculator: FC = () => {
     oasPension: 0,
     netFederalSupplements: 0,
     politicalContributions: 0,
-    medicalExpenses: 0
+    medicalExpenses: 0,
+    securityOptionsDeduction: 0,
+    otherPaymentsDeduction: 0
   })
 
   const [results, setResults] = useState<TaxCalculatorResults | null>(null)
@@ -497,6 +499,34 @@ const TaxCalculator: FC = () => {
                               onChange={(e) => handleInputChange('otherExpenses', e.target.value)}
                               onFocus={() => handleInputFocus('otherExpenses', inputs.otherExpenses || 0)}
                               onBlur={(e) => handleInputBlur('otherExpenses', e.target.value)}
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="securityOptionsDeduction" className="font-semibold text-text text-xs mb-1">Additional security options deduction (Line 24901)</label>
+                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Deduction for security options benefits.</p>
+                            <input
+                              type="text"
+                              id="securityOptionsDeduction"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
+                              placeholder="$0.00"
+                              value={getInputValue('securityOptionsDeduction', inputs.securityOptionsDeduction || 0)}
+                              onChange={(e) => handleInputChange('securityOptionsDeduction', e.target.value)}
+                              onFocus={() => handleInputFocus('securityOptionsDeduction', inputs.securityOptionsDeduction || 0)}
+                              onBlur={(e) => handleInputBlur('securityOptionsDeduction', e.target.value)}
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="otherPaymentsDeduction" className="font-semibold text-text text-xs mb-1">Other payments deduction (Line 25000)</label>
+                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Other eligible payments and deductions.</p>
+                            <input
+                              type="text"
+                              id="otherPaymentsDeduction"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-[#999]"
+                              placeholder="$0.00"
+                              value={getInputValue('otherPaymentsDeduction', inputs.otherPaymentsDeduction || 0)}
+                              onChange={(e) => handleInputChange('otherPaymentsDeduction', e.target.value)}
+                              onFocus={() => handleInputFocus('otherPaymentsDeduction', inputs.otherPaymentsDeduction || 0)}
+                              onBlur={(e) => handleInputBlur('otherPaymentsDeduction', e.target.value)}
                             />
                           </div>
                         </div>
@@ -1024,6 +1054,22 @@ const TaxCalculator: FC = () => {
                   </div>
 
                   <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
+                    <h3 className="text-2xl font-semibold text-primary mb-md">Line 12100 – Interest and other investment income</h3>
+                    <div className="bg-[#f8f8f8] p-md rounded-lg">
+                      <div className="space-y-1 text-xs">
+                        <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                          <span className="text-text">Interest and other investment income</span>
+                          <span className="font-semibold text-text">{formatCurrency(inputs.interestAndInvestmentIncome)}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
+                          <span className="text-text font-semibold">Line 12100</span>
+                          <span className="font-bold text-primary">{formatCurrency(inputs.interestAndInvestmentIncome)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
                     <h3 className="text-2xl font-semibold text-primary mb-md">Line 22100 – Carrying charges, interest expenses, and other expenses</h3>
                     <div className="bg-[#f8f8f8] p-md rounded-lg">
                       <div className="space-y-1 text-xs">
@@ -1046,6 +1092,42 @@ const TaxCalculator: FC = () => {
                       </div>
                     </div>
                   </div>
+
+                  {(inputs.securityOptionsDeduction || 0) > 0 && (
+                    <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
+                      <h3 className="text-2xl font-semibold text-primary mb-md">Line 24901 – Additional security options deduction</h3>
+                      <div className="bg-[#f8f8f8] p-md rounded-lg">
+                        <div className="space-y-1 text-xs">
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Additional security options deduction</span>
+                            <span className="font-semibold text-text">{formatCurrency(inputs.securityOptionsDeduction || 0)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
+                            <span className="text-text font-semibold">Line 24901</span>
+                            <span className="font-bold text-primary">{formatCurrency(inputs.securityOptionsDeduction || 0)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {(inputs.otherPaymentsDeduction || 0) > 0 && (
+                    <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
+                      <h3 className="text-2xl font-semibold text-primary mb-md">Line 25000 – Other payments deduction</h3>
+                      <div className="bg-[#f8f8f8] p-md rounded-lg">
+                        <div className="space-y-1 text-xs">
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Other payments deduction</span>
+                            <span className="font-semibold text-text">{formatCurrency(inputs.otherPaymentsDeduction || 0)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
+                            <span className="text-text font-semibold">Line 25000</span>
+                            <span className="font-bold text-primary">{formatCurrency(inputs.otherPaymentsDeduction || 0)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
                     <h3 className="text-2xl font-semibold text-primary mb-md">Line 40425 – Federal dividend tax credit</h3>

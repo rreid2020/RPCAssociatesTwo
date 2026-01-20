@@ -721,13 +721,23 @@ const TaxCalculator: FC = () => {
                     <p className="text-sm text-text-light mb-md">Use the amount from line 26000 to complete the appropriate column below.</p>
                     
                     <div className="overflow-x-auto">
-                      <table className="w-full border-collapse text-xs">
+                      <table className="w-full border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
+                        <colgroup>
+                          <col style={{ width: '35%' }} />
+                          <col style={{ width: '13%' }} />
+                          <col style={{ width: '13%' }} />
+                          <col style={{ width: '13%' }} />
+                          <col style={{ width: '13%' }} />
+                          <col style={{ width: '13%' }} />
+                          <col style={{ width: '3%' }} />
+                        </colgroup>
                         <thead>
                           <tr className="bg-[#e8f5e9]">
-                            <th className="px-2 py-2 text-left font-semibold text-text border border-[#d0d0d0]">Line</th>
+                            <th className="px-2 py-2 text-left font-semibold text-text border border-[#d0d0d0]"></th>
                             {federalData2025.brackets.map((bracket, index) => {
                               const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
-                              const rangeStart = prevBracket && prevBracket.upTo ? prevBracket.upTo + 1 : 0
+                              // For display, use the previous bracket's upTo value (not +1) to match tax form format
+                              const rangeStartDisplay = prevBracket && prevBracket.upTo ? prevBracket.upTo : 0
                               const rangeEnd = bracket.upTo
                               const taxableIncome = results.detailedBreakdown?.taxableIncome || 0
                               const isActive = taxableIncome > (prevBracket?.upTo || 0) && 
@@ -740,23 +750,33 @@ const TaxCalculator: FC = () => {
                                     isActive ? 'bg-[#fff9c4]' : ''
                                   }`}
                                 >
-                                  {index === 0 
-                                    ? `Line 26000 is $${(rangeEnd || 0).toLocaleString('en-CA')} or less`
-                                    : bracket.upTo === null
-                                    ? `Line 26000 is more than $${rangeStart.toLocaleString('en-CA')}`
-                                    : `Line 26000 is more than $${rangeStart.toLocaleString('en-CA')} but not more than ${(rangeEnd || 0).toLocaleString('en-CA')}`
-                                  }
+                                  {index === 0 ? (
+                                    <>
+                                      <div>Line 26000 is</div>
+                                      <div className="font-normal">${(rangeEnd || 0).toLocaleString('en-CA')} or less</div>
+                                    </>
+                                  ) : bracket.upTo === null ? (
+                                    <>
+                                      <div>Line 26000 is more</div>
+                                      <div className="font-normal">than ${rangeStartDisplay.toLocaleString('en-CA')}</div>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div>Line 26000 is more than</div>
+                                      <div className="font-normal">${rangeStartDisplay.toLocaleString('en-CA')} but not more than ${(rangeEnd || 0).toLocaleString('en-CA')}</div>
+                                    </>
+                                  )}
                                 </th>
                               )
                             })}
+                            <th className="px-2 py-2 text-right font-semibold text-text border border-[#d0d0d0]"></th>
                           </tr>
                         </thead>
                         <tbody>
                           {/* Line 75: Amount from line 26000 */}
                           <tr>
                             <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
-                              <div>75</div>
-                              <div className="text-xs text-text-light font-normal mt-0.5">Amount from line 26000</div>
+                              <div className="text-xs text-text-light font-normal">Amount from line 26000</div>
                             </td>
                             {federalData2025.brackets.map((bracket, index) => {
                               const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
@@ -774,13 +794,13 @@ const TaxCalculator: FC = () => {
                                 </td>
                               )
                             })}
+                            <td className="px-2 py-2 text-right border border-[#d0d0d0] font-semibold">75</td>
                           </tr>
                           
                           {/* Line 76: Threshold */}
                           <tr>
                             <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
-                              <div>76</div>
-                              <div className="text-xs text-text-light font-normal mt-0.5">Line 76</div>
+                              <div className="text-xs text-text-light font-normal">Line 75 minus line 76 (cannot be negative)</div>
                             </td>
                             {federalData2025.brackets.map((bracket, index) => {
                               const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
@@ -799,13 +819,12 @@ const TaxCalculator: FC = () => {
                                 </td>
                               )
                             })}
+                            <td className="px-2 py-2 text-right border border-[#d0d0d0] font-semibold">76</td>
                           </tr>
                           
                           {/* Line 77: Line 75 minus line 76 */}
                           <tr>
                             <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
-                              <div>77</div>
-                              <div className="text-xs text-text-light font-normal mt-0.5">Line 75 minus line 76</div>
                             </td>
                             {federalData2025.brackets.map((bracket, index) => {
                               const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
@@ -825,13 +844,13 @@ const TaxCalculator: FC = () => {
                                 </td>
                               )
                             })}
+                            <td className="px-2 py-2 text-right border border-[#d0d0d0] font-semibold">77</td>
                           </tr>
                           
                           {/* Line 78: Percentage rate */}
                           <tr>
                             <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
-                              <div>78</div>
-                              <div className="text-xs text-text-light font-normal mt-0.5">Line 77 multiplied by the percentage from line 78</div>
+                              <div className="text-xs text-text-light font-normal">Line 77 multiplied by the percentage from line 78</div>
                             </td>
                             {federalData2025.brackets.map((bracket, index) => {
                               const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
@@ -845,17 +864,16 @@ const TaxCalculator: FC = () => {
                                     isActive ? 'bg-[#fff9c4]' : ''
                                   }`}
                                 >
-                                  {(bracket.rate * 100).toFixed(1)}%
+                                  x {(bracket.rate * 100).toFixed(1)}%
                                 </td>
                               )
                             })}
+                            <td className="px-2 py-2 text-right border border-[#d0d0d0] font-semibold">78</td>
                           </tr>
                           
                           {/* Line 79: Line 77 multiplied by percentage */}
                           <tr>
                             <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
-                              <div>79</div>
-                              <div className="text-xs text-text-light font-normal mt-0.5">Line 77 multiplied by the percentage from line 78</div>
                             </td>
                             {federalData2025.brackets.map((bracket, index) => {
                               const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
@@ -876,13 +894,13 @@ const TaxCalculator: FC = () => {
                                 </td>
                               )
                             })}
+                            <td className="px-2 py-2 text-right border border-[#d0d0d0] font-semibold">79</td>
                           </tr>
                           
                           {/* Line 80: Base tax amount */}
                           <tr>
                             <td className="px-2 py-2 text-text border border-[#d0d0d0] font-semibold">
-                              <div>80</div>
-                              <div className="text-xs text-text-light font-normal mt-0.5">Line 79 plus line 80</div>
+                              <div className="text-xs text-text-light font-normal">Line 79 plus line 80</div>
                             </td>
                             {federalData2025.brackets.map((bracket, index) => {
                               const prevBracket = index > 0 ? federalData2025.brackets[index - 1] : null
@@ -911,12 +929,13 @@ const TaxCalculator: FC = () => {
                                 </td>
                               )
                             })}
+                            <td className="px-2 py-2 text-right border border-[#d0d0d0] font-semibold">80</td>
                           </tr>
                           
                           {/* Line 81: Federal tax on taxable income */}
                           <tr className="bg-[#e8f5e9]">
                             <td className="px-2 py-2 text-text border border-[#d0d0d0] font-bold">
-                              <div>81</div>
+                              <div className="text-xs text-text-light font-bold">Line 79 plus line 80</div>
                               <div className="text-xs text-text-light font-normal mt-0.5">Federal tax on taxable income</div>
                             </td>
                             {federalData2025.brackets.map((bracket, index) => {
@@ -938,7 +957,8 @@ const TaxCalculator: FC = () => {
                                   baseTax += bracketSize * currentBracket.rate
                                 }
                               }
-                              const line81Value = isActive ? line79Value + baseTax : 0
+                              // Line 81 = Line 79 + Line 80 (show for ALL columns)
+                              const line81Value = line79Value + baseTax
                               return (
                                 <td 
                                   key={index} 
@@ -946,10 +966,11 @@ const TaxCalculator: FC = () => {
                                     isActive ? 'bg-[#fff9c4]' : ''
                                   }`}
                                 >
-                                  {isActive ? formatCurrency(line81Value) : ''}
+                                  {formatCurrency(Math.round(line81Value * 100) / 100)}
                                 </td>
                               )
                             })}
+                            <td className="px-2 py-2 text-right border border-[#d0d0d0] font-bold">81</td>
                           </tr>
                         </tbody>
                       </table>

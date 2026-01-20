@@ -209,8 +209,8 @@ const TaxCalculator: FC = () => {
             </div>
 
             <div className="max-w-[1200px] mx-auto">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-xxl items-start">
-                <div className="bg-[#f8f8f8] p-lg rounded-xl lg:sticky lg:top-[calc(1.5rem+60px)]">
+              <div className="flex flex-col gap-xxl">
+                <div className="bg-[#f8f8f8] p-lg rounded-xl">
                   <h2 className="text-2xl font-bold text-primary mb-md lg:mb-lg">Your Inputs</h2>
                   <form className="flex flex-col gap-md" onSubmit={handleCalculate}>
                     <div className="bg-white p-md rounded-lg">
@@ -625,7 +625,7 @@ const TaxCalculator: FC = () => {
                   </form>
                 </div>
 
-                <div className="bg-[#f8f8f8] p-lg rounded-xl lg:sticky lg:top-[calc(1.5rem+60px)]">
+                <div className="bg-[#f8f8f8] p-lg rounded-xl">
                   <h2 className="text-2xl font-bold text-primary mb-md lg:mb-lg">Your Results</h2>
                   
                   {hasCalculated && results && results.detailedBreakdown ? (

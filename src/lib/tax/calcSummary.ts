@@ -168,7 +168,7 @@ export function calcSummary(
     },
     federalTax: {
       taxOnTaxableIncome: Math.round(federalTaxBeforeCredits.gross * 100) / 100,
-      basicFederalTax: Math.round(federalTaxAfterDividendCredits.net * 100) / 100,
+      basicFederalTax: Math.max(0, Math.round((federalTaxBeforeCredits.gross - totalFederalCredits) * 100) / 100),
       federalForeignTaxCredit: 0, // Not calculated in MVP
       netFederalTax: Math.round(federalTaxAfterDividendCredits.net * 100) / 100
     },

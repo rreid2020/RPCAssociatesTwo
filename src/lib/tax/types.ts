@@ -28,6 +28,9 @@ export interface ProvincesTaxData {
 export interface TaxCalculatorInputs {
   taxYear: number
   province: string
+  dateOfBirth: string // Format: YYYY-MM-DD
+  maritalStatus: string // 'single', 'married', 'common-law', 'divorced', 'widowed'
+  numberOfDependents: number // Dependents 18 years or younger
   employmentIncome: number
   selfEmploymentIncome: number
   interestAndInvestmentIncome: number

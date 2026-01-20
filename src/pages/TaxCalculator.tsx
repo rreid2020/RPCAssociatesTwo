@@ -11,6 +11,9 @@ const TaxCalculator: FC = () => {
   const [inputs, setInputs] = useState<TaxCalculatorInputs>({
     taxYear: 2025,
     province: 'ON',
+    dateOfBirth: '',
+    maritalStatus: 'single',
+    numberOfDependents: 0,
     employmentIncome: 0,
     selfEmploymentIncome: 0,
     interestAndInvestmentIncome: 0,
@@ -105,7 +108,8 @@ const TaxCalculator: FC = () => {
       'ineligibleDividends',
       'cppContributions',
       'donations',
-      'incomeTaxesPaid'
+      'incomeTaxesPaid',
+      'numberOfDependents'
     ]
     
     if (typeof value === 'string' && numericFields.includes(field)) {
@@ -209,6 +213,50 @@ const TaxCalculator: FC = () => {
                               </option>
                             ))}
                           </select>
+                        </div>
+                      </div>
+
+                      <div className="mb-md">
+                        <h3 className="text-sm font-semibold text-primary mb-xs bg-[#e8f5e9] px-2 py-1 rounded text-xs">Personal Information</h3>
+                        <div className="space-y-md">
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="dateOfBirth" className="font-semibold text-text text-xs mb-1">Date of Birth</label>
+                            <input
+                              type="date"
+                              id="dateOfBirth"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary"
+                              value={inputs.dateOfBirth}
+                              onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                            />
+                          </div>
+
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="maritalStatus" className="font-semibold text-text text-xs mb-1">Marital Status</label>
+                            <select
+                              id="maritalStatus"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary"
+                              value={inputs.maritalStatus}
+                              onChange={(e) => handleInputChange('maritalStatus', e.target.value)}
+                            >
+                              <option value="single">Single</option>
+                              <option value="married">Married</option>
+                              <option value="common-law">Common-law</option>
+                              <option value="divorced">Divorced</option>
+                              <option value="widowed">Widowed</option>
+                            </select>
+                          </div>
+
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="numberOfDependents" className="font-semibold text-text text-xs mb-1">Number of Dependents (18 years or younger)</label>
+                            <input
+                              type="number"
+                              id="numberOfDependents"
+                              className="px-3 py-2 border border-[#d0d0d0] rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-[#999] focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary"
+                              min="0"
+                              value={inputs.numberOfDependents}
+                              onChange={(e) => handleInputChange('numberOfDependents', e.target.value)}
+                            />
+                          </div>
                         </div>
                       </div>
 
@@ -422,6 +470,29 @@ const TaxCalculator: FC = () => {
                   
                   {hasCalculated && results && results.detailedBreakdown ? (
                     <div className="bg-white p-md rounded-lg max-h-[calc(100vh-200px)] overflow-y-auto">
+                      {/* Taxpayer Information Section */}
+                      <div className="mb-md pb-md border-b-2 border-primary">
+                        <h3 className="text-sm font-semibold text-primary mb-xs bg-[#e8f5e9] px-2 py-1 rounded text-xs">Taxpayer Information</h3>
+                        <div className="space-y-1 text-xs">
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Date of birth</span>
+                            <span className="font-semibold text-text">{inputs.dateOfBirth || 'Not provided'}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Province of residence</span>
+                            <span className="font-semibold text-text">{provinces.find(p => p.code === inputs.province)?.name || inputs.province}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Marital status</span>
+                            <span className="font-semibold text-text">{inputs.maritalStatus.charAt(0).toUpperCase() + inputs.maritalStatus.slice(1).replace('-', ' ')}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-0.5">
+                            <span className="text-text">Dependents (18 or under)</span>
+                            <span className="font-semibold text-text">{inputs.numberOfDependents}</span>
+                          </div>
+                        </div>
+                      </div>
+
                       {/* Total Income Section */}
                       <div className="mb-md">
                         <h3 className="text-sm font-semibold text-primary mb-xs bg-[#e8f5e9] px-2 py-1 rounded text-xs">Total income</h3>
@@ -520,11 +591,31 @@ const TaxCalculator: FC = () => {
 
                       {/* Federal Tax */}
                       <div className="mb-md">
-                        <h3 className="text-sm font-semibold text-primary mb-xs bg-[#e8f5e9] px-2 py-1 rounded text-xs">Federal tax</h3>
+                        <h3 className="text-sm font-semibold text-primary mb-xs bg-[#e8f5e9] px-2 py-1 rounded text-xs">Net federal tax</h3>
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
-                            <span className="text-text">Tax on taxable income</span>
+                            <span className="text-text">Tax on taxable income (Line C)</span>
                             <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.federalTax.taxOnTaxableIncome)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Add lines (C) and 40424 (40400)</span>
+                            <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.federalTax.taxOnTaxableIncome)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Enter amount from line 35000 (35000)</span>
+                            <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.federalCredits.totalFederalCredits)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Add lines 35000 to 40427 (35000)</span>
+                            <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.federalCredits.totalFederalCredits)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text font-semibold">Basic federal tax (42900)</span>
+                            <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.federalTax.basicFederalTax)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-0.5 border-b border-[#e5e5e5]">
+                            <span className="text-text">Federal foreign tax credit (40500)</span>
+                            <span className="font-semibold text-text">{formatCurrency(results.detailedBreakdown.federalTax.federalForeignTaxCredit)}</span>
                           </div>
                           <div className="flex justify-between items-center py-1 border-t border-primary mt-1">
                             <span className="text-text font-semibold">Federal tax (40600)</span>

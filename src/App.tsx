@@ -13,6 +13,7 @@ import Terms from './pages/Terms'
 import Sitemap from './pages/Sitemap'
 import ComingSoon from './pages/ComingSoon'
 import TaxCalculator from './pages/TaxCalculator'
+import BookConsultation from './pages/BookConsultation'
 
 const App: FC = () => {
   return (
@@ -26,6 +27,7 @@ const App: FC = () => {
           <Route path="/articles" element={<Articles />} />
           <Route path="/articles/category/:categorySlug" element={<ArticleCategory />} />
           <Route path="/articles/:slug" element={<ArticleDetail />} />
+          <Route path="/book-consultation" element={<BookConsultation />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/sitemap" element={<Sitemap />} />

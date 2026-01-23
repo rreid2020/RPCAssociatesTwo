@@ -197,7 +197,7 @@ const TaxCalculator: FC = () => {
         canonical="/resources/canadian-personal-income-tax-calculator"
       />
       <main className="py-xxl min-h-[60vh]">
-        <div className="max-w-[1200px] mx-auto px-md">
+        <div className="max-w-[1800px] mx-auto px-md">
           <section className="py-xxl">
             <div className="text-center mb-xxl max-w-[800px] mx-auto">
               <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-md">
@@ -208,7 +208,7 @@ const TaxCalculator: FC = () => {
               </p>
             </div>
 
-            <div className="max-w-[1200px] mx-auto">
+            <div className="max-w-[1800px] mx-auto">
               <div className="flex flex-col gap-xxl">
                 <div className="bg-[#f8f8f8] p-lg rounded-xl">
                   <h2 className="text-2xl font-bold text-primary mb-md lg:mb-lg">Your Inputs</h2>
@@ -996,7 +996,7 @@ const TaxCalculator: FC = () => {
 
               {/* Federal Tax Worksheet */}
               {hasCalculated && results && results.detailedBreakdown && (
-                <div className="max-w-[1200px] mx-auto mt-xxl pt-xxl border-t border-border">
+                <div className="max-w-[1800px] mx-auto mt-xxl pt-xxl border-t border-border">
                   <h2 className="text-3xl lg:text-4xl font-bold text-primary mb-md text-center">
                     Federal Tax Worksheet (T1-2024)
                   </h2>
@@ -1900,7 +1900,7 @@ const TaxCalculator: FC = () => {
               )}
 
               {hasCalculated && results && results.detailedBreakdown && (
-                <div className="max-w-[1200px] mx-auto mt-xxl pt-xxl border-t border-border">
+                <div className="max-w-[1800px] mx-auto mt-xxl pt-xxl border-t border-border px-md">
                   <h2 className="text-3xl lg:text-4xl font-bold text-primary mb-md text-center">
                     Marginal Tax Calculation Tables
                   </h2>
@@ -1910,17 +1910,8 @@ const TaxCalculator: FC = () => {
                     <h3 className="text-2xl font-semibold text-primary mb-md">Part A - Federal tax on taxable income</h3>
                     <p className="text-sm text-text-light mb-md">Use the amount from line 26000 to complete the appropriate column below.</p>
                     
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
-                        <colgroup>
-                          <col style={{ width: '35%' }} />
-                          <col style={{ width: '13%' }} />
-                          <col style={{ width: '13%' }} />
-                          <col style={{ width: '13%' }} />
-                          <col style={{ width: '13%' }} />
-                          <col style={{ width: '13%' }} />
-                          <col style={{ width: '3%' }} />
-                        </colgroup>
+                    <div>
+                      <table className="w-full border-collapse text-xs" style={{ tableLayout: 'auto', width: '100%' }}>
                         <thead>
                           <tr className="bg-[#e8f5e9]">
                             <th className="px-2 py-2 text-left font-semibold text-text border border-[#d0d0d0]"></th>
@@ -2187,17 +2178,8 @@ const TaxCalculator: FC = () => {
                           </div>
                         </div>
                         
-                        <div className="overflow-x-auto">
-                          <table className="w-full border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
-                            <colgroup>
-                              <col style={{ width: '35%' }} />
-                              <col style={{ width: '13%' }} />
-                              <col style={{ width: '13%' }} />
-                              <col style={{ width: '13%' }} />
-                              <col style={{ width: '13%' }} />
-                              <col style={{ width: '13%' }} />
-                              <col style={{ width: '3%' }} />
-                            </colgroup>
+                        <div>
+                          <table className="w-full border-collapse text-xs" style={{ tableLayout: 'auto', width: '100%' }}>
                             <thead>
                               <tr className="bg-[#e8f5e9]">
                                 <th className="px-2 py-2 text-left font-semibold text-text border border-[#d0d0d0]"></th>
@@ -2459,7 +2441,7 @@ const TaxCalculator: FC = () => {
               )}
 
               {hasCalculated && results && (
-                <div className="max-w-[1200px] mx-auto mt-xxl pt-xxl border-t border-border">
+                <div className="max-w-[1800px] mx-auto mt-xxl pt-xxl border-t border-border">
                   <h2 className="text-3xl lg:text-4xl font-bold text-primary mb-sm">
                     {provinces.find(p => p.code === inputs.province)?.name || 'Provincial'} Provincial and Federal tax brackets
                   </h2>
@@ -2542,7 +2524,7 @@ const TaxCalculator: FC = () => {
                 </div>
               )}
 
-              <div className="max-w-[1200px] mx-auto mt-xxl p-lg bg-background rounded-lg text-sm text-text-light leading-relaxed">
+              <div className="max-w-[1800px] mx-auto mt-xxl p-lg bg-background rounded-lg text-sm text-text-light leading-relaxed">
                 <p className="text-text font-semibold text-base mb-sm">Disclaimer</p>
                 <p className="mb-sm">
                   These calculations are approximate and include the following non-refundable tax credits: the basic personal tax amount. After-tax income is your total income net of federal tax and provincial/territorial tax. Rates are current as of January 2025.
@@ -2552,7 +2534,7 @@ const TaxCalculator: FC = () => {
                 </p>
               </div>
 
-              <div className="max-w-[1200px] mx-auto mt-xxl text-center p-xl bg-white rounded-xl shadow-sm">
+              <div className="max-w-[1800px] mx-auto mt-xxl text-center p-xl bg-white rounded-xl shadow-sm">
                 <p className="text-lg text-text mb-lg">
                   Need help with your tax planning or filing? Our team can provide personalized advice.
                 </p>

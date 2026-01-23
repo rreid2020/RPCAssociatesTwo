@@ -7,6 +7,8 @@ interface Resource {
   description: string
   link: string
   category?: string
+  isDownload?: boolean
+  fileSize?: string
 }
 
 const Resources: FC = () => {
@@ -16,6 +18,12 @@ const Resources: FC = () => {
       description: 'Calculate your estimated Canadian income tax for 2025. Get a detailed breakdown including federal and provincial taxes, credits, and deductions.',
       link: '/resources/canadian-personal-income-tax-calculator',
       category: 'Calculator'
+    },
+    {
+      title: 'Cash Flow Statement Template',
+      description: 'Track cash inflows and outflows with this comprehensive Excel template. Monitor liquidity, plan for major expenditures, and make informed financial decisions.',
+      link: '/resources/cash-flow-statement-template',
+      category: 'Excel Template'
     }
   ]
 
@@ -39,25 +47,52 @@ const Resources: FC = () => {
             
             {resources.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
-                {resources.map((resource, index) => (
-                  <Link
-                    key={index}
-                    to={resource.link}
-                    className="bg-white p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
-                  >
-                    {resource.category && (
-                      <span className="inline-block px-3 py-1 bg-primary text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-md">
-                        {resource.category}
-                      </span>
-                    )}
-                    <h3 className="text-xl font-semibold text-primary mb-sm">
-                      {resource.title}
-                    </h3>
-                    <p className="text-text-light text-[0.9375rem] leading-relaxed">
-                      {resource.description}
-                    </p>
-                  </Link>
-                ))}
+                {resources.map((resource, index) => {
+                  const ResourceCard = resource.isDownload ? (
+                    <a
+                      key={index}
+                      href={resource.link}
+                      download
+                      className="bg-white p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
+                    >
+                      {resource.category && (
+                        <span className="inline-block px-3 py-1 bg-primary text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-md">
+                          {resource.category}
+                        </span>
+                      )}
+                      <h3 className="text-xl font-semibold text-primary mb-sm">
+                        {resource.title}
+                      </h3>
+                      <p className="text-text-light text-[0.9375rem] leading-relaxed mb-sm">
+                        {resource.description}
+                      </p>
+                      {resource.fileSize && (
+                        <p className="text-sm text-text-light m-0">
+                          File size: {resource.fileSize}
+                        </p>
+                      )}
+                    </a>
+                  ) : (
+                    <Link
+                      key={index}
+                      to={resource.link}
+                      className="bg-white p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
+                    >
+                      {resource.category && (
+                        <span className="inline-block px-3 py-1 bg-primary text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-md">
+                          {resource.category}
+                        </span>
+                      )}
+                      <h3 className="text-xl font-semibold text-primary mb-sm">
+                        {resource.title}
+                      </h3>
+                      <p className="text-text-light text-[0.9375rem] leading-relaxed">
+                        {resource.description}
+                      </p>
+                    </Link>
+                  )
+                  return ResourceCard
+                })}
               </div>
             ) : (
               <div className="text-center py-xl">

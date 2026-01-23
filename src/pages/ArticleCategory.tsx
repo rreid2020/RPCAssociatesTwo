@@ -72,8 +72,9 @@ const ArticleCategory: FC = () => {
     )
   }
 
-  const categoryTitle = category ? category.title : categorySlug ? categorySlug.charAt(0).toUpperCase() + categorySlug.slice(1).replace(/-/g, ' ') : 'Category'
-  const categoryDescription = category?.description || `Browse our collection of ${category?.title?.toLowerCase() || categorySlug?.replace(/-/g, ' ') || 'expert'} articles covering accounting, tax planning, and business consulting. Expert insights and practical advice from RPC Associates, serving businesses across Canada.`
+  const categoryTitle = category ? category.title : categorySlug ? categorySlug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : 'Category'
+  const categoryName = category?.title || (categorySlug ? categorySlug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : 'expert')
+  const categoryDescription = category?.description || `Browse our collection of ${categoryName} articles covering accounting, tax planning, and business consulting. Expert insights and practical advice from RPC Associates, serving businesses across Canada.`
   const canonicalUrl = `https://rpcassociates.co/articles/category/${categorySlug}`
 
   return (
@@ -122,13 +123,13 @@ const ArticleCategory: FC = () => {
           <div className="max-w-[1200px] mx-auto px-md">
             <div className="text-center mb-xl max-w-[800px] mx-auto">
               <h1 className="mb-md">
-                {category ? category.title : categorySlug ? categorySlug.charAt(0).toUpperCase() + categorySlug.slice(1).replace(/-/g, ' ') : 'Category'} Articles
+                {categoryTitle} Articles
               </h1>
               {category?.description ? (
                 <p className="text-lg text-text-light mb-md">{category.description}</p>
               ) : (
                 <p className="text-lg text-text-light mb-md">
-                  Browse our collection of articles covering {category?.title?.toLowerCase() || categorySlug?.replace(/-/g, ' ') || 'this topic'}. 
+                  Browse our collection of articles covering {categoryName}. 
                   Find expert insights, practical advice, and the latest information on accounting, tax planning, and business consulting.
                 </p>
               )}

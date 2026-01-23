@@ -17,6 +17,7 @@ import BookConsultation from './pages/BookConsultation'
 import ServiceDetail from './pages/ServiceDetail'
 import ScrollToTop from './components/ScrollToTop'
 import SitemapXML from './pages/SitemapXML'
+import CashFlowTemplate from './pages/CashFlowTemplate'
 
 const App: FC = () => {
   return (
@@ -29,6 +30,7 @@ const App: FC = () => {
           <Route path="/services/:slug" element={<ServiceDetail />} />
           <Route path="/resources" element={<Resources />} />
           <Route path="/resources/canadian-personal-income-tax-calculator" element={<TaxCalculator />} />
+          <Route path="/resources/cash-flow-statement-template" element={<CashFlowTemplate />} />
           <Route path="/articles" element={<Articles />} />
           <Route path="/articles/category/:categorySlug" element={<ArticleCategory />} />
           <Route path="/articles/:slug" element={<ArticleDetail />} />

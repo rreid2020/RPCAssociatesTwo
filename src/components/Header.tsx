@@ -41,8 +41,8 @@ const Header: FC = () => {
             <span className="text-xs font-normal text-text-light whitespace-nowrap leading-tight">Accounting · Consulting · Tech Solutions</span>
           </div>
         </Link>
-        <nav className={`lg:flex lg:items-center lg:gap-lg ${isMenuOpen ? 'absolute top-full left-0 right-0 bg-white shadow-md p-md flex flex-col gap-md lg:static lg:shadow-none lg:p-0' : 'hidden lg:flex'}`}>
-          <ul className="flex lg:flex-row flex-col list-none gap-md lg:items-center lg:gap-md">
+        <nav className={`lg:flex lg:items-center lg:gap-lg ${isMenuOpen ? 'fixed top-[73px] left-0 right-0 bg-white shadow-lg p-md flex flex-col gap-md max-h-[calc(100vh-73px)] overflow-y-auto z-[999] lg:static lg:shadow-none lg:p-0 lg:max-h-none lg:overflow-visible' : 'hidden lg:flex'}`}>
+          <ul className="flex lg:flex-row flex-col list-none gap-md lg:items-center lg:gap-md w-full">
             <li 
               className="relative"
               onMouseEnter={() => setIsServicesOpen(true)}
@@ -63,7 +63,7 @@ const Header: FC = () => {
               >
                 Services
               </a>
-              <ul className={`lg:absolute lg:top-full lg:left-0 bg-white shadow-md rounded-lg list-none p-xs mt-xs min-w-[280px] lg:min-w-[360px] transition-all z-[1000] ${isServicesOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2.5 lg:opacity-0 lg:invisible lg:-translate-y-2.5'} ${isMenuOpen ? 'static opacity-100 visible translate-y-0 shadow-none' : ''}`}>
+              <ul className={`lg:absolute lg:top-full lg:left-0 bg-white shadow-md rounded-lg list-none p-xs mt-xs min-w-[280px] lg:min-w-[360px] transition-all z-[1000] ${isServicesOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2.5 lg:opacity-0 lg:invisible lg:-translate-y-2.5'} ${isMenuOpen ? 'static opacity-100 visible translate-y-0 shadow-none bg-gray-50 rounded mt-xs ml-md' : ''}`}>
                 {services.map((service) => (
                   <li key={service.slug}>
                     <Link 
@@ -132,7 +132,7 @@ const Header: FC = () => {
               >
                 Resources
               </Link>
-              <ul className={`absolute top-full left-0 bg-white shadow-md rounded-lg list-none p-xs mt-xs min-w-[240px] lg:min-w-[360px] transition-all z-[1000] ${isResourcesOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2.5'}`}>
+              <ul className={`lg:absolute lg:top-full lg:left-0 bg-white shadow-md rounded-lg list-none p-xs mt-xs min-w-[240px] lg:min-w-[360px] transition-all z-[1000] ${isResourcesOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2.5'} ${isMenuOpen ? 'static opacity-100 visible translate-y-0 shadow-none bg-gray-50 rounded mt-xs ml-md' : ''}`}>
                 <li>
                   <Link 
                     to="/resources/canadian-personal-income-tax-calculator" 
@@ -163,7 +163,7 @@ const Header: FC = () => {
               >
                 Articles
               </Link>
-              <ul className={`absolute top-full left-0 bg-white shadow-md rounded-lg list-none p-xs mt-xs min-w-[240px] transition-all z-[1000] ${isArticlesOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2.5'}`}>
+              <ul className={`lg:absolute lg:top-full lg:left-0 bg-white shadow-md rounded-lg list-none p-xs mt-xs min-w-[240px] transition-all z-[1000] ${isArticlesOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2.5'} ${isMenuOpen ? 'static opacity-100 visible translate-y-0 shadow-none bg-gray-50 rounded mt-xs ml-md' : ''}`}>
                 <li>
                   <Link
                     to="/articles/category/canadian-tax"
@@ -203,8 +203,8 @@ const Header: FC = () => {
               </Link>
             </li>
           </ul>
-          <div className="flex gap-sm items-center ml-xs lg:flex hidden lg:flex">
-            <CalendlyButton className="btn btn--primary whitespace-nowrap" />
+          <div className={`flex gap-sm items-center ${isMenuOpen ? 'flex-col w-full mt-md pt-md border-t border-border' : 'hidden lg:flex'}`}>
+            <CalendlyButton className="btn btn--primary whitespace-nowrap w-full lg:w-auto" />
           </div>
         </nav>
         <button 

@@ -31,7 +31,15 @@ const Resources: FC = () => {
   ]
 
   const guides: Resource[] = [
-    // Guides will be added here as they become available
+    // Example: Add guides with external URLs (for large files hosted on Digital Ocean Spaces)
+    // {
+    //   title: 'CFI Financial Ratios Guide',
+    //   description: 'Comprehensive guide covering key financial ratios, their calculations, and how to interpret them for business analysis and decision-making.',
+    //   link: 'https://your-space.nyc3.digitaloceanspaces.com/CFI-Financial-Ratios-Guide.pdf',
+    //   category: 'Guide',
+    //   isDownload: true,
+    //   fileSize: '46 MB'
+    // }
   ]
 
   const renderResourceCard = (resource: Resource, index: number) => {

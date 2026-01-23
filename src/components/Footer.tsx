@@ -34,7 +34,7 @@ const Footer: FC = () => {
             </ul>
           </div>
           <div className="text-center md:text-left">
-            <h3 className="text-xl mb-md font-semibold text-white">Resources</h3>
+            <h3 className="text-xl mb-md font-semibold text-white">Links</h3>
             <ul className="flex flex-col gap-sm list-none m-0 p-0">
               <li>
                 <a href="https://www.canadian-accountant.com/" target="_blank" rel="noopener noreferrer" className="text-white opacity-90 text-sm no-underline transition-all hover:opacity-100 hover:underline">

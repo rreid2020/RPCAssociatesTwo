@@ -31,13 +31,38 @@ const ServiceDetail: FC = () => {
     )
   }
 
+  // Build comprehensive keywords for SEO
+  const keywords = [
+    service.pill.toLowerCase(),
+    service.title.toLowerCase(),
+    'accounting services',
+    'consulting services',
+    'CPA services',
+    'Ottawa accountant',
+    'Ottawa accounting',
+    'Ottawa consulting',
+    'Ontario accountant',
+    'Canadian accounting',
+    'business advisory',
+    'financial services',
+    'Canada'
+  ]
+
   return (
     <>
       <SEO 
-        title={`${service.title} - RPC Associates`}
+        title={`${service.title} | Ottawa Accounting Services - RPC Associates`}
         description={service.metaDescription}
         canonical={`/services/${service.slug}`}
-        keywords={[service.pill.toLowerCase(), 'accounting', 'consulting', 'Ottawa', 'Canada']}
+        keywords={keywords}
+        ogType="website"
+        schemaService={{
+          name: service.title,
+          description: service.metaDescription,
+          provider: 'RPC Associates',
+          areaServed: ['CA', 'CA-ON', 'Ottawa'],
+          serviceType: service.title
+        }}
       />
       <main>
         {/* Hero Section */}

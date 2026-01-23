@@ -21,6 +21,13 @@ interface SEOProps {
   schemaPublisherLogo?: string
   publishedDate?: string
   modifiedDate?: string
+  schemaService?: {
+    name: string
+    description: string
+    provider: string
+    areaServed?: string[]
+    serviceType?: string
+  }
 }
 
 const SEO: FC<SEOProps> = ({
@@ -42,7 +49,8 @@ const SEO: FC<SEOProps> = ({
   schemaPublisher = 'RPC Associates',
   schemaPublisherLogo,
   publishedDate,
-  modifiedDate
+  modifiedDate,
+  schemaService
 }) => {
   const fullTitle = title.includes('RPC Associates') ? title : `${title} | RPC Associates`
   const fullCanonical = canonical.startsWith('http') ? canonical : `https://rpcassociates.co${canonical}`
@@ -95,9 +103,43 @@ const SEO: FC<SEOProps> = ({
 
       {/* Structured Data */}
       <script type="application/ld+json">
-        {JSON.stringify({
-          '@context': 'https://schema.org',
-          '@type': schemaType === 'Article' || schemaType === 'BlogPosting' || schemaType === 'NewsArticle' || schemaType === 'TechArticle' 
+        {JSON.stringify(
+          schemaService ? {
+            '@context': 'https://schema.org',
+            '@type': 'Service',
+            name: schemaService.name,
+            description: schemaService.description,
+            provider: {
+              '@type': 'AccountingService',
+              name: schemaService.provider || 'RPC Associates',
+              url: 'https://rpcassociates.co',
+              logo: 'https://rpcassociates.co/logo.png',
+              telephone: '+1-613-884-0208',
+              email: 'roger.reid@rpcassociates.co',
+              address: {
+                '@type': 'PostalAddress',
+                addressLocality: 'Ottawa',
+                addressRegion: 'ON',
+                addressCountry: 'CA'
+              },
+              areaServed: schemaService.areaServed || ['CA', 'CA-ON'],
+              serviceType: schemaService.serviceType
+            },
+            serviceType: schemaService.serviceType,
+            areaServed: schemaService.areaServed ? schemaService.areaServed.map((area: string) => ({
+              '@type': area.includes('CA-ON') ? 'State' : area === 'CA' ? 'Country' : 'City',
+              name: area === 'CA' ? 'Canada' : area === 'CA-ON' ? 'Ontario' : area
+            })) : [
+              { '@type': 'City', name: 'Ottawa' },
+              { '@type': 'State', name: 'Ontario' },
+              { '@type': 'Country', name: 'Canada' }
+            ],
+            mainEntityOfPage: {
+              '@type': 'WebPage',
+              '@id': fullCanonical
+            }
+          }
+          : schemaType === 'Article' || schemaType === 'BlogPosting' || schemaType === 'NewsArticle' || schemaType === 'TechArticle' 
             ? {
                 '@type': schemaType,
                 headline: fullTitle,
@@ -192,7 +234,7 @@ const SEO: FC<SEOProps> = ({
                   }
                 }
               }
-        })}
+        )}
       </script>
     </Helmet>
   )

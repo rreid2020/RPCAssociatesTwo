@@ -16,6 +16,7 @@ import TaxCalculator from './pages/TaxCalculator'
 import BookConsultation from './pages/BookConsultation'
 import ServiceDetail from './pages/ServiceDetail'
 import ScrollToTop from './components/ScrollToTop'
+import SitemapXML from './pages/SitemapXML'
 
 const App: FC = () => {
   return (
@@ -35,6 +36,7 @@ const App: FC = () => {
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/sitemap" element={<Sitemap />} />
+          <Route path="/sitemap.xml" element={<SitemapXML />} />
           <Route path="/client-portal" element={<ComingSoon />} />
         </Routes>
         <Footer />

@@ -41,7 +41,7 @@ export const services: Service[] = [
         description: 'We prepare and file your HST/GST returns on time, ensuring compliance with CRA requirements. Our team also provides guidance on basic compliance matters to help you avoid penalties and stay current with your tax obligations.'
       }
     ],
-    metaDescription: 'Professional core accounting and cloud bookkeeping services to keep your financials clean, current, and reliable. Transaction posting, bank reconciliations, and monthly financial statements.'
+    metaDescription: 'Professional core accounting and cloud bookkeeping services in Ottawa, Canada. Keep your financials clean, current, and reliable with transaction posting, bank reconciliations, monthly financial statements, and HST/GST returns. Expert CPA services for growing businesses.'
   },
   {
     slug: 'year-end-reporting',
@@ -72,7 +72,7 @@ export const services: Service[] = [
         description: 'We work directly with your external tax preparer to ensure they have all the information and documentation needed for your tax filings. This coordination saves you time and helps ensure accuracy in your tax returns.'
       }
     ],
-    metaDescription: 'Professional year-end financials and reporting services. Year-end adjustments, working papers, management-ready reports, and coordination with your tax preparer.'
+    metaDescription: 'Professional year-end financials and reporting services in Ottawa, Ontario. Year-end adjustments, working papers, management-ready financial reports, and coordination with your tax preparer. Expert accounting services for Canadian businesses.'
   },
   {
     slug: 'tax-planning',
@@ -103,7 +103,7 @@ export const services: Service[] = [
         description: 'We work alongside your tax preparer to provide them with accurate financial information and answer questions about your business operations. This collaboration ensures your tax returns are complete and accurate.'
       }
     ],
-    metaDescription: 'Tax planning and compliance support services. Strategic planning for self-employed and corporations, income and expense timing, and coordination with tax preparers.'
+    metaDescription: 'Tax planning and compliance support services in Ottawa, Canada. Strategic tax planning for self-employed individuals and corporations, income and expense timing, documentation support, and coordination with tax preparers. Expert CPA tax services.'
   },
   {
     slug: 'cash-flow-planning',
@@ -134,7 +134,7 @@ export const services: Service[] = [
         description: 'When considering growth opportunities, we create scenario-based cash flow projections to help you understand the financial implications. These scenarios help you evaluate risks and make informed decisions about expansion, hiring, or major investments.'
       }
     ],
-    metaDescription: 'Cash flow planning and forecasting services. Analysis, forecasting, planning for major expenses, and scenario planning for business growth decisions.'
+    metaDescription: 'Cash flow planning and forecasting services in Ottawa, Ontario. Cash flow analysis, forecasting, planning for major expenses and tax payments, payables and receivables review, and scenario planning for growth decisions. Expert financial advisory.'
   },
   {
     slug: 'fractional-controller',
@@ -165,7 +165,7 @@ export const services: Service[] = [
         description: 'Regular financial review meetings ensure you stay informed about your business\'s financial performance and have a forum to discuss questions, concerns, and opportunities. These meetings help you make timely decisions and stay ahead of potential issues.'
       }
     ],
-    metaDescription: 'Fractional controller and business advisory services. Budgeting, KPI monitoring, strategic decision support, and regular financial reviews.'
+    metaDescription: 'Fractional controller and business advisory services in Ottawa, Canada. Senior-level financial insight with budgeting, variance analysis, KPI design and monitoring, strategic decision support, and regular financial review meetings. Expert CPA advisory services.'
   },
   {
     slug: 'tech-solutions',
@@ -196,7 +196,7 @@ export const services: Service[] = [
         description: 'We help integrate your accounting system with other business tools and systems, creating a seamless flow of information across your organization. These integrations eliminate manual data entry, reduce errors, and provide a unified view of your business operations.'
       }
     ],
-    metaDescription: 'Accounting systems and tech solutions. Cloud accounting setup, workflow design, automation, and system integrations to streamline your operations.'
+    metaDescription: 'Accounting systems and tech solutions in Ottawa, Ontario. Cloud accounting setup and optimization, workflow and approval process design, automation of recurring tasks, and integration with business tools. Expert tech solutions for modern businesses.'
   }
 ]
 

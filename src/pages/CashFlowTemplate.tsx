@@ -305,20 +305,22 @@ const CashFlowTemplate: FC = () => {
               </div>
 
               {/* Download CTA */}
-              <div className="bg-primary text-white p-xl rounded-xl text-center">
-                <h2 className="text-2xl lg:text-3xl font-bold mb-md">
-                  Ready to Get Started?
-                </h2>
-                <p className="text-lg mb-lg opacity-90 max-w-2xl mx-auto">
-                  Download our free Cash Flow Statement Template and start tracking your business's cash flow today.
-                </p>
-                <a
-                  href={downloadUrl}
-                  download={fileName}
-                  className="btn bg-white text-primary hover:bg-gray-100 inline-block"
-                >
-                  Download Template
-                </a>
+              <div className="bg-background p-xl rounded-xl text-center">
+                <div className="bg-white p-xl rounded-xl shadow-sm border border-border">
+                  <h2 className="text-2xl lg:text-3xl font-bold text-primary mb-md">
+                    Ready to Get Started?
+                  </h2>
+                  <p className="text-lg text-text-light mb-lg max-w-2xl mx-auto">
+                    Download our free Cash Flow Statement Template and start tracking your business's cash flow today.
+                  </p>
+                  <a
+                    href={downloadUrl}
+                    download={fileName}
+                    className="btn btn--primary inline-block"
+                  >
+                    Download Template
+                  </a>
+                </div>
               </div>
             </div>
           </div>

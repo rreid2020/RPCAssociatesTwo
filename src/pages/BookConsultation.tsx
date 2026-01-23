@@ -4,8 +4,17 @@ import SEO from '../components/SEO'
 import { CALENDLY_URL } from '../config/calendly'
 
 const BookConsultation: FC = () => {
-  // Convert Calendly URL to embed format (iframe-friendly)
-  const embedUrl = CALENDLY_URL.replace(/\/$/, '') // Remove trailing slash if present
+  // Convert Calendly URL to embed format with custom styling to match site colors
+  let embedUrl = CALENDLY_URL.replace(/\/$/, '') // Remove trailing slash if present
+  
+  // Add customization parameters to match site branding
+  const url = new URL(embedUrl)
+  url.searchParams.set('primary_color', '183956') // Match site primary color
+  url.searchParams.set('text_color', '333333') // Match site text color
+  url.searchParams.set('bg_color', 'ffffff') // White background
+  url.searchParams.set('hide_event_type_details', '0') // Show event details
+  url.searchParams.set('hide_landing_page_details', '1') // Hide landing page details for cleaner look
+  embedUrl = url.toString()
 
   return (
     <>
@@ -27,16 +36,21 @@ const BookConsultation: FC = () => {
               </p>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm p-lg lg:p-xl">
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-border">
               <iframe
                 src={embedUrl}
                 width="100%"
                 height="700"
                 frameBorder="0"
                 title="Calendly Scheduling Page"
-                className="w-full min-h-[700px] rounded-lg"
-                style={{ minHeight: '700px' }}
+                className="w-full min-h-[700px]"
+                style={{ 
+                  minHeight: '700px',
+                  border: 'none',
+                  display: 'block'
+                }}
                 allow="camera; microphone; geolocation"
+                loading="lazy"
               />
             </div>
 

@@ -15,11 +15,13 @@ import ComingSoon from './pages/ComingSoon'
 import TaxCalculator from './pages/TaxCalculator'
 import BookConsultation from './pages/BookConsultation'
 import ServiceDetail from './pages/ServiceDetail'
+import ScrollToTop from './components/ScrollToTop'
 
 const App: FC = () => {
   return (
     <HelmetProvider>
       <Router>
+        <ScrollToTop />
         <Header />
         <Routes>
           <Route path="/" element={<Home />} />

@@ -1,87 +1,11 @@
-import { FC, useEffect, useRef } from 'react'
+import { FC } from 'react'
 import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 import { CALENDLY_URL } from '../config/calendly'
 
 const BookConsultation: FC = () => {
-  const calendlyRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    // Check if Calendly is already available
-    if (window.Calendly && calendlyRef.current) {
-      window.Calendly.initInlineWidget({
-        url: CALENDLY_URL,
-        parentElement: calendlyRef.current,
-        prefill: {},
-        utm: {}
-      })
-      return
-    }
-
-    // Check if script is already in the DOM
-    const existingScript = document.querySelector('script[src*="calendly.com"]')
-    
-    // Initialize Calendly inline widget
-    const initCalendly = () => {
-      if (window.Calendly && calendlyRef.current) {
-        window.Calendly.initInlineWidget({
-          url: CALENDLY_URL,
-          parentElement: calendlyRef.current,
-          prefill: {},
-          utm: {}
-        })
-      }
-    }
-
-    if (existingScript) {
-      // Script exists, wait for it to load
-      const checkCalendly = setInterval(() => {
-        if (window.Calendly) {
-          clearInterval(checkCalendly)
-          initCalendly()
-        }
-      }, 100)
-      
-      // Timeout after 5 seconds
-      setTimeout(() => {
-        clearInterval(checkCalendly)
-      }, 5000)
-      
-      return () => clearInterval(checkCalendly)
-    }
-
-    // Load Calendly inline widget script
-    const script = document.createElement('script')
-    script.src = 'https://assets.calendly.com/assets/external/widget.js'
-    script.async = true
-    
-    script.onload = () => {
-      initCalendly()
-    }
-    
-    script.onerror = () => {
-      console.error('Failed to load Calendly script')
-    }
-    
-    document.body.appendChild(script)
-
-    // Fallback: wait for Calendly to be available
-    const checkCalendly = setInterval(() => {
-      if (window.Calendly) {
-        clearInterval(checkCalendly)
-        initCalendly()
-      }
-    }, 100)
-
-    // Timeout after 5 seconds
-    setTimeout(() => {
-      clearInterval(checkCalendly)
-    }, 5000)
-
-    return () => {
-      clearInterval(checkCalendly)
-    }
-  }, [])
+  // Convert Calendly URL to embed format (iframe-friendly)
+  const embedUrl = CALENDLY_URL.replace(/\/$/, '') // Remove trailing slash if present
 
   return (
     <>
@@ -104,10 +28,15 @@ const BookConsultation: FC = () => {
             </div>
 
             <div className="bg-white rounded-xl shadow-sm p-lg lg:p-xl">
-              <div 
-                ref={calendlyRef}
-                className="calendly-inline-widget min-h-[700px]"
-                style={{ minHeight: '700px', width: '100%' }}
+              <iframe
+                src={embedUrl}
+                width="100%"
+                height="700"
+                frameBorder="0"
+                title="Calendly Scheduling Page"
+                className="w-full min-h-[700px] rounded-lg"
+                style={{ minHeight: '700px' }}
+                allow="camera; microphone; geolocation"
               />
             </div>
 
@@ -127,20 +56,6 @@ const BookConsultation: FC = () => {
       </main>
     </>
   )
-}
-
-// Extend Window interface for TypeScript
-declare global {
-  interface Window {
-    Calendly?: {
-      initInlineWidget: (options: {
-        url: string
-        parentElement: HTMLElement
-        prefill?: Record<string, any>
-        utm?: Record<string, any>
-      }) => void
-    }
-  }
 }
 
 export default BookConsultation

@@ -44,7 +44,7 @@ const SEO: FC<SEOProps> = ({
   twitterTitle,
   twitterDescription,
   twitterImage,
-  schemaType = 'Article',
+  schemaType,
   schemaAuthor,
   schemaPublisher = 'RPC Associates',
   schemaPublisherLogo,
@@ -141,6 +141,7 @@ const SEO: FC<SEOProps> = ({
           }
           : schemaType === 'Article' || schemaType === 'BlogPosting' || schemaType === 'NewsArticle' || schemaType === 'TechArticle' 
             ? {
+                '@context': 'https://schema.org',
                 '@type': schemaType,
                 headline: fullTitle,
                 description: description,
@@ -171,6 +172,7 @@ const SEO: FC<SEOProps> = ({
                 }
               }
             : {
+                '@context': 'https://schema.org',
                 '@type': ['AccountingService', 'LocalBusiness'],
                 name: 'RPC Associates',
                 description: description,

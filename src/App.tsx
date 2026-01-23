@@ -14,6 +14,7 @@ import Sitemap from './pages/Sitemap'
 import ComingSoon from './pages/ComingSoon'
 import TaxCalculator from './pages/TaxCalculator'
 import BookConsultation from './pages/BookConsultation'
+import ServiceDetail from './pages/ServiceDetail'
 
 const App: FC = () => {
   return (
@@ -22,6 +23,7 @@ const App: FC = () => {
         <Header />
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/services/:slug" element={<ServiceDetail />} />
           <Route path="/resources" element={<Resources />} />
           <Route path="/resources/canadian-personal-income-tax-calculator" element={<TaxCalculator />} />
           <Route path="/articles" element={<Articles />} />

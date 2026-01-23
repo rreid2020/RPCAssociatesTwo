@@ -5,10 +5,13 @@ import { Link, useLocation } from 'react-router-dom'
 import logo from '../assets/rpc-logo.svg'
 import CalendlyButton from './CalendlyButton'
 
+import { services } from '../lib/services/data'
+
 const Header: FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isResourcesOpen, setIsResourcesOpen] = useState(false)
   const [isArticlesOpen, setIsArticlesOpen] = useState(false)
+  const [isServicesOpen, setIsServicesOpen] = useState(false)
   const location = useLocation()
 
   const scrollToSection = (id: string) => {
@@ -40,14 +43,39 @@ const Header: FC = () => {
         </Link>
         <nav className={`lg:flex lg:items-center lg:gap-lg ${isMenuOpen ? 'absolute top-full left-0 right-0 bg-white shadow-md p-md flex flex-col gap-md lg:static lg:shadow-none lg:p-0' : 'hidden lg:flex'}`}>
           <ul className="flex lg:flex-row flex-col list-none gap-md lg:items-center lg:gap-md">
-            <li>
+            <li 
+              className="relative"
+              onMouseEnter={() => setIsServicesOpen(true)}
+              onMouseLeave={() => setIsServicesOpen(false)}
+            >
               <a 
                 href="#services" 
                 className="text-text font-medium py-xs whitespace-nowrap hover:text-primary transition-colors"
-                onClick={(e) => { e.preventDefault(); scrollToSection('services') }}
+                onClick={(e) => {
+                  if (window.innerWidth <= 1024) {
+                    e.preventDefault()
+                    setIsServicesOpen(!isServicesOpen)
+                  } else {
+                    e.preventDefault()
+                    scrollToSection('services')
+                  }
+                }}
               >
                 Services
               </a>
+              <ul className={`lg:absolute lg:top-full lg:left-0 bg-white shadow-md rounded-lg list-none p-xs mt-xs min-w-[280px] lg:min-w-[360px] transition-all z-[1000] ${isServicesOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2.5 lg:opacity-0 lg:invisible lg:-translate-y-2.5'} ${isMenuOpen ? 'static opacity-100 visible translate-y-0 shadow-none' : ''}`}>
+                {services.map((service) => (
+                  <li key={service.slug}>
+                    <Link 
+                      to={`/services/${service.slug}`}
+                      className="block px-md py-sm text-text text-[0.9375rem] cursor-default whitespace-nowrap hover:bg-gray-50 rounded transition-colors"
+                      onClick={handleNavClick}
+                    >
+                      {service.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </li>
             <li>
               <a 

@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 
 const CashFlowTemplate: FC = () => {
-  const downloadUrl = '/downloads/excel-templates/cash-flow-statement-template.xlsx'
-  const fileName = 'cash-flow-statement-template.xlsx'
+  const downloadUrl = '/downloads/excel-templates/RPC Cash Flow Statement.xlsx'
+  const fileName = 'RPC Cash Flow Statement.xlsx'
 
   return (
     <>

@@ -234,13 +234,14 @@ const Header: FC = () => {
   return (
     <>
       {/* Backdrop overlay for mobile menu */}
-      {isMenuOpen && (
+      {isMenuOpen ? (
         <div 
+          key="backdrop"
           className="fixed inset-0 bg-black bg-opacity-50 z-[999] lg:hidden"
           onClick={closeMenu}
           aria-hidden="true"
         />
-      )}
+      ) : null}
       <header className="sticky top-0 bg-white shadow-sm z-[1000] py-4">
         <div className="max-w-[1200px] mx-auto px-md flex justify-between items-center gap-md relative z-[1001]">
           <Link to="/" aria-label="RPC Associates Home" className="flex items-center gap-sm no-underline">
@@ -279,8 +280,8 @@ const Header: FC = () => {
       {/* Mobile Navigation - Only renders when open, positioned outside header */}
       {isMenuOpen ? (
         <nav 
+          key="mobile-menu"
           className="fixed top-[73px] left-0 right-0 bg-white shadow-lg p-md flex flex-col gap-md max-h-[calc(100vh-73px)] overflow-y-auto z-[1000] lg:hidden"
-          style={{ display: 'flex' }}
         >
           <ul className="flex flex-col list-none gap-md w-full">
             <MenuItems isMobile={true} />

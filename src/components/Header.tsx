@@ -277,9 +277,10 @@ const Header: FC = () => {
       </header>
 
       {/* Mobile Navigation - Only renders when open, positioned outside header */}
-      {isMenuOpen && (
+      {isMenuOpen ? (
         <nav 
           className="fixed top-[73px] left-0 right-0 bg-white shadow-lg p-md flex flex-col gap-md max-h-[calc(100vh-73px)] overflow-y-auto z-[1000] lg:hidden"
+          style={{ display: 'flex' }}
         >
           <ul className="flex flex-col list-none gap-md w-full">
             <MenuItems isMobile={true} />
@@ -288,7 +289,7 @@ const Header: FC = () => {
             <CalendlyButton className="btn btn--primary whitespace-nowrap w-full" />
           </div>
         </nav>
-      )}
+      ) : null}
     </>
   )
 }

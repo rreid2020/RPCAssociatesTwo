@@ -1,4 +1,4 @@
-import { FC, useState } from 'react'
+import { FC, useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 // Note: Place your logo file at src/assets/rpc-logo.png
 // Using SVG placeholder until PNG is added
@@ -13,6 +13,18 @@ const Header: FC = () => {
   const [isArticlesOpen, setIsArticlesOpen] = useState(false)
   const [isServicesOpen, setIsServicesOpen] = useState(false)
   const location = useLocation()
+
+  // Prevent body scroll when menu is open
+  useEffect(() => {
+    if (isMenuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isMenuOpen])
 
   const scrollToSection = (id: string) => {
     if (location.pathname !== '/') {
@@ -35,14 +47,23 @@ const Header: FC = () => {
   }
 
   const toggleMenu = () => {
-    const newState = !isMenuOpen
-    setIsMenuOpen(newState)
-    if (!newState) {
-      // Close all dropdowns when closing menu
+    if (isMenuOpen) {
+      // Close menu and all dropdowns
+      setIsMenuOpen(false)
       setIsResourcesOpen(false)
       setIsArticlesOpen(false)
       setIsServicesOpen(false)
+    } else {
+      // Open menu
+      setIsMenuOpen(true)
     }
+  }
+
+  const closeMenu = () => {
+    setIsMenuOpen(false)
+    setIsResourcesOpen(false)
+    setIsArticlesOpen(false)
+    setIsServicesOpen(false)
   }
 
   // Shared menu items component for reuse
@@ -74,7 +95,7 @@ const Header: FC = () => {
               <Link 
                 to={`/services/${service.slug}`}
                 className="block px-md py-sm text-text text-[0.9375rem] cursor-default whitespace-nowrap hover:bg-gray-50 rounded transition-colors"
-                onClick={handleNavClick}
+                onClick={closeMenu}
               >
                 {service.title}
               </Link>
@@ -215,13 +236,13 @@ const Header: FC = () => {
       {/* Backdrop overlay for mobile menu */}
       {isMenuOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-[998] lg:hidden"
-          onClick={toggleMenu}
+          className="fixed inset-0 bg-black bg-opacity-50 z-[999] lg:hidden"
+          onClick={closeMenu}
           aria-hidden="true"
         />
       )}
       <header className="sticky top-0 bg-white shadow-sm z-[1000] py-4">
-        <div className="max-w-[1200px] mx-auto px-md flex justify-between items-center gap-md">
+        <div className="max-w-[1200px] mx-auto px-md flex justify-between items-center gap-md relative z-[1001]">
           <Link to="/" aria-label="RPC Associates Home" className="flex items-center gap-sm no-underline">
             <img src={logo} alt="RPC Associates" className="h-10 w-10 flex-shrink-0" />
             <div className="flex flex-col gap-0.5">
@@ -242,29 +263,32 @@ const Header: FC = () => {
 
           {/* Mobile Hamburger Button */}
           <button 
-            className="lg:hidden flex flex-col gap-1 bg-transparent border-none cursor-pointer p-xs z-[1001] relative"
+            className="lg:hidden flex flex-col gap-1 bg-transparent border-none cursor-pointer p-xs relative z-[1002]"
             onClick={toggleMenu}
             aria-label="Toggle menu"
             aria-expanded={isMenuOpen}
+            type="button"
           >
             <span className={`w-6 h-0.5 bg-primary transition-all duration-300 ${isMenuOpen ? 'rotate-45 translate-y-2' : ''}`}></span>
             <span className={`w-6 h-0.5 bg-primary transition-all duration-300 ${isMenuOpen ? 'opacity-0' : ''}`}></span>
             <span className={`w-6 h-0.5 bg-primary transition-all duration-300 ${isMenuOpen ? '-rotate-45 -translate-y-2' : ''}`}></span>
           </button>
         </div>
-
-        {/* Mobile Navigation - Only renders when open */}
-        {isMenuOpen && (
-          <nav className="fixed top-[73px] left-0 right-0 bg-white shadow-lg p-md flex flex-col gap-md max-h-[calc(100vh-73px)] overflow-y-auto z-[999] lg:hidden">
-            <ul className="flex flex-col list-none gap-md w-full">
-              <MenuItems isMobile={true} />
-            </ul>
-            <div className="flex flex-col w-full mt-md pt-md border-t border-border">
-              <CalendlyButton className="btn btn--primary whitespace-nowrap w-full" />
-            </div>
-          </nav>
-        )}
       </header>
+
+      {/* Mobile Navigation - Only renders when open, positioned outside header */}
+      {isMenuOpen && (
+        <nav 
+          className="fixed top-[73px] left-0 right-0 bg-white shadow-lg p-md flex flex-col gap-md max-h-[calc(100vh-73px)] overflow-y-auto z-[1000] lg:hidden"
+        >
+          <ul className="flex flex-col list-none gap-md w-full">
+            <MenuItems isMobile={true} />
+          </ul>
+          <div className="flex flex-col w-full mt-md pt-md border-t border-border">
+            <CalendlyButton className="btn btn--primary whitespace-nowrap w-full" />
+          </div>
+        </nav>
+      )}
     </>
   )
 }

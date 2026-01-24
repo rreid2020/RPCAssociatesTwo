@@ -173,7 +173,7 @@ const SEO: FC<SEOProps> = ({
               }
             : {
                 '@context': 'https://schema.org',
-                '@type': ['AccountingService', 'LocalBusiness'],
+                '@type': 'AccountingService',
                 name: 'RPC Associates',
                 description: description,
                 url: 'https://rpcassociates.co',

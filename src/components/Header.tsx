@@ -29,11 +29,33 @@ const Header: FC = () => {
 
   const handleNavClick = () => {
     setIsMenuOpen(false)
+    setIsResourcesOpen(false)
+    setIsArticlesOpen(false)
+    setIsServicesOpen(false)
+  }
+
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen)
+    if (isMenuOpen) {
+      // Close all dropdowns when closing menu
+      setIsResourcesOpen(false)
+      setIsArticlesOpen(false)
+      setIsServicesOpen(false)
+    }
   }
 
   return (
-    <header className="sticky top-0 bg-white shadow-sm z-[1000] py-4">
-      <div className="max-w-[1200px] mx-auto px-md flex justify-between items-center gap-md">
+    <>
+      {/* Backdrop overlay for mobile menu */}
+      {isMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-[998] lg:hidden"
+          onClick={toggleMenu}
+          aria-hidden="true"
+        />
+      )}
+      <header className="sticky top-0 bg-white shadow-sm z-[1000] py-4">
+        <div className="max-w-[1200px] mx-auto px-md flex justify-between items-center gap-md">
         <Link to="/" aria-label="RPC Associates Home" className="flex items-center gap-sm no-underline">
           <img src={logo} alt="RPC Associates" className="h-10 w-10 flex-shrink-0" />
           <div className="flex flex-col gap-0.5">
@@ -41,7 +63,7 @@ const Header: FC = () => {
             <span className="text-xs font-normal text-text-light whitespace-nowrap leading-tight">Accounting · Consulting · Tech Solutions</span>
           </div>
         </Link>
-        <nav className={`lg:flex lg:items-center lg:gap-lg ${isMenuOpen ? 'fixed top-[73px] left-0 right-0 bg-white shadow-lg p-md flex flex-col gap-md max-h-[calc(100vh-73px)] overflow-y-auto z-[999] lg:static lg:shadow-none lg:p-0 lg:max-h-none lg:overflow-visible' : 'hidden lg:flex'}`}>
+        <nav className={`lg:flex lg:items-center lg:gap-lg ${isMenuOpen ? 'fixed top-[73px] left-0 right-0 bg-white shadow-lg p-md flex flex-col gap-md max-h-[calc(100vh-73px)] overflow-y-auto z-[999] lg:static lg:shadow-none lg:p-0 lg:max-h-none lg:overflow-visible' : 'hidden lg:flex'} transition-all duration-200`}>
           <ul className="flex lg:flex-row flex-col list-none gap-md lg:items-center lg:gap-md w-full">
             <li 
               className="relative"
@@ -208,17 +230,18 @@ const Header: FC = () => {
           </div>
         </nav>
         <button 
-          className="lg:hidden flex flex-col gap-1 bg-transparent border-none cursor-pointer p-xs"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className="lg:hidden flex flex-col gap-1 bg-transparent border-none cursor-pointer p-xs z-[1001] relative"
+          onClick={toggleMenu}
           aria-label="Toggle menu"
           aria-expanded={isMenuOpen}
         >
-          <span className="w-6 h-0.5 bg-primary transition-all"></span>
-          <span className="w-6 h-0.5 bg-primary transition-all"></span>
-          <span className="w-6 h-0.5 bg-primary transition-all"></span>
+          <span className={`w-6 h-0.5 bg-primary transition-all ${isMenuOpen ? 'rotate-45 translate-y-2' : ''}`}></span>
+          <span className={`w-6 h-0.5 bg-primary transition-all ${isMenuOpen ? 'opacity-0' : ''}`}></span>
+          <span className={`w-6 h-0.5 bg-primary transition-all ${isMenuOpen ? '-rotate-45 -translate-y-2' : ''}`}></span>
         </button>
       </div>
     </header>
+    </>
   )
 }
 

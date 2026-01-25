@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import logo from '../assets/rpc-logo.svg'
 import CalendlyButton from './CalendlyButton'
 import { services } from '../lib/services/data'
+import { resourceCategories } from '../lib/resources/data'
 
 // Simple icon components for services
 const ServiceIcon = ({ icon }: { icon: string }) => {
@@ -35,6 +36,32 @@ const ServiceIcon = ({ icon }: { icon: string }) => {
     'tech-solutions': (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+      </svg>
+    ),
+  }
+  return iconMap[icon] || (
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  )
+}
+
+// Resource category icons
+const ResourceIcon = ({ icon }: { icon: string }) => {
+  const iconMap: Record<string, JSX.Element> = {
+    'calculator': (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+      </svg>
+    ),
+    'excel': (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    ),
+    'publications': (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
       </svg>
     ),
   }
@@ -123,7 +150,7 @@ const Header: FC = () => {
                   onMouseLeave={() => setIsServicesOpen(false)}
                 >
                   <button
-                    className="flex items-center gap-1 text-text font-medium hover:text-primary transition-colors py-2"
+                    className="flex items-center gap-1 text-text font-medium hover:text-primary transition-colors py-2 whitespace-nowrap"
                     onClick={(e) => {
                       e.preventDefault()
                       scrollToSection('services')
@@ -142,7 +169,11 @@ const Header: FC = () => {
                   
                   {/* Desktop Services Dropdown - Card Style */}
                   {isServicesOpen && (
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[600px] xl:w-[700px] bg-white rounded-lg shadow-xl border border-gray-200 p-6 z-[1001]">
+                    <div 
+                      className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[600px] xl:w-[700px] bg-white rounded-lg shadow-xl border border-gray-200 p-6 z-[1001]"
+                      onMouseEnter={() => setIsServicesOpen(true)}
+                      onMouseLeave={() => setIsServicesOpen(false)}
+                    >
                       <div className="grid grid-cols-2 gap-4">
                         {services.map((service) => (
                           <Link
@@ -155,7 +186,7 @@ const Header: FC = () => {
                               <div className="flex-shrink-0 text-primary">
                                 <ServiceIcon icon={service.slug} />
                               </div>
-                              <h3 className="text-sm font-semibold text-text group-hover:text-primary transition-colors">
+                              <h3 className="text-sm font-semibold text-text group-hover:text-primary transition-colors leading-tight">
                                 {service.title}
                               </h3>
                             </div>
@@ -172,17 +203,8 @@ const Header: FC = () => {
                 {/* Other Navigation Items */}
                 <li>
                   <a 
-                    href="#why" 
-                    className="text-text font-medium hover:text-primary transition-colors py-2"
-                    onClick={(e) => { e.preventDefault(); scrollToSection('why') }}
-                  >
-                    Why Hire an Accountant
-                  </a>
-                </li>
-                <li>
-                  <a 
                     href="#about" 
-                    className="text-text font-medium hover:text-primary transition-colors py-2"
+                    className="text-text font-medium hover:text-primary transition-colors py-2 whitespace-nowrap"
                     onClick={(e) => { e.preventDefault(); scrollToSection('about') }}
                   >
                     About
@@ -191,7 +213,7 @@ const Header: FC = () => {
                 <li>
                   <a 
                     href="#remote" 
-                    className="text-text font-medium hover:text-primary transition-colors py-2"
+                    className="text-text font-medium hover:text-primary transition-colors py-2 whitespace-nowrap"
                     onClick={(e) => { e.preventDefault(); scrollToSection('remote') }}
                   >
                     Remote
@@ -200,7 +222,7 @@ const Header: FC = () => {
                 <li>
                   <a 
                     href="#contact" 
-                    className="text-text font-medium hover:text-primary transition-colors py-2"
+                    className="text-text font-medium hover:text-primary transition-colors py-2 whitespace-nowrap"
                     onClick={(e) => { e.preventDefault(); scrollToSection('contact') }}
                   >
                     Contact
@@ -213,9 +235,8 @@ const Header: FC = () => {
                   onMouseEnter={() => setIsResourcesOpen(true)}
                   onMouseLeave={() => setIsResourcesOpen(false)}
                 >
-                  <Link 
-                    to="/resources" 
-                    className="flex items-center gap-1 text-text font-medium hover:text-primary transition-colors py-2"
+                  <button
+                    className="flex items-center gap-1 text-text font-medium hover:text-primary transition-colors py-2 whitespace-nowrap"
                   >
                     Resources
                     <svg 
@@ -226,16 +247,37 @@ const Header: FC = () => {
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
-                  </Link>
+                  </button>
+                  
+                  {/* Desktop Resources Dropdown - Card Style (matching Services) */}
                   {isResourcesOpen && (
-                    <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 p-2 z-[1001]">
-                      <Link 
-                        to="/resources/canadian-personal-income-tax-calculator" 
-                        className="block px-4 py-2 text-sm text-text hover:bg-gray-50 rounded transition-colors"
-                        onClick={closeMenu}
-                      >
-                        Canadian Personal Income Tax Calculator
-                      </Link>
+                    <div 
+                      className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[600px] xl:w-[700px] bg-white rounded-lg shadow-xl border border-gray-200 p-6 z-[1001]"
+                      onMouseEnter={() => setIsResourcesOpen(true)}
+                      onMouseLeave={() => setIsResourcesOpen(false)}
+                    >
+                      <div className="grid grid-cols-3 gap-4">
+                        {resourceCategories.map((category) => (
+                          <Link
+                            key={category.slug}
+                            to={`/resources/${category.slug}`}
+                            className="group flex flex-col gap-2 p-4 rounded-lg hover:bg-gray-50 transition-colors"
+                            onClick={closeMenu}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="flex-shrink-0 text-primary">
+                                <ResourceIcon icon={category.icon} />
+                              </div>
+                              <h3 className="text-sm font-semibold text-text group-hover:text-primary transition-colors leading-tight">
+                                {category.title}
+                              </h3>
+                            </div>
+                            <p className="text-xs text-text-light leading-relaxed">
+                              {category.description}
+                            </p>
+                          </Link>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </li>
@@ -248,7 +290,7 @@ const Header: FC = () => {
                 >
                   <Link 
                     to="/articles" 
-                    className="flex items-center gap-1 text-text font-medium hover:text-primary transition-colors py-2"
+                    className="flex items-center gap-1 text-text font-medium hover:text-primary transition-colors py-2 whitespace-nowrap"
                   >
                     Articles
                     <svg 
@@ -261,7 +303,11 @@ const Header: FC = () => {
                     </svg>
                   </Link>
                   {isArticlesOpen && (
-                    <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 p-2 z-[1001]">
+                    <div 
+                      className="absolute top-full left-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 p-2 z-[1001]"
+                      onMouseEnter={() => setIsArticlesOpen(true)}
+                      onMouseLeave={() => setIsArticlesOpen(false)}
+                    >
                       <Link
                         to="/articles/category/canadian-tax"
                         className="block px-4 py-2 text-sm text-text hover:bg-gray-50 rounded transition-colors"
@@ -367,13 +413,6 @@ const Header: FC = () => {
 
               {/* Other Navigation Items */}
               <a 
-                href="#why" 
-                className="block text-text font-medium py-2"
-                onClick={(e) => { e.preventDefault(); scrollToSection('why') }}
-              >
-                Why Hire an Accountant
-              </a>
-              <a 
                 href="#about" 
                 className="block text-text font-medium py-2"
                 onClick={(e) => { e.preventDefault(); scrollToSection('about') }}
@@ -412,14 +451,29 @@ const Header: FC = () => {
                   </svg>
                 </button>
                 {isResourcesOpen && (
-                  <div className="mt-2 pl-4">
-                    <Link 
-                      to="/resources/canadian-personal-income-tax-calculator" 
-                      className="block py-2 text-sm text-text hover:text-primary transition-colors"
-                      onClick={closeMenu}
-                    >
-                      Canadian Personal Income Tax Calculator
-                    </Link>
+                  <div className="mt-2 pl-4 space-y-3">
+                    {resourceCategories.map((category) => (
+                      <Link
+                        key={category.slug}
+                        to={`/resources/${category.slug}`}
+                        className="block p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                        onClick={closeMenu}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 text-primary mt-0.5">
+                            <ResourceIcon icon={category.icon} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-sm font-semibold text-text mb-1">
+                              {category.title}
+                            </h3>
+                            <p className="text-xs text-text-light leading-relaxed">
+                              {category.description}
+                            </p>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
                   </div>
                 )}
               </div>

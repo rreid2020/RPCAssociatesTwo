@@ -1,4 +1,4 @@
-import { FC, useState, useEffect } from 'react'
+import { FC, useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import logo from '../assets/rpc-logo.svg'
 import CalendlyButton from './CalendlyButton'
@@ -78,6 +78,57 @@ const Header: FC = () => {
   const [isArticlesOpen, setIsArticlesOpen] = useState(false)
   const [isServicesOpen, setIsServicesOpen] = useState(false)
   const location = useLocation()
+  
+  // Timeout refs for delayed menu closing
+  const servicesTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const resourcesTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const articlesTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Helper function to handle delayed menu closing
+  const handleMenuLeave = (menuType: 'services' | 'resources' | 'articles', delay: number = 200) => {
+    const timeoutRef = menuType === 'services' ? servicesTimeoutRef : menuType === 'resources' ? resourcesTimeoutRef : articlesTimeoutRef
+    const setState = menuType === 'services' ? setIsServicesOpen : menuType === 'resources' ? setIsResourcesOpen : setIsArticlesOpen
+    
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+    }
+    
+    // Set new timeout to close menu
+    timeoutRef.current = setTimeout(() => {
+      setState(false)
+      timeoutRef.current = null
+    }, delay)
+  }
+  
+  // Helper function to cancel menu closing
+  const handleMenuEnter = (menuType: 'services' | 'resources' | 'articles') => {
+    const timeoutRef = menuType === 'services' ? servicesTimeoutRef : menuType === 'resources' ? resourcesTimeoutRef : articlesTimeoutRef
+    
+    // Clear any pending close timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+      timeoutRef.current = null
+    }
+    
+    // Open menu immediately
+    if (menuType === 'services') {
+      setIsServicesOpen(true)
+    } else if (menuType === 'resources') {
+      setIsResourcesOpen(true)
+    } else {
+      setIsArticlesOpen(true)
+    }
+  }
+  
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (servicesTimeoutRef.current) clearTimeout(servicesTimeoutRef.current)
+      if (resourcesTimeoutRef.current) clearTimeout(resourcesTimeoutRef.current)
+      if (articlesTimeoutRef.current) clearTimeout(articlesTimeoutRef.current)
+    }
+  }, [])
 
   // Prevent body scroll when menu is open
   useEffect(() => {
@@ -146,8 +197,8 @@ const Header: FC = () => {
                 {/* Services Dropdown */}
                 <li 
                   className="relative"
-                  onMouseEnter={() => setIsServicesOpen(true)}
-                  onMouseLeave={() => setIsServicesOpen(false)}
+                  onMouseEnter={() => handleMenuEnter('services')}
+                  onMouseLeave={() => handleMenuLeave('services', 300)}
                 >
                   <button
                     className="flex items-center gap-1 text-text font-medium hover:text-primary transition-colors py-2 whitespace-nowrap"
@@ -170,10 +221,11 @@ const Header: FC = () => {
                   {/* Desktop Services Dropdown - Card Style */}
                   {isServicesOpen && (
                     <div 
-                      className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[600px] xl:w-[700px] bg-white rounded-lg shadow-xl border border-gray-200 p-6 z-[1001]"
-                      onMouseEnter={() => setIsServicesOpen(true)}
-                      onMouseLeave={() => setIsServicesOpen(false)}
+                      className="absolute top-full left-1/2 -translate-x-1/2 pt-2 w-[600px] xl:w-[700px] bg-transparent z-[1001]"
+                      onMouseEnter={() => handleMenuEnter('services')}
+                      onMouseLeave={() => handleMenuLeave('services', 300)}
                     >
+                      <div className="bg-white rounded-lg shadow-xl border border-gray-200 p-6">
                       <div className="grid grid-cols-2 gap-4">
                         {services.map((service) => (
                           <Link
@@ -195,6 +247,7 @@ const Header: FC = () => {
                             </p>
                           </Link>
                         ))}
+                      </div>
                       </div>
                     </div>
                   )}
@@ -232,8 +285,8 @@ const Header: FC = () => {
                 {/* Resources Dropdown */}
                 <li 
                   className="relative"
-                  onMouseEnter={() => setIsResourcesOpen(true)}
-                  onMouseLeave={() => setIsResourcesOpen(false)}
+                  onMouseEnter={() => handleMenuEnter('resources')}
+                  onMouseLeave={() => handleMenuLeave('resources', 300)}
                 >
                   <button
                     className="flex items-center gap-1 text-text font-medium hover:text-primary transition-colors py-2 whitespace-nowrap"
@@ -252,10 +305,11 @@ const Header: FC = () => {
                   {/* Desktop Resources Dropdown - Card Style (matching Services) */}
                   {isResourcesOpen && (
                     <div 
-                      className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[600px] xl:w-[700px] bg-white rounded-lg shadow-xl border border-gray-200 p-6 z-[1001]"
-                      onMouseEnter={() => setIsResourcesOpen(true)}
-                      onMouseLeave={() => setIsResourcesOpen(false)}
+                      className="absolute top-full left-1/2 -translate-x-1/2 pt-2 w-[600px] xl:w-[700px] bg-transparent z-[1001]"
+                      onMouseEnter={() => handleMenuEnter('resources')}
+                      onMouseLeave={() => handleMenuLeave('resources', 300)}
                     >
+                      <div className="bg-white rounded-lg shadow-xl border border-gray-200 p-6">
                       <div className="grid grid-cols-3 gap-4">
                         {resourceCategories.map((category) => (
                           <Link
@@ -278,6 +332,7 @@ const Header: FC = () => {
                           </Link>
                         ))}
                       </div>
+                      </div>
                     </div>
                   )}
                 </li>
@@ -285,8 +340,8 @@ const Header: FC = () => {
                 {/* Articles Dropdown */}
                 <li 
                   className="relative"
-                  onMouseEnter={() => setIsArticlesOpen(true)}
-                  onMouseLeave={() => setIsArticlesOpen(false)}
+                  onMouseEnter={() => handleMenuEnter('articles')}
+                  onMouseLeave={() => handleMenuLeave('articles', 300)}
                 >
                   <Link 
                     to="/articles" 
@@ -304,10 +359,11 @@ const Header: FC = () => {
                   </Link>
                   {isArticlesOpen && (
                     <div 
-                      className="absolute top-full left-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 p-2 z-[1001]"
-                      onMouseEnter={() => setIsArticlesOpen(true)}
-                      onMouseLeave={() => setIsArticlesOpen(false)}
+                      className="absolute top-full left-0 pt-2 w-48 bg-transparent z-[1001]"
+                      onMouseEnter={() => handleMenuEnter('articles')}
+                      onMouseLeave={() => handleMenuLeave('articles', 300)}
                     >
+                      <div className="bg-white rounded-lg shadow-xl border border-gray-200 p-2">
                       <Link
                         to="/articles/category/canadian-tax"
                         className="block px-4 py-2 text-sm text-text hover:bg-gray-50 rounded transition-colors"
@@ -329,6 +385,7 @@ const Header: FC = () => {
                       >
                         Technology
                       </Link>
+                      </div>
                     </div>
                   )}
                 </li>

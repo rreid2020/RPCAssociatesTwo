@@ -17,7 +17,6 @@ import BookConsultation from './pages/BookConsultation'
 import ServiceDetail from './pages/ServiceDetail'
 import ScrollToTop from './components/ScrollToTop'
 import CanonicalRedirect from './components/CanonicalRedirect'
-import SitemapXML from './pages/SitemapXML'
 import CashFlowTemplate from './pages/CashFlowTemplate'
 
 const App: FC = () => {
@@ -40,7 +39,6 @@ const App: FC = () => {
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/sitemap" element={<Sitemap />} />
-          <Route path="/sitemap.xml" element={<SitemapXML />} />
           <Route path="/client-portal" element={<ComingSoon />} />
         </Routes>
         <Footer />

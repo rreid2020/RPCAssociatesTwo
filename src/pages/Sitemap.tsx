@@ -37,6 +37,30 @@ const Sitemap: FC = () => {
           </section>
 
           <section className="mb-xl">
+            <h2 className="text-2xl lg:text-3xl font-semibold text-primary mb-md pb-xs border-b-2 border-primary">Resources</h2>
+            <ul className="list-none p-0 m-0">
+              <li className="mb-lg pb-md border-b border-border last:border-b-0">
+                <Link to="/resources/online-calculators" className="text-lg lg:text-xl font-semibold text-primary no-underline mb-xs block transition-all hover:underline">
+                  Online Calculators
+                </Link>
+                <p className="text-sm text-text-light m-0 ml-0">Interactive calculators for tax and planning</p>
+              </li>
+              <li className="mb-lg pb-md border-b border-border last:border-b-0">
+                <Link to="/resources/excel-templates-tools" className="text-lg lg:text-xl font-semibold text-primary no-underline mb-xs block transition-all hover:underline">
+                  Excel Templates and Tools
+                </Link>
+                <p className="text-sm text-text-light m-0 ml-0">Spreadsheets and tools for reporting</p>
+              </li>
+              <li className="mb-lg pb-md border-b border-border last:border-b-0">
+                <Link to="/resources/guides-publications" className="text-lg lg:text-xl font-semibold text-primary no-underline mb-xs block transition-all hover:underline">
+                  Guides and Other Publications
+                </Link>
+                <p className="text-sm text-text-light m-0 ml-0">Guides, checklists, and reference materials</p>
+              </li>
+            </ul>
+          </section>
+
+          <section className="mb-xl">
             <h2 className="text-2xl lg:text-3xl font-semibold text-primary mb-md pb-xs border-b-2 border-primary">Home Page Sections</h2>
             <ul className="list-none p-0 m-0">
               <li className="mb-lg pb-md border-b border-border last:border-b-0">

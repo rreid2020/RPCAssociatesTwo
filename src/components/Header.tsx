@@ -45,6 +45,55 @@ const ServiceIcon = ({ icon }: { icon: string }) => {
   )
 }
 
+const ResourceIcon = ({ icon }: { icon: string }) => {
+  const iconMap: Record<string, JSX.Element> = {
+    calculator: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3h6a2 2 0 012 2v14a2 2 0 01-2 2H9a2 2 0 01-2-2V5a2 2 0 012-2z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6M9 11h2m2 0h2m-6 4h2m2 0h2" />
+      </svg>
+    ),
+    spreadsheet: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h18a2 2 0 012 2v10a2 2 0 01-2 2H3a2 2 0 01-2-2V7a2 2 0 012-2z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 5v14M17 5v14" />
+      </svg>
+    ),
+    guides: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 4h7a2 2 0 012 2v12H8a2 2 0 00-2 2V4z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 6h3a2 2 0 012 2v12a2 2 0 01-2 2h-7" />
+      </svg>
+    )
+  }
+  return iconMap[icon] || (
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  )
+}
+
+const resourceMenuItems = [
+  {
+    title: 'Online Calculators',
+    description: 'Interactive calculators for tax and financial planning.',
+    path: '/resources/online-calculators',
+    icon: 'calculator'
+  },
+  {
+    title: 'Excel Templates and Tools',
+    description: 'Spreadsheet tools to streamline reporting and tracking.',
+    path: '/resources/excel-templates-tools',
+    icon: 'spreadsheet'
+  },
+  {
+    title: 'Guides and Other Publications',
+    description: 'Guides, checklists, and reference materials for business owners.',
+    path: '/resources/guides-publications',
+    icon: 'guides'
+  }
+]
+
 const Header: FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isResourcesOpen, setIsResourcesOpen] = useState(false)
@@ -216,6 +265,7 @@ const Header: FC = () => {
                   <Link 
                     to="/resources" 
                     className="flex items-center gap-1 text-text font-medium hover:text-primary transition-colors py-2"
+                    onClick={closeMenu}
                   >
                     Resources
                     <svg 
@@ -228,14 +278,29 @@ const Header: FC = () => {
                     </svg>
                   </Link>
                   {isResourcesOpen && (
-                    <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 p-2 z-[1001]">
-                      <Link 
-                        to="/resources/canadian-personal-income-tax-calculator" 
-                        className="block px-4 py-2 text-sm text-text hover:bg-gray-50 rounded transition-colors"
-                        onClick={closeMenu}
-                      >
-                        Canadian Personal Income Tax Calculator
-                      </Link>
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[360px] bg-white rounded-lg shadow-xl border border-gray-200 p-3 z-[1001]">
+                      <div className="space-y-2">
+                        {resourceMenuItems.map((item) => (
+                          <Link
+                            key={item.path}
+                            to={item.path}
+                            className="group flex items-start gap-3 px-4 py-3 rounded-lg hover:bg-gray-50 transition-colors"
+                            onClick={closeMenu}
+                          >
+                            <div className="flex-shrink-0 text-primary mt-0.5">
+                              <ResourceIcon icon={item.icon} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-sm font-semibold text-text group-hover:text-primary transition-colors">
+                                {item.title}
+                              </h3>
+                              <p className="text-xs text-text-light leading-relaxed">
+                                {item.description}
+                              </p>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </li>
@@ -323,22 +388,34 @@ const Header: FC = () => {
             <nav className="px-4 py-6 space-y-4">
               {/* Services Section */}
               <div>
-                <button
-                  className="flex items-center justify-between w-full text-left text-text font-medium py-2"
-                  onClick={() => setIsServicesOpen(!isServicesOpen)}
-                >
-                  <span>Services</span>
-                  <svg 
-                    className={`w-5 h-5 transition-transform ${isServicesOpen ? 'rotate-180' : ''}`} 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
+                <div className="flex items-center justify-between w-full">
+                  <button
+                    className="flex-1 text-left text-text font-medium py-2"
+                    onClick={() => scrollToSection('services')}
+                    type="button"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
+                    Services
+                  </button>
+                  <button
+                    className="p-2 -mr-2"
+                    onClick={() => setIsServicesOpen(!isServicesOpen)}
+                    type="button"
+                    aria-expanded={isServicesOpen}
+                    aria-controls="mobile-services-submenu"
+                    aria-label="Toggle services menu"
+                  >
+                    <svg 
+                      className={`w-5 h-5 transition-transform ${isServicesOpen ? 'rotate-180' : ''}`} 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
                 {isServicesOpen && (
-                  <div className="mt-2 pl-4 space-y-3">
+                  <div id="mobile-services-submenu" className="mt-2 pl-4 space-y-3">
                     {services.map((service) => (
                       <Link
                         key={service.slug}
@@ -397,51 +474,90 @@ const Header: FC = () => {
 
               {/* Resources Section */}
               <div>
-                <button
-                  className="flex items-center justify-between w-full text-left text-text font-medium py-2"
-                  onClick={() => setIsResourcesOpen(!isResourcesOpen)}
-                >
-                  <span>Resources</span>
-                  <svg 
-                    className={`w-5 h-5 transition-transform ${isResourcesOpen ? 'rotate-180' : ''}`} 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
+                <div className="flex items-center justify-between w-full">
+                  <Link
+                    to="/resources"
+                    className="flex-1 text-left text-text font-medium py-2 hover:text-primary transition-colors"
+                    onClick={closeMenu}
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                {isResourcesOpen && (
-                  <div className="mt-2 pl-4">
-                    <Link 
-                      to="/resources/canadian-personal-income-tax-calculator" 
-                      className="block py-2 text-sm text-text hover:text-primary transition-colors"
-                      onClick={closeMenu}
+                    Resources
+                  </Link>
+                  <button
+                    className="p-2 -mr-2"
+                    onClick={() => setIsResourcesOpen(!isResourcesOpen)}
+                    type="button"
+                    aria-expanded={isResourcesOpen}
+                    aria-controls="mobile-resources-submenu"
+                    aria-label="Toggle resources menu"
+                  >
+                    <svg 
+                      className={`w-5 h-5 transition-transform ${isResourcesOpen ? 'rotate-180' : ''}`} 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
                     >
-                      Canadian Personal Income Tax Calculator
-                    </Link>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
+                {isResourcesOpen && (
+                  <div id="mobile-resources-submenu" className="mt-2 pl-4 space-y-3">
+                    {resourceMenuItems.map((item) => (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        className="block p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                        onClick={closeMenu}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 text-primary mt-0.5">
+                            <ResourceIcon icon={item.icon} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-sm font-semibold text-text mb-1">
+                              {item.title}
+                            </h3>
+                            <p className="text-xs text-text-light leading-relaxed">
+                              {item.description}
+                            </p>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
                   </div>
                 )}
               </div>
 
               {/* Articles Section */}
               <div>
-                <button
-                  className="flex items-center justify-between w-full text-left text-text font-medium py-2"
-                  onClick={() => setIsArticlesOpen(!isArticlesOpen)}
-                >
-                  <span>Articles</span>
-                  <svg 
-                    className={`w-5 h-5 transition-transform ${isArticlesOpen ? 'rotate-180' : ''}`} 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
+                <div className="flex items-center justify-between w-full">
+                  <Link
+                    to="/articles"
+                    className="flex-1 text-left text-text font-medium py-2 hover:text-primary transition-colors"
+                    onClick={closeMenu}
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
+                    Articles
+                  </Link>
+                  <button
+                    className="p-2 -mr-2"
+                    onClick={() => setIsArticlesOpen(!isArticlesOpen)}
+                    type="button"
+                    aria-expanded={isArticlesOpen}
+                    aria-controls="mobile-articles-submenu"
+                    aria-label="Toggle articles menu"
+                  >
+                    <svg 
+                      className={`w-5 h-5 transition-transform ${isArticlesOpen ? 'rotate-180' : ''}`} 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
                 {isArticlesOpen && (
-                  <div className="mt-2 pl-4 space-y-2">
+                  <div id="mobile-articles-submenu" className="mt-2 pl-4 space-y-2">
                     <Link
                       to="/articles/category/canadian-tax"
                       className="block py-2 text-sm text-text hover:text-primary transition-colors"

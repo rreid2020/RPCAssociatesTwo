@@ -73,6 +73,7 @@ async function generateSitemap() {
     // Static pages
     const staticPages = [
       { url: '/', priority: '1.0', changefreq: 'weekly' },
+      { url: '/services', priority: '0.9', changefreq: 'monthly' },
       { url: '/book-consultation', priority: '0.9', changefreq: 'monthly' },
       { url: '/resources', priority: '0.8', changefreq: 'monthly' },
       { url: '/resources/canadian-personal-income-tax-calculator', priority: '0.8', changefreq: 'monthly' },

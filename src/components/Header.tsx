@@ -202,10 +202,6 @@ const Header: FC = () => {
                 >
                   <button
                     className="flex items-center gap-1 text-text font-medium hover:text-primary transition-colors py-2 whitespace-nowrap"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      scrollToSection('services')
-                    }}
                   >
                     Services
                     <svg 

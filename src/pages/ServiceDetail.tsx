@@ -140,10 +140,10 @@ const ServiceDetail: FC = () => {
                   className="btn btn--primary"
                 />
                 <Link 
-                  to="/"
+                  to="/services"
                   className="btn btn--secondary"
                 >
-                  Learn More About Our Services
+                  View All Services
                 </Link>
               </div>
             </div>

@@ -19,6 +19,7 @@ const SitemapXML: FC = () => {
         // Fetch all published articles (no limit)
         const articles = await getArticles({ limit: 1000 })
         
+        // Always use non-www canonical URL
         const baseUrl = 'https://rpcassociates.co'
         const currentDate = new Date().toISOString().split('T')[0]
 

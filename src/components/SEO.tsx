@@ -53,7 +53,16 @@ const SEO: FC<SEOProps> = ({
   schemaService
 }) => {
   const fullTitle = title.includes('RPC Associates') ? title : `${title} | RPC Associates`
-  const fullCanonical = canonical.startsWith('http') ? canonical : `https://rpcassociates.co${canonical}`
+  // Always use non-www canonical URL, strip query parameters
+  const baseUrl = 'https://rpcassociates.co'
+  let fullCanonical: string
+  if (canonical.startsWith('http')) {
+    // Remove www if present and strip query parameters
+    fullCanonical = canonical.replace(/^https?:\/\/(www\.)?/, 'https://').split('?')[0]
+  } else {
+    // Strip query parameters from relative URLs
+    fullCanonical = `${baseUrl}${canonical.split('?')[0]}`
+  }
   
   // Handle keywords as string or array
   const keywordsString = Array.isArray(keywords) ? keywords.join(', ') : keywords

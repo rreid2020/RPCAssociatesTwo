@@ -16,6 +16,7 @@ import TaxCalculator from './pages/TaxCalculator'
 import BookConsultation from './pages/BookConsultation'
 import ServiceDetail from './pages/ServiceDetail'
 import ScrollToTop from './components/ScrollToTop'
+import CanonicalRedirect from './components/CanonicalRedirect'
 import SitemapXML from './pages/SitemapXML'
 import CashFlowTemplate from './pages/CashFlowTemplate'
 
@@ -24,6 +25,7 @@ const App: FC = () => {
     <HelmetProvider>
       <Router>
         <ScrollToTop />
+        <CanonicalRedirect />
         <Header />
         <Routes>
           <Route path="/" element={<Home />} />

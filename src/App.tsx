@@ -18,6 +18,9 @@ import ServiceDetail from './pages/ServiceDetail'
 import ScrollToTop from './components/ScrollToTop'
 import CanonicalRedirect from './components/CanonicalRedirect'
 import CashFlowTemplate from './pages/CashFlowTemplate'
+import OnlineCalculators from './pages/OnlineCalculators'
+import ExcelTemplatesTools from './pages/ExcelTemplatesTools'
+import GuidesPublications from './pages/GuidesPublications'
 
 const App: FC = () => {
   return (
@@ -30,6 +33,9 @@ const App: FC = () => {
           <Route path="/" element={<Home />} />
           <Route path="/services/:slug" element={<ServiceDetail />} />
           <Route path="/resources" element={<Resources />} />
+          <Route path="/resources/online-calculators" element={<OnlineCalculators />} />
+          <Route path="/resources/excel-templates-tools" element={<ExcelTemplatesTools />} />
+          <Route path="/resources/guides-publications" element={<GuidesPublications />} />
           <Route path="/resources/canadian-personal-income-tax-calculator" element={<TaxCalculator />} />
           <Route path="/resources/cash-flow-statement-template" element={<CashFlowTemplate />} />
           <Route path="/articles" element={<Articles />} />

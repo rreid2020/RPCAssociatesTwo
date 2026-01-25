@@ -106,10 +106,10 @@ const Resources: FC = () => {
               </p>
             </div>
             
-            {/* Online Calculator and Tools Section */}
+            {/* Online Calculators Section */}
             <div className="mb-xxl">
               <h2 className="text-2xl lg:text-3xl font-bold text-primary mb-lg">
-                Online Calculator and Tools
+                Online Calculators
               </h2>
               {calculators.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
@@ -120,10 +120,10 @@ const Resources: FC = () => {
               )}
             </div>
 
-            {/* Excel Templates Section */}
+            {/* Excel Templates and Tools Section */}
             <div className="mb-xxl">
               <h2 className="text-2xl lg:text-3xl font-bold text-primary mb-lg">
-                Excel Templates
+                Excel Templates and Tools
               </h2>
               {excelTemplates.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
@@ -134,10 +134,10 @@ const Resources: FC = () => {
               )}
             </div>
 
-            {/* Guides Section */}
+            {/* Guides and Other Publications Section */}
             <div className="mb-xxl">
               <h2 className="text-2xl lg:text-3xl font-bold text-primary mb-lg">
-                Guides
+                Guides and Other Publications
               </h2>
               {guides.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">

@@ -323,22 +323,34 @@ const Header: FC = () => {
             <nav className="px-4 py-6 space-y-4">
               {/* Services Section */}
               <div>
-                <button
-                  className="flex items-center justify-between w-full text-left text-text font-medium py-2"
-                  onClick={() => setIsServicesOpen(!isServicesOpen)}
-                >
-                  <span>Services</span>
-                  <svg 
-                    className={`w-5 h-5 transition-transform ${isServicesOpen ? 'rotate-180' : ''}`} 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
+                <div className="flex items-center justify-between w-full">
+                  <button
+                    className="flex-1 text-left text-text font-medium py-2"
+                    onClick={() => scrollToSection('services')}
+                    type="button"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
+                    Services
+                  </button>
+                  <button
+                    className="p-2 -mr-2"
+                    onClick={() => setIsServicesOpen(!isServicesOpen)}
+                    type="button"
+                    aria-expanded={isServicesOpen}
+                    aria-controls="mobile-services-submenu"
+                    aria-label="Toggle services menu"
+                  >
+                    <svg 
+                      className={`w-5 h-5 transition-transform ${isServicesOpen ? 'rotate-180' : ''}`} 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
                 {isServicesOpen && (
-                  <div className="mt-2 pl-4 space-y-3">
+                  <div id="mobile-services-submenu" className="mt-2 pl-4 space-y-3">
                     {services.map((service) => (
                       <Link
                         key={service.slug}
@@ -397,22 +409,34 @@ const Header: FC = () => {
 
               {/* Resources Section */}
               <div>
-                <button
-                  className="flex items-center justify-between w-full text-left text-text font-medium py-2"
-                  onClick={() => setIsResourcesOpen(!isResourcesOpen)}
-                >
-                  <span>Resources</span>
-                  <svg 
-                    className={`w-5 h-5 transition-transform ${isResourcesOpen ? 'rotate-180' : ''}`} 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
+                <div className="flex items-center justify-between w-full">
+                  <Link
+                    to="/resources"
+                    className="flex-1 text-left text-text font-medium py-2 hover:text-primary transition-colors"
+                    onClick={closeMenu}
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
+                    Resources
+                  </Link>
+                  <button
+                    className="p-2 -mr-2"
+                    onClick={() => setIsResourcesOpen(!isResourcesOpen)}
+                    type="button"
+                    aria-expanded={isResourcesOpen}
+                    aria-controls="mobile-resources-submenu"
+                    aria-label="Toggle resources menu"
+                  >
+                    <svg 
+                      className={`w-5 h-5 transition-transform ${isResourcesOpen ? 'rotate-180' : ''}`} 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
                 {isResourcesOpen && (
-                  <div className="mt-2 pl-4">
+                  <div id="mobile-resources-submenu" className="mt-2 pl-4">
                     <Link 
                       to="/resources/canadian-personal-income-tax-calculator" 
                       className="block py-2 text-sm text-text hover:text-primary transition-colors"
@@ -426,22 +450,34 @@ const Header: FC = () => {
 
               {/* Articles Section */}
               <div>
-                <button
-                  className="flex items-center justify-between w-full text-left text-text font-medium py-2"
-                  onClick={() => setIsArticlesOpen(!isArticlesOpen)}
-                >
-                  <span>Articles</span>
-                  <svg 
-                    className={`w-5 h-5 transition-transform ${isArticlesOpen ? 'rotate-180' : ''}`} 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
+                <div className="flex items-center justify-between w-full">
+                  <Link
+                    to="/articles"
+                    className="flex-1 text-left text-text font-medium py-2 hover:text-primary transition-colors"
+                    onClick={closeMenu}
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
+                    Articles
+                  </Link>
+                  <button
+                    className="p-2 -mr-2"
+                    onClick={() => setIsArticlesOpen(!isArticlesOpen)}
+                    type="button"
+                    aria-expanded={isArticlesOpen}
+                    aria-controls="mobile-articles-submenu"
+                    aria-label="Toggle articles menu"
+                  >
+                    <svg 
+                      className={`w-5 h-5 transition-transform ${isArticlesOpen ? 'rotate-180' : ''}`} 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
                 {isArticlesOpen && (
-                  <div className="mt-2 pl-4 space-y-2">
+                  <div id="mobile-articles-submenu" className="mt-2 pl-4 space-y-2">
                     <Link
                       to="/articles/category/canadian-tax"
                       className="block py-2 text-sm text-text hover:text-primary transition-colors"

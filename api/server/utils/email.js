@@ -58,6 +58,19 @@ function createTransporter() {
     })
   }
 
+  // Option 4: Resend (Free: 3,000 emails/month)
+  if (process.env.RESEND_API_KEY) {
+    return nodemailer.createTransport({
+      host: 'smtp.resend.com',
+      port: 465,
+      secure: true,
+      auth: {
+        user: 'resend',
+        pass: process.env.RESEND_API_KEY,
+      },
+    })
+  }
+
   // Fallback: Use SMTP with default settings
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',

@@ -4,6 +4,7 @@ import SEO from '../components/SEO'
 import { getResourceCategoryBySlug } from '../lib/resources/data'
 import CalendlyButton from '../components/CalendlyButton'
 import { SPACES_FILES } from '../lib/config/spaces'
+import { downloadFile } from '../lib/utils/download'
 
 interface CategoryResource {
   title: string
@@ -125,14 +126,18 @@ const ResourceCategory: FC = () => {
                     )
                     
                     return isExternalDownload ? (
-                      <a
+                      <button
                         key={index}
-                        href={resource.link}
-                        download
-                        className="bg-white p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          const filename = resource.link.split('/').pop() || resource.title
+                          downloadFile(resource.link, filename)
+                        }}
+                        className="bg-white p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block w-full text-left no-underline text-inherit cursor-pointer"
                       >
                         {cardContent}
-                      </a>
+                      </button>
                     ) : (
                       <Link
                         key={index}

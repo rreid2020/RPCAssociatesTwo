@@ -2,6 +2,7 @@ import { FC } from 'react'
 import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 import { SPACES_FILES } from '../lib/config/spaces'
+import { downloadFile } from '../lib/utils/download'
 
 interface Resource {
   title: string
@@ -44,11 +45,15 @@ const Resources: FC = () => {
 
   const renderResourceCard = (resource: Resource, index: number) => {
     return resource.isDownload ? (
-      <a
+      <button
         key={index}
-        href={resource.link}
-        download
-        className="bg-white p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
+        type="button"
+        onClick={(e) => {
+          e.preventDefault()
+          const filename = resource.link.split('/').pop() || resource.title
+          downloadFile(resource.link, filename)
+        }}
+        className="bg-white p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block w-full text-left no-underline text-inherit cursor-pointer"
       >
         {resource.category && (
           <span className="inline-block px-3 py-1 bg-primary text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-md">
@@ -66,7 +71,7 @@ const Resources: FC = () => {
             File size: {resource.fileSize}
           </p>
         )}
-      </a>
+      </button>
     ) : (
       <Link
         key={index}

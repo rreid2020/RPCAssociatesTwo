@@ -2,6 +2,7 @@ import { FC } from 'react'
 import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 import { SPACES_FILES } from '../lib/config/spaces'
+import { downloadFile } from '../lib/utils/download'
 
 const CashFlowTemplate: FC = () => {
   const downloadUrl = SPACES_FILES.cashFlowTemplate
@@ -42,13 +43,16 @@ const CashFlowTemplate: FC = () => {
               <p className="text-lg text-text-light leading-relaxed mb-lg">
                 A comprehensive Excel template designed to help small and owner-managed businesses track cash inflows and outflows, monitor liquidity, and make informed financial decisions.
               </p>
-              <a
-                href={downloadUrl}
-                download={fileName}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  downloadFile(downloadUrl, fileName)
+                }}
                 className="btn btn--primary inline-block"
               >
                 Download Template
-              </a>
+              </button>
             </div>
           </div>
         </section>
@@ -314,13 +318,16 @@ const CashFlowTemplate: FC = () => {
                   <p className="text-lg text-text-light mb-lg max-w-2xl mx-auto">
                     Download our free Cash Flow Statement Template and start tracking your business's cash flow today.
                   </p>
-                  <a
-                    href={downloadUrl}
-                    download={fileName}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      downloadFile(downloadUrl, fileName)
+                    }}
                     className="btn btn--primary inline-block"
                   >
                     Download Template
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>

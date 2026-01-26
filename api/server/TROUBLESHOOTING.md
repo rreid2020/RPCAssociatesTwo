@@ -67,14 +67,44 @@ Office 365 accounts with Multi-Factor Authentication (MFA) enabled **cannot** us
    npm run test-email
    ```
 
+### App Passwords Not Available?
+
+If you don't see the "App passwords" option, your organization likely manages MFA settings. Here are your options:
+
+#### Option 1: Contact IT Administrator (Recommended)
+Ask your IT admin to:
+- Create an App Password for `roger.reid@rpcassociates.co` for the API
+- Or create a dedicated service account for API use (without MFA)
+- Or configure OAuth2 authentication (more complex)
+
+#### Option 2: Use a Service Account
+Create a dedicated Office 365 account specifically for the API:
+- No MFA required (or MFA disabled for this account)
+- Used only for sending automated emails
+- More secure than using your personal account
+
+#### Option 3: Use SendGrid or Similar Service
+If IT can't help, use a transactional email service:
+- SendGrid (free tier: 100 emails/day)
+- Mailgun
+- AWS SES
+- These services don't require MFA/App Passwords
+
+#### Option 4: Check Conditional Access Policies
+Your organization might have policies that:
+- Block SMTP from certain locations
+- Require specific authentication methods
+- IT admin can check: Azure AD → Conditional Access
+
 ### Still Having Issues?
 
 1. **Contact IT Administrator:**
    - Verify SMTP AUTH is enabled for your account
    - Check if there are any security policies blocking SMTP
+   - Request App Password or service account setup
 
 2. **Try Alternative Authentication:**
-   - OAuth2 (more complex, requires app registration)
+   - OAuth2 (more complex, requires app registration in Azure AD)
    - Service account (dedicated account for API use)
 
 3. **Check Exchange Online Settings:**

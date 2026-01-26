@@ -310,7 +310,7 @@ const Header: FC = () => {
                         {resourceCategories.map((category) => (
                           <Link
                             key={category.slug}
-                            to={`/resources/${category.slug}`}
+                            to={`/resources/category/${category.slug}`}
                             className="group flex flex-col gap-2 p-4 rounded-lg hover:bg-gray-50 transition-colors"
                             onClick={closeMenu}
                           >
@@ -508,7 +508,7 @@ const Header: FC = () => {
                     {resourceCategories.map((category) => (
                       <Link
                         key={category.slug}
-                        to={`/resources/${category.slug}`}
+                        to={`/resources/category/${category.slug}`}
                         className="block p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
                         onClick={closeMenu}
                       >

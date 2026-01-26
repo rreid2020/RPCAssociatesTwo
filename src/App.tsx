@@ -20,6 +20,7 @@ import CanonicalRedirect from './components/CanonicalRedirect'
 import CashFlowTemplate from './pages/CashFlowTemplate'
 import CashFlowCalculator from './pages/CashFlowCalculator'
 import ResourceCategory from './pages/ResourceCategory'
+import ResourceDetail from './pages/ResourceDetail'
 import Services from './pages/Services'
 
 const App: FC = () => {
@@ -34,10 +35,15 @@ const App: FC = () => {
           <Route path="/services" element={<Services />} />
           <Route path="/services/:slug" element={<ServiceDetail />} />
           <Route path="/resources" element={<Resources />} />
+          {/* Specific resource detail routes - must come before category routes */}
           <Route path="/resources/canadian-personal-income-tax-calculator" element={<TaxCalculator />} />
           <Route path="/resources/cash-flow-calculator" element={<CashFlowCalculator />} />
           <Route path="/resources/cash-flow-statement-template" element={<CashFlowTemplate />} />
-          <Route path="/resources/:slug" element={<ResourceCategory />} />
+          <Route path="/resources/cfi-financial-ratios-guide" element={<ResourceDetail />} />
+          {/* Resource category routes */}
+          <Route path="/resources/category/:slug" element={<ResourceCategory />} />
+          {/* Generic resource detail route - must come last */}
+          <Route path="/resources/:slug" element={<ResourceDetail />} />
           <Route path="/articles" element={<Articles />} />
           <Route path="/articles/category/:categorySlug" element={<ArticleCategory />} />
           <Route path="/articles/:slug" element={<ArticleDetail />} />

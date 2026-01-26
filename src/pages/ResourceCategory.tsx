@@ -1,21 +1,9 @@
-import { FC, useState } from 'react'
+import { FC } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 import { getResourceCategoryBySlug } from '../lib/resources/data'
+import { getResourcesByCategory, ResourceDetail } from '../lib/resources/resources'
 import CalendlyButton from '../components/CalendlyButton'
-import { SPACES_FILES } from '../lib/config/spaces'
-import LeadCaptureForm from '../components/LeadCaptureForm'
-import { hasAccessedResource } from '../lib/utils/leadCapture'
-import { downloadFile } from '../lib/utils/download'
-
-interface CategoryResource {
-  title: string
-  description: string
-  link: string
-  category?: string
-  isDownload?: boolean
-  fileSize?: string
-}
 
 const ResourceCategory: FC = () => {
   const { slug } = useParams<{ slug: string }>()
@@ -44,85 +32,29 @@ const ResourceCategory: FC = () => {
     )
   }
 
-  // Define resources for each category
-  const getResourcesForCategory = (categorySlug: string): CategoryResource[] => {
+  // Map category slugs to resource categories
+  const getCategoryType = (categorySlug: string): 'calculator' | 'excel-template' | 'publication' | null => {
     switch (categorySlug) {
       case 'online-calculators':
-        return [
-          {
-            title: 'Canadian Personal Income Tax Calculator',
-            description: 'Calculate your estimated Canadian income tax for 2025. Get a detailed breakdown including federal and provincial taxes, credits, and deductions.',
-            link: '/resources/canadian-personal-income-tax-calculator',
-            category: 'Calculator'
-          },
-          {
-            title: 'Cash Flow Calculator',
-            description: 'Calculate your business cash flow by tracking operating, investing, and financing activities. Understand your cash position and liquidity.',
-            link: '/resources/cash-flow-calculator',
-            category: 'Calculator'
-          }
-        ]
+        return 'calculator'
       case 'excel-templates':
-        return [
-          {
-            title: 'Cash Flow Statement Template',
-            description: 'Track cash inflows and outflows with this comprehensive Excel template. Monitor liquidity, plan for major expenditures, and make informed financial decisions.',
-            link: '/resources/cash-flow-statement-template',
-            category: 'Excel Template'
-          }
-        ]
+        return 'excel-template'
       case 'publications':
-        return [
-          {
-            title: 'CFI Financial Ratios Guide',
-            description: 'Comprehensive guide covering key financial ratios, their calculations, and how to interpret them for business analysis and decision-making.',
-            link: SPACES_FILES.financialRatiosGuide,
-            category: 'Guide',
-            isDownload: true,
-            fileSize: '44.6 MB'
-          }
-        ]
+        return 'publication'
       default:
-        return []
+        return null
     }
   }
 
-  const resources = getResourcesForCategory(category.slug)
-  
-  const [showForm, setShowForm] = useState(false)
-  const [selectedResource, setSelectedResource] = useState<CategoryResource | null>(null)
-
-  const handleResourceClick = (resource: CategoryResource) => {
-    const isExternalDownload = resource.isDownload && resource.link.startsWith('http')
-    if (isExternalDownload && !hasAccessedResource(resource.title)) {
-      setSelectedResource(resource)
-      setShowForm(true)
-      return
-    }
-    
-    // If already accessed, download directly
-    if (isExternalDownload) {
-      const filename = resource.link.split('/').pop() || resource.title
-      downloadFile(resource.link, filename)
-    }
-  }
-
-  const handleFormSuccess = () => {
-    if (selectedResource) {
-      setShowForm(false)
-      // Trigger download after form submission
-      const filename = selectedResource.link.split('/').pop() || selectedResource.title
-      downloadFile(selectedResource.link, filename)
-      setSelectedResource(null)
-    }
-  }
+  const categoryType = getCategoryType(category.slug)
+  const resources = categoryType ? getResourcesByCategory(categoryType) : []
 
   return (
     <>
       <SEO
         title={`${category.title} - RPC Associates`}
         description={category.metaDescription}
-        canonical={`/resources/${category.slug}`}
+        canonical={`/resources/category/${category.slug}`}
         keywords={[category.slug, 'resources', 'tools', 'Ottawa', 'Canada']}
       />
       <main>
@@ -135,72 +67,31 @@ const ResourceCategory: FC = () => {
               </p>
             </div>
 
-            {showForm && selectedResource ? (
-              <div className="mb-xxl">
-                <LeadCaptureForm
-                  resourceName={selectedResource.title}
-                  onSuccess={handleFormSuccess}
-                />
-              </div>
-            ) : resources.length > 0 ? (
+            {resources.length > 0 ? (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg mb-xxl">
-                  {resources.map((resource, index) => {
-                    const isExternalDownload = resource.isDownload && resource.link.startsWith('http')
-                    const hasResourceAccess = isExternalDownload ? hasAccessedResource(resource.title) : true
-                    const cardContent = (
-                      <>
-                        {resource.category && (
-                          <span className="inline-block px-3 py-1 bg-primary text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-md">
-                            {resource.category}
-                          </span>
-                        )}
-                        <h3 className="text-xl font-semibold text-primary mb-sm">
-                          {resource.title}
-                        </h3>
-                        <p className="text-text-light text-[0.9375rem] leading-relaxed mb-sm">
-                          {resource.description}
+                  {resources.map((resource: ResourceDetail, index: number) => (
+                    <Link
+                      key={index}
+                      to={`/resources/${resource.slug}`}
+                      className="bg-white p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
+                    >
+                      <span className="inline-block px-3 py-1 bg-primary text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-md">
+                        {resource.categoryLabel}
+                      </span>
+                      <h3 className="text-xl font-semibold text-primary mb-sm">
+                        {resource.title}
+                      </h3>
+                      <p className="text-text-light text-[0.9375rem] leading-relaxed mb-sm">
+                        {resource.shortDescription}
+                      </p>
+                      {resource.fileSize && (
+                        <p className="text-sm text-text-light m-0">
+                          File size: {resource.fileSize}
                         </p>
-                        {resource.fileSize && (
-                          <p className="text-sm text-text-light m-0">
-                            File size: {resource.fileSize}
-                          </p>
-                        )}
-                      </>
-                    )
-                    
-                    if (isExternalDownload && !hasResourceAccess) {
-                      return (
-                        <button
-                          key={index}
-                          type="button"
-                          onClick={() => handleResourceClick(resource)}
-                          className="bg-white p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block w-full text-left no-underline text-inherit cursor-pointer"
-                        >
-                          {cardContent}
-                        </button>
-                      )
-                    }
-                    
-                    return isExternalDownload ? (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => handleResourceClick(resource)}
-                        className="bg-white p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block w-full text-left no-underline text-inherit cursor-pointer"
-                      >
-                        {cardContent}
-                      </button>
-                    ) : (
-                      <Link
-                        key={index}
-                        to={resource.link}
-                        className="bg-white p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
-                      >
-                        {cardContent}
-                      </Link>
-                    )
-                  })}
+                      )}
+                    </Link>
+                  ))}
                 </div>
                 <div className="text-center mb-xxl">
                   <Link to="/resources" className="text-primary hover:text-primary-dark underline">

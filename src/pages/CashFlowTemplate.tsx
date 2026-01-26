@@ -1,9 +1,10 @@
 import { FC } from 'react'
 import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
+import { SPACES_FILES } from '../lib/config/spaces'
 
 const CashFlowTemplate: FC = () => {
-  const downloadUrl = '/downloads/excel-templates/RPC Cash Flow Statement.xlsx'
+  const downloadUrl = SPACES_FILES.cashFlowTemplate
   const fileName = 'RPC Cash Flow Statement.xlsx'
 
   return (

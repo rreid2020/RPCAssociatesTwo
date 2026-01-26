@@ -1,6 +1,7 @@
 import { FC } from 'react'
 import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
+import { SPACES_FILES } from '../lib/config/spaces'
 
 interface Resource {
   title: string
@@ -31,15 +32,14 @@ const Resources: FC = () => {
   ]
 
   const guides: Resource[] = [
-    // Example: Add guides with external URLs (for large files hosted on Digital Ocean Spaces)
-    // {
-    //   title: 'CFI Financial Ratios Guide',
-    //   description: 'Comprehensive guide covering key financial ratios, their calculations, and how to interpret them for business analysis and decision-making.',
-    //   link: 'https://your-space.nyc3.digitaloceanspaces.com/CFI-Financial-Ratios-Guide.pdf',
-    //   category: 'Guide',
-    //   isDownload: true,
-    //   fileSize: '46 MB'
-    // }
+    {
+      title: 'CFI Financial Ratios Guide',
+      description: 'Comprehensive guide covering key financial ratios, their calculations, and how to interpret them for business analysis and decision-making.',
+      link: SPACES_FILES.financialRatiosGuide,
+      category: 'Guide',
+      isDownload: true,
+      fileSize: '44.6 MB'
+    }
   ]
 
   const renderResourceCard = (resource: Resource, index: number) => {

@@ -3,6 +3,16 @@ import { useParams, Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 import { getResourceCategoryBySlug } from '../lib/resources/data'
 import CalendlyButton from '../components/CalendlyButton'
+import { SPACES_FILES } from '../lib/config/spaces'
+
+interface CategoryResource {
+  title: string
+  description: string
+  link: string
+  category?: string
+  isDownload?: boolean
+  fileSize?: string
+}
 
 const ResourceCategory: FC = () => {
   const { slug } = useParams<{ slug: string }>()
@@ -32,7 +42,7 @@ const ResourceCategory: FC = () => {
   }
 
   // Define resources for each category
-  const getResourcesForCategory = (categorySlug: string) => {
+  const getResourcesForCategory = (categorySlug: string): CategoryResource[] => {
     switch (categorySlug) {
       case 'online-calculators':
         return [
@@ -54,7 +64,14 @@ const ResourceCategory: FC = () => {
         ]
       case 'publications':
         return [
-          // Add publications here when available
+          {
+            title: 'CFI Financial Ratios Guide',
+            description: 'Comprehensive guide covering key financial ratios, their calculations, and how to interpret them for business analysis and decision-making.',
+            link: SPACES_FILES.financialRatiosGuide,
+            category: 'Guide',
+            isDownload: true,
+            fileSize: '44.6 MB'
+          }
         ]
       default:
         return []
@@ -84,25 +101,48 @@ const ResourceCategory: FC = () => {
             {resources.length > 0 ? (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg mb-xxl">
-                  {resources.map((resource, index) => (
-                    <Link
-                      key={index}
-                      to={resource.link}
-                      className="bg-white p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
-                    >
-                      {resource.category && (
-                        <span className="inline-block px-3 py-1 bg-primary text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-md">
-                          {resource.category}
-                        </span>
-                      )}
-                      <h3 className="text-xl font-semibold text-primary mb-sm">
-                        {resource.title}
-                      </h3>
-                      <p className="text-text-light text-[0.9375rem] leading-relaxed">
-                        {resource.description}
-                      </p>
-                    </Link>
-                  ))}
+                  {resources.map((resource, index) => {
+                    const isExternalDownload = resource.isDownload && resource.link.startsWith('http')
+                    const cardContent = (
+                      <>
+                        {resource.category && (
+                          <span className="inline-block px-3 py-1 bg-primary text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-md">
+                            {resource.category}
+                          </span>
+                        )}
+                        <h3 className="text-xl font-semibold text-primary mb-sm">
+                          {resource.title}
+                        </h3>
+                        <p className="text-text-light text-[0.9375rem] leading-relaxed mb-sm">
+                          {resource.description}
+                        </p>
+                        {resource.fileSize && (
+                          <p className="text-sm text-text-light m-0">
+                            File size: {resource.fileSize}
+                          </p>
+                        )}
+                      </>
+                    )
+                    
+                    return isExternalDownload ? (
+                      <a
+                        key={index}
+                        href={resource.link}
+                        download
+                        className="bg-white p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
+                      >
+                        {cardContent}
+                      </a>
+                    ) : (
+                      <Link
+                        key={index}
+                        to={resource.link}
+                        className="bg-white p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
+                      >
+                        {cardContent}
+                      </Link>
+                    )
+                  })}
                 </div>
                 <div className="text-center mb-xxl">
                   <Link to="/resources" className="text-primary hover:text-primary-dark underline">

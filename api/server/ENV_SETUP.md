@@ -51,11 +51,21 @@ Since you have Microsoft Exchange with a **shared mailbox**, use these settings:
    
    **Note:** Since the shared mailbox forwards to your user account, notifications sent to `contacts@rpcassociates.co` will automatically forward to `roger.reid@rpcassociates.co`.
 
-2. **If you have Multi-Factor Authentication (MFA) enabled:**
-   - You may need to create an App Password in Office 365
-   - Go to: https://account.microsoft.com/security
-   - Under "App passwords", create a new app password
-   - Use that app password instead of your regular password
+2. **If you have Multi-Factor Authentication (MFA) enabled (REQUIRED):**
+   - Office 365 typically requires an **App Password** for SMTP authentication when MFA is enabled
+   - Regular passwords won't work with MFA-enabled accounts
+   - **Create an App Password:**
+     1. Go to: https://account.microsoft.com/security
+     2. Sign in with `roger.reid@rpcassociates.co`
+     3. Under "App passwords" (or "Security" → "Advanced security options"), create a new app password
+     4. Name it "RPC Associates API" or similar
+     5. Copy the generated password (it will look like: `abcd-efgh-ijkl-mnop`)
+     6. Use this app password in `SMTP_PASSWORD` instead of your regular password
+   
+   **Alternative:** If you don't see "App passwords" option:
+   - Go to: https://mysignins.microsoft.com/security-info
+   - Click "Create app password"
+   - Use the generated password
 
 3. **Alternative hosts** (if `smtp.office365.com` doesn't work):
    - `smtp-mail.outlook.com` (for Outlook.com/Office 365)

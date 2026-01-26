@@ -1,0 +1,213 @@
+import express from 'express'
+import cors from 'cors'
+import helmet from 'helmet'
+import dotenv from 'dotenv'
+import { createPool } from './db/pool.js'
+import { sendEmail } from './utils/email.js'
+import { createLeadsTable, createContactsTable } from './db/migrations.js'
+
+dotenv.config()
+
+const app = express()
+const PORT = process.env.PORT || 3000
+
+// Middleware
+app.use(helmet())
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['https://rpcassociates.co', 'http://localhost:5173'],
+  credentials: true
+}))
+app.use(express.json())
+app.use(express.urlencoded({ extended: true }))
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() })
+})
+
+// Initialize database tables on startup
+const pool = createPool()
+
+// Lead capture endpoint
+app.post('/api/leads', async (req, res) => {
+  try {
+    const {
+      firstName,
+      lastName,
+      companyName,
+      email,
+      businessPhone,
+      businessType,
+      businessOwnerStatus,
+      speakToAdvisor,
+      marketingConsent,
+      resourceName
+    } = req.body
+
+    // Validation
+    if (!firstName || !lastName || !companyName || !email || !businessPhone || 
+        !businessType || !businessOwnerStatus || !marketingConsent || !resourceName) {
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        required: ['firstName', 'lastName', 'companyName', 'email', 'businessPhone', 
+                   'businessType', 'businessOwnerStatus', 'marketingConsent', 'resourceName']
+      })
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email address' })
+    }
+
+    // Insert into database
+    const result = await pool.query(
+      `INSERT INTO leads (
+        first_name, last_name, company_name, email, business_phone,
+        business_type, business_owner_status, speak_to_advisor,
+        marketing_consent, resource_name, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+      RETURNING id`,
+      [
+        firstName,
+        lastName,
+        companyName,
+        email,
+        businessPhone,
+        businessType,
+        businessOwnerStatus,
+        speakToAdvisor || false,
+        marketingConsent,
+        resourceName
+      ]
+    )
+
+    const leadId = result.rows[0].id
+
+    // Send email notification
+    try {
+      await sendEmail({
+        to: process.env.NOTIFICATION_EMAIL || 'contacts@rpcassociates.co',
+        subject: `New Lead: ${resourceName} - ${firstName} ${lastName}`,
+        html: `
+          <h2>New Lead Submission</h2>
+          <p><strong>Resource:</strong> ${resourceName}</p>
+          <h3>Contact Information</h3>
+          <ul>
+            <li><strong>Name:</strong> ${firstName} ${lastName}</li>
+            <li><strong>Company:</strong> ${companyName}</li>
+            <li><strong>Email:</strong> ${email}</li>
+            <li><strong>Phone:</strong> ${businessPhone}</li>
+            <li><strong>Business Type:</strong> ${businessType}</li>
+            <li><strong>Business Owner Status:</strong> ${businessOwnerStatus}</li>
+            <li><strong>Wants to Speak to Advisor:</strong> ${speakToAdvisor ? 'Yes' : 'No'}</li>
+            <li><strong>Marketing Consent:</strong> ${marketingConsent ? 'Yes' : 'No'}</li>
+          </ul>
+          <p><strong>Submitted:</strong> ${new Date().toLocaleString()}</p>
+        `
+      })
+    } catch (emailError) {
+      console.error('Failed to send email notification:', emailError)
+      // Don't fail the request if email fails
+    }
+
+    res.status(201).json({ 
+      success: true, 
+      message: 'Lead captured successfully',
+      id: leadId
+    })
+  } catch (error) {
+    console.error('Error processing lead:', error)
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message 
+    })
+  }
+})
+
+// Contact form endpoint
+app.post('/api/contact', async (req, res) => {
+  try {
+    const { name, email, company, message } = req.body
+
+    // Validation
+    if (!name || !email || !message) {
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        required: ['name', 'email', 'message']
+      })
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email address' })
+    }
+
+    // Insert into database
+    const result = await pool.query(
+      `INSERT INTO contacts (
+        name, email, company, message, created_at
+      ) VALUES ($1, $2, $3, $4, NOW())
+      RETURNING id`,
+      [name, email, company || null, message]
+    )
+
+    const contactId = result.rows[0].id
+
+    // Send email notification
+    try {
+      await sendEmail({
+        to: process.env.NOTIFICATION_EMAIL || 'contacts@rpcassociates.co',
+        subject: `New Contact Form Submission from ${name}`,
+        html: `
+          <h2>New Contact Form Submission</h2>
+          <h3>Contact Information</h3>
+          <ul>
+            <li><strong>Name:</strong> ${name}</li>
+            <li><strong>Email:</strong> ${email}</li>
+            ${company ? `<li><strong>Company:</strong> ${company}</li>` : ''}
+          </ul>
+          <h3>Message</h3>
+          <p>${message.replace(/\n/g, '<br>')}</p>
+          <p><strong>Submitted:</strong> ${new Date().toLocaleString()}</p>
+        `
+      })
+    } catch (emailError) {
+      console.error('Failed to send email notification:', emailError)
+      // Don't fail the request if email fails
+    }
+
+    res.status(201).json({ 
+      success: true, 
+      message: 'Message sent successfully',
+      id: contactId
+    })
+  } catch (error) {
+    console.error('Error processing contact form:', error)
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message 
+    })
+  }
+})
+
+// Initialize database tables
+async function initializeDatabase() {
+  try {
+    await createLeadsTable(pool)
+    await createContactsTable(pool)
+    console.log('Database tables initialized successfully')
+  } catch (error) {
+    console.error('Error initializing database:', error)
+    // Continue anyway - tables might already exist
+  }
+}
+
+// Start server
+app.listen(PORT, async () => {
+  console.log(`Server running on port ${PORT}`)
+  await initializeDatabase()
+})
+
+export default app

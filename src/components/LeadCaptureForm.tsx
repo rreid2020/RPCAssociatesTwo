@@ -1,4 +1,6 @@
 import { FC, useState, FormEvent } from 'react'
+import { API_ENDPOINTS } from '../lib/config/api'
+import { markResourceAsAccessed } from '../lib/utils/leadCapture'
 
 interface LeadCaptureFormProps {
   resourceName: string
@@ -82,37 +84,41 @@ const LeadCaptureForm: FC<LeadCaptureFormProps> = ({
     setIsSubmitting(true)
 
     try {
-      // Store lead data in localStorage (you can replace this with API call later)
-      const leadData = {
-        ...formData,
-        resourceName,
-        submittedAt: new Date().toISOString(),
+      // Submit to API
+      const response = await fetch(API_ENDPOINTS.leads, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          companyName: formData.companyName,
+          email: formData.email,
+          businessPhone: formData.businessPhone,
+          businessType: formData.businessType,
+          businessOwnerStatus: formData.businessOwnerStatus,
+          speakToAdvisor: formData.speakToAdvisor,
+          marketingConsent: formData.marketingConsent,
+          resourceName,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to submit form')
       }
 
-      // Store in localStorage for now (can be replaced with API call)
-      const existingLeads = JSON.parse(
-        localStorage.getItem('rpc_leads') || '[]'
-      )
-      existingLeads.push(leadData)
-      localStorage.setItem('rpc_leads', JSON.stringify(existingLeads))
-
-      // Mark this resource as accessed
-      const accessedResources = JSON.parse(
-        localStorage.getItem('rpc_accessed_resources') || '[]'
-      )
-      if (!accessedResources.includes(resourceName)) {
-        accessedResources.push(resourceName)
-        localStorage.setItem(
-          'rpc_accessed_resources',
-          JSON.stringify(accessedResources)
-        )
-      }
+      // Mark resource as accessed in localStorage (for client-side tracking)
+      markResourceAsAccessed(resourceName)
 
       // Call success callback
       onSuccess()
     } catch (error) {
       console.error('Error submitting form:', error)
-      setErrors({ email: 'An error occurred. Please try again.' })
+      setErrors({ 
+        email: error instanceof Error ? error.message : 'An error occurred. Please try again.' 
+      })
     } finally {
       setIsSubmitting(false)
     }

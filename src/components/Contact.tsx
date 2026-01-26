@@ -1,4 +1,5 @@
 import { FC, FormEvent, useState } from 'react'
+import { API_ENDPOINTS } from '../lib/config/api'
 
 const Contact: FC = () => {
   const [formData, setFormData] = useState({
@@ -18,19 +19,19 @@ const Contact: FC = () => {
     setErrorMessage('')
 
     try {
-      const response = await fetch('https://formspree.io/f/xanrbgnz', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          company: formData.company,
-          message: formData.message,
-          _subject: 'New Contact Form Submission from RPC Associates Website'
-        })
-      })
+      const response = await fetch(API_ENDPOINTS.contact, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            company: formData.company,
+            message: formData.message,
+          })
+        }
+      )
 
       if (response.ok) {
         setSubmitStatus('success')
@@ -38,7 +39,7 @@ const Contact: FC = () => {
         // Reset success message after 5 seconds
         setTimeout(() => setSubmitStatus('idle'), 5000)
       } else {
-        const data = await response.json()
+        const data = await response.json().catch(() => ({}))
         setSubmitStatus('error')
         setErrorMessage(data.error || 'Something went wrong. Please try again.')
       }

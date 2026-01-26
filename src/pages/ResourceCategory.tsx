@@ -82,33 +82,40 @@ const ResourceCategory: FC = () => {
             </div>
 
             {resources.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg mb-xxl">
-                {resources.map((resource, index) => (
-                  <Link
-                    key={index}
-                    to={resource.link}
-                    className="bg-white p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
-                  >
-                    {resource.category && (
-                      <span className="inline-block px-3 py-1 bg-primary text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-md">
-                        {resource.category}
-                      </span>
-                    )}
-                    <h3 className="text-xl font-semibold text-primary mb-sm">
-                      {resource.title}
-                    </h3>
-                    <p className="text-text-light text-[0.9375rem] leading-relaxed">
-                      {resource.description}
-                    </p>
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg mb-xxl">
+                  {resources.map((resource, index) => (
+                    <Link
+                      key={index}
+                      to={resource.link}
+                      className="bg-white p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
+                    >
+                      {resource.category && (
+                        <span className="inline-block px-3 py-1 bg-primary text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-md">
+                          {resource.category}
+                        </span>
+                      )}
+                      <h3 className="text-xl font-semibold text-primary mb-sm">
+                        {resource.title}
+                      </h3>
+                      <p className="text-text-light text-[0.9375rem] leading-relaxed">
+                        {resource.description}
+                      </p>
+                    </Link>
+                  ))}
+                </div>
+                <div className="text-center mb-xxl">
+                  <Link to="/resources" className="text-primary hover:text-primary-dark underline">
+                    View All Resources
                   </Link>
-                ))}
-              </div>
+                </div>
+              </>
             ) : (
               <div className="text-center py-xl mb-xxl">
                 <p className="text-lg text-text-light mb-lg">
                   More {category.title.toLowerCase()} coming soon.
                 </p>
-                <Link to="/resources" className="btn btn--secondary">
+                <Link to="/resources" className="text-primary hover:text-primary-dark underline">
                   View All Resources
                 </Link>
               </div>

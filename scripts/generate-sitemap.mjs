@@ -77,6 +77,7 @@ async function generateSitemap() {
       { url: '/book-consultation', priority: '0.9', changefreq: 'monthly' },
       { url: '/resources', priority: '0.8', changefreq: 'monthly' },
       { url: '/resources/canadian-personal-income-tax-calculator', priority: '0.8', changefreq: 'monthly' },
+      { url: '/resources/cash-flow-calculator', priority: '0.8', changefreq: 'monthly' },
       { url: '/resources/cash-flow-statement-template', priority: '0.8', changefreq: 'monthly' },
       { url: '/articles', priority: '0.8', changefreq: 'weekly' },
       { url: '/privacy', priority: '0.5', changefreq: 'yearly' },

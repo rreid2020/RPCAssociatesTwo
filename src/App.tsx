@@ -18,6 +18,7 @@ import ServiceDetail from './pages/ServiceDetail'
 import ScrollToTop from './components/ScrollToTop'
 import CanonicalRedirect from './components/CanonicalRedirect'
 import CashFlowTemplate from './pages/CashFlowTemplate'
+import CashFlowCalculator from './pages/CashFlowCalculator'
 import ResourceCategory from './pages/ResourceCategory'
 import Services from './pages/Services'
 
@@ -34,6 +35,7 @@ const App: FC = () => {
           <Route path="/services/:slug" element={<ServiceDetail />} />
           <Route path="/resources" element={<Resources />} />
           <Route path="/resources/canadian-personal-income-tax-calculator" element={<TaxCalculator />} />
+          <Route path="/resources/cash-flow-calculator" element={<CashFlowCalculator />} />
           <Route path="/resources/cash-flow-statement-template" element={<CashFlowTemplate />} />
           <Route path="/resources/:slug" element={<ResourceCategory />} />
           <Route path="/articles" element={<Articles />} />

@@ -52,6 +52,12 @@ const ResourceCategory: FC = () => {
             description: 'Calculate your estimated Canadian income tax for 2025. Get a detailed breakdown including federal and provincial taxes, credits, and deductions.',
             link: '/resources/canadian-personal-income-tax-calculator',
             category: 'Calculator'
+          },
+          {
+            title: 'Cash Flow Calculator',
+            description: 'Calculate your business cash flow by tracking operating, investing, and financing activities. Understand your cash position and liquidity.',
+            link: '/resources/cash-flow-calculator',
+            category: 'Calculator'
           }
         ]
       case 'excel-templates':

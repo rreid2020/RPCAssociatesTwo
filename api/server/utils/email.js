@@ -4,9 +4,9 @@ import nodemailer from 'nodemailer'
  * Create email transporter based on environment variables
  */
 function createTransporter() {
-  // Option 1: SMTP (Gmail, SendGrid, etc.)
+  // Option 1: SMTP (Microsoft Exchange/Office 365, Gmail, SendGrid, etc.)
   if (process.env.SMTP_HOST) {
-    return nodemailer.createTransport({
+    const config = {
       host: process.env.SMTP_HOST,
       port: parseInt(process.env.SMTP_PORT || '587'),
       secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
@@ -14,7 +14,19 @@ function createTransporter() {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASSWORD,
       },
-    })
+    }
+
+    // Additional TLS options for Microsoft Exchange/Office 365
+    if (process.env.SMTP_HOST.includes('office365.com') || 
+        process.env.SMTP_HOST.includes('outlook.com') ||
+        process.env.SMTP_HOST.includes('exchange')) {
+      config.tls = {
+        ciphers: 'SSLv3',
+        rejectUnauthorized: false, // May be needed for some Exchange configurations
+      }
+    }
+
+    return nodemailer.createTransport(config)
   }
 
   // Option 2: Gmail OAuth2 (if using Gmail)

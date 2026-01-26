@@ -19,7 +19,39 @@ DB_SSL=true
 
 **You still need to configure email settings** in `api/server/.env` before the server can send notifications:
 
-### Option 1: Gmail SMTP (Recommended for Testing)
+### Option 1: Microsoft Exchange/Office 365 (Your Current Setup)
+
+Since you have Microsoft Exchange, use these settings:
+
+1. **Update `api/server/.env`:**
+   ```env
+   SMTP_HOST=smtp.office365.com
+   SMTP_PORT=587
+   SMTP_SECURE=false
+   SMTP_USER=contacts@rpcassociates.co
+   SMTP_PASSWORD=your-exchange-password
+   ```
+
+   **Alternative hosts** (if `smtp.office365.com` doesn't work):
+   - `smtp-mail.outlook.com` (for Outlook.com/Office 365)
+   - Your Exchange server hostname (if using on-premises Exchange)
+
+2. **If you have Multi-Factor Authentication (MFA) enabled:**
+   - You may need to create an App Password in Office 365
+   - Go to: https://account.microsoft.com/security
+   - Under "App passwords", create a new app password
+   - Use that app password instead of your regular password
+
+3. **For on-premises Exchange:**
+   ```env
+   SMTP_HOST=your-exchange-server.domain.com
+   SMTP_PORT=587
+   SMTP_SECURE=false
+   SMTP_USER=contacts@rpcassociates.co
+   SMTP_PASSWORD=your-password
+   ```
+
+### Option 2: Gmail SMTP (Alternative)
 
 1. Enable 2-factor authentication on your Gmail account
 2. Generate an App Password:
@@ -36,7 +68,7 @@ DB_SSL=true
    SMTP_PASSWORD=your-app-password-here
    ```
 
-### Option 2: SendGrid (Recommended for Production)
+### Option 3: SendGrid (Optional - Only if you want a separate email service)
 
 1. Sign up at https://sendgrid.com
 2. Create an API key with "Mail Send" permissions

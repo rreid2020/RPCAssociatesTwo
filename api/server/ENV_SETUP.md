@@ -40,13 +40,16 @@ Since you have Microsoft Exchange with a **shared mailbox**, use these settings:
    SHARED_MAILBOX_ADDRESS=contacts@rpcassociates.co
    ```
 
-   **Example:**
-   - If your personal account is `roger@rpcassociates.co` and it has access to the `contacts@rpcassociates.co` shared mailbox:
+   **Example (Your Setup):**
+   - Your user account: `roger.reid@rpcassociates.co`
+   - Shared mailbox: `contacts@rpcassociates.co` (forwards to roger.reid@rpcassociates.co)
    ```env
-   SMTP_USER=roger@rpcassociates.co
+   SMTP_USER=roger.reid@rpcassociates.co
    SMTP_PASSWORD=your-password
    SHARED_MAILBOX_ADDRESS=contacts@rpcassociates.co
    ```
+   
+   **Note:** Since the shared mailbox forwards to your user account, notifications sent to `contacts@rpcassociates.co` will automatically forward to `roger.reid@rpcassociates.co`.
 
 2. **If you have Multi-Factor Authentication (MFA) enabled:**
    - You may need to create an App Password in Office 365

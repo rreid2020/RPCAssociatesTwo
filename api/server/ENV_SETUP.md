@@ -21,20 +21,32 @@ DB_SSL=true
 
 ### Option 1: Microsoft Exchange/Office 365 (Your Current Setup)
 
-Since you have Microsoft Exchange, use these settings:
+Since you have Microsoft Exchange with a **shared mailbox**, use these settings:
+
+**Important for Shared Mailboxes:**
+- You cannot authenticate directly to a shared mailbox
+- You need to authenticate as a **user account** that has access to the shared mailbox
+- The email will be sent **from** the shared mailbox address, but authenticated with the user account
 
 1. **Update `api/server/.env`:**
    ```env
    SMTP_HOST=smtp.office365.com
    SMTP_PORT=587
    SMTP_SECURE=false
-   SMTP_USER=contacts@rpcassociates.co
-   SMTP_PASSWORD=your-exchange-password
+   # Use a user account that has access to the shared mailbox (not the shared mailbox itself)
+   SMTP_USER=your-user-account@rpcassociates.co
+   SMTP_PASSWORD=your-user-account-password
+   # The shared mailbox address (where emails will appear to come from)
+   SHARED_MAILBOX_ADDRESS=contacts@rpcassociates.co
    ```
 
-   **Alternative hosts** (if `smtp.office365.com` doesn't work):
-   - `smtp-mail.outlook.com` (for Outlook.com/Office 365)
-   - Your Exchange server hostname (if using on-premises Exchange)
+   **Example:**
+   - If your personal account is `roger@rpcassociates.co` and it has access to the `contacts@rpcassociates.co` shared mailbox:
+   ```env
+   SMTP_USER=roger@rpcassociates.co
+   SMTP_PASSWORD=your-password
+   SHARED_MAILBOX_ADDRESS=contacts@rpcassociates.co
+   ```
 
 2. **If you have Multi-Factor Authentication (MFA) enabled:**
    - You may need to create an App Password in Office 365
@@ -42,13 +54,18 @@ Since you have Microsoft Exchange, use these settings:
    - Under "App passwords", create a new app password
    - Use that app password instead of your regular password
 
-3. **For on-premises Exchange:**
+3. **Alternative hosts** (if `smtp.office365.com` doesn't work):
+   - `smtp-mail.outlook.com` (for Outlook.com/Office 365)
+   - Your Exchange server hostname (if using on-premises Exchange)
+
+4. **For on-premises Exchange:**
    ```env
    SMTP_HOST=your-exchange-server.domain.com
    SMTP_PORT=587
    SMTP_SECURE=false
-   SMTP_USER=contacts@rpcassociates.co
+   SMTP_USER=your-user-account@domain.com
    SMTP_PASSWORD=your-password
+   SHARED_MAILBOX_ADDRESS=contacts@rpcassociates.co
    ```
 
 ### Option 2: Gmail SMTP (Alternative)

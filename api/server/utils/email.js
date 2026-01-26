@@ -77,8 +77,14 @@ function createTransporter() {
 export async function sendEmail({ to, subject, html, text }) {
   const transporter = createTransporter()
 
+  // For shared mailboxes, use the shared mailbox address as "from" but authenticate with a user account
+  const fromAddress = process.env.EMAIL_FROM || 
+    (process.env.SHARED_MAILBOX_ADDRESS 
+      ? `"RPC Associates" <${process.env.SHARED_MAILBOX_ADDRESS}>`
+      : `"RPC Associates" <${process.env.SMTP_USER}>`)
+
   const mailOptions = {
-    from: process.env.EMAIL_FROM || `"RPC Associates" <${process.env.SMTP_USER}>`,
+    from: fromAddress,
     to,
     subject,
     html,

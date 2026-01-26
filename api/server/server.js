@@ -86,8 +86,12 @@ app.post('/api/leads', async (req, res) => {
 
     // Send email notification
     try {
+      const notificationEmail = process.env.NOTIFICATION_EMAIL || 
+        process.env.SHARED_MAILBOX_ADDRESS || 
+        'contacts@rpcassociates.co'
+      
       await sendEmail({
-        to: process.env.NOTIFICATION_EMAIL || 'contacts@rpcassociates.co',
+        to: notificationEmail,
         subject: `New Lead: ${resourceName} - ${firstName} ${lastName}`,
         html: `
           <h2>New Lead Submission</h2>
@@ -157,8 +161,12 @@ app.post('/api/contact', async (req, res) => {
 
     // Send email notification
     try {
+      const notificationEmail = process.env.NOTIFICATION_EMAIL || 
+        process.env.SHARED_MAILBOX_ADDRESS || 
+        'contacts@rpcassociates.co'
+      
       await sendEmail({
-        to: process.env.NOTIFICATION_EMAIL || 'contacts@rpcassociates.co',
+        to: notificationEmail,
         subject: `New Contact Form Submission from ${name}`,
         html: `
           <h2>New Contact Form Submission</h2>

@@ -1,12 +1,26 @@
-import { FC } from 'react'
+import { FC, useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 import { SPACES_FILES } from '../lib/config/spaces'
 import { downloadFile } from '../lib/utils/download'
+import LeadCaptureForm from '../components/LeadCaptureForm'
+import { hasAccessedResource } from '../lib/utils/leadCapture'
 
 const CashFlowTemplate: FC = () => {
   const downloadUrl = SPACES_FILES.cashFlowTemplate
   const fileName = 'RPC Cash Flow Statement.xlsx'
+  const resourceName = 'Cash Flow Statement Template'
+  
+  const [hasAccess, setHasAccess] = useState(false)
+
+  useEffect(() => {
+    // Check if user has already accessed this resource
+    setHasAccess(hasAccessedResource(resourceName))
+  }, [resourceName])
+
+  const handleFormSuccess = () => {
+    setHasAccess(true)
+  }
 
   return (
     <>
@@ -43,24 +57,42 @@ const CashFlowTemplate: FC = () => {
               <p className="text-lg text-text-light leading-relaxed mb-lg">
                 A comprehensive Excel template designed to help small and owner-managed businesses track cash inflows and outflows, monitor liquidity, and make informed financial decisions.
               </p>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault()
-                  downloadFile(downloadUrl, fileName)
-                }}
-                className="btn btn--primary inline-block"
-              >
-                Download Template
-              </button>
+              {hasAccess ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    downloadFile(downloadUrl, fileName)
+                  }}
+                  className="btn btn--primary inline-block"
+                >
+                  Download Template
+                </button>
+              ) : (
+                <p className="text-text-light">
+                  Enter your information below to access this free template.
+                </p>
+              )}
             </div>
           </div>
         </section>
 
-        {/* Main Content */}
-        <section className="py-xxl bg-white">
-          <div className="max-w-[900px] mx-auto px-md">
-            <div className="prose prose-lg max-w-none">
+        {/* Lead Capture Form or Main Content */}
+        {!hasAccess ? (
+          <section className="py-xxl bg-white">
+            <div className="max-w-[900px] mx-auto px-md">
+              <LeadCaptureForm
+                resourceName={resourceName}
+                onSuccess={handleFormSuccess}
+              />
+            </div>
+          </section>
+        ) : (
+          <>
+            {/* Main Content */}
+            <section className="py-xxl bg-white">
+              <div className="max-w-[900px] mx-auto px-md">
+                <div className="prose prose-lg max-w-none">
               {/* Introduction */}
               <div className="mb-xl">
                 <p className="text-lg text-text-light leading-relaxed mb-md">
@@ -333,18 +365,33 @@ const CashFlowTemplate: FC = () => {
             </div>
           </div>
         </section>
+            {/* Back to Resources */}
+            <section className="py-lg bg-background">
+              <div className="max-w-[900px] mx-auto px-md">
+                <Link 
+                  to="/resources" 
+                  className="inline-block text-primary no-underline text-[0.9375rem] transition-all hover:underline"
+                >
+                  ← Back to Resources
+                </Link>
+              </div>
+            </section>
+          </>
+        )}
 
-        {/* Back to Resources */}
-        <section className="py-lg bg-background">
-          <div className="max-w-[900px] mx-auto px-md">
-            <Link 
-              to="/resources" 
-              className="inline-block text-primary no-underline text-[0.9375rem] transition-all hover:underline"
-            >
-              ← Back to Resources
-            </Link>
-          </div>
-        </section>
+        {/* Back to Resources (shown when form is displayed) */}
+        {!hasAccess && (
+          <section className="py-lg bg-background">
+            <div className="max-w-[900px] mx-auto px-md">
+              <Link 
+                to="/resources" 
+                className="inline-block text-primary no-underline text-[0.9375rem] transition-all hover:underline"
+              >
+                ← Back to Resources
+              </Link>
+            </div>
+          </section>
+        )}
       </main>
     </>
   )

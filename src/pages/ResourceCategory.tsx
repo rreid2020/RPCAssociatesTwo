@@ -1,9 +1,11 @@
-import { FC } from 'react'
+import { FC, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 import { getResourceCategoryBySlug } from '../lib/resources/data'
 import CalendlyButton from '../components/CalendlyButton'
 import { SPACES_FILES } from '../lib/config/spaces'
+import LeadCaptureForm from '../components/LeadCaptureForm'
+import { hasAccessedResource } from '../lib/utils/leadCapture'
 import { downloadFile } from '../lib/utils/download'
 
 interface CategoryResource {
@@ -86,6 +88,34 @@ const ResourceCategory: FC = () => {
   }
 
   const resources = getResourcesForCategory(category.slug)
+  
+  const [showForm, setShowForm] = useState(false)
+  const [selectedResource, setSelectedResource] = useState<CategoryResource | null>(null)
+
+  const handleResourceClick = (resource: CategoryResource) => {
+    const isExternalDownload = resource.isDownload && resource.link.startsWith('http')
+    if (isExternalDownload && !hasAccessedResource(resource.title)) {
+      setSelectedResource(resource)
+      setShowForm(true)
+      return
+    }
+    
+    // If already accessed, download directly
+    if (isExternalDownload) {
+      const filename = resource.link.split('/').pop() || resource.title
+      downloadFile(resource.link, filename)
+    }
+  }
+
+  const handleFormSuccess = () => {
+    if (selectedResource) {
+      setShowForm(false)
+      // Trigger download after form submission
+      const filename = selectedResource.link.split('/').pop() || selectedResource.title
+      downloadFile(selectedResource.link, filename)
+      setSelectedResource(null)
+    }
+  }
 
   return (
     <>
@@ -105,11 +135,19 @@ const ResourceCategory: FC = () => {
               </p>
             </div>
 
-            {resources.length > 0 ? (
+            {showForm && selectedResource ? (
+              <div className="mb-xxl">
+                <LeadCaptureForm
+                  resourceName={selectedResource.title}
+                  onSuccess={handleFormSuccess}
+                />
+              </div>
+            ) : resources.length > 0 ? (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg mb-xxl">
                   {resources.map((resource, index) => {
                     const isExternalDownload = resource.isDownload && resource.link.startsWith('http')
+                    const hasResourceAccess = isExternalDownload ? hasAccessedResource(resource.title) : true
                     const cardContent = (
                       <>
                         {resource.category && (
@@ -131,15 +169,24 @@ const ResourceCategory: FC = () => {
                       </>
                     )
                     
+                    if (isExternalDownload && !hasResourceAccess) {
+                      return (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => handleResourceClick(resource)}
+                          className="bg-white p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block w-full text-left no-underline text-inherit cursor-pointer"
+                        >
+                          {cardContent}
+                        </button>
+                      )
+                    }
+                    
                     return isExternalDownload ? (
                       <button
                         key={index}
                         type="button"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          const filename = resource.link.split('/').pop() || resource.title
-                          downloadFile(resource.link, filename)
-                        }}
+                        onClick={() => handleResourceClick(resource)}
                         className="bg-white p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block w-full text-left no-underline text-inherit cursor-pointer"
                       >
                         {cardContent}

@@ -24,6 +24,10 @@ function createTransporter() {
         ciphers: 'SSLv3',
         rejectUnauthorized: false, // May be needed for some Exchange configurations
       }
+      // Some Exchange configurations require requireTLS
+      config.requireTLS = true
+      // Try different authentication methods
+      config.authMethod = 'LOGIN'
     }
 
     return nodemailer.createTransport(config)

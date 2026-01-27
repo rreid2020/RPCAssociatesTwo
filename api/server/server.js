@@ -237,6 +237,20 @@ if (!existsSync(distPath)) {
 // Note: express.static only handles GET/HEAD requests, so it won't interfere with POST /api/leads
 app.use(express.static(distPath))
 
+// Handle unmatched API routes (for debugging)
+app.use('/api', (req, res, next) => {
+  console.log(`Unmatched API route: ${req.method} ${req.path}`)
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    return next()
+  }
+  res.status(404).json({ 
+    error: 'API endpoint not found',
+    method: req.method,
+    path: req.path,
+    availableEndpoints: ['/api/health', '/api/leads', '/api/contact']
+  })
+})
+
 // Handle client-side routing - serve index.html for all non-API GET routes
 app.get('*', (req, res, next) => {
   // Skip API routes (both GET and POST should be handled by API routes above)

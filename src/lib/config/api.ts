@@ -17,10 +17,14 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:3000')
 
 export const API_ENDPOINTS = {
-  // If API_BASE_URL is empty, use relative URLs (same origin)
-  // Otherwise, use the full URL
-  leads: API_BASE_URL ? `${API_BASE_URL}/api/leads` : '/api/leads',
-  contact: API_BASE_URL ? `${API_BASE_URL}/api/contact` : '/api/contact',
+  // Always use absolute paths from root (starting with /) for same-origin requests
+  // If API_BASE_URL is set, use full URL; otherwise use absolute path from root
+  leads: API_BASE_URL && API_BASE_URL.trim() !== '' 
+    ? `${API_BASE_URL.replace(/\/$/, '')}/api/leads` 
+    : '/api/leads',
+  contact: API_BASE_URL && API_BASE_URL.trim() !== '' 
+    ? `${API_BASE_URL.replace(/\/$/, '')}/api/contact` 
+    : '/api/contact',
 } as const
 
 export default API_BASE_URL

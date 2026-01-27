@@ -224,17 +224,28 @@ async function initializeDatabase() {
 
 // Serve static files from the frontend build (dist folder)
 // The dist folder will be copied to api/server/dist during build
+// IMPORTANT: This must come AFTER API routes to avoid conflicts
 const distPath = path.join(__dirname, 'dist')
+
+// Check if dist folder exists
+if (!existsSync(distPath)) {
+  console.warn(`Warning: dist folder not found at ${distPath}. Static files will not be served.`)
+}
+
 app.use(express.static(distPath))
 
-// Handle client-side routing - serve index.html for all non-API routes
+// Handle client-side routing - serve index.html for all non-API GET routes
 app.get('*', (req, res, next) => {
-  // Skip API routes
+  // Skip API routes (both GET and POST should be handled by API routes above)
   if (req.path.startsWith('/api')) {
     return next()
   }
   // Serve index.html for all other routes (React Router will handle routing)
-  res.sendFile(path.join(distPath, 'index.html'))
+  if (existsSync(path.join(distPath, 'index.html'))) {
+    res.sendFile(path.join(distPath, 'index.html'))
+  } else {
+    res.status(404).json({ error: 'Frontend not built. Please check build process.' })
+  }
 })
 
 // Start server

@@ -6,6 +6,7 @@ import LeadCaptureForm from '../components/LeadCaptureForm'
 import { hasAccessedResource, markResourceAsAccessed } from '../lib/utils/leadCapture'
 import { downloadFile } from '../lib/utils/download'
 import CalendlyButton from '../components/CalendlyButton'
+import FormattedText from '../components/FormattedText'
 
 const ResourceDetail: FC = () => {
   const { slug: slugParam } = useParams<{ slug: string }>()
@@ -86,16 +87,15 @@ const ResourceDetail: FC = () => {
             </div>
             
             {/* Main Content Grid - Mobile First */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 xl:gap-12 items-start">
-              {/* Left Column - Content */}
+            <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6 lg:gap-8 xl:gap-12 items-start">
+              {/* Left Column - Content (Wider) */}
               <div className="order-2 lg:order-1">
                 {/* Main Description */}
                 <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-xl shadow-sm border border-gray-200 mb-6">
-                  <div className="prose prose-lg max-w-none">
-                    <div className="text-base sm:text-lg text-text-light leading-relaxed whitespace-pre-line">
-                      {resource.longDescription}
-                    </div>
-                  </div>
+                  <FormattedText 
+                    text={resource.longDescription}
+                    className="max-w-none"
+                  />
                 </div>
 
                 {/* Benefits Section */}

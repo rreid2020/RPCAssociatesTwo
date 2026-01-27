@@ -68,14 +68,14 @@ const ResourceDetail: FC = () => {
         keywords={resource.keywords}
       />
       <main>
-        {/* Full-Width Hero Section with Image */}
-        <section className="w-full bg-gradient-to-br from-primary/10 via-background to-primary/5 py-12 sm:py-16 lg:py-20">
+        {/* Full-Width Title Section */}
+        <section className="w-full bg-gradient-to-br from-primary/10 via-background to-primary/5 py-8 sm:py-12 lg:py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-8 sm:mb-12">
+            <div className="text-center">
               <span className="inline-block px-4 py-2 bg-primary text-white text-xs sm:text-sm font-semibold uppercase tracking-wider rounded-full mb-4 sm:mb-6">
                 {resource.categoryLabel}
               </span>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-primary mb-4 sm:mb-6 max-w-4xl mx-auto">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-primary mb-4 sm:mb-6">
                 {resource.title}
               </h1>
               {resource.fileSize && (
@@ -83,20 +83,6 @@ const ResourceDetail: FC = () => {
                   File size: {resource.fileSize}
                 </p>
               )}
-            </div>
-            
-            {/* Hero Image Placeholder - Full Width */}
-            <div className="w-full max-w-4xl mx-auto">
-              <div className="relative bg-white rounded-2xl shadow-xl p-8 sm:p-12 lg:p-16 border border-gray-200">
-                <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center">
-                  <div className="text-center">
-                    <svg className="w-16 h-16 sm:w-24 sm:h-24 text-primary mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <p className="text-lg sm:text-xl text-primary font-semibold">Resource Preview</p>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </section>
@@ -166,73 +152,12 @@ const ResourceDetail: FC = () => {
                 ) : null}
               </div>
 
-              {/* Right Column - Content */}
+              {/* Right Column - Content Summary */}
               <div className="order-2">
-                {/* Main Description */}
-                <div className="mb-8 sm:mb-10">
-                  <FormattedText 
-                    text={resource.longDescription}
-                    className="max-w-none"
-                  />
-                </div>
-
-                {/* Benefits Section */}
-                {resource.benefits && resource.benefits.length > 0 && (
-                  <div className="mb-8 sm:mb-10">
-                    <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-primary mb-4 sm:mb-6">
-                      What You'll Get
-                    </h2>
-                    <ul className="space-y-3 sm:space-y-4">
-                      {resource.benefits.map((benefit, index) => (
-                        <li key={index} className="flex items-start">
-                          <svg
-                            className="w-5 h-5 sm:w-6 sm:h-6 text-primary mr-3 mt-0.5 flex-shrink-0"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                          <span className="text-base sm:text-lg text-text-light leading-relaxed">{benefit}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                
-                {/* Features Section */}
-                {resource.features && resource.features.length > 0 && (
-                  <div>
-                    <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-primary mb-4 sm:mb-6">
-                      What's Included
-                    </h2>
-                    <ul className="space-y-3 sm:space-y-4">
-                      {resource.features.map((feature, index) => (
-                        <li key={index} className="flex items-start">
-                          <svg
-                            className="w-5 h-5 sm:w-6 sm:h-6 text-primary mr-3 mt-0.5 flex-shrink-0"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                          <span className="text-base sm:text-lg text-text-light leading-relaxed">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                <FormattedText 
+                  text={resource.longDescription}
+                  className="max-w-none"
+                />
               </div>
             </div>
           </div>

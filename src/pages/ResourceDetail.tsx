@@ -1,5 +1,5 @@
 import { FC, useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useLocation, Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 import { getResourceBySlug } from '../lib/resources/resources'
 import LeadCaptureForm from '../components/LeadCaptureForm'
@@ -8,7 +8,11 @@ import { downloadFile } from '../lib/utils/download'
 import CalendlyButton from '../components/CalendlyButton'
 
 const ResourceDetail: FC = () => {
-  const { slug } = useParams<{ slug: string }>()
+  const { slug: slugParam } = useParams<{ slug: string }>()
+  const location = useLocation()
+  
+  // Extract slug from URL pathname if not in params (for specific routes)
+  const slug = slugParam || location.pathname.replace('/resources/', '')
   const resource = slug ? getResourceBySlug(slug) : null
 
   const [hasAccess, setHasAccess] = useState(false)

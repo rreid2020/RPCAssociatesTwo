@@ -85,7 +85,7 @@ export const resources: ResourceDetail[] = [
     slug: 'cfi-financial-ratios-guide',
     title: 'CFI Financial Ratios Guide',
     shortDescription: 'Comprehensive guide covering key financial ratios, their calculations, and how to interpret them for business analysis and decision-making.',
-    longDescription: 'This comprehensive guide covers key financial ratios, their calculations, and how to interpret them for business analysis and decision-making. Learn about liquidity ratios, profitability ratios, efficiency ratios, and leverage ratios. Understand how to use these ratios to assess your business performance, compare against industry standards, and make informed financial decisions.',
+    longDescription: 'This comprehensive 40+ page guide from Corporate Finance Institute (CFI) covers key financial ratios, their calculations, and how to interpret them for business analysis and decision-making. Learn about liquidity ratios, profitability ratios, efficiency ratios, and leverage ratios. Understand how to use these ratios to assess your business performance, compare against industry standards, and make informed financial decisions. This definitive guide is an essential resource for business owners, financial analysts, and accounting professionals who want to master financial ratio analysis.',
     category: 'publication',
     categoryLabel: 'Guide',
     downloadUrl: SPACES_FILES.financialRatiosGuide,
@@ -97,18 +97,21 @@ export const resources: ResourceDetail[] = [
       'Learn how to interpret ratios for business analysis',
       'Compare your business against industry standards',
       'Make informed financial decisions',
-      'Comprehensive 40+ page guide'
+      'Comprehensive 40+ page guide from CFI',
+      'Essential resource for business owners and financial professionals'
     ],
     features: [
-      'Liquidity ratios explained',
-      'Profitability ratios explained',
-      'Efficiency ratios explained',
-      'Leverage ratios explained',
+      'Liquidity ratios explained (current ratio, quick ratio, cash ratio)',
+      'Profitability ratios explained (gross margin, net margin, ROE, ROA)',
+      'Efficiency ratios explained (asset turnover, inventory turnover)',
+      'Leverage ratios explained (debt-to-equity, debt-to-assets)',
       'Industry benchmarks and comparisons',
-      'Real-world examples and case studies'
+      'Real-world examples and case studies',
+      'Step-by-step calculation formulas',
+      'Interpretation guidelines for each ratio type'
     ],
-    metaDescription: 'Free comprehensive guide to financial ratios. Learn how to calculate and interpret key financial ratios for business analysis and decision-making.',
-    keywords: ['financial ratios', 'business analysis', 'financial ratios guide', 'accounting guide', 'Ottawa']
+    metaDescription: 'Free comprehensive guide to financial ratios from CFI. Learn how to calculate and interpret key financial ratios for business analysis and decision-making. Essential resource for business owners and accounting professionals.',
+    keywords: ['financial ratios', 'business analysis', 'financial ratios guide', 'accounting guide', 'CFI guide', 'financial analysis', 'Ottawa']
   }
 ]
 

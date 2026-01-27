@@ -1,0 +1,37 @@
+# Copy and paste these into Digital Ocean Component-Level Environment Variables
+# When adding via .env file upload, Digital Ocean will detect the scope automatically
+# You may need to manually set BUILD_TIME vs RUN_TIME scope after uploading
+
+# ============================================
+# RUNTIME VARIABLES (RUN_TIME scope)
+# ============================================
+NODE_ENV=production
+PORT=3000
+
+# Database Configuration (PostgreSQL - Digital Ocean Managed Database)
+DB_HOST=db-postgresql-tor1-60715-do-user-20752759-0.e.db.ondigitalocean.com
+DB_PORT=25060
+DB_NAME=defaultdb
+DB_USER=doadmin
+DB_PASSWORD=your-database-password-here
+DB_SSL=true
+
+# Email Configuration (Resend)
+RESEND_API_KEY=your-resend-api-key-here
+EMAIL_FROM="RPC Associates <contacts@rpcassociates.co>"
+NOTIFICATION_EMAIL=contacts@rpcassociates.co
+
+# CORS Configuration
+ALLOWED_ORIGINS=https://rpcassociates.co,https://www.rpcassociates.co,http://localhost:5173
+
+# ============================================
+# BUILD-TIME VARIABLES (BUILD_TIME scope)
+# ============================================
+# Note: These might already be set at app-level. 
+# If they are, you can skip them here or they'll override app-level values
+# Replace with your actual Sanity values:
+VITE_SANITY_PROJECT_ID=your-sanity-project-id-here
+VITE_SANITY_DATASET=production
+VITE_SANITY_API_VERSION=2024-01-01
+VITE_SANITY_USE_CDN=true
+VITE_API_BASE_URL=

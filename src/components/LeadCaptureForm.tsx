@@ -81,6 +81,14 @@ const LeadCaptureForm: FC<LeadCaptureFormProps> = ({
       return
     }
 
+    // Check if API endpoint is configured
+    if (!API_ENDPOINTS.leads) {
+      setErrors({ 
+        email: 'API server is not configured. Please contact support or try again later.' 
+      })
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -116,8 +124,16 @@ const LeadCaptureForm: FC<LeadCaptureFormProps> = ({
       onSuccess()
     } catch (error) {
       console.error('Error submitting form:', error)
+      let errorMessage = 'An error occurred. Please try again.'
+      
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        errorMessage = 'Unable to connect to server. Please check your internet connection or try again later.'
+      } else if (error instanceof Error) {
+        errorMessage = error.message
+      }
+      
       setErrors({ 
-        email: error instanceof Error ? error.message : 'An error occurred. Please try again.' 
+        email: errorMessage
       })
     } finally {
       setIsSubmitting(false)

@@ -17,10 +17,10 @@ import BookConsultation from './pages/BookConsultation'
 import ServiceDetail from './pages/ServiceDetail'
 import ScrollToTop from './components/ScrollToTop'
 import CanonicalRedirect from './components/CanonicalRedirect'
-import CashFlowTemplate from './pages/CashFlowTemplate'
 import CashFlowCalculator from './pages/CashFlowCalculator'
 import ResourceCategory from './pages/ResourceCategory'
 import ResourceDetail from './pages/ResourceDetail'
+import CashFlowTemplate from './pages/CashFlowTemplate'
 import Services from './pages/Services'
 
 const App: FC = () => {

@@ -66,53 +66,28 @@ const ResourceDetail: FC = () => {
         {/* Hero Section */}
         <section className="py-xxl bg-background">
           <div className="max-w-[1200px] mx-auto px-md">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-xxl items-center">
-              <div>
-                <span className="inline-block px-3 py-1 bg-primary text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-md">
-                  {resource.categoryLabel}
-                </span>
-                <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-md">
-                  {resource.title}
-                </h1>
-                <p className="text-lg text-text-light leading-relaxed mb-lg">
-                  {resource.longDescription}
+            <div className="text-center mb-xl max-w-[800px] mx-auto">
+              <span className="inline-block px-3 py-1 bg-primary text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-md">
+                {resource.categoryLabel}
+              </span>
+              <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-md">
+                {resource.title}
+              </h1>
+              <p className="text-lg text-text-light leading-relaxed mb-lg">
+                {resource.longDescription}
+              </p>
+              {resource.fileSize && (
+                <p className="text-sm text-text-light mb-lg">
+                  File size: {resource.fileSize}
                 </p>
-                {resource.fileSize && (
-                  <p className="text-sm text-text-light mb-lg">
-                    File size: {resource.fileSize}
-                  </p>
-                )}
-                {resource.requiresLeadCapture && !hasAccess ? (
-                  <p className="text-text-light mb-lg">
-                    Enter your information below to access this free resource.
-                  </p>
-                ) : resource.downloadUrl ? (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      if (resource.downloadUrl && resource.fileName) {
-                        downloadFile(resource.downloadUrl, resource.fileName)
-                      }
-                    }}
-                    className="btn btn--primary"
-                  >
-                    {resource.category === 'calculator' ? 'Use Calculator' : 'Download Now'}
-                  </button>
-                ) : (
-                  <Link to={resource.slug} className="btn btn--primary">
-                    Use Calculator
-                  </Link>
-                )}
-              </div>
-              <div className="bg-white p-xl rounded-xl shadow-sm border border-border">
-                {resource.requiresLeadCapture && !hasAccess ? (
-                  <LeadCaptureForm
-                    resourceName={resource.title}
-                    onSuccess={handleFormSuccess}
-                  />
-                ) : resource.benefits && resource.benefits.length > 0 ? (
-                  <div>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-xxl items-start">
+              {/* Left Column - Summary and Benefits */}
+              <div>
+                {resource.benefits && resource.benefits.length > 0 && (
+                  <div className="bg-white p-xl rounded-xl shadow-sm border border-border mb-lg">
                     <h2 className="text-2xl font-bold text-primary mb-md">
                       What You'll Get
                     </h2>
@@ -137,14 +112,103 @@ const ResourceDetail: FC = () => {
                       ))}
                     </ul>
                   </div>
+                )}
+                
+                {resource.features && resource.features.length > 0 && (
+                  <div className="bg-white p-xl rounded-xl shadow-sm border border-border">
+                    <h2 className="text-2xl font-bold text-primary mb-md">
+                      What's Included
+                    </h2>
+                    <ul className="space-y-3">
+                      {resource.features.map((feature, index) => (
+                        <li key={index} className="flex items-start">
+                          <svg
+                            className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                          <span className="text-text-light">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column - Form or Download */}
+              <div>
+                {resource.requiresLeadCapture && !hasAccess ? (
+                  <div className="bg-white p-xl rounded-xl shadow-sm border border-border">
+                    <LeadCaptureForm
+                      resourceName={resource.title}
+                      onSuccess={handleFormSuccess}
+                    />
+                  </div>
+                ) : resource.requiresLeadCapture && hasAccess ? (
+                  <div className="bg-white p-xl rounded-xl shadow-sm border border-border text-center">
+                    <h2 className="text-2xl font-bold text-primary mb-md">
+                      Ready to Download
+                    </h2>
+                    <p className="text-text-light mb-lg">
+                      You have access to this resource. Click the button below to download.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        if (resource.downloadUrl && resource.fileName) {
+                          downloadFile(resource.downloadUrl, resource.fileName)
+                        }
+                      }}
+                      className="btn btn--primary w-full"
+                    >
+                      Download Now
+                    </button>
+                  </div>
+                ) : resource.category === 'calculator' ? (
+                  <div className="bg-white p-xl rounded-xl shadow-sm border border-border text-center">
+                    <Link 
+                      to={resource.slug === 'canadian-personal-income-tax-calculator' 
+                        ? '/resources/canadian-personal-income-tax-calculator'
+                        : resource.slug === 'cash-flow-calculator'
+                        ? '/resources/cash-flow-calculator'
+                        : `/resources/${resource.slug}`} 
+                      className="btn btn--primary inline-block"
+                    >
+                      Use Calculator
+                    </Link>
+                  </div>
+                ) : resource.downloadUrl ? (
+                  <div className="bg-white p-xl rounded-xl shadow-sm border border-border text-center">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        if (resource.downloadUrl && resource.fileName) {
+                          downloadFile(resource.downloadUrl, resource.fileName)
+                        }
+                      }}
+                      className="btn btn--primary"
+                    >
+                      Download Now
+                    </button>
+                  </div>
                 ) : null}
               </div>
             </div>
           </div>
         </section>
 
-        {/* Benefits/Features Section */}
-        {(resource.benefits || resource.features) && (
+        {/* Benefits/Features Section (if not already shown above) */}
+        {resource.features && resource.features.length > 0 && resource.benefits && resource.benefits.length > 0 && (
           <section className="py-xxl bg-white">
             <div className="max-w-[1200px] mx-auto px-md">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-xxl">

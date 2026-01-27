@@ -69,37 +69,46 @@ const ResourceDetail: FC = () => {
       <main>
         {/* Hero Section */}
         <section className="py-xxl bg-background">
-          <div className="max-w-[1200px] mx-auto px-md">
-            <div className="text-center mb-xl max-w-[800px] mx-auto">
-              <span className="inline-block px-3 py-1 bg-primary text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-md">
+          <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Header */}
+            <div className="text-center mb-8 sm:mb-12">
+              <span className="inline-block px-3 py-1 bg-primary text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-4">
                 {resource.categoryLabel}
               </span>
-              <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-md">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-primary mb-4">
                 {resource.title}
               </h1>
-              <div className="text-lg text-text-light leading-relaxed mb-lg whitespace-pre-line">
-                {resource.longDescription}
-              </div>
               {resource.fileSize && (
-                <p className="text-sm text-text-light mb-lg">
+                <p className="text-sm text-text-light">
                   File size: {resource.fileSize}
                 </p>
               )}
             </div>
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-xxl items-start">
-              {/* Left Column - Summary and Benefits */}
-              <div>
+            {/* Main Content Grid - Mobile First */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 xl:gap-12 items-start">
+              {/* Left Column - Content */}
+              <div className="order-2 lg:order-1">
+                {/* Main Description */}
+                <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-xl shadow-sm border border-gray-200 mb-6">
+                  <div className="prose prose-lg max-w-none">
+                    <div className="text-base sm:text-lg text-text-light leading-relaxed whitespace-pre-line">
+                      {resource.longDescription}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Benefits Section */}
                 {resource.benefits && resource.benefits.length > 0 && (
-                  <div className="bg-white p-xl rounded-xl shadow-sm border border-border mb-lg">
-                    <h2 className="text-2xl font-bold text-primary mb-md">
+                  <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-xl shadow-sm border border-gray-200 mb-6">
+                    <h2 className="text-xl sm:text-2xl font-bold text-primary mb-4 sm:mb-6">
                       What You'll Get
                     </h2>
-                    <ul className="space-y-3">
+                    <ul className="space-y-3 sm:space-y-4">
                       {resource.benefits.map((benefit, index) => (
                         <li key={index} className="flex items-start">
                           <svg
-                            className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0"
+                            className="w-5 h-5 sm:w-6 sm:h-6 text-primary mr-3 mt-0.5 flex-shrink-0"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -111,23 +120,24 @@ const ResourceDetail: FC = () => {
                               d="M5 13l4 4L19 7"
                             />
                           </svg>
-                          <span className="text-text-light">{benefit}</span>
+                          <span className="text-sm sm:text-base text-text-light leading-relaxed">{benefit}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
                 )}
                 
+                {/* Features Section */}
                 {resource.features && resource.features.length > 0 && (
-                  <div className="bg-white p-xl rounded-xl shadow-sm border border-border">
-                    <h2 className="text-2xl font-bold text-primary mb-md">
+                  <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-xl shadow-sm border border-gray-200">
+                    <h2 className="text-xl sm:text-2xl font-bold text-primary mb-4 sm:mb-6">
                       What's Included
                     </h2>
-                    <ul className="space-y-3">
+                    <ul className="space-y-3 sm:space-y-4">
                       {resource.features.map((feature, index) => (
                         <li key={index} className="flex items-start">
                           <svg
-                            className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0"
+                            className="w-5 h-5 sm:w-6 sm:h-6 text-primary mr-3 mt-0.5 flex-shrink-0"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -139,7 +149,7 @@ const ResourceDetail: FC = () => {
                               d="M5 13l4 4L19 7"
                             />
                           </svg>
-                          <span className="text-text-light">{feature}</span>
+                          <span className="text-sm sm:text-base text-text-light leading-relaxed">{feature}</span>
                         </li>
                       ))}
                     </ul>
@@ -148,20 +158,20 @@ const ResourceDetail: FC = () => {
               </div>
 
               {/* Right Column - Form or Download */}
-              <div>
+              <div className="order-1 lg:order-2 lg:sticky lg:top-8">
                 {resource.requiresLeadCapture && !hasAccess ? (
-                  <div className="bg-white p-xl rounded-xl shadow-sm border border-border">
+                  <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-xl shadow-sm border border-gray-200">
                     <LeadCaptureForm
                       resourceName={resource.title}
                       onSuccess={handleFormSuccess}
                     />
                   </div>
                 ) : resource.requiresLeadCapture && hasAccess ? (
-                  <div className="bg-white p-xl rounded-xl shadow-sm border border-border text-center">
-                    <h2 className="text-2xl font-bold text-primary mb-md">
+                  <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-xl shadow-sm border border-gray-200 text-center">
+                    <h2 className="text-xl sm:text-2xl font-bold text-primary mb-4">
                       Ready to Download
                     </h2>
-                    <p className="text-text-light mb-lg">
+                    <p className="text-sm sm:text-base text-text-light mb-6">
                       You have access to this resource. Click the button below to download.
                     </p>
                     <button
@@ -172,26 +182,26 @@ const ResourceDetail: FC = () => {
                           downloadFile(resource.downloadUrl, resource.fileName)
                         }
                       }}
-                      className="btn btn--primary w-full"
+                      className="w-full px-6 py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary-dark transition-colors"
                     >
                       Download Now
                     </button>
                   </div>
                 ) : resource.category === 'calculator' ? (
-                  <div className="bg-white p-xl rounded-xl shadow-sm border border-border text-center">
+                  <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-xl shadow-sm border border-gray-200 text-center">
                     <Link 
                       to={resource.slug === 'canadian-personal-income-tax-calculator' 
                         ? '/resources/canadian-personal-income-tax-calculator'
                         : resource.slug === 'cash-flow-calculator'
                         ? '/resources/cash-flow-calculator'
                         : `/resources/${resource.slug}`} 
-                      className="btn btn--primary inline-block"
+                      className="inline-block px-6 py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary-dark transition-colors"
                     >
                       Use Calculator
                     </Link>
                   </div>
                 ) : resource.downloadUrl ? (
-                  <div className="bg-white p-xl rounded-xl shadow-sm border border-border text-center">
+                  <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-xl shadow-sm border border-gray-200 text-center">
                     <button
                       type="button"
                       onClick={(e) => {
@@ -200,7 +210,7 @@ const ResourceDetail: FC = () => {
                           downloadFile(resource.downloadUrl, resource.fileName)
                         }
                       }}
-                      className="btn btn--primary"
+                      className="px-6 py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary-dark transition-colors"
                     >
                       Download Now
                     </button>
@@ -210,70 +220,6 @@ const ResourceDetail: FC = () => {
             </div>
           </div>
         </section>
-
-        {/* Benefits/Features Section (if not already shown above) */}
-        {resource.features && resource.features.length > 0 && resource.benefits && resource.benefits.length > 0 && (
-          <section className="py-xxl bg-white">
-            <div className="max-w-[1200px] mx-auto px-md">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-xxl">
-                {resource.benefits && (
-                  <div>
-                    <h2 className="text-2xl lg:text-3xl font-bold text-primary mb-md">
-                      Benefits
-                    </h2>
-                    <ul className="space-y-3">
-                      {resource.benefits.map((benefit, index) => (
-                        <li key={index} className="flex items-start">
-                          <svg
-                            className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                          <span className="text-text-light">{benefit}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {resource.features && (
-                  <div>
-                    <h2 className="text-2xl lg:text-3xl font-bold text-primary mb-md">
-                      Features
-                    </h2>
-                    <ul className="space-y-3">
-                      {resource.features.map((feature, index) => (
-                        <li key={index} className="flex items-start">
-                          <svg
-                            className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                          <span className="text-text-light">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-        )}
 
         {/* CTA Section */}
         <section className="py-xxl bg-background">

@@ -232,7 +232,14 @@ if (!existsSync(distPath)) {
   console.warn(`Warning: dist folder not found at ${distPath}. Static files will not be served.`)
 }
 
-app.use(express.static(distPath))
+// Serve static files, but exclude API routes
+app.use((req, res, next) => {
+  // Skip static file serving for API routes
+  if (req.path.startsWith('/api')) {
+    return next()
+  }
+  express.static(distPath)(req, res, next)
+})
 
 // Handle client-side routing - serve index.html for all non-API GET routes
 app.get('*', (req, res, next) => {

@@ -215,19 +215,23 @@ const ResourceDetail: FC = () => {
                 ) : null}
               </div>
 
-              {/* Right Column - Remaining Content (Starting with The Three Core Sections) */}
+              {/* Right Column - The Three Core Sections */}
               <div className="order-2">
                 {(() => {
-                  // Get content starting from "The Three Core Sections"
-                  const splitPoint = resource.longDescription.indexOf('**The Three Core Sections of a Cash Flow Statement**')
-                  const remainingContent = splitPoint > 0 
-                    ? resource.longDescription.substring(splitPoint).trim()
+                  // Get "The Three Core Sections" content only
+                  const threeCoreStart = resource.longDescription.indexOf('**The Three Core Sections of a Cash Flow Statement**')
+                  const practicalGuidanceStart = resource.longDescription.indexOf('**Practical Guidance for Using the Template**')
+                  
+                  const threeCoreContent = threeCoreStart > 0 && practicalGuidanceStart > 0
+                    ? resource.longDescription.substring(threeCoreStart, practicalGuidanceStart).trim()
+                    : threeCoreStart > 0
+                    ? resource.longDescription.substring(threeCoreStart).trim()
                     : ''
                   
-                  return remainingContent ? (
+                  return threeCoreContent ? (
                     <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-xl shadow-sm border border-gray-200">
                       <FormattedText 
-                        text={remainingContent}
+                        text={threeCoreContent}
                         className="max-w-none"
                       />
                     </div>
@@ -235,6 +239,68 @@ const ResourceDetail: FC = () => {
                 })()}
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Three Column Section - Practical Guidance, Common Use Cases, Important Note */}
+        <section className="py-8 sm:py-12 lg:py-16 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {(() => {
+              // Split the remaining content into three sections
+              const practicalGuidanceStart = resource.longDescription.indexOf('**Practical Guidance for Using the Template**')
+              const commonUseCasesStart = resource.longDescription.indexOf('**Common Use Cases**')
+              const importantNoteStart = resource.longDescription.indexOf('**Important Note**')
+              
+              const practicalGuidanceContent = practicalGuidanceStart > 0 && commonUseCasesStart > 0
+                ? resource.longDescription.substring(practicalGuidanceStart, commonUseCasesStart).trim()
+                : practicalGuidanceStart > 0
+                ? resource.longDescription.substring(practicalGuidanceStart).trim()
+                : ''
+              
+              const commonUseCasesContent = commonUseCasesStart > 0 && importantNoteStart > 0
+                ? resource.longDescription.substring(commonUseCasesStart, importantNoteStart).trim()
+                : commonUseCasesStart > 0
+                ? resource.longDescription.substring(commonUseCasesStart).trim()
+                : ''
+              
+              const importantNoteContent = importantNoteStart > 0
+                ? resource.longDescription.substring(importantNoteStart).trim()
+                : ''
+              
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+                  {/* Column 1 - Practical Guidance */}
+                  {practicalGuidanceContent && (
+                    <div className="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-gray-200">
+                      <FormattedText 
+                        text={practicalGuidanceContent}
+                        className="max-w-none"
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Column 2 - Common Use Cases */}
+                  {commonUseCasesContent && (
+                    <div className="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-gray-200">
+                      <FormattedText 
+                        text={commonUseCasesContent}
+                        className="max-w-none"
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Column 3 - Important Note */}
+                  {importantNoteContent && (
+                    <div className="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-gray-200">
+                      <FormattedText 
+                        text={importantNoteContent}
+                        className="max-w-none"
+                      />
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
           </div>
         </section>
 

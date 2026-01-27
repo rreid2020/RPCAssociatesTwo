@@ -134,9 +134,24 @@ app.post('/api/leads', async (req, res) => {
     })
   } catch (error) {
     console.error('Error processing lead:', error)
+    console.error('Error stack:', error.stack)
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      code: error.code
+    })
+    
+    // Return more helpful error message for debugging (but don't expose sensitive info)
+    const errorMessage = error.message || 'Unknown error occurred'
+    const isDatabaseError = error.code && error.code.startsWith('2')
+    
     res.status(500).json({ 
       error: 'Internal server error',
-      message: error.message 
+      message: isDatabaseError 
+        ? 'Database error occurred. Please check server logs.' 
+        : errorMessage,
+      // Include error code for debugging (safe to expose)
+      code: error.code || 'UNKNOWN'
     })
   }
 })

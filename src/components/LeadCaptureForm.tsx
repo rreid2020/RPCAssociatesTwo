@@ -114,7 +114,13 @@ const LeadCaptureForm: FC<LeadCaptureFormProps> = ({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Failed to submit form')
+        const errorMessage = errorData.message || errorData.error || `Server error: ${response.status} ${response.statusText}`
+        console.error('API Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData
+        })
+        throw new Error(errorMessage)
       }
 
       // Mark resource as accessed in localStorage (for client-side tracking)

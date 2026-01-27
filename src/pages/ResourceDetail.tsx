@@ -87,8 +87,28 @@ const ResourceDetail: FC = () => {
           </div>
         </section>
 
-        {/* Main Content Section - Form Left, Content Right */}
+        {/* Full-Width Intro Sections */}
         <section className="py-8 sm:py-12 lg:py-16 bg-white">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            {(() => {
+              // Split content at "The Three Core Sections"
+              const splitPoint = resource.longDescription.indexOf('**The Three Core Sections of a Cash Flow Statement**')
+              const introContent = splitPoint > 0 
+                ? resource.longDescription.substring(0, splitPoint).trim()
+                : resource.longDescription
+              
+              return (
+                <FormattedText 
+                  text={introContent}
+                  className="max-w-none"
+                />
+              )
+            })()}
+          </div>
+        </section>
+
+        {/* Main Content Section - Form Left, Content Right */}
+        <section className="py-8 sm:py-12 lg:py-16 bg-background">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-8 lg:gap-12 xl:gap-16 items-start">
               {/* Left Column - Form or Download */}
@@ -152,12 +172,24 @@ const ResourceDetail: FC = () => {
                 ) : null}
               </div>
 
-              {/* Right Column - Content Summary */}
+              {/* Right Column - Remaining Content (Starting with The Three Core Sections) */}
               <div className="order-2">
-                <FormattedText 
-                  text={resource.longDescription}
-                  className="max-w-none"
-                />
+                {(() => {
+                  // Get content starting from "The Three Core Sections"
+                  const splitPoint = resource.longDescription.indexOf('**The Three Core Sections of a Cash Flow Statement**')
+                  const remainingContent = splitPoint > 0 
+                    ? resource.longDescription.substring(splitPoint).trim()
+                    : ''
+                  
+                  return remainingContent ? (
+                    <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-xl shadow-sm border border-gray-200">
+                      <FormattedText 
+                        text={remainingContent}
+                        className="max-w-none"
+                      />
+                    </div>
+                  ) : null
+                })()}
               </div>
             </div>
           </div>

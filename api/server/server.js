@@ -224,7 +224,7 @@ async function initializeDatabase() {
 
 // Serve static files from the frontend build (dist folder)
 // The dist folder will be copied to api/server/dist during build
-const distPath = path.join(__dirname, '../dist')
+const distPath = path.join(__dirname, 'dist')
 app.use(express.static(distPath))
 
 // Handle client-side routing - serve index.html for all non-API routes

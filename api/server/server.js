@@ -40,6 +40,7 @@ const pool = createPool()
 
 // Lead capture endpoint
 app.post('/api/leads', async (req, res) => {
+  console.log('POST /api/leads received:', req.body)
   try {
     const {
       firstName,
@@ -232,14 +233,9 @@ if (!existsSync(distPath)) {
   console.warn(`Warning: dist folder not found at ${distPath}. Static files will not be served.`)
 }
 
-// Serve static files, but exclude API routes
-app.use((req, res, next) => {
-  // Skip static file serving for API routes
-  if (req.path.startsWith('/api')) {
-    return next()
-  }
-  express.static(distPath)(req, res, next)
-})
+// Serve static files from the frontend build (dist folder)
+// Note: express.static only handles GET/HEAD requests, so it won't interfere with POST /api/leads
+app.use(express.static(distPath))
 
 // Handle client-side routing - serve index.html for all non-API GET routes
 app.get('*', (req, res, next) => {

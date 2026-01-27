@@ -102,6 +102,10 @@ app.post('/api/leads', async (req, res) => {
         process.env.SHARED_MAILBOX_ADDRESS || 
         'contacts@rpcassociates.co'
       
+      console.log('Attempting to send email notification to:', notificationEmail)
+      console.log('RESEND_API_KEY configured:', !!process.env.RESEND_API_KEY)
+      console.log('EMAIL_FROM:', process.env.EMAIL_FROM)
+      
       await sendEmail({
         to: notificationEmail,
         subject: `New Lead: ${resourceName} - ${firstName} ${lastName}`,
@@ -122,8 +126,15 @@ app.post('/api/leads', async (req, res) => {
           <p><strong>Submitted:</strong> ${new Date().toLocaleString()}</p>
         `
       })
+      console.log('✅ Email notification sent successfully')
     } catch (emailError) {
-      console.error('Failed to send email notification:', emailError)
+      console.error('❌ Failed to send email notification:', emailError)
+      console.error('Email error details:', {
+        name: emailError.name,
+        message: emailError.message,
+        code: emailError.code,
+        response: emailError.response
+      })
       // Don't fail the request if email fails
     }
 

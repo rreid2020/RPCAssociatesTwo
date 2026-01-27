@@ -18,6 +18,9 @@ export function createPool() {
     ssl: sslConfig,
     max: 20,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000, // Increased for SSL connections
+    connectionTimeoutMillis: 30000, // Increased timeout for managed database connections
+    // Additional options for better connection handling
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10000,
   })
 }

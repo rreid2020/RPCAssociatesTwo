@@ -230,12 +230,35 @@ app.post('/api/contact', async (req, res) => {
 // Initialize database tables
 async function initializeDatabase() {
   try {
+    console.log('Attempting to connect to database...')
+    console.log('DB_HOST:', process.env.DB_HOST)
+    console.log('DB_PORT:', process.env.DB_PORT)
+    console.log('DB_NAME:', process.env.DB_NAME)
+    console.log('DB_USER:', process.env.DB_USER)
+    console.log('DB_SSL:', process.env.DB_SSL)
+    
+    // Test connection first
+    const testResult = await pool.query('SELECT NOW()')
+    console.log('Database connection successful:', testResult.rows[0])
+    
     await createLeadsTable(pool)
     await createContactsTable(pool)
     console.log('Database tables initialized successfully')
   } catch (error) {
     console.error('Error initializing database:', error)
-    // Continue anyway - tables might already exist
+    console.error('Error name:', error.name)
+    console.error('Error message:', error.message)
+    console.error('Error code:', error.code)
+    
+    if (error.code === 'ETIMEDOUT' || error.message.includes('timeout')) {
+      console.error('⚠️  Database connection timeout. Check:')
+      console.error('   1. Database credentials are correct')
+      console.error('   2. App Platform is added to database trusted sources')
+      console.error('   3. Database firewall allows App Platform connections')
+    }
+    
+    // Continue anyway - server will still start, but API calls will fail
+    console.warn('⚠️  Server starting without database connection. API endpoints will fail.')
   }
 }
 

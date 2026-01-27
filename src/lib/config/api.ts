@@ -1,19 +1,23 @@
 /**
  * API Configuration
  * 
- * Base URL for the backend API
- * In production, this should be your API server URL
- * In development, this should be http://localhost:3000
+ * Combined Server Setup:
+ * - Frontend and API are served from the same Express server
+ * - API routes are at /api/* on the same domain
+ * - No need for separate API base URL (uses same origin)
  * 
- * For production, set VITE_API_BASE_URL environment variable to your API server URL
- * Example: https://api.rpcassociates.co
+ * For Development:
+ * - API runs on http://localhost:3000
+ * - Set VITE_API_BASE_URL=http://localhost:3000 in .env (optional)
  * 
- * If VITE_API_BASE_URL is not set in production, the form will show an error
- * but the page will still load and display content.
+ * For Production:
+ * - Don't set VITE_API_BASE_URL (leave it unset)
+ * - API endpoints will use relative URLs (/api/leads, /api/contact)
+ * - This avoids CORS issues since everything is same-origin
  */
 
-// In production, if VITE_API_BASE_URL is not set, use empty string to avoid CORS errors
-// The form will show a user-friendly error message
+// If VITE_API_BASE_URL is not set, use relative URLs (same origin)
+// This works because frontend and API are on the same server
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:3000')
 
 export const API_ENDPOINTS = {

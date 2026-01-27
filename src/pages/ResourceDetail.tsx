@@ -8,6 +8,31 @@ import { downloadFile } from '../lib/utils/download'
 import CalendlyButton from '../components/CalendlyButton'
 import FormattedText from '../components/FormattedText'
 
+/**
+ * Helper function to find all major headings (marked with **) in content
+ */
+const findHeadings = (content: string): Array<{ index: number; text: string }> => {
+  const headings: Array<{ index: number; text: string }> = []
+  const regex = /\*\*([^*]+)\*\*/g
+  let match
+  
+  while ((match = regex.exec(content)) !== null) {
+    // Check if it's a standalone heading (not inline bold)
+    const beforeMatch = content.substring(Math.max(0, match.index - 2), match.index)
+    const afterMatch = content.substring(match.index + match[0].length, match.index + match[0].length + 2)
+    
+    // If it's on its own line or followed by a newline, it's likely a heading
+    if (beforeMatch === '\n\n' || beforeMatch === '\n' || match.index === 0 || afterMatch === '\n\n' || afterMatch === '\n') {
+      headings.push({
+        index: match.index,
+        text: match[1]
+      })
+    }
+  }
+  
+  return headings
+}
+
 const ResourceDetail: FC = () => {
   const { slug: slugParam } = useParams<{ slug: string }>()
   const location = useLocation()
@@ -91,55 +116,81 @@ const ResourceDetail: FC = () => {
         <section className="py-8 sm:py-12 lg:py-16 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {(() => {
-              // Split content into three sections
-              const splitPoint = resource.longDescription.indexOf('**The Three Core Sections of a Cash Flow Statement**')
-              const introContent = splitPoint > 0 
-                ? resource.longDescription.substring(0, splitPoint).trim()
-                : resource.longDescription
+              // Find all headings
+              const headings = findHeadings(resource.longDescription)
               
-              // Split into three sections
-              const whyCashFlowIndex = introContent.indexOf('**Why Cash Flow Matters**')
-              const whatTemplateIndex = introContent.indexOf('**What This Template Is Designed to Do**')
+              // Find where to split intro from main content (look for common patterns)
+              const mainContentStarters = [
+                'The Three Core Sections',
+                'Core Sections',
+                'Key Features',
+                'Features',
+                'How It Works',
+                'Getting Started'
+              ]
               
-              const introSection = whyCashFlowIndex > 0 
-                ? introContent.substring(0, whyCashFlowIndex).trim()
-                : introContent
+              let introEndIndex = resource.longDescription.length
+              for (const starter of mainContentStarters) {
+                const index = resource.longDescription.indexOf(`**${starter}`)
+                if (index > 0) {
+                  introEndIndex = index
+                  break
+                }
+              }
               
-              const whyCashFlowSection = whyCashFlowIndex > 0 && whatTemplateIndex > 0
-                ? introContent.substring(whyCashFlowIndex, whatTemplateIndex).trim()
-                : whyCashFlowIndex > 0
-                ? introContent.substring(whyCashFlowIndex).trim()
-                : ''
+              const introContent = resource.longDescription.substring(0, introEndIndex).trim()
               
-              const whatTemplateSection = whatTemplateIndex > 0
-                ? introContent.substring(whatTemplateIndex).trim()
-                : ''
+              // Get first 3 headings from intro content
+              const introHeadings = findHeadings(introContent).slice(0, 3)
+              
+              let section1 = introContent
+              let section2 = ''
+              let section3 = ''
+              
+              if (introHeadings.length >= 2) {
+                // Split by first 2 headings
+                section1 = introContent.substring(0, introHeadings[1].index).trim()
+                if (introHeadings.length >= 3) {
+                  section2 = introContent.substring(introHeadings[1].index, introHeadings[2].index).trim()
+                  section3 = introContent.substring(introHeadings[2].index).trim()
+                } else {
+                  section2 = introContent.substring(introHeadings[1].index).trim()
+                }
+              } else if (introHeadings.length === 1) {
+                // Split content roughly in half before and after the heading
+                const headingIndex = introHeadings[0].index
+                section1 = introContent.substring(0, headingIndex).trim()
+                section2 = introContent.substring(headingIndex).trim()
+              } else {
+                // No headings found, split content into 3 roughly equal parts
+                const third = Math.floor(introContent.length / 3)
+                section1 = introContent.substring(0, third).trim()
+                section2 = introContent.substring(third, third * 2).trim()
+                section3 = introContent.substring(third * 2).trim()
+              }
               
               return (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-                  {/* Column 1 - Intro */}
-                  <div>
-                    <FormattedText 
-                      text={introSection}
-                      className="max-w-none"
-                    />
-                  </div>
-                  
-                  {/* Column 2 - Why Cash Flow Matters */}
-                  {whyCashFlowSection && (
+                  {section1 && (
                     <div>
                       <FormattedText 
-                        text={whyCashFlowSection}
+                        text={section1}
                         className="max-w-none"
                       />
                     </div>
                   )}
-                  
-                  {/* Column 3 - What This Template Is Designed to Do */}
-                  {whatTemplateSection && (
+                  {section2 && (
                     <div>
                       <FormattedText 
-                        text={whatTemplateSection}
+                        text={section2}
+                        className="max-w-none"
+                      />
+                    </div>
+                  )}
+                  {section3 && (
+                    <div>
+                      <FormattedText 
+                        text={section3}
                         className="max-w-none"
                       />
                     </div>
@@ -215,23 +266,57 @@ const ResourceDetail: FC = () => {
                 ) : null}
               </div>
 
-              {/* Right Column - The Three Core Sections */}
+              {/* Right Column - Main Content Section */}
               <div className="order-2">
                 {(() => {
-                  // Get "The Three Core Sections" content only
-                  const threeCoreStart = resource.longDescription.indexOf('**The Three Core Sections of a Cash Flow Statement**')
-                  const practicalGuidanceStart = resource.longDescription.indexOf('**Practical Guidance for Using the Template**')
+                  // Find where intro ends and main content begins
+                  const mainContentStarters = [
+                    'The Three Core Sections',
+                    'Core Sections',
+                    'Key Features',
+                    'Features',
+                    'How It Works',
+                    'Getting Started'
+                  ]
                   
-                  const threeCoreContent = threeCoreStart > 0 && practicalGuidanceStart > 0
-                    ? resource.longDescription.substring(threeCoreStart, practicalGuidanceStart).trim()
-                    : threeCoreStart > 0
-                    ? resource.longDescription.substring(threeCoreStart).trim()
+                  let mainContentStart = -1
+                  let mainContentEnd = resource.longDescription.length
+                  
+                  for (const starter of mainContentStarters) {
+                    const index = resource.longDescription.indexOf(`**${starter}`)
+                    if (index > 0) {
+                      mainContentStart = index
+                      break
+                    }
+                  }
+                  
+                  // Find where bottom sections start
+                  const bottomSectionStarters = [
+                    'Practical Guidance',
+                    'Common Use Cases',
+                    'Important Note',
+                    'Additional Information',
+                    'Next Steps'
+                  ]
+                  
+                  for (const starter of bottomSectionStarters) {
+                    const index = resource.longDescription.indexOf(`**${starter}`)
+                    if (index > mainContentStart) {
+                      mainContentEnd = index
+                      break
+                    }
+                  }
+                  
+                  const mainContent = mainContentStart > 0
+                    ? resource.longDescription.substring(mainContentStart, mainContentEnd).trim()
+                    : mainContentStart === -1
+                    ? resource.longDescription.trim()
                     : ''
                   
-                  return threeCoreContent ? (
+                  return mainContent ? (
                     <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-xl shadow-sm border border-gray-200">
                       <FormattedText 
-                        text={threeCoreContent}
+                        text={mainContent}
                         className="max-w-none"
                       />
                     </div>
@@ -242,58 +327,115 @@ const ResourceDetail: FC = () => {
           </div>
         </section>
 
-        {/* Three Column Section - Practical Guidance, Common Use Cases, Important Note */}
+        {/* Three Column Section - Bottom Sections */}
         <section className="py-8 sm:py-12 lg:py-16 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {(() => {
-              // Split the remaining content into three sections
-              const practicalGuidanceStart = resource.longDescription.indexOf('**Practical Guidance for Using the Template**')
-              const commonUseCasesStart = resource.longDescription.indexOf('**Common Use Cases**')
-              const importantNoteStart = resource.longDescription.indexOf('**Important Note**')
+              // Find where main content ends and bottom sections begin
+              const mainContentStarters = [
+                'The Three Core Sections',
+                'Core Sections',
+                'Key Features',
+                'Features',
+                'How It Works',
+                'Getting Started'
+              ]
               
-              const practicalGuidanceContent = practicalGuidanceStart > 0 && commonUseCasesStart > 0
-                ? resource.longDescription.substring(practicalGuidanceStart, commonUseCasesStart).trim()
-                : practicalGuidanceStart > 0
-                ? resource.longDescription.substring(practicalGuidanceStart).trim()
-                : ''
+              let bottomContentStart = resource.longDescription.length
               
-              const commonUseCasesContent = commonUseCasesStart > 0 && importantNoteStart > 0
-                ? resource.longDescription.substring(commonUseCasesStart, importantNoteStart).trim()
-                : commonUseCasesStart > 0
-                ? resource.longDescription.substring(commonUseCasesStart).trim()
-                : ''
+              for (const starter of mainContentStarters) {
+                const index = resource.longDescription.indexOf(`**${starter}`)
+                if (index > 0) {
+                  // Find next section after main content
+                  const remainingContent = resource.longDescription.substring(index)
+                  const headings = findHeadings(remainingContent)
+                  if (headings.length > 1) {
+                    // Find the 4th heading (after main content section)
+                    const bottomSectionStarters = [
+                      'Practical Guidance',
+                      'Common Use Cases',
+                      'Important Note',
+                      'Additional Information',
+                      'Next Steps'
+                    ]
+                    
+                    for (const bottomStarter of bottomSectionStarters) {
+                      const bottomIndex = resource.longDescription.indexOf(`**${bottomStarter}`, index)
+                      if (bottomIndex > index) {
+                        bottomContentStart = bottomIndex
+                        break
+                      }
+                    }
+                  }
+                  break
+                }
+              }
               
-              const importantNoteContent = importantNoteStart > 0
-                ? resource.longDescription.substring(importantNoteStart).trim()
-                : ''
+              // If no main content section found, check if there are at least 3 headings total
+              if (bottomContentStart === resource.longDescription.length) {
+                const allHeadings = findHeadings(resource.longDescription)
+                if (allHeadings.length >= 4) {
+                  bottomContentStart = allHeadings[3].index
+                } else if (allHeadings.length >= 2) {
+                  // Use last heading as start
+                  bottomContentStart = allHeadings[allHeadings.length - 1].index
+                } else {
+                  // No bottom sections to show
+                  return null
+                }
+              }
+              
+              const bottomContent = resource.longDescription.substring(bottomContentStart).trim()
+              
+              if (!bottomContent) return null
+              
+              // Split bottom content by headings
+              const bottomHeadings = findHeadings(bottomContent)
+              
+              let section1 = ''
+              let section2 = ''
+              let section3 = ''
+              
+              if (bottomHeadings.length >= 3) {
+                // Use first 3 sections
+                section1 = bottomContent.substring(0, bottomHeadings[1].index).trim()
+                section2 = bottomContent.substring(bottomHeadings[1].index, bottomHeadings[2].index).trim()
+                section3 = bottomContent.substring(bottomHeadings[2].index).trim()
+              } else if (bottomHeadings.length === 2) {
+                section1 = bottomContent.substring(0, bottomHeadings[1].index).trim()
+                section2 = bottomContent.substring(bottomHeadings[1].index).trim()
+              } else if (bottomHeadings.length === 1) {
+                section1 = bottomContent
+              } else {
+                // No headings, split roughly into 3 parts
+                const third = Math.floor(bottomContent.length / 3)
+                section1 = bottomContent.substring(0, third).trim()
+                section2 = bottomContent.substring(third, third * 2).trim()
+                section3 = bottomContent.substring(third * 2).trim()
+              }
               
               return (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-                  {/* Column 1 - Practical Guidance */}
-                  {practicalGuidanceContent && (
+                  {section1 && (
                     <div className="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-gray-200">
                       <FormattedText 
-                        text={practicalGuidanceContent}
+                        text={section1}
                         className="max-w-none"
                       />
                     </div>
                   )}
-                  
-                  {/* Column 2 - Common Use Cases */}
-                  {commonUseCasesContent && (
+                  {section2 && (
                     <div className="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-gray-200">
                       <FormattedText 
-                        text={commonUseCasesContent}
+                        text={section2}
                         className="max-w-none"
                       />
                     </div>
                   )}
-                  
-                  {/* Column 3 - Important Note */}
-                  {importantNoteContent && (
+                  {section3 && (
                     <div className="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-gray-200">
                       <FormattedText 
-                        text={importantNoteContent}
+                        text={section3}
                         className="max-w-none"
                       />
                     </div>

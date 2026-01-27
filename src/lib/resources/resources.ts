@@ -58,28 +58,90 @@ export const resources: ResourceDetail[] = [
     slug: 'cash-flow-statement-template',
     title: 'Cash Flow Statement Template',
     shortDescription: 'Track cash inflows and outflows with this comprehensive Excel template. Monitor liquidity, plan for major expenditures, and make informed financial decisions.',
-    longDescription: 'Our professional Cash Flow Statement Template helps you track cash inflows and outflows for your business. Monitor liquidity, plan for major expenditures, and make informed financial decisions. This comprehensive Excel template is designed for small and owner-managed businesses, emphasizing clarity, practicality, and customizability.',
+    longDescription: `A cash flow statement (also referred to as a statement of cash flows) summarizes how cash moves through a business over a specific period—where cash came from and how it was used. In this context, "cash" generally includes funds held in operating bank accounts, not just physical currency.
+
+This statement is most effective when reviewed alongside the income statement and balance sheet, as each report answers a different financial question:
+• Income statement: profitability
+• Balance sheet: financial position
+• Cash flow statement: liquidity and timing
+Together, they provide a complete financial picture.
+
+**Why Cash Flow Matters**
+
+Profit does not equal cash. A business can be profitable on paper while still facing cash shortages due to timing differences such as:
+• Delayed customer collections
+• Payroll and supplier payments occurring before revenue is received
+• Inventory purchases
+• Loan repayments
+• Income tax instalments
+
+A cash flow statement helps business owners and decision-makers:
+• Monitor liquidity and short-term solvency
+• Identify operational cash pressure early
+• Plan for major expenditures and financing needs
+• Support discussions with lenders, investors, and advisors
+• Build realistic cash flow forecasts and budgets
+
+**What This Template Is Designed to Do**
+
+This template is designed for small and owner-managed businesses that want a clear, practical cash flow statement they can understand, maintain, and customize. It can be adapted to match your chart of accounts and reporting needs, whether you are:
+• Monitoring monthly cash flow
+• Comparing year-over-year cash performance
+• Preparing internal management reports
+• Supporting financing or planning discussions
+
+**The Three Core Sections of a Cash Flow Statement**
+
+Most cash flow statements are organized into three standard sections:
+
+**1) Operating Activities**
+Cash generated or used in day-to-day business operations, including cash received from customers, payments to suppliers, payroll and employee benefits, and rent, utilities, and other operating expenses. This section reflects the cash impact of core business activities and is closely tied to working capital management.
+
+**2) Investing Activities**
+Cash related to the acquisition or disposal of long-term assets, such as equipment and machinery purchases, property and capital asset transactions, and certain investments or loans made by the business. These activities typically reflect longer-term strategic decisions.
+
+**3) Financing Activities**
+Cash flows associated with funding the business, including loan proceeds and repayments, owner contributions or withdrawals, equity transactions, and dividends or profit distributions (where applicable). This section explains how the business is financed and how capital is returned to lenders or owners.
+
+**Practical Guidance for Using the Template**
+
+For many small businesses, the most straightforward approach is to build the cash flow statement directly from actual cash transactions, categorizing each inflow and outflow into operating, investing, or financing activities. Businesses with well-maintained accounting records may also prepare cash flow statements using accounting data, but this approach depends on accurate and consistent bookkeeping across the income statement and balance sheet.
+
+**Common Use Cases**
+• Monthly cash flow monitoring
+• Identifying seasonal cash patterns
+• Planning for tax payments and instalments
+• Evaluating hiring decisions or expansion plans
+• Preparing lender-ready financial information (when paired with a balance sheet and income statement)
+
+**Important Note**
+
+This resource is provided for general informational purposes only and does not constitute accounting, tax, or financial advice. Professional guidance may be required depending on your specific circumstances and reporting needs.`,
     category: 'excel-template',
     categoryLabel: 'Excel Template',
     downloadUrl: SPACES_FILES.cashFlowTemplate,
     fileName: 'RPC Cash Flow Statement.xlsx',
     requiresLeadCapture: true,
     benefits: [
-      'Track cash inflows and outflows',
-      'Monitor liquidity and cash position',
-      'Plan for major expenditures',
-      'Professional Excel template format',
-      'Customizable to your business needs'
+      'Monitor liquidity and short-term solvency',
+      'Identify operational cash pressure early',
+      'Plan for major expenditures and financing needs',
+      'Support discussions with lenders, investors, and advisors',
+      'Build realistic cash flow forecasts and budgets',
+      'Understand the difference between profit and cash'
     ],
     features: [
-      'Operating activities tracking',
-      'Investing activities tracking',
-      'Financing activities tracking',
-      'Beginning and ending cash balance',
+      'Operating activities tracking (cash from customers, payments to suppliers, payroll)',
+      'Investing activities tracking (equipment purchases, property transactions)',
+      'Financing activities tracking (loans, owner contributions, equity)',
+      'Customizable line items and categories',
+      'Flexible structure for detailed or simplified reporting',
+      'Ability to present multiple periods for comparison',
+      'Designed for small and owner-managed businesses',
       'Easy-to-use Excel format'
     ],
-    metaDescription: 'Free Cash Flow Statement Excel template. Track cash inflows and outflows, monitor liquidity, and make informed financial decisions for your business.',
-    keywords: ['cash flow template', 'Excel template', 'financial planning', 'cash flow statement', 'Ottawa']
+    metaDescription: 'Free Cash Flow Statement Excel template for small businesses. Track operating, investing, and financing activities to monitor liquidity and make informed financial decisions.',
+    keywords: ['cash flow template', 'Excel template', 'financial planning', 'cash flow statement', 'operating activities', 'investing activities', 'financing activities', 'liquidity', 'Ottawa']
   },
   {
     slug: 'cfi-financial-ratios-guide',

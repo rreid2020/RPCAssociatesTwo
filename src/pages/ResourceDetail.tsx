@@ -77,9 +77,9 @@ const ResourceDetail: FC = () => {
               <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-md">
                 {resource.title}
               </h1>
-              <p className="text-lg text-text-light leading-relaxed mb-lg">
+              <div className="text-lg text-text-light leading-relaxed mb-lg whitespace-pre-line">
                 {resource.longDescription}
-              </p>
+              </div>
               {resource.fileSize && (
                 <p className="text-sm text-text-light mb-lg">
                   File size: {resource.fileSize}

@@ -87,21 +87,64 @@ const ResourceDetail: FC = () => {
           </div>
         </section>
 
-        {/* Full-Width Intro Sections */}
+        {/* Full-Width Intro Sections - 3 Columns */}
         <section className="py-8 sm:py-12 lg:py-16 bg-white">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {(() => {
-              // Split content at "The Three Core Sections"
+              // Split content into three sections
               const splitPoint = resource.longDescription.indexOf('**The Three Core Sections of a Cash Flow Statement**')
               const introContent = splitPoint > 0 
                 ? resource.longDescription.substring(0, splitPoint).trim()
                 : resource.longDescription
               
+              // Split into three sections
+              const whyCashFlowIndex = introContent.indexOf('**Why Cash Flow Matters**')
+              const whatTemplateIndex = introContent.indexOf('**What This Template Is Designed to Do**')
+              
+              const introSection = whyCashFlowIndex > 0 
+                ? introContent.substring(0, whyCashFlowIndex).trim()
+                : introContent
+              
+              const whyCashFlowSection = whyCashFlowIndex > 0 && whatTemplateIndex > 0
+                ? introContent.substring(whyCashFlowIndex, whatTemplateIndex).trim()
+                : whyCashFlowIndex > 0
+                ? introContent.substring(whyCashFlowIndex).trim()
+                : ''
+              
+              const whatTemplateSection = whatTemplateIndex > 0
+                ? introContent.substring(whatTemplateIndex).trim()
+                : ''
+              
               return (
-                <FormattedText 
-                  text={introContent}
-                  className="max-w-none"
-                />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+                  {/* Column 1 - Intro */}
+                  <div>
+                    <FormattedText 
+                      text={introSection}
+                      className="max-w-none"
+                    />
+                  </div>
+                  
+                  {/* Column 2 - Why Cash Flow Matters */}
+                  {whyCashFlowSection && (
+                    <div>
+                      <FormattedText 
+                        text={whyCashFlowSection}
+                        className="max-w-none"
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Column 3 - What This Template Is Designed to Do */}
+                  {whatTemplateSection && (
+                    <div>
+                      <FormattedText 
+                        text={whatTemplateSection}
+                        className="max-w-none"
+                      />
+                    </div>
+                  )}
+                </div>
               )
             })()}
           </div>

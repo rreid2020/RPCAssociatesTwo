@@ -5,26 +5,26 @@ import { Link } from 'react-router-dom'
 
 interface CashFlowInputs {
   // Operating Activities
-  cashFromCustomers: number
-  paymentsToSuppliers: number
-  payrollExpenses: number
-  rentAndUtilities: number
-  otherOperatingExpenses: number
-  
+  cashFromCustomers: string
+  paymentsToSuppliers: string
+  payrollExpenses: string
+  rentAndUtilities: string
+  otherOperatingExpenses: string
+
   // Investing Activities
-  equipmentPurchases: number
-  assetSales: number
-  otherInvestingActivities: number
-  
+  equipmentPurchases: string
+  assetSales: string
+  otherInvestingActivities: string
+
   // Financing Activities
-  loanProceeds: number
-  loanRepayments: number
-  ownerContributions: number
-  ownerWithdrawals: number
-  otherFinancingActivities: number
-  
+  loanProceeds: string
+  loanRepayments: string
+  ownerContributions: string
+  ownerWithdrawals: string
+  otherFinancingActivities: string
+
   // Beginning Cash Balance
-  beginningCashBalance: number
+  beginningCashBalance: string
 }
 
 interface CashFlowResults {
@@ -38,26 +38,26 @@ interface CashFlowResults {
 const CashFlowCalculator: FC = () => {
   const [inputs, setInputs] = useState<CashFlowInputs>({
     // Operating Activities
-    cashFromCustomers: 0,
-    paymentsToSuppliers: 0,
-    payrollExpenses: 0,
-    rentAndUtilities: 0,
-    otherOperatingExpenses: 0,
-    
+    cashFromCustomers: '',
+    paymentsToSuppliers: '',
+    payrollExpenses: '',
+    rentAndUtilities: '',
+    otherOperatingExpenses: '',
+
     // Investing Activities
-    equipmentPurchases: 0,
-    assetSales: 0,
-    otherInvestingActivities: 0,
-    
+    equipmentPurchases: '',
+    assetSales: '',
+    otherInvestingActivities: '',
+
     // Financing Activities
-    loanProceeds: 0,
-    loanRepayments: 0,
-    ownerContributions: 0,
-    ownerWithdrawals: 0,
-    otherFinancingActivities: 0,
-    
+    loanProceeds: '',
+    loanRepayments: '',
+    ownerContributions: '',
+    ownerWithdrawals: '',
+    otherFinancingActivities: '',
+
     // Beginning Cash Balance
-    beginningCashBalance: 0,
+    beginningCashBalance: '',
   })
 
   const [results, setResults] = useState<CashFlowResults | null>(null)
@@ -79,39 +79,40 @@ const CashFlowCalculator: FC = () => {
   }
 
   const handleInputChange = (field: keyof CashFlowInputs, value: string) => {
-    const numValue = parseNumber(value)
-    setInputs((prev) => ({ ...prev, [field]: numValue }))
+    setInputs((prev) => ({ ...prev, [field]: value }))
     setHasCalculated(false)
   }
 
   const calculateCashFlow = () => {
+    const getValue = (field: keyof CashFlowInputs) => parseNumber(inputs[field])
+
     // Operating Activities
     const operatingCashFlow =
-      inputs.cashFromCustomers -
-      inputs.paymentsToSuppliers -
-      inputs.payrollExpenses -
-      inputs.rentAndUtilities -
-      inputs.otherOperatingExpenses
+      getValue('cashFromCustomers') -
+      getValue('paymentsToSuppliers') -
+      getValue('payrollExpenses') -
+      getValue('rentAndUtilities') -
+      getValue('otherOperatingExpenses')
 
     // Investing Activities (purchases are negative, sales are positive)
     const investingCashFlow =
-      inputs.assetSales -
-      inputs.equipmentPurchases +
-      inputs.otherInvestingActivities
+      getValue('assetSales') -
+      getValue('equipmentPurchases') +
+      getValue('otherInvestingActivities')
 
     // Financing Activities
     const financingCashFlow =
-      inputs.loanProceeds +
-      inputs.ownerContributions -
-      inputs.loanRepayments -
-      inputs.ownerWithdrawals +
-      inputs.otherFinancingActivities
+      getValue('loanProceeds') +
+      getValue('ownerContributions') -
+      getValue('loanRepayments') -
+      getValue('ownerWithdrawals') +
+      getValue('otherFinancingActivities')
 
     // Net Cash Flow
     const netCashFlow = operatingCashFlow + investingCashFlow + financingCashFlow
 
     // Ending Cash Balance
-    const endingCashBalance = inputs.beginningCashBalance + netCashFlow
+    const endingCashBalance = getValue('beginningCashBalance') + netCashFlow
 
     setResults({
       operatingCashFlow,
@@ -125,20 +126,20 @@ const CashFlowCalculator: FC = () => {
 
   const resetCalculator = () => {
     setInputs({
-      cashFromCustomers: 0,
-      paymentsToSuppliers: 0,
-      payrollExpenses: 0,
-      rentAndUtilities: 0,
-      otherOperatingExpenses: 0,
-      equipmentPurchases: 0,
-      assetSales: 0,
-      otherInvestingActivities: 0,
-      loanProceeds: 0,
-      loanRepayments: 0,
-      ownerContributions: 0,
-      ownerWithdrawals: 0,
-      otherFinancingActivities: 0,
-      beginningCashBalance: 0,
+      cashFromCustomers: '',
+      paymentsToSuppliers: '',
+      payrollExpenses: '',
+      rentAndUtilities: '',
+      otherOperatingExpenses: '',
+      equipmentPurchases: '',
+      assetSales: '',
+      otherInvestingActivities: '',
+      loanProceeds: '',
+      loanRepayments: '',
+      ownerContributions: '',
+      ownerWithdrawals: '',
+      otherFinancingActivities: '',
+      beginningCashBalance: '',
     })
     setResults(null)
     setHasCalculated(false)
@@ -168,15 +169,9 @@ const CashFlowCalculator: FC = () => {
         </span>
         <input
           type="text"
+          inputMode="decimal"
           id={field}
-          value={
-            inputs[field] === 0
-              ? ''
-              : inputs[field].toLocaleString('en-CA', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })
-          }
+          value={inputs[field]}
           onChange={(e) => handleInputChange(field, e.target.value)}
           placeholder={placeholder}
           className="w-full pl-8 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text bg-white"
@@ -457,7 +452,7 @@ const CashFlowCalculator: FC = () => {
                           Beginning Cash Balance
                         </span>
                         <span className="text-base font-semibold text-text">
-                          {formatCurrency(inputs.beginningCashBalance)}
+                          {formatCurrency(parseNumber(inputs.beginningCashBalance))}
                         </span>
                       </div>
                       <div className="flex justify-between items-center mb-2 mt-3 pt-3 border-t border-border">

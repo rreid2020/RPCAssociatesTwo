@@ -204,36 +204,61 @@ const ResourceDetail: FC = () => {
                     {resource.shortDescription}
                   </p>
                   
-                  {/* Key Points Summary */}
+                  {/* Content from longDescription */}
                   {(() => {
-                    // Extract key points from longDescription - get first paragraph and first few bullet points
+                    // Parse the longDescription to show intro, bullet points, and closing
                     const description = resource.longDescription
-                    const firstParagraphEnd = description.indexOf('\n\n')
-                    const firstParagraph = firstParagraphEnd > 0 
-                      ? description.substring(0, firstParagraphEnd).trim()
-                      : description.substring(0, 300).trim() + '...'
                     
-                    // Get bullet points if available
+                    // Split by "Inside the guide"
+                    const introEnd = description.indexOf('Inside the guide')
+                    const intro = introEnd > 0 
+                      ? description.substring(0, introEnd).trim()
+                      : description.split('\n\n')[0].trim()
+                    
+                    // Get all bullet points
                     const bulletMatch = description.match(/•\s+([^\n]+)/g)
-                    const bullets = bulletMatch ? bulletMatch.slice(0, 4).map(b => b.replace(/^•\s+/, '')) : []
+                    const bullets = bulletMatch ? bulletMatch.map(b => b.replace(/^•\s+/, '').trim()) : []
+                    
+                    // Get closing paragraphs (after bullets)
+                    const closingStart = description.indexOf('Each ratio')
+                    const closing = closingStart > 0 
+                      ? description.substring(closingStart).trim()
+                      : ''
                     
                     return (
                       <div className="space-y-6">
                         <p className="text-base text-gray-700 leading-relaxed">
-                          {firstParagraph}
+                          {intro}
                         </p>
                         
                         {bullets.length > 0 && (
-                          <ul className="space-y-3">
-                            {bullets.map((bullet, index) => (
-                              <li key={index} className="flex items-start">
-                                <svg className="w-5 h-5 text-primary mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                                <span className="text-base text-gray-700">{bullet}</span>
-                              </li>
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                              Inside the guide, you'll learn:
+                            </h3>
+                            <ul className="space-y-3">
+                              {bullets.map((bullet, index) => (
+                                <li key={index} className="flex items-start">
+                                  <svg className="w-5 h-5 text-primary mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                  <span className="text-base text-gray-700">{bullet}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        
+                        {closing && (
+                          <div className="space-y-4">
+                            {closing.split('\n\n').map((paragraph, index) => (
+                              paragraph.trim() && (
+                                <p key={index} className="text-base text-gray-700 leading-relaxed">
+                                  {paragraph.trim()}
+                                </p>
+                              )
                             ))}
-                          </ul>
+                          </div>
                         )}
                       </div>
                     )

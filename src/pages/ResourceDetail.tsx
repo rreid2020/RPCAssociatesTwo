@@ -95,7 +95,7 @@ const ResourceDetail: FC = () => {
       <main>
         {/* Full-Width Title Section */}
         <section className="w-full bg-gradient-to-br from-primary/10 via-background to-primary/5 py-8 sm:py-12 lg:py-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
             <div className="text-center">
               <span className="inline-block px-4 py-2 bg-primary text-white text-xs sm:text-sm font-semibold uppercase tracking-wider rounded-full mb-4 sm:mb-6">
                 {resource.categoryLabel}
@@ -114,7 +114,7 @@ const ResourceDetail: FC = () => {
 
         {/* Full-Width Intro Sections - 3 Columns */}
         <section className="py-8 sm:py-12 lg:py-16 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
             {(() => {
               // Find where to split intro from main content (look for common patterns)
               const mainContentStarters = [
@@ -204,7 +204,7 @@ const ResourceDetail: FC = () => {
 
         {/* Main Content Section - Form Left, Content Right */}
         <section className="py-8 sm:py-12 lg:py-16 bg-background">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
             <div className="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-8 lg:gap-12 xl:gap-16 items-start">
               {/* Left Column - Form or Download */}
               <div className="order-1 lg:sticky lg:top-8 lg:self-start">
@@ -343,7 +343,7 @@ const ResourceDetail: FC = () => {
 
         {/* Three Column Section - Bottom Sections */}
         <section className="py-8 sm:py-12 lg:py-16 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
             {(() => {
               // Find where bottom sections begin
               const bottomSectionStarters = [

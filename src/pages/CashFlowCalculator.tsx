@@ -633,35 +633,58 @@ const CashFlowCalculator: FC = () => {
           <section className="mt-8 sm:mt-12">
             <div className="bg-background rounded-xl p-4 sm:p-6 lg:p-8">
               <h2 className="text-xl sm:text-2xl font-bold text-primary mb-4">
-                Understanding Your Cash Flow
+                Steps to Prepare the Statement of Cash Flows (Indirect Method)
               </h2>
               <div className="prose prose-sm max-w-none text-text-light">
-                <p className="mb-4">
-                  This statement uses the <strong>indirect method</strong>, starting with net income and adjusting for non-cash items and changes in working capital.
-                </p>
-                <ul className="list-none pl-0 space-y-2 mb-4">
-                  <li className="flex items-start">
-                    <span className="text-primary mr-2 font-bold">•</span>
-                    <span>
-                      <strong>Operating Activities:</strong> Net income adjusted for non-cash items and changes in operating assets and liabilities.
-                    </span>
+                <ol className="list-decimal pl-5 space-y-3 mb-6">
+                  <li>
+                    <strong>Calculate Net Cash from Operating Activities</strong>
+                    <ul className="list-disc pl-5 mt-2 space-y-1">
+                      <li>Start with Net Income from the income statement.</li>
+                      <li>Add back non-cash expenses (depreciation, amortization, depletion).</li>
+                      <li>Adjust for gains or losses on asset sales.</li>
+                      <li>Adjust for working capital changes.</li>
+                      <li>
+                        Assets: a decrease in current assets is added; an increase is subtracted.
+                      </li>
+                      <li>
+                        Liabilities: an increase in current liabilities is added; a decrease is subtracted.
+                      </li>
+                    </ul>
                   </li>
-                  <li className="flex items-start">
-                    <span className="text-primary mr-2 font-bold">•</span>
-                    <span>
-                      <strong>Investing Activities:</strong> Cash used for or generated from long-term assets and investments.
-                    </span>
+                  <li>
+                    <strong>Determine Net Cash from Investing Activities</strong>
+                    <ul className="list-disc pl-5 mt-2 space-y-1">
+                      <li>Analyze changes in long-term asset accounts.</li>
+                      <li>Cash spent to purchase assets is a subtraction.</li>
+                      <li>Cash received from selling assets is an addition.</li>
+                    </ul>
                   </li>
-                  <li className="flex items-start">
-                    <span className="text-primary mr-2 font-bold">•</span>
-                    <span>
-                      <strong>Financing Activities:</strong> Cash from or paid to lenders and owners.
-                    </span>
+                  <li>
+                    <strong>Determine Net Cash from Financing Activities</strong>
+                    <ul className="list-disc pl-5 mt-2 space-y-1">
+                      <li>Analyze changes in long-term debt and equity accounts.</li>
+                      <li>Cash received from issuing stock or borrowing is an addition.</li>
+                      <li>Cash paid for dividends or repaying debt is a subtraction.</li>
+                    </ul>
                   </li>
+                  <li>
+                    <strong>Calculate Net Change and Final Balance</strong>
+                    <ul className="list-disc pl-5 mt-2 space-y-1">
+                      <li>Net Cash Flow: sum operating, investing, and financing cash flows.</li>
+                      <li>Final Balance: add the net change to the beginning cash balance.</li>
+                    </ul>
+                  </li>
+                </ol>
+                <h3 className="text-base sm:text-lg font-semibold text-text mb-2">
+                  Key Rules for Working Capital Changes
+                </h3>
+                <ul className="list-disc pl-5 space-y-1 mb-0">
+                  <li>Current Assets Increase = Cash Decrease.</li>
+                  <li>Current Assets Decrease = Cash Increase.</li>
+                  <li>Current Liabilities Increase = Cash Increase.</li>
+                  <li>Current Liabilities Decrease = Cash Decrease.</li>
                 </ul>
-                <p className="mb-0">
-                  A positive net increase in cash means you're generating more cash than you're using. A negative ending cash balance requires attention.
-                </p>
               </div>
             </div>
           </section>

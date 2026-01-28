@@ -55,6 +55,24 @@ export const resources: ResourceDetail[] = [
     keywords: ['cash flow calculator', 'business cash flow', 'financial planning', 'liquidity', 'Ottawa']
   },
   {
+    slug: 'cash-flow-statement-direct-method',
+    title: 'Cash Flow Statement (Direct Method)',
+    shortDescription: 'Build a direct method cash flow statement with cash receipts and cash payments across operating, investing, and financing activities.',
+    longDescription: 'Use our direct method cash flow statement calculator to enter actual cash receipts and payments. This tool helps you present operating, investing, and financing cash flows in a clear statement format for reporting and analysis.',
+    category: 'calculator',
+    categoryLabel: 'Calculator',
+    requiresLeadCapture: false,
+    benefits: [
+      'Show actual cash receipts and cash payments',
+      'Clear direct method presentation',
+      'Organized operating, investing, and financing sections',
+      'Auto-calculated subtotals and net cash flow',
+      'Useful for internal and external reporting'
+    ],
+    metaDescription: 'Direct method cash flow statement calculator. Enter cash receipts and payments to generate operating, investing, and financing cash flows.',
+    keywords: ['cash flow statement', 'direct method', 'cash receipts', 'cash payments', 'financial reporting', 'Ottawa']
+  },
+  {
     slug: 'cash-flow-statement-template',
     title: 'Cash Flow Statement Template',
     shortDescription: 'Track cash inflows and outflows with this comprehensive Excel template. Monitor liquidity, plan for major expenditures, and make informed financial decisions.',

@@ -18,6 +18,7 @@ import ServiceDetail from './pages/ServiceDetail'
 import ScrollToTop from './components/ScrollToTop'
 import CanonicalRedirect from './components/CanonicalRedirect'
 import CashFlowCalculator from './pages/CashFlowCalculator'
+import CashFlowStatementDirectMethod from './pages/CashFlowStatementDirectMethod'
 import ResourceCategory from './pages/ResourceCategory'
 import ResourceDetail from './pages/ResourceDetail'
 import Services from './pages/Services'
@@ -37,6 +38,7 @@ const App: FC = () => {
           {/* Specific resource detail routes - must come before category routes */}
           <Route path="/resources/canadian-personal-income-tax-calculator" element={<TaxCalculator />} />
           <Route path="/resources/cash-flow-calculator" element={<CashFlowCalculator />} />
+          <Route path="/resources/cash-flow-statement-direct-method" element={<CashFlowStatementDirectMethod />} />
           <Route path="/resources/cash-flow-statement-template" element={<ResourceDetail />} />
           <Route path="/resources/cfi-financial-ratios-guide" element={<ResourceDetail />} />
           {/* Resource category routes */}

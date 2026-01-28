@@ -206,7 +206,7 @@ const ResourceDetail: FC = () => {
                   
                   {/* Content from longDescription */}
                   {(() => {
-                    // Parse the longDescription to show intro, bullet points, and closing
+                    // Parse the longDescription to show intro, bullet points, closing, and copyright
                     const description = resource.longDescription
                     
                     // Split by "Inside the guide"
@@ -219,10 +219,18 @@ const ResourceDetail: FC = () => {
                     const bulletMatch = description.match(/•\s+([^\n]+)/g)
                     const bullets = bulletMatch ? bulletMatch.map(b => b.replace(/^•\s+/, '').trim()) : []
                     
-                    // Get closing paragraphs (after bullets)
+                    // Get closing paragraphs (after bullets, before copyright)
                     const closingStart = description.indexOf('Each ratio')
-                    const closing = closingStart > 0 
+                    const copyrightStart = description.indexOf('**Copyright & Attribution**')
+                    const closing = closingStart > 0 && copyrightStart > closingStart
+                      ? description.substring(closingStart, copyrightStart).trim()
+                      : closingStart > 0
                       ? description.substring(closingStart).trim()
+                      : ''
+                    
+                    // Get copyright section
+                    const copyright = copyrightStart > 0
+                      ? description.substring(copyrightStart).trim()
                       : ''
                     
                     return (
@@ -258,6 +266,15 @@ const ResourceDetail: FC = () => {
                                 </p>
                               )
                             ))}
+                          </div>
+                        )}
+                        
+                        {copyright && (
+                          <div className="pt-6 border-t border-gray-200">
+                            <FormattedText 
+                              text={copyright}
+                              className="max-w-none"
+                            />
                           </div>
                         )}
                       </div>

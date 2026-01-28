@@ -165,7 +165,11 @@ Inside the guide, you'll learn:
 
 Each ratio is explained with clear definitions, formulas, interpretation guidance, and practical context, making this guide both a quick reference and a foundational training resource.
 
-Download the guide to strengthen your financial analysis, improve consistency across reports, and make better data-driven decisions.`,
+Download the guide to strengthen your financial analysis, improve consistency across reports, and make better data-driven decisions.
+
+**Copyright & Attribution**
+
+This guide is provided by Corporate Finance Institute® (CFI). All content is the intellectual property of Corporate Finance Institute and is used here for educational and informational purposes. All rights reserved.`,
     category: 'publication',
     categoryLabel: 'Guide',
     downloadUrl: SPACES_FILES.financialRatiosGuide,

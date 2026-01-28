@@ -1,4 +1,4 @@
-import { FC, useState } from 'react'
+import { FC, useMemo, useState } from 'react'
 import SEO from '../components/SEO'
 import CalendlyButton from '../components/CalendlyButton'
 import { Link } from 'react-router-dom'
@@ -113,8 +113,6 @@ const CashFlowCalculator: FC = () => {
     beginningCashBalance: '',
   })
 
-  const [results, setResults] = useState<CashFlowResults | null>(null)
-  const [hasCalculated, setHasCalculated] = useState(false)
 
   const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat('en-CA', {
@@ -161,7 +159,6 @@ const CashFlowCalculator: FC = () => {
   const handleInputChange = (field: keyof CashFlowInputs, value: string) => {
     const sanitized = sanitizeNumericInput(value)
     setInputs((prev) => ({ ...prev, [field]: sanitized }))
-    setHasCalculated(false)
   }
 
   const handleInputBlur = (field: keyof CashFlowInputs) => {
@@ -174,8 +171,7 @@ const CashFlowCalculator: FC = () => {
 
   const getValue = (field: keyof CashFlowInputs) => parseNumber(inputs[field])
 
-  const calculateCashFlow = () => {
-    // Operating Activities
+  const computedResults = useMemo((): CashFlowResults => {
     const operatingCashFlow =
       getValue('cashFromCustomers') -
       getValue('paymentsToSuppliers') -
@@ -183,13 +179,11 @@ const CashFlowCalculator: FC = () => {
       getValue('rentAndUtilities') -
       getValue('otherOperatingExpenses')
 
-    // Investing Activities (purchases are negative, sales are positive)
     const investingCashFlow =
       getValue('assetSales') -
       getValue('equipmentPurchases') +
       getValue('otherInvestingActivities')
 
-    // Financing Activities
     const financingCashFlow =
       getValue('loanProceeds') +
       getValue('ownerContributions') -
@@ -197,21 +191,17 @@ const CashFlowCalculator: FC = () => {
       getValue('ownerWithdrawals') +
       getValue('otherFinancingActivities')
 
-    // Net Cash Flow
     const netCashFlow = operatingCashFlow + investingCashFlow + financingCashFlow
-
-    // Ending Cash Balance
     const endingCashBalance = getValue('beginningCashBalance') + netCashFlow
 
-    setResults({
+    return {
       operatingCashFlow,
       investingCashFlow,
       financingCashFlow,
       netCashFlow,
       endingCashBalance,
-    })
-    setHasCalculated(true)
-  }
+    }
+  }, [inputs])
 
   const resetCalculator = () => {
     setInputs({
@@ -230,8 +220,6 @@ const CashFlowCalculator: FC = () => {
       otherFinancingActivities: '',
       beginningCashBalance: '',
     })
-    setResults(null)
-    setHasCalculated(false)
   }
 
   return (
@@ -352,14 +340,12 @@ const CashFlowCalculator: FC = () => {
                   helpText="Other day-to-day business expenses"
                 />
               </div>
-              {hasCalculated && results && (
-                <div className="flex justify-between items-center text-sm font-semibold text-text mt-4 border-t border-border pt-3">
-                  <span>Net Cash Flow from Operations</span>
-                  <span className={results.operatingCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}>
-                    {formatCurrency(results.operatingCashFlow)}
-                  </span>
-                </div>
-              )}
+              <div className="flex justify-between items-center text-sm font-semibold text-text mt-3 border-t border-border pt-2">
+                <span>Net Cash Flow from Operations</span>
+                <span className={computedResults.operatingCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}>
+                  {formatCurrency(computedResults.operatingCashFlow)}
+                </span>
+              </div>
             </div>
 
             {/* Investing Activities */}
@@ -396,14 +382,12 @@ const CashFlowCalculator: FC = () => {
                   helpText="Other investing-related cash flows"
                 />
               </div>
-              {hasCalculated && results && (
-                <div className="flex justify-between items-center text-sm font-semibold text-text mt-4 border-t border-border pt-3">
-                  <span>Net Cash Flow from Investing Activities</span>
-                  <span className={results.investingCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}>
-                    {formatCurrency(results.investingCashFlow)}
-                  </span>
-                </div>
-              )}
+              <div className="flex justify-between items-center text-sm font-semibold text-text mt-3 border-t border-border pt-2">
+                <span>Net Cash Flow from Investing Activities</span>
+                <span className={computedResults.investingCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}>
+                  {formatCurrency(computedResults.investingCashFlow)}
+                </span>
+              </div>
             </div>
 
             {/* Financing Activities */}
@@ -458,36 +442,31 @@ const CashFlowCalculator: FC = () => {
                   helpText="Other financing-related cash flows"
                 />
               </div>
-              {hasCalculated && results && (
-                <div className="flex justify-between items-center text-sm font-semibold text-text mt-4 border-t border-border pt-3">
-                  <span>Net Cash Flow from Financing Activities</span>
-                  <span className={results.financingCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}>
-                    {formatCurrency(results.financingCashFlow)}
-                  </span>
-                </div>
-              )}
+              <div className="flex justify-between items-center text-sm font-semibold text-text mt-3 border-t border-border pt-2">
+                <span>Net Cash Flow from Financing Activities</span>
+                <span className={computedResults.financingCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}>
+                  {formatCurrency(computedResults.financingCashFlow)}
+                </span>
+              </div>
             </div>
 
             {/* Totals */}
-            {hasCalculated && results && (
-              <div className="bg-background p-4 rounded-lg border border-border">
-                <div className="flex justify-between items-center text-sm font-semibold text-primary">
-                  <span>Net Increase in Cash</span>
-                  <span className={results.netCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}>
-                    {formatCurrency(results.netCashFlow)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center mt-3 pt-3 border-t border-border text-sm font-semibold text-text">
-                  <span>Cash at End of Year</span>
-                  <span className={results.endingCashBalance >= 0 ? 'text-green-600' : 'text-red-600'}>
-                    {formatCurrency(results.endingCashBalance)}
-                  </span>
-                </div>
+            <div className="bg-background p-3 rounded-lg border border-border">
+              <div className="flex justify-between items-center text-sm font-semibold text-primary">
+                <span>Net Increase in Cash</span>
+                <span className={computedResults.netCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}>
+                  {formatCurrency(computedResults.netCashFlow)}
+                </span>
               </div>
-            )}
+              <div className="flex justify-between items-center mt-2 pt-2 border-t border-border text-sm font-semibold text-text">
+                <span>Cash at End of Year</span>
+                <span className={computedResults.endingCashBalance >= 0 ? 'text-green-600' : 'text-red-600'}>
+                  {formatCurrency(computedResults.endingCashBalance)}
+                </span>
+              </div>
+            </div>
 
-            {hasCalculated && results && (
-              <div className="bg-white p-4 rounded-lg border border-border mt-6">
+            <div className="bg-white p-3 rounded-lg border border-border mt-4">
                 <h3 className="text-sm font-semibold text-primary mb-3">
                   Detailed Sources and Uses of Cash
                 </h3>
@@ -545,10 +524,10 @@ const CashFlowCalculator: FC = () => {
                   </div>
                 </div>
               </div>
-            )}
+            </div>
 
-            {hasCalculated && results && results.endingCashBalance < 0 && (
-              <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded mt-6">
+            {computedResults.endingCashBalance < 0 && (
+              <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded mt-4">
                 <div className="flex">
                   <div className="flex-shrink-0">
                     <svg
@@ -573,16 +552,10 @@ const CashFlowCalculator: FC = () => {
             )}
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 mt-8">
-              <button
-                onClick={calculateCashFlow}
-                className="flex-1 btn btn--primary py-3 px-6 text-base font-semibold rounded-lg transition-all"
-              >
-                Calculate Cash Flow
-              </button>
+            <div className="flex flex-col sm:flex-row gap-4 mt-6">
               <button
                 onClick={resetCalculator}
-                className="flex-1 sm:flex-initial btn btn--secondary py-3 px-6 text-base font-semibold rounded-lg transition-all"
+                className="flex-1 sm:flex-initial btn btn--secondary py-2 px-5 text-sm font-semibold rounded-lg transition-all"
               >
                 Reset
               </button>

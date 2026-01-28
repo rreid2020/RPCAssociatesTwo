@@ -4,24 +4,37 @@ import CalendlyButton from '../components/CalendlyButton'
 import { Link } from 'react-router-dom'
 
 interface CashFlowInputs {
-  // Operating Activities
-  cashFromCustomers: string
-  paymentsToSuppliers: string
-  payrollExpenses: string
-  rentAndUtilities: string
-  otherOperatingExpenses: string
+  // Operating Activities (Indirect Method)
+  netIncome: string
+  depreciation: string
+  amortization: string
+  goodwillImpairments: string
+  deferredTaxes: string
+  stockBasedCompensation: string
+  otherNonCashAdjustments: string
+
+  // Changes in Operating Assets and Liabilities
+  accountsReceivableChange: string
+  inventoryChange: string
+  prepaidExpensesChange: string
+  accountsPayableChange: string
+  accruedLiabilitiesChange: string
+  deferredRevenueChange: string
+  otherLongTermLiabilitiesChange: string
 
   // Investing Activities
-  equipmentPurchases: string
-  assetSales: string
-  otherInvestingActivities: string
+  netCapitalExpenditures: string
+  otherLongTermAssetsChange: string
+  netPurchasesShortTermInvestments: string
+  additionsToIntangibles: string
 
   // Financing Activities
-  loanProceeds: string
-  loanRepayments: string
-  ownerContributions: string
-  ownerWithdrawals: string
-  otherFinancingActivities: string
+  dividendsPaid: string
+  stockIssuancesRepurchases: string
+  debtIssuancesRepayments: string
+
+  // Other
+  fxRateEffects: string
 
   // Beginning Cash Balance
   beginningCashBalance: string
@@ -55,20 +68,20 @@ const CashFlowInputField = ({
   helpText?: string
 }) => (
   <div className="w-full">
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3">
       <div className="sm:flex-1">
         <label
           htmlFor={field}
-          className="block text-sm font-medium text-text"
+          className="block text-xs sm:text-sm font-medium text-text"
         >
           {label}
         </label>
         {helpText && (
-          <p className="text-xs text-text-light">{helpText}</p>
+          <p className="text-[11px] text-text-light">{helpText}</p>
         )}
       </div>
-      <div className="relative sm:w-56">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-light">
+      <div className="relative sm:w-48">
+        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-light text-sm">
           $
         </span>
         <input
@@ -81,7 +94,7 @@ const CashFlowInputField = ({
           onFocus={() => onFocus(field)}
           placeholder={placeholder}
           autoComplete="off"
-          className="w-full pl-8 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text bg-white"
+          className="w-full pl-7 pr-3 py-1.5 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-text text-sm bg-white"
         />
       </div>
     </div>
@@ -90,24 +103,37 @@ const CashFlowInputField = ({
 
 const CashFlowCalculator: FC = () => {
   const [inputs, setInputs] = useState<CashFlowInputs>({
-    // Operating Activities
-    cashFromCustomers: '',
-    paymentsToSuppliers: '',
-    payrollExpenses: '',
-    rentAndUtilities: '',
-    otherOperatingExpenses: '',
+    // Operating Activities (Indirect Method)
+    netIncome: '',
+    depreciation: '',
+    amortization: '',
+    goodwillImpairments: '',
+    deferredTaxes: '',
+    stockBasedCompensation: '',
+    otherNonCashAdjustments: '',
+
+    // Changes in Operating Assets and Liabilities
+    accountsReceivableChange: '',
+    inventoryChange: '',
+    prepaidExpensesChange: '',
+    accountsPayableChange: '',
+    accruedLiabilitiesChange: '',
+    deferredRevenueChange: '',
+    otherLongTermLiabilitiesChange: '',
 
     // Investing Activities
-    equipmentPurchases: '',
-    assetSales: '',
-    otherInvestingActivities: '',
+    netCapitalExpenditures: '',
+    otherLongTermAssetsChange: '',
+    netPurchasesShortTermInvestments: '',
+    additionsToIntangibles: '',
 
     // Financing Activities
-    loanProceeds: '',
-    loanRepayments: '',
-    ownerContributions: '',
-    ownerWithdrawals: '',
-    otherFinancingActivities: '',
+    dividendsPaid: '',
+    stockIssuancesRepurchases: '',
+    debtIssuancesRepayments: '',
+
+    // Other
+    fxRateEffects: '',
 
     // Beginning Cash Balance
     beginningCashBalance: '',
@@ -173,25 +199,37 @@ const CashFlowCalculator: FC = () => {
 
   const computedResults = useMemo((): CashFlowResults => {
     const operatingCashFlow =
-      getValue('cashFromCustomers') -
-      getValue('paymentsToSuppliers') -
-      getValue('payrollExpenses') -
-      getValue('rentAndUtilities') -
-      getValue('otherOperatingExpenses')
+      getValue('netIncome') +
+      getValue('depreciation') +
+      getValue('amortization') +
+      getValue('goodwillImpairments') +
+      getValue('deferredTaxes') +
+      getValue('stockBasedCompensation') +
+      getValue('otherNonCashAdjustments') +
+      getValue('accountsReceivableChange') +
+      getValue('inventoryChange') +
+      getValue('prepaidExpensesChange') +
+      getValue('accountsPayableChange') +
+      getValue('accruedLiabilitiesChange') +
+      getValue('deferredRevenueChange') +
+      getValue('otherLongTermLiabilitiesChange')
 
     const investingCashFlow =
-      getValue('assetSales') -
-      getValue('equipmentPurchases') +
-      getValue('otherInvestingActivities')
+      getValue('netCapitalExpenditures') +
+      getValue('otherLongTermAssetsChange') +
+      getValue('netPurchasesShortTermInvestments') +
+      getValue('additionsToIntangibles')
 
     const financingCashFlow =
-      getValue('loanProceeds') +
-      getValue('ownerContributions') -
-      getValue('loanRepayments') -
-      getValue('ownerWithdrawals') +
-      getValue('otherFinancingActivities')
+      getValue('dividendsPaid') +
+      getValue('stockIssuancesRepurchases') +
+      getValue('debtIssuancesRepayments')
 
-    const netCashFlow = operatingCashFlow + investingCashFlow + financingCashFlow
+    const netCashFlow =
+      operatingCashFlow +
+      investingCashFlow +
+      financingCashFlow +
+      getValue('fxRateEffects')
     const endingCashBalance = getValue('beginningCashBalance') + netCashFlow
 
     return {
@@ -205,19 +243,28 @@ const CashFlowCalculator: FC = () => {
 
   const resetCalculator = () => {
     setInputs({
-      cashFromCustomers: '',
-      paymentsToSuppliers: '',
-      payrollExpenses: '',
-      rentAndUtilities: '',
-      otherOperatingExpenses: '',
-      equipmentPurchases: '',
-      assetSales: '',
-      otherInvestingActivities: '',
-      loanProceeds: '',
-      loanRepayments: '',
-      ownerContributions: '',
-      ownerWithdrawals: '',
-      otherFinancingActivities: '',
+      netIncome: '',
+      depreciation: '',
+      amortization: '',
+      goodwillImpairments: '',
+      deferredTaxes: '',
+      stockBasedCompensation: '',
+      otherNonCashAdjustments: '',
+      accountsReceivableChange: '',
+      inventoryChange: '',
+      prepaidExpensesChange: '',
+      accountsPayableChange: '',
+      accruedLiabilitiesChange: '',
+      deferredRevenueChange: '',
+      otherLongTermLiabilitiesChange: '',
+      netCapitalExpenditures: '',
+      otherLongTermAssetsChange: '',
+      netPurchasesShortTermInvestments: '',
+      additionsToIntangibles: '',
+      dividendsPaid: '',
+      stockIssuancesRepurchases: '',
+      debtIssuancesRepayments: '',
+      fxRateEffects: '',
       beginningCashBalance: '',
     })
   }
@@ -247,7 +294,7 @@ const CashFlowCalculator: FC = () => {
           <section className="mb-8 sm:mb-12">
             <div className="text-center max-w-3xl mx-auto">
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary mb-4">
-                Cash Flow Calculator
+                Cash Flow Statement (Indirect Method)
               </h1>
               <p className="text-base sm:text-lg text-text-light leading-relaxed mb-6">
                 Having adequate cash flow is essential to keep your business running. If you run out of available cash, you run the risk of not being able to meet your current obligations such as your payroll, accounts payable, and loan payments. Use this calculator to help you determine the cash flow generated by your business.
@@ -270,7 +317,7 @@ const CashFlowCalculator: FC = () => {
             </div>
 
             {/* Beginning Cash Balance */}
-            <div className="mb-6">
+            <div className="mb-4">
               <div className="flex items-center justify-between text-sm text-text-light mb-2">
                 <span>Cash at Beginning of Year</span>
                 <span className="font-semibold text-text">
@@ -278,70 +325,156 @@ const CashFlowCalculator: FC = () => {
                 </span>
               </div>
               <CashFlowInputField
-                label="Starting Cash Balance"
+                label="Beginning Cash Balance"
                 field="beginningCashBalance"
                 value={inputs.beginningCashBalance}
                 onChange={handleInputChange}
                 onBlur={handleInputBlur}
                 onFocus={handleInputFocus}
-                helpText="The cash balance at the beginning of the period"
+                helpText="Enter the beginning cash balance"
               />
             </div>
 
-            {/* Operations */}
-            <div className="mb-6">
-              <div className="bg-primary/10 text-primary font-semibold text-sm px-3 py-2 rounded mb-4">
-                Operations
+            {/* Operating Activities (Indirect Method) */}
+            <div className="mb-4">
+              <div className="bg-primary/10 text-primary font-semibold text-xs px-3 py-1.5 rounded mb-3">
+                Cash Flows from Operating Activities (Indirect Method)
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <CashFlowInputField
-                  label="Cash Received from Customers"
-                  field="cashFromCustomers"
-                  value={inputs.cashFromCustomers}
+                  label="Net Income"
+                  field="netIncome"
+                  value={inputs.netIncome}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Total cash collected from sales"
+                  helpText="Net income for the period"
                 />
                 <CashFlowInputField
-                  label="Payments to Suppliers"
-                  field="paymentsToSuppliers"
-                  value={inputs.paymentsToSuppliers}
+                  label="Depreciation"
+                  field="depreciation"
+                  value={inputs.depreciation}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Cash paid to vendors and suppliers"
+                  helpText="Add back non-cash depreciation"
                 />
                 <CashFlowInputField
-                  label="Payroll Expenses"
-                  field="payrollExpenses"
-                  value={inputs.payrollExpenses}
+                  label="Amortization"
+                  field="amortization"
+                  value={inputs.amortization}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Salaries, wages, and benefits paid"
+                  helpText="Add back non-cash amortization"
                 />
                 <CashFlowInputField
-                  label="Rent and Utilities"
-                  field="rentAndUtilities"
-                  value={inputs.rentAndUtilities}
+                  label="Goodwill/Intangible Impairments"
+                  field="goodwillImpairments"
+                  value={inputs.goodwillImpairments}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Office rent, utilities, and related expenses"
+                  helpText="Non-cash impairment charges"
                 />
                 <CashFlowInputField
-                  label="Other Operating Expenses"
-                  field="otherOperatingExpenses"
-                  value={inputs.otherOperatingExpenses}
+                  label="Deferred Taxes"
+                  field="deferredTaxes"
+                  value={inputs.deferredTaxes}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Other day-to-day business expenses"
+                  helpText="Deferred tax adjustments"
+                />
+                <CashFlowInputField
+                  label="Stock-Based Compensation"
+                  field="stockBasedCompensation"
+                  value={inputs.stockBasedCompensation}
+                  onChange={handleInputChange}
+                  onBlur={handleInputBlur}
+                  onFocus={handleInputFocus}
+                  helpText="Non-cash compensation"
+                />
+                <CashFlowInputField
+                  label="Other Non-Cash Items"
+                  field="otherNonCashAdjustments"
+                  value={inputs.otherNonCashAdjustments}
+                  onChange={handleInputChange}
+                  onBlur={handleInputBlur}
+                  onFocus={handleInputFocus}
+                  helpText="Other non-cash adjustments"
+                />
+              </div>
+              <div className="mt-3 text-xs font-semibold text-text-light">
+                Changes in Operating Assets and Liabilities:
+              </div>
+              <div className="space-y-2 mt-2">
+                <CashFlowInputField
+                  label="(+) / (-) Accounts Receivable"
+                  field="accountsReceivableChange"
+                  value={inputs.accountsReceivableChange}
+                  onChange={handleInputChange}
+                  onBlur={handleInputBlur}
+                  onFocus={handleInputFocus}
+                  helpText="Increase (-), decrease (+)"
+                />
+                <CashFlowInputField
+                  label="(+) / (-) Inventory"
+                  field="inventoryChange"
+                  value={inputs.inventoryChange}
+                  onChange={handleInputChange}
+                  onBlur={handleInputBlur}
+                  onFocus={handleInputFocus}
+                  helpText="Increase (-), decrease (+)"
+                />
+                <CashFlowInputField
+                  label="(+) / (-) Prepaid Expenses & Other Assets"
+                  field="prepaidExpensesChange"
+                  value={inputs.prepaidExpensesChange}
+                  onChange={handleInputChange}
+                  onBlur={handleInputBlur}
+                  onFocus={handleInputFocus}
+                  helpText="Increase (-), decrease (+)"
+                />
+                <CashFlowInputField
+                  label="(+) / (-) Accounts Payable"
+                  field="accountsPayableChange"
+                  value={inputs.accountsPayableChange}
+                  onChange={handleInputChange}
+                  onBlur={handleInputBlur}
+                  onFocus={handleInputFocus}
+                  helpText="Increase (+), decrease (-)"
+                />
+                <CashFlowInputField
+                  label="(+) / (-) Accrued Liabilities"
+                  field="accruedLiabilitiesChange"
+                  value={inputs.accruedLiabilitiesChange}
+                  onChange={handleInputChange}
+                  onBlur={handleInputBlur}
+                  onFocus={handleInputFocus}
+                  helpText="Increase (+), decrease (-)"
+                />
+                <CashFlowInputField
+                  label="(+) / (-) Deferred Revenue"
+                  field="deferredRevenueChange"
+                  value={inputs.deferredRevenueChange}
+                  onChange={handleInputChange}
+                  onBlur={handleInputBlur}
+                  onFocus={handleInputFocus}
+                  helpText="Increase (+), decrease (-)"
+                />
+                <CashFlowInputField
+                  label="(+) / (-) Other Long-Term Liabilities"
+                  field="otherLongTermLiabilitiesChange"
+                  value={inputs.otherLongTermLiabilitiesChange}
+                  onChange={handleInputChange}
+                  onBlur={handleInputBlur}
+                  onFocus={handleInputFocus}
+                  helpText="Increase (+), decrease (-)"
                 />
               </div>
               <div className="flex justify-between items-center text-sm font-semibold text-text mt-3 border-t border-border pt-2">
-                <span>Net Cash Flow from Operations</span>
+                <span>Net Cash Provided by Operating Activities</span>
                 <span className={computedResults.operatingCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}>
                   {formatCurrency(computedResults.operatingCashFlow)}
                 </span>
@@ -349,41 +482,50 @@ const CashFlowCalculator: FC = () => {
             </div>
 
             {/* Investing Activities */}
-            <div className="mb-6">
-              <div className="bg-primary/10 text-primary font-semibold text-sm px-3 py-2 rounded mb-4">
-                Investing Activities
+            <div className="mb-4">
+              <div className="bg-primary/10 text-primary font-semibold text-xs px-3 py-1.5 rounded mb-3">
+                Cash Flows from Investing Activities
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <CashFlowInputField
-                  label="Asset Sales"
-                  field="assetSales"
-                  value={inputs.assetSales}
+                  label="(-) Net Capital Expenditures"
+                  field="netCapitalExpenditures"
+                  value={inputs.netCapitalExpenditures}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Cash received from selling assets"
+                  helpText="Use negative for cash outflows"
                 />
                 <CashFlowInputField
-                  label="Equipment Purchases"
-                  field="equipmentPurchases"
-                  value={inputs.equipmentPurchases}
+                  label="(-) Increase in Other Long-Term Assets"
+                  field="otherLongTermAssetsChange"
+                  value={inputs.otherLongTermAssetsChange}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Cash spent on equipment and capital assets"
+                  helpText="Increase (-), decrease (+)"
                 />
                 <CashFlowInputField
-                  label="Other Investing Activities"
-                  field="otherInvestingActivities"
-                  value={inputs.otherInvestingActivities}
+                  label="(-) Net Purchases of Short-Term Investments"
+                  field="netPurchasesShortTermInvestments"
+                  value={inputs.netPurchasesShortTermInvestments}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Other investing-related cash flows"
+                  helpText="Use negative for purchases"
+                />
+                <CashFlowInputField
+                  label="(-) Additions to Intangibles"
+                  field="additionsToIntangibles"
+                  value={inputs.additionsToIntangibles}
+                  onChange={handleInputChange}
+                  onBlur={handleInputBlur}
+                  onFocus={handleInputFocus}
+                  helpText="Use negative for cash outflows"
                 />
               </div>
               <div className="flex justify-between items-center text-sm font-semibold text-text mt-3 border-t border-border pt-2">
-                <span>Net Cash Flow from Investing Activities</span>
+                <span>Net Cash Used in Investing Activities</span>
                 <span className={computedResults.investingCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}>
                   {formatCurrency(computedResults.investingCashFlow)}
                 </span>
@@ -391,61 +533,62 @@ const CashFlowCalculator: FC = () => {
             </div>
 
             {/* Financing Activities */}
-            <div className="mb-6">
-              <div className="bg-primary/10 text-primary font-semibold text-sm px-3 py-2 rounded mb-4">
-                Financing Activities
+            <div className="mb-4">
+              <div className="bg-primary/10 text-primary font-semibold text-xs px-3 py-1.5 rounded mb-3">
+                Cash Flows from Financing Activities
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <CashFlowInputField
-                  label="Loan Proceeds"
-                  field="loanProceeds"
-                  value={inputs.loanProceeds}
+                  label="(-) Dividends Paid"
+                  field="dividendsPaid"
+                  value={inputs.dividendsPaid}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Cash received from loans and borrowings"
+                  helpText="Use negative for cash outflows"
                 />
                 <CashFlowInputField
-                  label="Loan Repayments"
-                  field="loanRepayments"
-                  value={inputs.loanRepayments}
+                  label="(+) / (-) Stock Issuances / Repurchases"
+                  field="stockIssuancesRepurchases"
+                  value={inputs.stockIssuancesRepurchases}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Cash paid to repay loans"
+                  helpText="Issuance (+), repurchase (-)"
                 />
                 <CashFlowInputField
-                  label="Owner Contributions"
-                  field="ownerContributions"
-                  value={inputs.ownerContributions}
+                  label="(+) / (-) Debt Issuances / Repayments"
+                  field="debtIssuancesRepayments"
+                  value={inputs.debtIssuancesRepayments}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Cash invested by owners"
-                />
-                <CashFlowInputField
-                  label="Owner Withdrawals"
-                  field="ownerWithdrawals"
-                  value={inputs.ownerWithdrawals}
-                  onChange={handleInputChange}
-                  onBlur={handleInputBlur}
-                  onFocus={handleInputFocus}
-                  helpText="Cash withdrawn by owners"
-                />
-                <CashFlowInputField
-                  label="Other Financing Activities"
-                  field="otherFinancingActivities"
-                  value={inputs.otherFinancingActivities}
-                  onChange={handleInputChange}
-                  onBlur={handleInputBlur}
-                  onFocus={handleInputFocus}
-                  helpText="Other financing-related cash flows"
+                  helpText="Issuance (+), repayment (-)"
                 />
               </div>
               <div className="flex justify-between items-center text-sm font-semibold text-text mt-3 border-t border-border pt-2">
-                <span>Net Cash Flow from Financing Activities</span>
+                <span>Net Cash Provided by Financing Activities</span>
                 <span className={computedResults.financingCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}>
                   {formatCurrency(computedResults.financingCashFlow)}
+                </span>
+              </div>
+            </div>
+
+            {/* FX Rate Effects */}
+            <div className="mb-4">
+              <CashFlowInputField
+                label="FX Rate Effects"
+                field="fxRateEffects"
+                value={inputs.fxRateEffects}
+                onChange={handleInputChange}
+                onBlur={handleInputBlur}
+                onFocus={handleInputFocus}
+                helpText="Foreign exchange impact on cash"
+              />
+              <div className="flex justify-between items-center text-sm font-semibold text-text mt-2 border-t border-border pt-2">
+                <span>FX Rate Effects</span>
+                <span className={getValue('fxRateEffects') >= 0 ? 'text-green-600' : 'text-red-600'}>
+                  {formatCurrency(getValue('fxRateEffects'))}
                 </span>
               </div>
             </div>
@@ -463,66 +606,6 @@ const CashFlowCalculator: FC = () => {
                 <span className={computedResults.endingCashBalance >= 0 ? 'text-green-600' : 'text-red-600'}>
                   {formatCurrency(computedResults.endingCashBalance)}
                 </span>
-              </div>
-            </div>
-
-            <div className="bg-white p-3 rounded-lg border border-border mt-4">
-                <h3 className="text-sm font-semibold text-primary mb-3">
-                  Detailed Sources and Uses of Cash
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-xs font-medium text-text-light uppercase tracking-wider mb-2">
-                      Sources of Cash
-                    </p>
-                    <div className="space-y-2">
-                      {[
-                        { label: 'Cash Received from Customers', value: getValue('cashFromCustomers') },
-                        { label: 'Asset Sales', value: getValue('assetSales') },
-                        { label: 'Loan Proceeds', value: getValue('loanProceeds') },
-                        { label: 'Owner Contributions', value: getValue('ownerContributions') },
-                        { label: 'Other Investing Activities', value: getValue('otherInvestingActivities') },
-                        { label: 'Other Financing Activities', value: getValue('otherFinancingActivities') },
-                      ]
-                        .filter((item) => item.value > 0)
-                        .map((item) => (
-                          <div key={item.label} className="flex justify-between text-sm">
-                            <span className="text-text-light">{item.label}</span>
-                            <span className="font-medium text-green-600">
-                              {formatCurrency(item.value)}
-                            </span>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-text-light uppercase tracking-wider mb-2">
-                      Uses of Cash
-                    </p>
-                    <div className="space-y-2">
-                      {[
-                        { label: 'Payments to Suppliers', value: getValue('paymentsToSuppliers') },
-                        { label: 'Payroll Expenses', value: getValue('payrollExpenses') },
-                        { label: 'Rent and Utilities', value: getValue('rentAndUtilities') },
-                        { label: 'Other Operating Expenses', value: getValue('otherOperatingExpenses') },
-                        { label: 'Equipment Purchases', value: getValue('equipmentPurchases') },
-                        { label: 'Loan Repayments', value: getValue('loanRepayments') },
-                        { label: 'Owner Withdrawals', value: getValue('ownerWithdrawals') },
-                        { label: 'Other Investing Activities', value: getValue('otherInvestingActivities') * -1 },
-                        { label: 'Other Financing Activities', value: getValue('otherFinancingActivities') * -1 },
-                      ]
-                        .filter((item) => item.value > 0)
-                        .map((item) => (
-                          <div key={item.label} className="flex justify-between text-sm">
-                            <span className="text-text-light">{item.label}</span>
-                            <span className="font-medium text-red-600">
-                              {formatCurrency(item.value)}
-                            </span>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -570,30 +653,30 @@ const CashFlowCalculator: FC = () => {
               </h2>
               <div className="prose prose-sm max-w-none text-text-light">
                 <p className="mb-4">
-                  Cash flow is the lifeblood of your business. This calculator helps you understand how cash moves through your business in three key areas:
+                  This statement uses the <strong>indirect method</strong>, starting with net income and adjusting for non-cash items and changes in working capital.
                 </p>
                 <ul className="list-none pl-0 space-y-2 mb-4">
                   <li className="flex items-start">
                     <span className="text-primary mr-2 font-bold">•</span>
                     <span>
-                      <strong>Operating Activities:</strong> Cash from your day-to-day business operations. Positive operating cash flow indicates your core business is generating cash.
+                      <strong>Operating Activities:</strong> Net income adjusted for non-cash items and changes in operating assets and liabilities.
                     </span>
                   </li>
                   <li className="flex items-start">
                     <span className="text-primary mr-2 font-bold">•</span>
                     <span>
-                      <strong>Investing Activities:</strong> Cash used for or generated from long-term assets. Typically negative as businesses invest in growth.
+                      <strong>Investing Activities:</strong> Cash used for or generated from long-term assets and investments.
                     </span>
                   </li>
                   <li className="flex items-start">
                     <span className="text-primary mr-2 font-bold">•</span>
                     <span>
-                      <strong>Financing Activities:</strong> Cash from loans, owner contributions, or paid to lenders and owners. Shows how your business is financed.
+                      <strong>Financing Activities:</strong> Cash from or paid to lenders and owners.
                     </span>
                   </li>
                 </ul>
                 <p className="mb-0">
-                  A positive net cash flow means you're generating more cash than you're spending. A negative net cash flow requires attention, especially if your ending cash balance is low or negative.
+                  A positive net increase in cash means you're generating more cash than you're using. A negative ending cash balance requires attention.
                 </p>
               </div>
             </div>

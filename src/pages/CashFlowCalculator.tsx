@@ -303,12 +303,11 @@ const CashFlowCalculator: FC = () => {
           </section>
 
           <div className="bg-white rounded-xl shadow-sm border border-border p-4 sm:p-6 lg:p-8">
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-4">
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold text-primary">
                   Cash Flow Statement
                 </h2>
-                <p className="text-sm text-text-light">[Company Name]</p>
               </div>
               <div className="text-sm text-text-light sm:text-right">
                 <p>For the Year Ending</p>
@@ -316,40 +315,24 @@ const CashFlowCalculator: FC = () => {
               </div>
             </div>
 
-            {/* Beginning Cash Balance */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between text-sm text-text-light mb-2">
-                <span>Cash at Beginning of Year</span>
-                <span className="font-semibold text-text">
-                  {formatCurrency(parseNumber(inputs.beginningCashBalance))}
-                </span>
-              </div>
+            <div className="mb-3">
               <CashFlowInputField
-                label="Beginning Cash Balance"
-                field="beginningCashBalance"
-                value={inputs.beginningCashBalance}
+                label="Net Income"
+                field="netIncome"
+                value={inputs.netIncome}
                 onChange={handleInputChange}
                 onBlur={handleInputBlur}
                 onFocus={handleInputFocus}
-                helpText="Enter the beginning cash balance"
+                helpText="Net income for the period"
               />
             </div>
 
             {/* Operating Activities (Indirect Method) */}
             <div className="mb-4">
-              <div className="bg-primary/10 text-primary font-semibold text-xs px-3 py-1.5 rounded mb-3">
+              <div className="bg-primary/10 text-primary font-semibold text-[11px] px-2.5 py-1 rounded mb-2">
                 Cash Flows from Operating Activities (Indirect Method)
               </div>
               <div className="space-y-2">
-                <CashFlowInputField
-                  label="Net Income"
-                  field="netIncome"
-                  value={inputs.netIncome}
-                  onChange={handleInputChange}
-                  onBlur={handleInputBlur}
-                  onFocus={handleInputFocus}
-                  helpText="Net income for the period"
-                />
                 <CashFlowInputField
                   label="Depreciation"
                   field="depreciation"
@@ -405,7 +388,7 @@ const CashFlowCalculator: FC = () => {
                   helpText="Other non-cash adjustments"
                 />
               </div>
-              <div className="mt-3 text-xs font-semibold text-text-light">
+              <div className="mt-2 text-[11px] font-semibold text-text-light">
                 Changes in Operating Assets and Liabilities:
               </div>
               <div className="space-y-2 mt-2">
@@ -473,7 +456,7 @@ const CashFlowCalculator: FC = () => {
                   helpText="Increase (+), decrease (-)"
                 />
               </div>
-              <div className="flex justify-between items-center text-sm font-semibold text-text mt-3 border-t border-border pt-2">
+              <div className="flex justify-between items-center text-xs font-semibold text-text mt-2 border-t border-border pt-2">
                 <span>Net Cash Provided by Operating Activities</span>
                 <span className={computedResults.operatingCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}>
                   {formatCurrency(computedResults.operatingCashFlow)}
@@ -483,7 +466,7 @@ const CashFlowCalculator: FC = () => {
 
             {/* Investing Activities */}
             <div className="mb-4">
-              <div className="bg-primary/10 text-primary font-semibold text-xs px-3 py-1.5 rounded mb-3">
+              <div className="bg-primary/10 text-primary font-semibold text-[11px] px-2.5 py-1 rounded mb-2">
                 Cash Flows from Investing Activities
               </div>
               <div className="space-y-2">
@@ -524,7 +507,7 @@ const CashFlowCalculator: FC = () => {
                   helpText="Use negative for cash outflows"
                 />
               </div>
-              <div className="flex justify-between items-center text-sm font-semibold text-text mt-3 border-t border-border pt-2">
+              <div className="flex justify-between items-center text-xs font-semibold text-text mt-2 border-t border-border pt-2">
                 <span>Net Cash Used in Investing Activities</span>
                 <span className={computedResults.investingCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}>
                   {formatCurrency(computedResults.investingCashFlow)}
@@ -534,7 +517,7 @@ const CashFlowCalculator: FC = () => {
 
             {/* Financing Activities */}
             <div className="mb-4">
-              <div className="bg-primary/10 text-primary font-semibold text-xs px-3 py-1.5 rounded mb-3">
+              <div className="bg-primary/10 text-primary font-semibold text-[11px] px-2.5 py-1 rounded mb-2">
                 Cash Flows from Financing Activities
               </div>
               <div className="space-y-2">
@@ -566,7 +549,7 @@ const CashFlowCalculator: FC = () => {
                   helpText="Issuance (+), repayment (-)"
                 />
               </div>
-              <div className="flex justify-between items-center text-sm font-semibold text-text mt-3 border-t border-border pt-2">
+              <div className="flex justify-between items-center text-xs font-semibold text-text mt-2 border-t border-border pt-2">
                 <span>Net Cash Provided by Financing Activities</span>
                 <span className={computedResults.financingCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}>
                   {formatCurrency(computedResults.financingCashFlow)}
@@ -594,14 +577,14 @@ const CashFlowCalculator: FC = () => {
             </div>
 
             {/* Totals */}
-            <div className="bg-background p-3 rounded-lg border border-border">
-              <div className="flex justify-between items-center text-sm font-semibold text-primary">
+            <div className="bg-background p-2 rounded-lg border border-border">
+              <div className="flex justify-between items-center text-xs font-semibold text-primary">
                 <span>Net Increase in Cash</span>
                 <span className={computedResults.netCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}>
                   {formatCurrency(computedResults.netCashFlow)}
                 </span>
               </div>
-              <div className="flex justify-between items-center mt-2 pt-2 border-t border-border text-sm font-semibold text-text">
+              <div className="flex justify-between items-center mt-2 pt-2 border-t border-border text-xs font-semibold text-text">
                 <span>Cash at End of Year</span>
                 <span className={computedResults.endingCashBalance >= 0 ? 'text-green-600' : 'text-red-600'}>
                   {formatCurrency(computedResults.endingCashBalance)}
@@ -610,7 +593,7 @@ const CashFlowCalculator: FC = () => {
             </div>
 
             {computedResults.endingCashBalance < 0 && (
-              <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded mt-4">
+              <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded mt-3">
                 <div className="flex">
                   <div className="flex-shrink-0">
                     <svg

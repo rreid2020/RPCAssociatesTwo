@@ -93,344 +93,182 @@ const ResourceDetail: FC = () => {
         keywords={resource.keywords}
       />
       <main>
-        {/* Full-Width Title Section */}
-        <section className="w-full bg-gradient-to-br from-primary/10 via-background to-primary/5 py-8 sm:py-12 lg:py-16">
-          <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
-            <div className="text-center">
-              <span className="inline-block px-4 py-2 bg-primary text-white text-xs sm:text-sm font-semibold uppercase tracking-wider rounded-full mb-4 sm:mb-6">
-                {resource.categoryLabel}
-              </span>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-primary mb-4 sm:mb-6">
-                {resource.title}
-              </h1>
-              {resource.fileSize && (
-                <p className="text-sm sm:text-base text-text-light">
-                  File size: {resource.fileSize}
-                </p>
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* Full-Width Intro Sections - 3 Columns */}
-        <section className="py-8 sm:py-12 lg:py-16 bg-white">
-          <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
-            {(() => {
-              // Find where to split intro from main content (look for common patterns)
-              const mainContentStarters = [
-                'The Three Core Sections',
-                'Core Sections',
-                'Return, Profitability',
-                'Return on Equity',
-                'Asset Utilization',
-                'Solvency and Financial Leverage',
-                'Key Features',
-                'Features',
-                'How It Works',
-                'Getting Started'
-              ]
-              
-              let introEndIndex = resource.longDescription.length
-              for (const starter of mainContentStarters) {
-                const index = resource.longDescription.indexOf(`**${starter}`)
-                if (index > 0) {
-                  introEndIndex = index
-                  break
-                }
-              }
-              
-              const introContent = resource.longDescription.substring(0, introEndIndex).trim()
-              
-              // Get first 3 headings from intro content
-              const introHeadings = findHeadings(introContent).slice(0, 3)
-              
-              let section1 = introContent
-              let section2 = ''
-              let section3 = ''
-              
-              if (introHeadings.length >= 2) {
-                // Split by first 2 headings
-                section1 = introContent.substring(0, introHeadings[1].index).trim()
-                if (introHeadings.length >= 3) {
-                  section2 = introContent.substring(introHeadings[1].index, introHeadings[2].index).trim()
-                  section3 = introContent.substring(introHeadings[2].index).trim()
-                } else {
-                  section2 = introContent.substring(introHeadings[1].index).trim()
-                }
-              } else if (introHeadings.length === 1) {
-                // Split content roughly in half before and after the heading
-                const headingIndex = introHeadings[0].index
-                section1 = introContent.substring(0, headingIndex).trim()
-                section2 = introContent.substring(headingIndex).trim()
-              } else {
-                // No headings found, split content into 3 roughly equal parts
-                const third = Math.floor(introContent.length / 3)
-                section1 = introContent.substring(0, third).trim()
-                section2 = introContent.substring(third, third * 2).trim()
-                section3 = introContent.substring(third * 2).trim()
-              }
-              
-              return (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-                  {section1 && (
-                    <div>
-                      <FormattedText 
-                        text={section1}
-                        className="max-w-none"
-                      />
-                    </div>
-                  )}
-                  {section2 && (
-                    <div>
-                      <FormattedText 
-                        text={section2}
-                        className="max-w-none"
-                      />
-                    </div>
-                  )}
-                  {section3 && (
-                    <div>
-                      <FormattedText 
-                        text={section3}
-                        className="max-w-none"
-                      />
-                    </div>
-                  )}
-                </div>
-              )
-            })()}
-          </div>
-        </section>
-
         {/* Main Content Section - Form Left, Content Right */}
-        <section className="py-8 sm:py-12 lg:py-16 bg-background">
+        <section className="py-12 sm:py-16 lg:py-20 bg-white">
           <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
-            <div className="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-8 lg:gap-12 xl:gap-16 items-start">
-              {/* Left Column - Form or Download */}
-              <div className="order-1 lg:sticky lg:top-8 lg:self-start">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 xl:gap-16 items-start">
+              {/* Left Column - Form Card (Dark Style) */}
+              <div className="order-2 lg:order-1">
                 {resource.requiresLeadCapture && !hasAccess ? (
-                  <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-xl shadow-lg border border-gray-200">
-                    <LeadCaptureForm
-                      resourceName={resource.title}
-                      onSuccess={handleFormSuccess}
-                    />
+                  <div className="relative bg-gradient-to-br from-primary/90 to-primary rounded-2xl shadow-2xl p-8 sm:p-10 lg:p-12 overflow-hidden">
+                    {/* Background overlay pattern */}
+                    <div className="absolute inset-0 bg-primary/10 opacity-20"></div>
+                    <div className="relative z-10">
+                      <div className="mb-6">
+                        <span className="inline-block px-3 py-1 bg-white/20 text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-4">
+                          {resource.categoryLabel}
+                        </span>
+                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">
+                          {resource.title}
+                        </h1>
+                        {resource.fileSize && (
+                          <p className="text-sm text-white/80">
+                            File size: {resource.fileSize}
+                          </p>
+                        )}
+                      </div>
+                      <LeadCaptureForm
+                        resourceName={resource.title}
+                        onSuccess={handleFormSuccess}
+                      />
+                    </div>
                   </div>
                 ) : resource.requiresLeadCapture && hasAccess ? (
-                  <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-xl shadow-lg border border-gray-200 text-center">
-                    <h2 className="text-xl sm:text-2xl font-bold text-primary mb-4">
-                      Ready to Download
-                    </h2>
-                    <p className="text-sm sm:text-base text-text-light mb-6">
-                      You have access to this resource. Click the button below to download.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        if (resource.downloadUrl && resource.fileName) {
-                          downloadFile(resource.downloadUrl, resource.fileName)
-                        }
-                      }}
-                      className="w-full px-6 py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary-dark transition-colors"
-                    >
-                      Download Now
-                    </button>
+                  <div className="relative bg-gradient-to-br from-primary/90 to-primary rounded-2xl shadow-2xl p-8 sm:p-10 lg:p-12 overflow-hidden text-center">
+                    <div className="absolute inset-0 bg-primary/10 opacity-20"></div>
+                    <div className="relative z-10">
+                      <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
+                        Ready to Download
+                      </h2>
+                      <p className="text-base text-white/90 mb-8">
+                        You have access to this resource. Click the button below to download.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          if (resource.downloadUrl && resource.fileName) {
+                            downloadFile(resource.downloadUrl, resource.fileName)
+                          }
+                        }}
+                        className="w-full px-6 py-4 bg-white text-primary font-semibold rounded-lg hover:bg-white/90 transition-colors shadow-lg"
+                      >
+                        Download Now
+                      </button>
+                    </div>
                   </div>
                 ) : resource.category === 'calculator' ? (
-                  <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-xl shadow-lg border border-gray-200 text-center">
-                    <Link 
-                      to={resource.slug === 'canadian-personal-income-tax-calculator' 
-                        ? '/resources/canadian-personal-income-tax-calculator'
-                        : resource.slug === 'cash-flow-calculator'
-                        ? '/resources/cash-flow-calculator'
-                        : `/resources/${resource.slug}`} 
-                      className="inline-block px-6 py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary-dark transition-colors"
-                    >
-                      Use Calculator
-                    </Link>
+                  <div className="relative bg-gradient-to-br from-primary/90 to-primary rounded-2xl shadow-2xl p-8 sm:p-10 lg:p-12 overflow-hidden text-center">
+                    <div className="absolute inset-0 bg-primary/10 opacity-20"></div>
+                    <div className="relative z-10">
+                      <Link 
+                        to={resource.slug === 'canadian-personal-income-tax-calculator' 
+                          ? '/resources/canadian-personal-income-tax-calculator'
+                          : resource.slug === 'cash-flow-calculator'
+                          ? '/resources/cash-flow-calculator'
+                          : `/resources/${resource.slug}`} 
+                        className="inline-block px-8 py-4 bg-white text-primary font-semibold rounded-lg hover:bg-white/90 transition-colors shadow-lg"
+                      >
+                        Use Calculator
+                      </Link>
+                    </div>
                   </div>
                 ) : resource.downloadUrl ? (
-                  <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-xl shadow-lg border border-gray-200 text-center">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        if (resource.downloadUrl && resource.fileName) {
-                          downloadFile(resource.downloadUrl, resource.fileName)
-                        }
-                      }}
-                      className="px-6 py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary-dark transition-colors"
-                    >
-                      Download Now
-                    </button>
+                  <div className="relative bg-gradient-to-br from-primary/90 to-primary rounded-2xl shadow-2xl p-8 sm:p-10 lg:p-12 overflow-hidden text-center">
+                    <div className="absolute inset-0 bg-primary/10 opacity-20"></div>
+                    <div className="relative z-10">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          if (resource.downloadUrl && resource.fileName) {
+                            downloadFile(resource.downloadUrl, resource.fileName)
+                          }
+                        }}
+                        className="px-8 py-4 bg-white text-primary font-semibold rounded-lg hover:bg-white/90 transition-colors shadow-lg"
+                      >
+                        Download Now
+                      </button>
+                    </div>
                   </div>
                 ) : null}
               </div>
 
-              {/* Right Column - Main Content Section */}
-              <div className="order-2">
-                {(() => {
-                  // Find where intro ends and main content begins
-                  const mainContentStarters = [
-                    'The Three Core Sections',
-                    'Core Sections',
-                    'Return, Profitability',
-                    'Return on Equity',
-                    'Asset Utilization',
-                    'Solvency and Financial Leverage',
-                    'Liquidity Ratios',
-                    'Key Features',
-                    'Features',
-                    'How It Works',
-                    'Getting Started'
-                  ]
+              {/* Right Column - Summarized Content */}
+              <div className="order-1 lg:order-2">
+                <div className="space-y-8">
+                  {/* Category Label */}
+                  <div>
+                    <span className="text-sm font-semibold text-primary uppercase tracking-wider">
+                      {resource.categoryLabel}
+                    </span>
+                  </div>
                   
-                  let mainContentStart = -1
-                  let mainContentEnd = resource.longDescription.length
+                  {/* Main Heading */}
+                  <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900">
+                    {resource.title}
+                  </h1>
                   
-                  for (const starter of mainContentStarters) {
-                    const index = resource.longDescription.indexOf(`**${starter}`)
-                    if (index > 0) {
-                      mainContentStart = index
-                      break
-                    }
-                  }
+                  {/* Short Description */}
+                  <p className="text-lg text-gray-600 leading-relaxed">
+                    {resource.shortDescription}
+                  </p>
                   
-                  // Find where bottom sections start
-                  const bottomSectionStarters = [
-                    'Trend Analysis',
-                    'The DuPont Pyramid',
-                    'Practical Guidance',
-                    'Common Use Cases',
-                    'Who This Guide Is For',
-                    'Important Note',
-                    'Additional Information',
-                    'Next Steps'
-                  ]
+                  {/* Key Points Summary */}
+                  {(() => {
+                    // Extract key points from longDescription - get first paragraph and first few bullet points
+                    const description = resource.longDescription
+                    const firstParagraphEnd = description.indexOf('\n\n')
+                    const firstParagraph = firstParagraphEnd > 0 
+                      ? description.substring(0, firstParagraphEnd).trim()
+                      : description.substring(0, 300).trim() + '...'
+                    
+                    // Get bullet points if available
+                    const bulletMatch = description.match(/•\s+([^\n]+)/g)
+                    const bullets = bulletMatch ? bulletMatch.slice(0, 4).map(b => b.replace(/^•\s+/, '')) : []
+                    
+                    return (
+                      <div className="space-y-6">
+                        <p className="text-base text-gray-700 leading-relaxed">
+                          {firstParagraph}
+                        </p>
+                        
+                        {bullets.length > 0 && (
+                          <ul className="space-y-3">
+                            {bullets.map((bullet, index) => (
+                              <li key={index} className="flex items-start">
+                                <svg className="w-5 h-5 text-primary mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span className="text-base text-gray-700">{bullet}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )
+                  })()}
                   
-                  for (const starter of bottomSectionStarters) {
-                    const index = resource.longDescription.indexOf(`**${starter}`)
-                    if (index > mainContentStart && mainContentStart > 0) {
-                      mainContentEnd = index
-                      break
-                    } else if (index > 0 && mainContentStart === -1) {
-                      // If no main content starter found, use first bottom section as end
-                      mainContentEnd = index
-                      break
-                    }
-                  }
-                  
-                  // If no main content starter found, don't show anything (content already in intro)
-                  if (mainContentStart === -1) {
-                    return null
-                  }
-                  
-                  const mainContent = resource.longDescription.substring(mainContentStart, mainContentEnd).trim()
-                  
-                  return mainContent ? (
-                    <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-xl shadow-sm border border-gray-200">
-                      <FormattedText 
-                        text={mainContent}
-                        className="max-w-none"
-                      />
-                    </div>
-                  ) : null
-                })()}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Three Column Section - Bottom Sections */}
-        <section className="py-8 sm:py-12 lg:py-16 bg-white">
-          <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
-            {(() => {
-              // Find where bottom sections begin
-              const bottomSectionStarters = [
-                'Trend Analysis',
-                'The DuPont Pyramid',
-                'Practical Guidance',
-                'Common Use Cases',
-                'Who This Guide Is For',
-                'Important Note',
-                'Additional Information',
-                'Next Steps'
-              ]
-              
-              let bottomContentStart = resource.longDescription.length
-              
-              // Find the first bottom section
-              for (const starter of bottomSectionStarters) {
-                const index = resource.longDescription.indexOf(`**${starter}`)
-                if (index > 0) {
-                  bottomContentStart = index
-                  break
-                }
-              }
-              
-              // If no bottom section found, don't show anything
-              if (bottomContentStart === resource.longDescription.length) {
-                return null
-              }
-              
-              const bottomContent = resource.longDescription.substring(bottomContentStart).trim()
-              
-              if (!bottomContent) return null
-              
-              // Split bottom content by headings
-              const bottomHeadings = findHeadings(bottomContent)
-              
-              let section1 = ''
-              let section2 = ''
-              let section3 = ''
-              
-              if (bottomHeadings.length >= 3) {
-                // Use first 3 sections
-                section1 = bottomContent.substring(0, bottomHeadings[1].index).trim()
-                section2 = bottomContent.substring(bottomHeadings[1].index, bottomHeadings[2].index).trim()
-                section3 = bottomContent.substring(bottomHeadings[2].index).trim()
-              } else if (bottomHeadings.length === 2) {
-                section1 = bottomContent.substring(0, bottomHeadings[1].index).trim()
-                section2 = bottomContent.substring(bottomHeadings[1].index).trim()
-              } else if (bottomHeadings.length === 1) {
-                section1 = bottomContent
-              } else {
-                // No headings, split roughly into 3 parts
-                const third = Math.floor(bottomContent.length / 3)
-                section1 = bottomContent.substring(0, third).trim()
-                section2 = bottomContent.substring(third, third * 2).trim()
-                section3 = bottomContent.substring(third * 2).trim()
-              }
-              
-              return (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-                  {section1 && (
-                    <div className="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-gray-200">
-                      <FormattedText 
-                        text={section1}
-                        className="max-w-none"
-                      />
+                  {/* Benefits Section */}
+                  {resource.benefits && resource.benefits.length > 0 && (
+                    <div className="pt-6 border-t border-gray-200">
+                      <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                        What You'll Get
+                      </h2>
+                      <ul className="space-y-3">
+                        {resource.benefits.slice(0, 4).map((benefit, index) => (
+                          <li key={index} className="flex items-start">
+                            <svg className="w-5 h-5 text-primary mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span className="text-base text-gray-700">{benefit}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   )}
-                  {section2 && (
-                    <div className="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-gray-200">
-                      <FormattedText 
-                        text={section2}
-                        className="max-w-none"
-                      />
-                    </div>
-                  )}
-                  {section3 && (
-                    <div className="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-gray-200">
-                      <FormattedText 
-                        text={section3}
-                        className="max-w-none"
-                      />
+                  
+                  {/* File Size if available */}
+                  {resource.fileSize && (
+                    <div className="pt-6 border-t border-gray-200">
+                      <p className="text-sm text-gray-500">
+                        File size: {resource.fileSize}
+                      </p>
                     </div>
                   )}
                 </div>
-              )
-            })()}
+              </div>
+            </div>
           </div>
         </section>
 

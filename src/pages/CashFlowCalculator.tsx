@@ -57,6 +57,7 @@ const CashFlowInputField = ({
   onFocus,
   placeholder = '0.00',
   helpText,
+  inlineHint,
 }: {
   label: string
   field: keyof CashFlowInputs
@@ -66,6 +67,7 @@ const CashFlowInputField = ({
   onFocus: (field: keyof CashFlowInputs) => void
   placeholder?: string
   helpText?: string
+  inlineHint?: string
 }) => (
   <div className="w-full">
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3">
@@ -74,7 +76,12 @@ const CashFlowInputField = ({
           htmlFor={field}
           className="block text-xs sm:text-sm font-medium text-text"
         >
-          {label}
+          <span>{label}</span>
+          {inlineHint && (
+            <span className="ml-2 text-[11px] text-text-light font-normal">
+              {inlineHint}
+            </span>
+          )}
         </label>
         {helpText && (
           <p className="text-[11px] text-text-light">{helpText}</p>
@@ -387,67 +394,67 @@ const CashFlowCalculator: FC = () => {
               </div>
               <div className="space-y-2 mt-1">
                 <CashFlowInputField
-                  label="(+) / (-) Accounts Receivable"
+                  label="Accounts Receivable"
+                  inlineHint="Increase (-), decrease (+)"
                   field="accountsReceivableChange"
                   value={inputs.accountsReceivableChange}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Increase (-), decrease (+)"
                 />
                 <CashFlowInputField
-                  label="(+) / (-) Inventory"
+                  label="Inventory"
+                  inlineHint="Increase (-), decrease (+)"
                   field="inventoryChange"
                   value={inputs.inventoryChange}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Increase (-), decrease (+)"
                 />
                 <CashFlowInputField
-                  label="(+) / (-) Prepaid Expenses & Other Assets"
+                  label="Prepaid Expenses & Other Assets"
+                  inlineHint="Increase (-), decrease (+)"
                   field="prepaidExpensesChange"
                   value={inputs.prepaidExpensesChange}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Increase (-), decrease (+)"
                 />
                 <CashFlowInputField
-                  label="(+) / (-) Accounts Payable"
+                  label="Accounts Payable"
+                  inlineHint="Increase (+), decrease (-)"
                   field="accountsPayableChange"
                   value={inputs.accountsPayableChange}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Increase (+), decrease (-)"
                 />
                 <CashFlowInputField
-                  label="(+) / (-) Accrued Liabilities"
+                  label="Accrued Liabilities"
+                  inlineHint="Increase (+), decrease (-)"
                   field="accruedLiabilitiesChange"
                   value={inputs.accruedLiabilitiesChange}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Increase (+), decrease (-)"
                 />
                 <CashFlowInputField
-                  label="(+) / (-) Deferred Revenue"
+                  label="Deferred Revenue"
+                  inlineHint="Increase (+), decrease (-)"
                   field="deferredRevenueChange"
                   value={inputs.deferredRevenueChange}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Increase (+), decrease (-)"
                 />
                 <CashFlowInputField
-                  label="(+) / (-) Other Long-Term Liabilities"
+                  label="Other Long-Term Liabilities"
+                  inlineHint="Increase (+), decrease (-)"
                   field="otherLongTermLiabilitiesChange"
                   value={inputs.otherLongTermLiabilitiesChange}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Increase (+), decrease (-)"
                 />
               </div>
               <div className="flex justify-between items-center text-xs font-semibold text-text mt-2 border-t border-border pt-2">
@@ -474,13 +481,13 @@ const CashFlowCalculator: FC = () => {
                   helpText="Use negative for cash outflows"
                 />
                 <CashFlowInputField
-                  label="(-) Increase in Other Long-Term Assets"
+                  label="Increase in Other Long-Term Assets"
+                  inlineHint="Increase (-), decrease (+)"
                   field="otherLongTermAssetsChange"
                   value={inputs.otherLongTermAssetsChange}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Increase (-), decrease (+)"
                 />
                 <CashFlowInputField
                   label="(-) Net Purchases of Short-Term Investments"

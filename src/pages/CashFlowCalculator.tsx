@@ -87,8 +87,8 @@ const CashFlowInputField = ({
           <p className="text-[11px] text-text-light">{helpText}</p>
         )}
       </div>
-      <div className="relative sm:w-48">
-        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-light text-sm">
+      <div className="relative sm:w-44">
+        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-text-light text-xs">
           $
         </span>
         <input
@@ -101,7 +101,7 @@ const CashFlowInputField = ({
           onFocus={() => onFocus(field)}
           placeholder={placeholder}
           autoComplete="off"
-          className="w-full pl-7 pr-3 py-1.5 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-text text-sm bg-white"
+          className="w-full pl-6 pr-2 py-1 border border-border rounded-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-text text-xs bg-white text-right tabular-nums"
         />
       </div>
     </div>
@@ -333,7 +333,7 @@ const CashFlowCalculator: FC = () => {
               <div className="bg-primary/10 text-primary font-semibold text-[11px] px-2.5 py-1 rounded mb-2">
                 Cash Flows from Operating Activities (Indirect Method)
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <CashFlowInputField
                   label="Depreciation"
                   field="depreciation"
@@ -392,7 +392,7 @@ const CashFlowCalculator: FC = () => {
               <div className="mt-1 text-[11px] font-semibold text-text-light">
                 Changes in Operating Assets and Liabilities:
               </div>
-              <div className="space-y-2 mt-1">
+              <div className="space-y-1 mt-1">
                 <CashFlowInputField
                   label="Accounts Receivable"
                   inlineHint="Increase (-), decrease (+)"
@@ -457,7 +457,7 @@ const CashFlowCalculator: FC = () => {
                   onFocus={handleInputFocus}
                 />
               </div>
-              <div className="flex justify-between items-center text-xs font-semibold text-text mt-2 border-t border-border pt-2">
+              <div className="flex justify-between items-center text-xs font-bold text-text mt-2 border-y-2 border-border py-1">
                 <span>Net Cash Provided by Operating Activities</span>
                 <span className={computedResults.operatingCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}>
                   {formatCurrency(computedResults.operatingCashFlow)}
@@ -470,7 +470,7 @@ const CashFlowCalculator: FC = () => {
               <div className="bg-primary/10 text-primary font-semibold text-[11px] px-2.5 py-1 rounded mb-2">
                 Cash Flows from Investing Activities
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <CashFlowInputField
                   label="Net Capital Expenditures"
                   inlineHint="Use negative for cash outflows"
@@ -508,7 +508,7 @@ const CashFlowCalculator: FC = () => {
                   onFocus={handleInputFocus}
                 />
               </div>
-              <div className="flex justify-between items-center text-xs font-semibold text-text mt-2 border-t border-border pt-2">
+              <div className="flex justify-between items-center text-xs font-bold text-text mt-2 border-y-2 border-border py-1">
                 <span>Net Cash Used in Investing Activities</span>
                 <span className={computedResults.investingCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}>
                   {formatCurrency(computedResults.investingCashFlow)}
@@ -521,7 +521,7 @@ const CashFlowCalculator: FC = () => {
               <div className="bg-primary/10 text-primary font-semibold text-[11px] px-2.5 py-1 rounded mb-2">
                 Cash Flows from Financing Activities
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <CashFlowInputField
                   label="Dividends Paid"
                   inlineHint="Use negative for cash outflows"
@@ -550,7 +550,7 @@ const CashFlowCalculator: FC = () => {
                   onFocus={handleInputFocus}
                 />
               </div>
-              <div className="flex justify-between items-center text-xs font-semibold text-text mt-2 border-t border-border pt-2">
+              <div className="flex justify-between items-center text-xs font-bold text-text mt-2 border-y-2 border-border py-1">
                 <span>Net Cash Provided by Financing Activities</span>
                 <span className={computedResults.financingCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}>
                   {formatCurrency(computedResults.financingCashFlow)}
@@ -579,13 +579,13 @@ const CashFlowCalculator: FC = () => {
 
             {/* Totals */}
             <div className="bg-background p-2 rounded-lg border border-border">
-              <div className="flex justify-between items-center text-[11px] font-semibold text-primary">
+              <div className="flex justify-between items-center text-[11px] font-bold text-primary border-y-2 border-primary/40 py-1">
                 <span>Net Increase in Cash</span>
                 <span className={computedResults.netCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}>
                   {formatCurrency(computedResults.netCashFlow)}
                 </span>
               </div>
-              <div className="flex justify-between items-center mt-1 pt-1 border-t border-border text-[11px] font-semibold text-text">
+              <div className="flex justify-between items-center mt-2 border-y-2 border-border py-1 text-[11px] font-bold text-text">
                 <span>Cash at End of Year</span>
                 <span className={computedResults.endingCashBalance >= 0 ? 'text-green-600' : 'text-red-600'}>
                   {formatCurrency(computedResults.endingCashBalance)}

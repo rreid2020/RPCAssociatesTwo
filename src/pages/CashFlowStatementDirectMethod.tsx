@@ -556,14 +556,49 @@ const CashFlowStatementDirectMethod: FC = () => {
           <section className="mt-8 sm:mt-12">
             <div className="bg-background rounded-xl p-4 sm:p-6 lg:p-8">
               <h2 className="text-xl sm:text-2xl font-bold text-primary mb-4">
-                Understanding Direct Method Cash Flow
+                Steps to Prepare the Statement of Cash Flows (Direct Method)
               </h2>
               <div className="prose prose-sm max-w-none text-text-light">
-                <p className="mb-4">
-                  The direct method shows actual cash collected and paid during the period. It highlights
-                  cash receipts from customers and cash payments for operating costs, as well as investing
-                  and financing activity.
-                </p>
+                <ol className="list-decimal pl-5 space-y-3 mb-6">
+                  <li>
+                    <strong>Gather Data:</strong> Collect the current period income statement,
+                    comparative balance sheets (current and previous year), and additional
+                    transaction details.
+                  </li>
+                  <li>
+                    <strong>Calculate Operating Cash Flows (Direct Method):</strong>
+                    <ul className="list-disc pl-5 mt-2 space-y-1">
+                      <li>
+                        <strong>Cash Collected from Customers:</strong> Sales Revenue plus Decrease in A/R
+                        (or minus Increase in A/R).
+                      </li>
+                      <li>
+                        <strong>Cash Paid to Suppliers:</strong> Cost of Goods Sold plus Increase in Inventory
+                        (or minus Decrease) minus Increase in A/P (or plus Decrease).
+                      </li>
+                      <li>
+                        <strong>Cash Paid for Operating Expenses:</strong> Operating Expenses plus Increase in
+                        Prepaid Expenses minus Decrease in Accrued Liabilities.
+                      </li>
+                      <li>
+                        <strong>Interest/Taxes:</strong> Record cash paid for interest and income taxes.
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <strong>Calculate Investing Activities:</strong> Include cash flows from buying/selling
+                    long-term assets (PPE), investments, or loans.
+                  </li>
+                  <li>
+                    <strong>Calculate Financing Activities:</strong> Include cash inflows from issuing stock/debt
+                    and outflows from dividends or debt repayment.
+                  </li>
+                  <li>
+                    <strong>Reconcile and Validate:</strong> Sum the net cash flows from operating, investing,
+                    and financing. This total should match the net change in cash between the two balance
+                    sheet periods.
+                  </li>
+                </ol>
                 <p className="mb-0">
                   Use negative values for cash outflows such as purchases, payments, and dividends.
                 </p>

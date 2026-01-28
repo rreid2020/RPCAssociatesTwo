@@ -689,6 +689,15 @@ const CashFlowCalculator: FC = () => {
             </div>
           </section>
 
+          <section className="mt-8 sm:mt-12">
+            <div className="bg-background rounded-xl p-4 sm:p-6 lg:p-8 text-sm text-text-light leading-relaxed">
+              <p className="text-text font-semibold text-base mb-sm">Disclaimer</p>
+              <p className="mb-0">
+                <strong className="text-text font-semibold">Estimates only.</strong> This calculator provides approximate cash flow estimates for planning purposes only. It does not include all adjustments or accounting considerations and is not financial or accounting advice. Final results depend on complete and accurate financial statements and your specific circumstances.
+              </p>
+            </div>
+          </section>
+
           {/* CTA Section */}
           <section className="mt-8 sm:mt-12">
             <div className="bg-white rounded-xl shadow-sm border border-border p-6 sm:p-8 lg:p-10 text-center">

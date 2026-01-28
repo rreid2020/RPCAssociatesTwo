@@ -120,6 +120,10 @@ const ResourceDetail: FC = () => {
               const mainContentStarters = [
                 'The Three Core Sections',
                 'Core Sections',
+                'Return, Profitability',
+                'Return on Equity',
+                'Asset Utilization',
+                'Solvency and Financial Leverage',
                 'Key Features',
                 'Features',
                 'How It Works',
@@ -270,6 +274,11 @@ const ResourceDetail: FC = () => {
                   const mainContentStarters = [
                     'The Three Core Sections',
                     'Core Sections',
+                    'Return, Profitability',
+                    'Return on Equity',
+                    'Asset Utilization',
+                    'Solvency and Financial Leverage',
+                    'Liquidity Ratios',
                     'Key Features',
                     'Features',
                     'How It Works',
@@ -289,8 +298,11 @@ const ResourceDetail: FC = () => {
                   
                   // Find where bottom sections start
                   const bottomSectionStarters = [
+                    'Trend Analysis',
+                    'The DuPont Pyramid',
                     'Practical Guidance',
                     'Common Use Cases',
+                    'Who This Guide Is For',
                     'Important Note',
                     'Additional Information',
                     'Next Steps'
@@ -298,17 +310,22 @@ const ResourceDetail: FC = () => {
                   
                   for (const starter of bottomSectionStarters) {
                     const index = resource.longDescription.indexOf(`**${starter}`)
-                    if (index > mainContentStart) {
+                    if (index > mainContentStart && mainContentStart > 0) {
+                      mainContentEnd = index
+                      break
+                    } else if (index > 0 && mainContentStart === -1) {
+                      // If no main content starter found, use first bottom section as end
                       mainContentEnd = index
                       break
                     }
                   }
                   
-                  const mainContent = mainContentStart > 0
-                    ? resource.longDescription.substring(mainContentStart, mainContentEnd).trim()
-                    : mainContentStart === -1
-                    ? resource.longDescription.trim()
-                    : ''
+                  // If no main content starter found, don't show anything (content already in intro)
+                  if (mainContentStart === -1) {
+                    return null
+                  }
+                  
+                  const mainContent = resource.longDescription.substring(mainContentStart, mainContentEnd).trim()
                   
                   return mainContent ? (
                     <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-xl shadow-sm border border-gray-200">
@@ -328,58 +345,32 @@ const ResourceDetail: FC = () => {
         <section className="py-8 sm:py-12 lg:py-16 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {(() => {
-              // Find where main content ends and bottom sections begin
-              const mainContentStarters = [
-                'The Three Core Sections',
-                'Core Sections',
-                'Key Features',
-                'Features',
-                'How It Works',
-                'Getting Started'
+              // Find where bottom sections begin
+              const bottomSectionStarters = [
+                'Trend Analysis',
+                'The DuPont Pyramid',
+                'Practical Guidance',
+                'Common Use Cases',
+                'Who This Guide Is For',
+                'Important Note',
+                'Additional Information',
+                'Next Steps'
               ]
               
               let bottomContentStart = resource.longDescription.length
               
-              for (const starter of mainContentStarters) {
+              // Find the first bottom section
+              for (const starter of bottomSectionStarters) {
                 const index = resource.longDescription.indexOf(`**${starter}`)
                 if (index > 0) {
-                  // Find next section after main content
-                  const remainingContent = resource.longDescription.substring(index)
-                  const headings = findHeadings(remainingContent)
-                  if (headings.length > 1) {
-                    // Find the 4th heading (after main content section)
-                    const bottomSectionStarters = [
-                      'Practical Guidance',
-                      'Common Use Cases',
-                      'Important Note',
-                      'Additional Information',
-                      'Next Steps'
-                    ]
-                    
-                    for (const bottomStarter of bottomSectionStarters) {
-                      const bottomIndex = resource.longDescription.indexOf(`**${bottomStarter}`, index)
-                      if (bottomIndex > index) {
-                        bottomContentStart = bottomIndex
-                        break
-                      }
-                    }
-                  }
+                  bottomContentStart = index
                   break
                 }
               }
               
-              // If no main content section found, check if there are at least 3 headings total
+              // If no bottom section found, don't show anything
               if (bottomContentStart === resource.longDescription.length) {
-                const allHeadings = findHeadings(resource.longDescription)
-                if (allHeadings.length >= 4) {
-                  bottomContentStart = allHeadings[3].index
-                } else if (allHeadings.length >= 2) {
-                  // Use last heading as start
-                  bottomContentStart = allHeadings[allHeadings.length - 1].index
-                } else {
-                  // No bottom sections to show
-                  return null
-                }
+                return null
               }
               
               const bottomContent = resource.longDescription.substring(bottomContentStart).trim()

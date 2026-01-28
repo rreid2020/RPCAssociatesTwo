@@ -147,84 +147,127 @@ This resource is provided for general informational purposes only and does not c
     slug: 'cfi-financial-ratios-guide',
     title: 'CFI Financial Ratios Guide',
     shortDescription: 'Comprehensive guide covering key financial ratios, their calculations, and how to interpret them for business analysis and decision-making.',
-    longDescription: `Financial ratios are powerful tools that transform raw financial data into meaningful insights about your business's performance, health, and potential. This comprehensive 40+ page guide from Corporate Finance Institute (CFI) provides a definitive resource for understanding, calculating, and interpreting the key financial ratios that drive informed business decisions.
+    longDescription: `This comprehensive, practitioner-focused guide from Corporate Finance Institute (CFI) provides a structured framework for understanding, calculating, and interpreting the most important financial ratios used in professional financial analysis. Designed for analysts, accountants, finance leaders, lenders, and investors, this definitive resource offers a consistent, best-practice approach to evaluating business performance and financial health.
 
-Financial ratios allow you to:
-• Assess your business's financial health and performance
-• Compare your results against industry benchmarks and competitors
-• Identify trends and potential issues before they become problems
-• Make data-driven decisions about operations, investments, and financing
-• Communicate your business's financial position to stakeholders, lenders, and investors
+Financial ratio analysis transforms raw financial data into actionable insights that support:
+• Investment and lending decisions
+• Management performance evaluation
+• Strategic planning and forecasting
+• Credit risk assessment
+• Valuation and M&A analysis
+• Executive decision-making
 
-**Why Financial Ratios Matter**
+**Financial Ratio Analysis: Foundations**
 
-Numbers alone don't tell the full story. A business with high revenue might still struggle with cash flow. A profitable company might be over-leveraged. Financial ratios provide context and reveal relationships between different aspects of your financial statements that raw numbers cannot.
+The guide begins by establishing why financial ratios matter and how they are used across corporate finance, banking, credit analysis, valuation, and executive decision-making. This foundational section explains:
 
-Understanding financial ratios helps you:
-• Identify strengths and weaknesses in your business operations
-• Spot warning signs of financial distress early
-• Benchmark your performance against industry standards
-• Support strategic planning and goal setting
-• Enhance credibility when seeking financing or investment
-• Make more informed decisions about pricing, inventory, and capital allocation
+What ratio analysis is and how it supports investment, lending, and management decisions
 
-**What This Guide Is Designed to Do**
+Why ratios are essential for comparing companies of different sizes and business models
 
-This guide is designed for business owners, financial analysts, and accounting professionals who want to master financial ratio analysis. Whether you're analyzing your own business, evaluating investment opportunities, or preparing for lender meetings, this resource provides the knowledge and tools you need.
+The distinction between performance ratios and financial leverage ratios
 
-The guide covers:
-• Step-by-step calculation formulas for each ratio
-• Clear explanations of what each ratio measures
-• Interpretation guidelines to understand what the numbers mean
-• Industry benchmarks and typical ranges
-• Real-world examples and case studies
-• Common pitfalls and how to avoid them
+How ratios are used by CFOs, bankers, rating agencies, and equity analysts
 
-**The Four Core Categories of Financial Ratios**
+This section sets the conceptual foundation needed to interpret ratios correctly rather than treating them as isolated calculations, emphasizing that context and understanding drive meaningful analysis.
 
-Financial ratios are typically organized into four main categories, each providing insights into different aspects of your business:
+**A Best-Practice Framework for Ratio Analysis**
 
-**1) Liquidity Ratios**
+Rather than focusing only on formulas, the guide introduces a four-step professional workflow for effective ratio analysis:
 
-Liquidity ratios measure your business's ability to meet short-term obligations and convert assets to cash. Key ratios include the current ratio, quick ratio (acid-test), and cash ratio. These ratios help you understand whether you have sufficient liquid assets to cover immediate liabilities and maintain operations during cash flow fluctuations.
+Collect multiple years of financial statements
 
-**2) Profitability Ratios**
+Calculate relevant ratios consistently
 
-Profitability ratios assess your business's ability to generate profits relative to revenue, assets, or equity. Common ratios include gross profit margin, net profit margin, return on assets (ROA), and return on equity (ROE). These ratios reveal how efficiently your business converts sales into profits and how effectively you're using your resources to generate returns.
+Interpret trends and underlying drivers
 
-**3) Efficiency Ratios**
+Benchmark results against peers and industry norms
 
-Efficiency ratios (also called activity ratios) measure how effectively your business uses its assets and manages operations. Key ratios include asset turnover, inventory turnover, accounts receivable turnover, and accounts payable turnover. These ratios help identify operational strengths and areas where you can improve resource utilization and cash flow management.
+The guide emphasizes trend analysis over single-period results, reinforcing that ratios are most powerful when viewed across time. This systematic approach ensures consistent, reliable analysis that supports sound decision-making.
 
-**4) Leverage Ratios**
+**Return, Profitability, and Expense Ratios**
 
-Leverage ratios evaluate your business's debt levels and ability to meet long-term financial obligations. Important ratios include debt-to-equity, debt-to-assets, interest coverage, and equity multiplier. These ratios help you understand your capital structure, assess financial risk, and determine your capacity to take on additional debt or financing.
+The guide provides in-depth coverage of ratios that measure how effectively a business generates profits and returns for shareholders and capital providers. Covered ratios include:
 
-**Practical Guidance for Using Financial Ratios**
+Return on Equity (ROE) – measures shareholder return
 
-Effective ratio analysis requires more than just calculating numbers. This guide provides practical strategies for:
-• Selecting the most relevant ratios for your business type and industry
-• Establishing baseline measurements and tracking trends over time
-• Comparing your ratios against industry benchmarks and competitors
-• Identifying red flags and areas requiring immediate attention
-• Using ratio analysis to support strategic decision-making
-• Presenting ratio analysis to stakeholders, lenders, and investors
+Return on Assets (ROA) – assesses asset efficiency
 
-**Common Use Cases**
+Return on Invested Capital (ROIC) – evaluates capital allocation
 
-Financial ratio analysis supports a wide range of business activities:
-• Annual financial planning and budgeting
-• Performance monitoring and management reporting
-• Lender applications and credit assessments
-• Investment evaluation and due diligence
-• Operational improvement initiatives
-• Benchmarking against industry standards
-• Identifying opportunities for cost reduction or efficiency gains
-• Supporting merger and acquisition decisions
+Gross Margin, Operating Profit Margin, and Net Profit Margin – analyze profitability at different levels
+
+Interest burden and tax burden metrics – identify cost drivers
+
+Each ratio is explained with clear definitions, formula logic, interpretation guidance, and industry context with comparative examples to help you understand what the numbers mean in practice.
+
+**Asset Utilization (Efficiency) Ratios**
+
+This section examines how efficiently a company uses its assets to generate revenue and manage working capital. Key ratios include:
+
+Total asset turnover and Property, plant & equipment (PP&E) turnover
+
+Cash turnover and cash days
+
+Accounts receivable turnover and days
+
+Inventory turnover and days
+
+Accounts payable turnover and days
+
+The guide explains why "days" metrics matter and how working-capital efficiency differs across industries and business models. Understanding these ratios helps identify operational strengths and opportunities for improvement in resource utilization.
+
+**Solvency and Financial Leverage Ratios**
+
+This section focuses on capital structure, debt risk, and long-term financial stability. Ratios covered include:
+
+Total assets to equity
+
+Debt to equity and Debt to tangible net worth
+
+Debt to EBITDA
+
+The guide explains how lenders, investors, and M&A professionals use these ratios to assess financial risk, debt capacity, creditworthiness, and capital structure efficiency. These metrics are critical for understanding a company's financial stability and ability to meet long-term obligations.
+
+**Liquidity Ratios**
+
+Liquidity ratios assess a company's ability to meet short-term obligations and manage near-term cash needs. Key ratios include:
+
+Current ratio
+
+Quick ratio (acid-test)
+
+EBITDA to interest (interest coverage)
+
+The guide emphasizes industry context, explaining why "healthy" liquidity levels vary widely between sectors such as retail, manufacturing, and technology. These ratios help identify potential cash flow challenges and assess short-term financial flexibility.
+
+**Trend Analysis and Benchmarking**
+
+This section focuses on how to extract insight from ratios, not just compute them. Key concepts include:
+
+Horizontal (trend) analysis across multi-year periods
+
+Recognizing growth, decline, volatility, and structural shifts
+
+The importance of visualizing ratios to identify patterns
+
+Industry benchmarking vs. peer-group benchmarking
+
+Selecting appropriate peer companies based on business and financial characteristics
+
+This section is particularly valuable for analysts involved in forecasting, valuation, and strategic planning, providing the tools needed to identify trends and make meaningful comparisons.
+
+**The DuPont Pyramid of Ratios**
+
+The guide concludes with an advanced analytical framework: the DuPont Pyramid. This section demonstrates how ROE can be broken down into profitability drivers, asset utilization efficiency, and financial leverage. Both the traditional three-lever model and the expanded five-lever model are explained, showing how operating margins, interest burden, and tax burden interact to drive shareholder returns. This framework provides a comprehensive view of what drives business performance and helps identify specific areas for improvement.
+
+**Who This Guide Is For**
+
+This guide is especially valuable for accountants and financial analysts, CFOs and finance managers, business owners and advisors, bankers and credit analysts, and investors and valuation professionals. It serves as both a reference guide and a training resource for consistent, professional financial analysis.
 
 **Important Note**
 
-This resource is provided for general informational purposes only and does not constitute accounting, tax, or financial advice. Financial ratios are tools that provide insights, but they should be interpreted in context and considered alongside other qualitative and quantitative factors. Professional guidance from qualified accountants or financial advisors may be required depending on your specific circumstances and business needs.`,
+This resource is provided for general informational purposes only and does not constitute accounting, tax, or financial advice. Financial ratios are analytical tools that provide insights, but they should be interpreted in context and considered alongside other qualitative and quantitative factors. Professional guidance from qualified accountants or financial advisors may be required depending on your specific circumstances and business needs.`,
     category: 'publication',
     categoryLabel: 'Guide',
     downloadUrl: SPACES_FILES.financialRatiosGuide,

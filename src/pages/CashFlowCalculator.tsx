@@ -35,6 +35,49 @@ interface CashFlowResults {
   endingCashBalance: number
 }
 
+const CashFlowInputField = ({
+  label,
+  field,
+  value,
+  onChange,
+  placeholder = '0.00',
+  helpText,
+}: {
+  label: string
+  field: keyof CashFlowInputs
+  value: string
+  onChange: (field: keyof CashFlowInputs, value: string) => void
+  placeholder?: string
+  helpText?: string
+}) => (
+  <div className="w-full">
+    <label
+      htmlFor={field}
+      className="block text-sm font-medium text-text mb-1"
+    >
+      {label}
+    </label>
+    <div className="relative">
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-light">
+        $
+      </span>
+      <input
+        type="text"
+        inputMode="decimal"
+        id={field}
+        value={value}
+        onChange={(e) => onChange(field, e.target.value)}
+        placeholder={placeholder}
+        autoComplete="off"
+        className="w-full pl-8 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text bg-white"
+      />
+    </div>
+    {helpText && (
+      <p className="mt-1 text-xs text-text-light">{helpText}</p>
+    )}
+  </div>
+)
+
 const CashFlowCalculator: FC = () => {
   const [inputs, setInputs] = useState<CashFlowInputs>({
     // Operating Activities
@@ -158,45 +201,6 @@ const CashFlowCalculator: FC = () => {
     setHasCalculated(false)
   }
 
-  const InputField = ({
-    label,
-    field,
-    placeholder = '0.00',
-    helpText,
-  }: {
-    label: string
-    field: keyof CashFlowInputs
-    placeholder?: string
-    helpText?: string
-  }) => (
-    <div className="w-full">
-      <label
-        htmlFor={field}
-        className="block text-sm font-medium text-text mb-1"
-      >
-        {label}
-      </label>
-      <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-light">
-          $
-        </span>
-        <input
-          type="text"
-          inputMode="decimal"
-          id={field}
-          value={inputs[field]}
-          onChange={(e) => handleInputChange(field, e.target.value)}
-          placeholder={placeholder}
-          autoComplete="off"
-          className="w-full pl-8 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text bg-white"
-        />
-      </div>
-      {helpText && (
-        <p className="mt-1 text-xs text-text-light">{helpText}</p>
-      )}
-    </div>
-  )
-
   return (
     <>
       <SEO
@@ -243,9 +247,11 @@ const CashFlowCalculator: FC = () => {
                   <h3 className="text-lg font-semibold text-primary mb-4">
                     Beginning Cash Balance
                   </h3>
-                  <InputField
+                  <CashFlowInputField
                     label="Starting Cash Balance"
                     field="beginningCashBalance"
+                    value={inputs.beginningCashBalance}
+                    onChange={handleInputChange}
                     helpText="The cash balance at the beginning of the period"
                   />
                 </div>
@@ -256,29 +262,39 @@ const CashFlowCalculator: FC = () => {
                     Operating Activities
                   </h3>
                   <div className="space-y-4">
-                    <InputField
+                    <CashFlowInputField
                       label="Cash Received from Customers"
                       field="cashFromCustomers"
+                      value={inputs.cashFromCustomers}
+                      onChange={handleInputChange}
                       helpText="Total cash collected from sales"
                     />
-                    <InputField
+                    <CashFlowInputField
                       label="Payments to Suppliers"
                       field="paymentsToSuppliers"
+                      value={inputs.paymentsToSuppliers}
+                      onChange={handleInputChange}
                       helpText="Cash paid to vendors and suppliers"
                     />
-                    <InputField
+                    <CashFlowInputField
                       label="Payroll Expenses"
                       field="payrollExpenses"
+                      value={inputs.payrollExpenses}
+                      onChange={handleInputChange}
                       helpText="Salaries, wages, and benefits paid"
                     />
-                    <InputField
+                    <CashFlowInputField
                       label="Rent and Utilities"
                       field="rentAndUtilities"
+                      value={inputs.rentAndUtilities}
+                      onChange={handleInputChange}
                       helpText="Office rent, utilities, and related expenses"
                     />
-                    <InputField
+                    <CashFlowInputField
                       label="Other Operating Expenses"
                       field="otherOperatingExpenses"
+                      value={inputs.otherOperatingExpenses}
+                      onChange={handleInputChange}
                       helpText="Other day-to-day business expenses"
                     />
                   </div>
@@ -290,19 +306,25 @@ const CashFlowCalculator: FC = () => {
                     Investing Activities
                   </h3>
                   <div className="space-y-4">
-                    <InputField
+                    <CashFlowInputField
                       label="Equipment Purchases"
                       field="equipmentPurchases"
+                      value={inputs.equipmentPurchases}
+                      onChange={handleInputChange}
                       helpText="Cash spent on equipment and capital assets"
                     />
-                    <InputField
+                    <CashFlowInputField
                       label="Asset Sales"
                       field="assetSales"
+                      value={inputs.assetSales}
+                      onChange={handleInputChange}
                       helpText="Cash received from selling assets"
                     />
-                    <InputField
+                    <CashFlowInputField
                       label="Other Investing Activities"
                       field="otherInvestingActivities"
+                      value={inputs.otherInvestingActivities}
+                      onChange={handleInputChange}
                       helpText="Other investing-related cash flows"
                     />
                   </div>
@@ -314,29 +336,39 @@ const CashFlowCalculator: FC = () => {
                     Financing Activities
                   </h3>
                   <div className="space-y-4">
-                    <InputField
+                    <CashFlowInputField
                       label="Loan Proceeds"
                       field="loanProceeds"
+                      value={inputs.loanProceeds}
+                      onChange={handleInputChange}
                       helpText="Cash received from loans and borrowings"
                     />
-                    <InputField
+                    <CashFlowInputField
                       label="Loan Repayments"
                       field="loanRepayments"
+                      value={inputs.loanRepayments}
+                      onChange={handleInputChange}
                       helpText="Cash paid to repay loans"
                     />
-                    <InputField
+                    <CashFlowInputField
                       label="Owner Contributions"
                       field="ownerContributions"
+                      value={inputs.ownerContributions}
+                      onChange={handleInputChange}
                       helpText="Cash invested by owners"
                     />
-                    <InputField
+                    <CashFlowInputField
                       label="Owner Withdrawals"
                       field="ownerWithdrawals"
+                      value={inputs.ownerWithdrawals}
+                      onChange={handleInputChange}
                       helpText="Cash withdrawn by owners"
                     />
-                    <InputField
+                    <CashFlowInputField
                       label="Other Financing Activities"
                       field="otherFinancingActivities"
+                      value={inputs.otherFinancingActivities}
+                      onChange={handleInputChange}
                       helpText="Other financing-related cash flows"
                     />
                   </div>

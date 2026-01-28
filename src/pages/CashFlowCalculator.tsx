@@ -78,8 +78,21 @@ const CashFlowCalculator: FC = () => {
     return isNaN(parsed) ? 0 : parsed
   }
 
+  const sanitizeNumericInput = (value: string): string => {
+    // Allow digits, one decimal point, and a leading minus sign
+    let cleaned = value.replace(/[^0-9.-]/g, '')
+    const hasLeadingMinus = cleaned.startsWith('-')
+    cleaned = cleaned.replace(/-/g, '')
+    const parts = cleaned.split('.')
+    const integerPart = parts[0] ?? ''
+    const decimalPart = parts.length > 1 ? parts.slice(1).join('') : ''
+    const normalized = decimalPart ? `${integerPart}.${decimalPart}` : integerPart
+    return hasLeadingMinus ? `-${normalized}` : normalized
+  }
+
   const handleInputChange = (field: keyof CashFlowInputs, value: string) => {
-    setInputs((prev) => ({ ...prev, [field]: value }))
+    const sanitized = sanitizeNumericInput(value)
+    setInputs((prev) => ({ ...prev, [field]: sanitized }))
     setHasCalculated(false)
   }
 
@@ -174,6 +187,7 @@ const CashFlowCalculator: FC = () => {
           value={inputs[field]}
           onChange={(e) => handleInputChange(field, e.target.value)}
           placeholder={placeholder}
+          autoComplete="off"
           className="w-full pl-8 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text bg-white"
         />
       </div>

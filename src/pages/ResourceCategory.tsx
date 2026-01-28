@@ -48,6 +48,20 @@ const ResourceCategory: FC = () => {
 
   const categoryType = getCategoryType(category.slug)
   const resources = categoryType ? getResourcesByCategory(categoryType) : []
+  const orderedResources = categoryType === 'calculator'
+    ? [
+        'canadian-personal-income-tax-calculator',
+        'cash-flow-calculator',
+        'cash-flow-statement-direct-method',
+      ]
+        .map((slugValue) => resources.find((resource) => resource.slug === slugValue))
+        .filter((resource): resource is ResourceDetail => Boolean(resource))
+        .concat(resources.filter((resource) => ![
+          'canadian-personal-income-tax-calculator',
+          'cash-flow-calculator',
+          'cash-flow-statement-direct-method',
+        ].includes(resource.slug)))
+    : resources
 
   return (
     <>
@@ -67,10 +81,10 @@ const ResourceCategory: FC = () => {
               </p>
             </div>
 
-            {resources.length > 0 ? (
+            {orderedResources.length > 0 ? (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg mb-xxl">
-                  {resources.map((resource: ResourceDetail, index: number) => (
+                  {orderedResources.map((resource: ResourceDetail, index: number) => (
                     <Link
                       key={index}
                       to={`/resources/${resource.slug}`}

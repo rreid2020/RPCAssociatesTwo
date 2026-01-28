@@ -472,13 +472,13 @@ const CashFlowCalculator: FC = () => {
               </div>
               <div className="space-y-2">
                 <CashFlowInputField
-                  label="(-) Net Capital Expenditures"
+                  label="Net Capital Expenditures"
+                  inlineHint="Use negative for cash outflows"
                   field="netCapitalExpenditures"
                   value={inputs.netCapitalExpenditures}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Use negative for cash outflows"
                 />
                 <CashFlowInputField
                   label="Increase in Other Long-Term Assets"
@@ -490,22 +490,22 @@ const CashFlowCalculator: FC = () => {
                   onFocus={handleInputFocus}
                 />
                 <CashFlowInputField
-                  label="(-) Net Purchases of Short-Term Investments"
+                  label="Net Purchases of Short-Term Investments"
+                  inlineHint="Use negative for purchases"
                   field="netPurchasesShortTermInvestments"
                   value={inputs.netPurchasesShortTermInvestments}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Use negative for purchases"
                 />
                 <CashFlowInputField
-                  label="(-) Additions to Intangibles"
+                  label="Additions to Intangibles"
+                  inlineHint="Use negative for cash outflows"
                   field="additionsToIntangibles"
                   value={inputs.additionsToIntangibles}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Use negative for cash outflows"
                 />
               </div>
               <div className="flex justify-between items-center text-xs font-semibold text-text mt-2 border-t border-border pt-2">
@@ -523,31 +523,31 @@ const CashFlowCalculator: FC = () => {
               </div>
               <div className="space-y-2">
                 <CashFlowInputField
-                  label="(-) Dividends Paid"
+                  label="Dividends Paid"
+                  inlineHint="Use negative for cash outflows"
                   field="dividendsPaid"
                   value={inputs.dividendsPaid}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Use negative for cash outflows"
                 />
                 <CashFlowInputField
-                  label="(+) / (-) Stock Issuances / Repurchases"
+                  label="Stock Issuances / Repurchases"
+                  inlineHint="Issuance (+), repurchase (-)"
                   field="stockIssuancesRepurchases"
                   value={inputs.stockIssuancesRepurchases}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Issuance (+), repurchase (-)"
                 />
                 <CashFlowInputField
-                  label="(+) / (-) Debt Issuances / Repayments"
+                  label="Debt Issuances / Repayments"
+                  inlineHint="Issuance (+), repayment (-)"
                   field="debtIssuancesRepayments"
                   value={inputs.debtIssuancesRepayments}
                   onChange={handleInputChange}
                   onBlur={handleInputBlur}
                   onFocus={handleInputFocus}
-                  helpText="Issuance (+), repayment (-)"
                 />
               </div>
               <div className="flex justify-between items-center text-xs font-semibold text-text mt-2 border-t border-border pt-2">

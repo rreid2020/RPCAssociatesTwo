@@ -8,31 +8,6 @@ import { downloadFile } from '../lib/utils/download'
 import CalendlyButton from '../components/CalendlyButton'
 import FormattedText from '../components/FormattedText'
 
-/**
- * Helper function to find all major headings (marked with **) in content
- */
-const findHeadings = (content: string): Array<{ index: number; text: string }> => {
-  const headings: Array<{ index: number; text: string }> = []
-  const regex = /\*\*([^*]+)\*\*/g
-  let match
-  
-  while ((match = regex.exec(content)) !== null) {
-    // Check if it's a standalone heading (not inline bold)
-    const beforeMatch = content.substring(Math.max(0, match.index - 2), match.index)
-    const afterMatch = content.substring(match.index + match[0].length, match.index + match[0].length + 2)
-    
-    // If it's on its own line or followed by a newline, it's likely a heading
-    if (beforeMatch === '\n\n' || beforeMatch === '\n' || match.index === 0 || afterMatch === '\n\n' || afterMatch === '\n') {
-      headings.push({
-        index: match.index,
-        text: match[1]
-      })
-    }
-  }
-  
-  return headings
-}
-
 const ResourceDetail: FC = () => {
   const { slug: slugParam } = useParams<{ slug: string }>()
   const location = useLocation()

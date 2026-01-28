@@ -38,21 +38,21 @@ export const resources: ResourceDetail[] = [
   },
   {
     slug: 'cash-flow-calculator',
-    title: 'Cash Flow Calculator',
-    shortDescription: 'Calculate your business cash flow by tracking operating, investing, and financing activities. Understand your cash position and liquidity.',
-    longDescription: 'Track your business cash flow with our comprehensive calculator. Monitor operating activities, investing activities, and financing activities to understand your cash position and liquidity. This tool helps you identify cash flow trends, plan for major expenditures, and make informed financial decisions for your business.',
+    title: 'Statement of Cash Flows (Indirect Method)',
+    shortDescription: 'Build a statement of cash flows using the indirect method by entering net income, non-cash adjustments, and working capital changes.',
+    longDescription: 'Use our indirect method statement of cash flows calculator to translate net income into operating cash flow. Add non-cash adjustments, account for working capital changes, and review investing and financing cash flows to understand liquidity and cash movement.',
     category: 'calculator',
     categoryLabel: 'Calculator',
     requiresLeadCapture: false,
     benefits: [
-      'Track operating, investing, and financing activities',
-      'Understand your cash position and liquidity',
-      'Identify cash flow trends',
-      'Plan for major expenditures',
-      'Make informed financial decisions'
+      'Convert net income to operating cash flow (indirect method)',
+      'Include non-cash and working capital adjustments',
+      'Track investing and financing cash flows',
+      'Understand liquidity and cash movement',
+      'Auto-calculated subtotals and net cash flow'
     ],
-    metaDescription: 'Free business cash flow calculator. Track operating, investing, and financing activities to understand your cash position and liquidity.',
-    keywords: ['cash flow calculator', 'business cash flow', 'financial planning', 'liquidity', 'Ottawa']
+    metaDescription: 'Statement of cash flows (indirect method) calculator. Enter net income, non-cash adjustments, and working capital changes to generate cash flow.',
+    keywords: ['statement of cash flows', 'indirect method', 'cash flow statement', 'working capital', 'liquidity', 'Ottawa']
   },
   {
     slug: 'cash-flow-statement-direct-method',

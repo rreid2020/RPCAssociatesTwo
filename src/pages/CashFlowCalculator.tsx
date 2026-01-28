@@ -40,6 +40,8 @@ const CashFlowInputField = ({
   field,
   value,
   onChange,
+  onBlur,
+  onFocus,
   placeholder = '0.00',
   helpText,
 }: {
@@ -47,34 +49,42 @@ const CashFlowInputField = ({
   field: keyof CashFlowInputs
   value: string
   onChange: (field: keyof CashFlowInputs, value: string) => void
+  onBlur: (field: keyof CashFlowInputs) => void
+  onFocus: (field: keyof CashFlowInputs) => void
   placeholder?: string
   helpText?: string
 }) => (
   <div className="w-full">
-    <label
-      htmlFor={field}
-      className="block text-sm font-medium text-text mb-1"
-    >
-      {label}
-    </label>
-    <div className="relative">
-      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-light">
-        $
-      </span>
-      <input
-        type="text"
-        inputMode="decimal"
-        id={field}
-        value={value}
-        onChange={(e) => onChange(field, e.target.value)}
-        placeholder={placeholder}
-        autoComplete="off"
-        className="w-full pl-8 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text bg-white"
-      />
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+      <div className="sm:flex-1">
+        <label
+          htmlFor={field}
+          className="block text-sm font-medium text-text"
+        >
+          {label}
+        </label>
+        {helpText && (
+          <p className="text-xs text-text-light">{helpText}</p>
+        )}
+      </div>
+      <div className="relative sm:w-56">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-light">
+          $
+        </span>
+        <input
+          type="text"
+          inputMode="decimal"
+          id={field}
+          value={value}
+          onChange={(e) => onChange(field, e.target.value)}
+          onBlur={() => onBlur(field)}
+          onFocus={() => onFocus(field)}
+          placeholder={placeholder}
+          autoComplete="off"
+          className="w-full pl-8 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text bg-white"
+        />
+      </div>
     </div>
-    {helpText && (
-      <p className="mt-1 text-xs text-text-light">{helpText}</p>
-    )}
   </div>
 )
 
@@ -121,6 +131,21 @@ const CashFlowCalculator: FC = () => {
     return isNaN(parsed) ? 0 : parsed
   }
 
+  const formatInputValue = (value: string): string => {
+    if (!value || value === '-' || value === '.' || value === '-.') {
+      return value
+    }
+    const numeric = parseNumber(value)
+    return numeric.toLocaleString('en-CA', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  }
+
+  const normalizeInputValue = (value: string): string => {
+    return value.replace(/,/g, '')
+  }
+
   const sanitizeNumericInput = (value: string): string => {
     // Allow digits, one decimal point, and a leading minus sign
     let cleaned = value.replace(/[^0-9.-]/g, '')
@@ -139,9 +164,17 @@ const CashFlowCalculator: FC = () => {
     setHasCalculated(false)
   }
 
-  const calculateCashFlow = () => {
-    const getValue = (field: keyof CashFlowInputs) => parseNumber(inputs[field])
+  const handleInputBlur = (field: keyof CashFlowInputs) => {
+    setInputs((prev) => ({ ...prev, [field]: formatInputValue(prev[field]) }))
+  }
 
+  const handleInputFocus = (field: keyof CashFlowInputs) => {
+    setInputs((prev) => ({ ...prev, [field]: normalizeInputValue(prev[field]) }))
+  }
+
+  const getValue = (field: keyof CashFlowInputs) => parseNumber(inputs[field])
+
+  const calculateCashFlow = () => {
     // Operating Activities
     const operatingCashFlow =
       getValue('cashFromCustomers') -
@@ -243,7 +276,7 @@ const CashFlowCalculator: FC = () => {
                 </h2>
 
                 {/* Beginning Cash Balance */}
-                <div className="mb-8 pb-8 border-b border-border">
+                <div className="mb-6 pb-6 border-b border-border">
                   <h3 className="text-lg font-semibold text-primary mb-4">
                     Beginning Cash Balance
                   </h3>
@@ -252,21 +285,25 @@ const CashFlowCalculator: FC = () => {
                     field="beginningCashBalance"
                     value={inputs.beginningCashBalance}
                     onChange={handleInputChange}
+                    onBlur={handleInputBlur}
+                    onFocus={handleInputFocus}
                     helpText="The cash balance at the beginning of the period"
                   />
                 </div>
 
                 {/* Operating Activities */}
-                <div className="mb-8 pb-8 border-b border-border">
+                <div className="mb-6 pb-6 border-b border-border">
                   <h3 className="text-lg font-semibold text-primary mb-4">
                     Operating Activities
                   </h3>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <CashFlowInputField
                       label="Cash Received from Customers"
                       field="cashFromCustomers"
                       value={inputs.cashFromCustomers}
                       onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      onFocus={handleInputFocus}
                       helpText="Total cash collected from sales"
                     />
                     <CashFlowInputField
@@ -274,6 +311,8 @@ const CashFlowCalculator: FC = () => {
                       field="paymentsToSuppliers"
                       value={inputs.paymentsToSuppliers}
                       onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      onFocus={handleInputFocus}
                       helpText="Cash paid to vendors and suppliers"
                     />
                     <CashFlowInputField
@@ -281,6 +320,8 @@ const CashFlowCalculator: FC = () => {
                       field="payrollExpenses"
                       value={inputs.payrollExpenses}
                       onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      onFocus={handleInputFocus}
                       helpText="Salaries, wages, and benefits paid"
                     />
                     <CashFlowInputField
@@ -288,6 +329,8 @@ const CashFlowCalculator: FC = () => {
                       field="rentAndUtilities"
                       value={inputs.rentAndUtilities}
                       onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      onFocus={handleInputFocus}
                       helpText="Office rent, utilities, and related expenses"
                     />
                     <CashFlowInputField
@@ -295,22 +338,26 @@ const CashFlowCalculator: FC = () => {
                       field="otherOperatingExpenses"
                       value={inputs.otherOperatingExpenses}
                       onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      onFocus={handleInputFocus}
                       helpText="Other day-to-day business expenses"
                     />
                   </div>
                 </div>
 
                 {/* Investing Activities */}
-                <div className="mb-8 pb-8 border-b border-border">
+                <div className="mb-6 pb-6 border-b border-border">
                   <h3 className="text-lg font-semibold text-primary mb-4">
                     Investing Activities
                   </h3>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <CashFlowInputField
                       label="Equipment Purchases"
                       field="equipmentPurchases"
                       value={inputs.equipmentPurchases}
                       onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      onFocus={handleInputFocus}
                       helpText="Cash spent on equipment and capital assets"
                     />
                     <CashFlowInputField
@@ -318,6 +365,8 @@ const CashFlowCalculator: FC = () => {
                       field="assetSales"
                       value={inputs.assetSales}
                       onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      onFocus={handleInputFocus}
                       helpText="Cash received from selling assets"
                     />
                     <CashFlowInputField
@@ -325,22 +374,26 @@ const CashFlowCalculator: FC = () => {
                       field="otherInvestingActivities"
                       value={inputs.otherInvestingActivities}
                       onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      onFocus={handleInputFocus}
                       helpText="Other investing-related cash flows"
                     />
                   </div>
                 </div>
 
                 {/* Financing Activities */}
-                <div className="mb-8">
+                <div className="mb-6">
                   <h3 className="text-lg font-semibold text-primary mb-4">
                     Financing Activities
                   </h3>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <CashFlowInputField
                       label="Loan Proceeds"
                       field="loanProceeds"
                       value={inputs.loanProceeds}
                       onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      onFocus={handleInputFocus}
                       helpText="Cash received from loans and borrowings"
                     />
                     <CashFlowInputField
@@ -348,6 +401,8 @@ const CashFlowCalculator: FC = () => {
                       field="loanRepayments"
                       value={inputs.loanRepayments}
                       onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      onFocus={handleInputFocus}
                       helpText="Cash paid to repay loans"
                     />
                     <CashFlowInputField
@@ -355,6 +410,8 @@ const CashFlowCalculator: FC = () => {
                       field="ownerContributions"
                       value={inputs.ownerContributions}
                       onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      onFocus={handleInputFocus}
                       helpText="Cash invested by owners"
                     />
                     <CashFlowInputField
@@ -362,6 +419,8 @@ const CashFlowCalculator: FC = () => {
                       field="ownerWithdrawals"
                       value={inputs.ownerWithdrawals}
                       onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      onFocus={handleInputFocus}
                       helpText="Cash withdrawn by owners"
                     />
                     <CashFlowInputField
@@ -369,6 +428,8 @@ const CashFlowCalculator: FC = () => {
                       field="otherFinancingActivities"
                       value={inputs.otherFinancingActivities}
                       onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      onFocus={handleInputFocus}
                       helpText="Other financing-related cash flows"
                     />
                   </div>
@@ -518,6 +579,66 @@ const CashFlowCalculator: FC = () => {
                       <p className="text-xs text-text-light mt-1">
                         Your cash position at the end of the period
                       </p>
+                    </div>
+
+                    {/* Detailed Sources and Uses */}
+                    <div className="bg-white p-4 rounded-lg border border-border">
+                      <h3 className="text-sm font-semibold text-primary mb-3">
+                        Detailed Sources and Uses of Cash
+                      </h3>
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-xs font-medium text-text-light uppercase tracking-wider mb-2">
+                            Sources of Cash
+                          </p>
+                          <div className="space-y-2">
+                            {[
+                              { label: 'Cash Received from Customers', value: getValue('cashFromCustomers') },
+                              { label: 'Asset Sales', value: getValue('assetSales') },
+                              { label: 'Loan Proceeds', value: getValue('loanProceeds') },
+                              { label: 'Owner Contributions', value: getValue('ownerContributions') },
+                              { label: 'Other Investing Activities', value: getValue('otherInvestingActivities') },
+                              { label: 'Other Financing Activities', value: getValue('otherFinancingActivities') },
+                            ]
+                              .filter((item) => item.value > 0)
+                              .map((item) => (
+                                <div key={item.label} className="flex justify-between text-sm">
+                                  <span className="text-text-light">{item.label}</span>
+                                  <span className="font-medium text-green-600">
+                                    {formatCurrency(item.value)}
+                                  </span>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-text-light uppercase tracking-wider mb-2">
+                            Uses of Cash
+                          </p>
+                          <div className="space-y-2">
+                            {[
+                              { label: 'Payments to Suppliers', value: getValue('paymentsToSuppliers') },
+                              { label: 'Payroll Expenses', value: getValue('payrollExpenses') },
+                              { label: 'Rent and Utilities', value: getValue('rentAndUtilities') },
+                              { label: 'Other Operating Expenses', value: getValue('otherOperatingExpenses') },
+                              { label: 'Equipment Purchases', value: getValue('equipmentPurchases') },
+                              { label: 'Loan Repayments', value: getValue('loanRepayments') },
+                              { label: 'Owner Withdrawals', value: getValue('ownerWithdrawals') },
+                              { label: 'Other Investing Activities', value: getValue('otherInvestingActivities') * -1 },
+                              { label: 'Other Financing Activities', value: getValue('otherFinancingActivities') * -1 },
+                            ]
+                              .filter((item) => item.value > 0)
+                              .map((item) => (
+                                <div key={item.label} className="flex justify-between text-sm">
+                                  <span className="text-text-light">{item.label}</span>
+                                  <span className="font-medium text-red-600">
+                                    {formatCurrency(item.value)}
+                                  </span>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Warning if negative */}

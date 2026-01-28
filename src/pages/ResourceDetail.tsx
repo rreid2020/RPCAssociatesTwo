@@ -95,7 +95,7 @@ const ResourceDetail: FC = () => {
       <main>
         {/* Main Content Section - Form Left, Content Right */}
         <section className="py-12 sm:py-16 lg:py-20 bg-white">
-          <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 xl:gap-16 items-start">
               {/* Left Column - Form Card (Dark Style) */}
               <div className="order-2 lg:order-1">

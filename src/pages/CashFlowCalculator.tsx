@@ -303,19 +303,13 @@ const CashFlowCalculator: FC = () => {
           </section>
 
           <div className="bg-white rounded-xl shadow-sm border border-border p-4 sm:p-6 lg:p-8">
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-4">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-primary">
-                  Cash Flow Statement
-                </h2>
-              </div>
-              <div className="text-sm text-text-light sm:text-right">
-                <p>For the Year Ending</p>
-                <p className="font-semibold text-text">[MM/DD/YYYY]</p>
-              </div>
+            <div className="mb-4">
+              <h2 className="text-xl sm:text-2xl font-bold text-primary">
+                Cash Flow Statement
+              </h2>
             </div>
 
-            <div className="mb-3">
+            <div className="mb-2">
               <CashFlowInputField
                 label="Net Income"
                 field="netIncome"
@@ -328,7 +322,7 @@ const CashFlowCalculator: FC = () => {
             </div>
 
             {/* Operating Activities (Indirect Method) */}
-            <div className="mb-4">
+            <div className="mb-3">
               <div className="bg-primary/10 text-primary font-semibold text-[11px] px-2.5 py-1 rounded mb-2">
                 Cash Flows from Operating Activities (Indirect Method)
               </div>
@@ -388,10 +382,10 @@ const CashFlowCalculator: FC = () => {
                   helpText="Other non-cash adjustments"
                 />
               </div>
-              <div className="mt-2 text-[11px] font-semibold text-text-light">
+              <div className="mt-1 text-[11px] font-semibold text-text-light">
                 Changes in Operating Assets and Liabilities:
               </div>
-              <div className="space-y-2 mt-2">
+              <div className="space-y-2 mt-1">
                 <CashFlowInputField
                   label="(+) / (-) Accounts Receivable"
                   field="accountsReceivableChange"
@@ -465,7 +459,7 @@ const CashFlowCalculator: FC = () => {
             </div>
 
             {/* Investing Activities */}
-            <div className="mb-4">
+            <div className="mb-3">
               <div className="bg-primary/10 text-primary font-semibold text-[11px] px-2.5 py-1 rounded mb-2">
                 Cash Flows from Investing Activities
               </div>
@@ -516,7 +510,7 @@ const CashFlowCalculator: FC = () => {
             </div>
 
             {/* Financing Activities */}
-            <div className="mb-4">
+            <div className="mb-3">
               <div className="bg-primary/10 text-primary font-semibold text-[11px] px-2.5 py-1 rounded mb-2">
                 Cash Flows from Financing Activities
               </div>
@@ -558,7 +552,7 @@ const CashFlowCalculator: FC = () => {
             </div>
 
             {/* FX Rate Effects */}
-            <div className="mb-4">
+            <div className="mb-3">
               <CashFlowInputField
                 label="FX Rate Effects"
                 field="fxRateEffects"
@@ -578,13 +572,13 @@ const CashFlowCalculator: FC = () => {
 
             {/* Totals */}
             <div className="bg-background p-2 rounded-lg border border-border">
-              <div className="flex justify-between items-center text-xs font-semibold text-primary">
+              <div className="flex justify-between items-center text-[11px] font-semibold text-primary">
                 <span>Net Increase in Cash</span>
                 <span className={computedResults.netCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}>
                   {formatCurrency(computedResults.netCashFlow)}
                 </span>
               </div>
-              <div className="flex justify-between items-center mt-2 pt-2 border-t border-border text-xs font-semibold text-text">
+              <div className="flex justify-between items-center mt-1 pt-1 border-t border-border text-[11px] font-semibold text-text">
                 <span>Cash at End of Year</span>
                 <span className={computedResults.endingCashBalance >= 0 ? 'text-green-600' : 'text-red-600'}>
                   {formatCurrency(computedResults.endingCashBalance)}

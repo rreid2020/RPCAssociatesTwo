@@ -280,8 +280,7 @@ const TaxCalculator: FC = () => {
                         <h3 className="calc-section-title">Income</h3>
                         <div className="space-y-2">
                           <div className="tax-row">
-                            <label htmlFor="employmentIncome" className="font-semibold text-text text-xs mb-1">Employment income (Line 10100)</label>
-                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Employment income and taxable benefits.</p>
+                            <label htmlFor="employmentIncome" className="font-semibold text-text text-xs mb-1">Employment income (Line 10100)<span className="ml-2 text-[11px] text-text-light font-normal">Employment income and taxable benefits.</span></label>
                             <input
                               type="text"
                               id="employmentIncome"
@@ -295,8 +294,7 @@ const TaxCalculator: FC = () => {
                           </div>
 
                           <div className="tax-row">
-                            <label htmlFor="interestAndInvestmentIncome" className="font-semibold text-text text-xs mb-1">Interest and investment income (Line 12100)</label>
-                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Interest, dividends from foreign sources, and other investment income.</p>
+                            <label htmlFor="interestAndInvestmentIncome" className="font-semibold text-text text-xs mb-1">Interest and investment income (Line 12100)<span className="ml-2 text-[11px] text-text-light font-normal">Interest, dividends from foreign sources, and other investment income.</span></label>
                             <input
                               type="text"
                               id="interestAndInvestmentIncome"
@@ -310,8 +308,7 @@ const TaxCalculator: FC = () => {
                           </div>
 
                           <div className="tax-row">
-                            <label htmlFor="selfEmploymentIncome" className="font-semibold text-text text-xs mb-1">Net business income (Line 13500)</label>
-                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Business, professional, commission, partnership, fishing, and farming income.</p>
+                            <label htmlFor="selfEmploymentIncome" className="font-semibold text-text text-xs mb-1">Net business income (Line 13500)<span className="ml-2 text-[11px] text-text-light font-normal">Business, professional, commission, partnership, fishing, and farming income.</span></label>
                             <input
                               type="text"
                               id="selfEmploymentIncome"
@@ -325,8 +322,7 @@ const TaxCalculator: FC = () => {
                           </div>
 
                           <div className="tax-row">
-                            <label htmlFor="capitalGains" className="font-semibold text-text text-xs mb-1">Capital gains</label>
-                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Half of this amount is included in income.</p>
+                            <label htmlFor="capitalGains" className="font-semibold text-text text-xs mb-1">Capital gains<span className="ml-2 text-[11px] text-text-light font-normal">Half of this amount is included in income.</span></label>
                             <input
                               type="text"
                               id="capitalGains"
@@ -340,8 +336,7 @@ const TaxCalculator: FC = () => {
                           </div>
 
                           <div className="tax-row">
-                            <label htmlFor="eligibleDividends" className="font-semibold text-text text-xs mb-1">Eligible dividends</label>
-                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Dividends from public Canadian companies. Enter the actual amount received.</p>
+                            <label htmlFor="eligibleDividends" className="font-semibold text-text text-xs mb-1">Eligible dividends<span className="ml-2 text-[11px] text-text-light font-normal">Dividends from public Canadian companies. Enter the actual amount received.</span></label>
                             <input
                               type="text"
                               id="eligibleDividends"
@@ -355,8 +350,7 @@ const TaxCalculator: FC = () => {
                           </div>
 
                           <div className="tax-row">
-                            <label htmlFor="ineligibleDividends" className="font-semibold text-text text-xs mb-1">Ineligible dividends</label>
-                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Dividends from private Canadian companies. Enter the actual amount received.</p>
+                            <label htmlFor="ineligibleDividends" className="font-semibold text-text text-xs mb-1">Ineligible dividends<span className="ml-2 text-[11px] text-text-light font-normal">Dividends from private Canadian companies. Enter the actual amount received.</span></label>
                             <input
                               type="text"
                               id="ineligibleDividends"
@@ -370,8 +364,7 @@ const TaxCalculator: FC = () => {
                           </div>
 
                           <div className="tax-row">
-                            <label htmlFor="otherIncome" className="font-semibold text-text text-xs mb-1">Other income</label>
-                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Rental income, tips, EI, CPP, OAS, and other income sources.</p>
+                            <label htmlFor="otherIncome" className="font-semibold text-text text-xs mb-1">Other income<span className="ml-2 text-[11px] text-text-light font-normal">Rental income, tips, EI, CPP, OAS, and other income sources.</span></label>
                             <input
                               type="text"
                               id="otherIncome"
@@ -390,8 +383,7 @@ const TaxCalculator: FC = () => {
                         <h3 className="calc-section-title">Deductions</h3>
                         <div className="space-y-2">
                           <div className="tax-row">
-                            <label htmlFor="rrspContributions" className="font-semibold text-text text-xs mb-1">RRSP deduction (Line 20800)</label>
-                            <p className="text-xs text-text-light m-0 leading-snug mb-1">RRSP contributions subject to annual limits.</p>
+                            <label htmlFor="rrspContributions" className="font-semibold text-text text-xs mb-1">RRSP deduction (Line 20800)<span className="ml-2 text-[11px] text-text-light font-normal">RRSP contributions subject to annual limits.</span></label>
                             <input
                               type="text"
                               id="rrspContributions"
@@ -405,8 +397,7 @@ const TaxCalculator: FC = () => {
                           </div>
 
                           <div className="tax-row">
-                            <label htmlFor="fhsaContributions" className="font-semibold text-text text-xs mb-1">FHSA deduction (Line 20805)</label>
-                            <p className="text-xs text-text-light m-0 leading-snug mb-1">First Home Savings Account contributions.</p>
+                            <label htmlFor="fhsaContributions" className="font-semibold text-text text-xs mb-1">FHSA deduction (Line 20805)<span className="ml-2 text-[11px] text-text-light font-normal">First Home Savings Account contributions.</span></label>
                             <input
                               type="text"
                               id="fhsaContributions"
@@ -425,8 +416,7 @@ const TaxCalculator: FC = () => {
                         <h3 className="calc-section-title">Tax Credits</h3>
                         <div className="space-y-2">
                           <div className="tax-row">
-                            <label htmlFor="cppContributions" className="font-semibold text-text text-xs mb-1">CPP contributions (Line 30800)</label>
-                            <p className="text-xs text-text-light m-0 leading-snug mb-1">CPP or QPP contributions through employment.</p>
+                            <label htmlFor="cppContributions" className="font-semibold text-text text-xs mb-1">CPP contributions (Line 30800)<span className="ml-2 text-[11px] text-text-light font-normal">CPP or QPP contributions through employment.</span></label>
                             <input
                               type="text"
                               id="cppContributions"
@@ -440,8 +430,7 @@ const TaxCalculator: FC = () => {
                           </div>
 
                           <div className="tax-row">
-                            <label htmlFor="donations" className="font-semibold text-text text-xs mb-1">Donations and gifts (Schedule 9)</label>
-                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Charitable donations and gifts.</p>
+                            <label htmlFor="donations" className="font-semibold text-text text-xs mb-1">Donations and gifts (Schedule 9)<span className="ml-2 text-[11px] text-text-light font-normal">Charitable donations and gifts.</span></label>
                             <input
                               type="text"
                               id="donations"
@@ -460,8 +449,7 @@ const TaxCalculator: FC = () => {
                         <h3 className="calc-section-title">Deductions (Worksheet)</h3>
                         <div className="space-y-2">
                           <div className="tax-row">
-                            <label htmlFor="carryingCharges" className="font-semibold text-text text-xs mb-1">Carrying charges (Line 22100)</label>
-                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Investment-related expenses like safety deposit box, accounting fees.</p>
+                            <label htmlFor="carryingCharges" className="font-semibold text-text text-xs mb-1">Carrying charges (Line 22100)<span className="ml-2 text-[11px] text-text-light font-normal">Investment-related expenses like safety deposit box, accounting fees.</span></label>
                             <input
                               type="text"
                               id="carryingCharges"
@@ -474,8 +462,7 @@ const TaxCalculator: FC = () => {
                             />
                           </div>
                           <div className="tax-row">
-                            <label htmlFor="interestExpenses" className="font-semibold text-text text-xs mb-1">Interest expenses (Line 22100)</label>
-                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Interest paid on money borrowed to earn investment income.</p>
+                            <label htmlFor="interestExpenses" className="font-semibold text-text text-xs mb-1">Interest expenses (Line 22100)<span className="ml-2 text-[11px] text-text-light font-normal">Interest paid on money borrowed to earn investment income.</span></label>
                             <input
                               type="text"
                               id="interestExpenses"
@@ -488,8 +475,7 @@ const TaxCalculator: FC = () => {
                             />
                           </div>
                           <div className="tax-row">
-                            <label htmlFor="otherExpenses" className="font-semibold text-text text-xs mb-1">Other expenses (Line 22100)</label>
-                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Other investment-related expenses.</p>
+                            <label htmlFor="otherExpenses" className="font-semibold text-text text-xs mb-1">Other expenses (Line 22100)<span className="ml-2 text-[11px] text-text-light font-normal">Other investment-related expenses.</span></label>
                             <input
                               type="text"
                               id="otherExpenses"
@@ -502,8 +488,7 @@ const TaxCalculator: FC = () => {
                             />
                           </div>
                           <div className="tax-row">
-                            <label htmlFor="securityOptionsDeduction" className="font-semibold text-text text-xs mb-1">Additional security options deduction (Line 24901)</label>
-                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Deduction for security options benefits.</p>
+                            <label htmlFor="securityOptionsDeduction" className="font-semibold text-text text-xs mb-1">Additional security options deduction (Line 24901)<span className="ml-2 text-[11px] text-text-light font-normal">Deduction for security options benefits.</span></label>
                             <input
                               type="text"
                               id="securityOptionsDeduction"
@@ -516,8 +501,7 @@ const TaxCalculator: FC = () => {
                             />
                           </div>
                           <div className="tax-row">
-                            <label htmlFor="otherPaymentsDeduction" className="font-semibold text-text text-xs mb-1">Other payments deduction (Line 25000)</label>
-                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Other eligible payments and deductions.</p>
+                            <label htmlFor="otherPaymentsDeduction" className="font-semibold text-text text-xs mb-1">Other payments deduction (Line 25000)<span className="ml-2 text-[11px] text-text-light font-normal">Other eligible payments and deductions.</span></label>
                             <input
                               type="text"
                               id="otherPaymentsDeduction"
@@ -536,8 +520,7 @@ const TaxCalculator: FC = () => {
                         <h3 className="calc-section-title">Social Benefits</h3>
                         <div className="space-y-2">
                           <div className="tax-row">
-                            <label htmlFor="oasPension" className="font-semibold text-text text-xs mb-1">OAS pension (Line 11300)</label>
-                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Old Age Security pension amount.</p>
+                            <label htmlFor="oasPension" className="font-semibold text-text text-xs mb-1">OAS pension (Line 11300)<span className="ml-2 text-[11px] text-text-light font-normal">Old Age Security pension amount.</span></label>
                             <input
                               type="text"
                               id="oasPension"
@@ -550,8 +533,7 @@ const TaxCalculator: FC = () => {
                             />
                           </div>
                           <div className="tax-row">
-                            <label htmlFor="netFederalSupplements" className="font-semibold text-text text-xs mb-1">Net federal supplements (Line 14600)</label>
-                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Guaranteed Income Supplement and Allowance amounts.</p>
+                            <label htmlFor="netFederalSupplements" className="font-semibold text-text text-xs mb-1">Net federal supplements (Line 14600)<span className="ml-2 text-[11px] text-text-light font-normal">Guaranteed Income Supplement and Allowance amounts.</span></label>
                             <input
                               type="text"
                               id="netFederalSupplements"
@@ -570,8 +552,7 @@ const TaxCalculator: FC = () => {
                         <h3 className="calc-section-title">Tax Credits (Worksheet)</h3>
                         <div className="space-y-2">
                           <div className="tax-row">
-                            <label htmlFor="politicalContributions" className="font-semibold text-text text-xs mb-1">Political contributions (Line 40900)</label>
-                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Contributions to registered federal political parties.</p>
+                            <label htmlFor="politicalContributions" className="font-semibold text-text text-xs mb-1">Political contributions (Line 40900)<span className="ml-2 text-[11px] text-text-light font-normal">Contributions to registered federal political parties.</span></label>
                             <input
                               type="text"
                               id="politicalContributions"
@@ -584,8 +565,7 @@ const TaxCalculator: FC = () => {
                             />
                           </div>
                           <div className="tax-row">
-                            <label htmlFor="medicalExpenses" className="font-semibold text-text text-xs mb-1">Medical expenses (Line 21500)</label>
-                            <p className="text-xs text-text-light m-0 leading-snug mb-1">Eligible medical expenses for refundable supplement calculation.</p>
+                            <label htmlFor="medicalExpenses" className="font-semibold text-text text-xs mb-1">Medical expenses (Line 21500)<span className="ml-2 text-[11px] text-text-light font-normal">Eligible medical expenses for refundable supplement calculation.</span></label>
                             <input
                               type="text"
                               id="medicalExpenses"
@@ -603,8 +583,7 @@ const TaxCalculator: FC = () => {
                       <div className="mb-md">
                         <h3 className="calc-section-title">Taxes Paid</h3>
                         <div className="tax-row">
-                          <label htmlFor="incomeTaxesPaid" className="font-semibold text-text text-xs mb-1">Income taxes paid (Line 43700)</label>
-                          <p className="text-xs text-text-light m-0 leading-snug mb-1">Taxes deducted from paycheque. Don't include CPP/EI contributions.</p>
+                          <label htmlFor="incomeTaxesPaid" className="font-semibold text-text text-xs mb-1">Income taxes paid (Line 43700)<span className="ml-2 text-[11px] text-text-light font-normal">Taxes deducted from paycheque. Don't include CPP/EI contributions.</span></label>
                             <input
                               type="text"
                               id="incomeTaxesPaid"
@@ -2553,4 +2532,5 @@ const TaxCalculator: FC = () => {
 }
 
 export default TaxCalculator
+
 

@@ -113,4 +113,8 @@
     @apply sm:w-44;
   }
 
+  .tax-calculator .tax-form label {
+    @apply flex flex-wrap items-center;
+  }
+
 }

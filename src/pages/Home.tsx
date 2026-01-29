@@ -16,7 +16,7 @@ const Home: FC = () => {
         keywords="accounting services, CPA, CMA, CGAP, tax preparation, business consulting, tech solutions, financial advisory, Canada accounting, Canadian Income Tax, Ottawa accountant, Ottawa accounting, Ottawa tax services, Ontario accountant, accounting services Ottawa"
         canonical="/"
       />
-      <main className="home-theme">
+      <main>
         <Hero />
         <Services />
         <Why />

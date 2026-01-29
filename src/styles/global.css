@@ -13,7 +13,7 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold text-primary mb-md;
+    @apply font-semibold text-primary-dark mb-md;
     line-height: 1.2;
   }
 
@@ -52,11 +52,11 @@
   }
 
   .btn--primary {
-    @apply bg-primary text-white;
+    @apply bg-primary-dark text-white;
   }
 
   .btn--primary:hover {
-    @apply bg-primary-dark -translate-y-0.5 shadow-md;
+    @apply bg-primary -translate-y-0.5 shadow-md;
   }
 
   .btn--primary:focus {
@@ -64,11 +64,11 @@
   }
 
   .btn--secondary {
-    @apply bg-transparent text-primary border-2 border-primary;
+    @apply bg-transparent text-primary-dark border-2 border-primary-dark;
   }
 
   .btn--secondary:hover {
-    @apply bg-primary text-white;
+    @apply bg-primary-dark text-white;
   }
 
   .btn--secondary:focus {
@@ -79,24 +79,4 @@
     @apply opacity-60 cursor-not-allowed;
   }
 
-  .home-theme h1,
-  .home-theme h2,
-  .home-theme h3,
-  .home-theme h4,
-  .home-theme h5,
-  .home-theme h6 {
-    @apply text-primary-dark;
-  }
-
-  .home-theme .btn--primary {
-    @apply bg-primary-dark;
-  }
-
-  .home-theme .btn--secondary {
-    @apply text-primary-dark border-primary-dark;
-  }
-
-  .home-theme .btn--secondary:hover {
-    @apply bg-primary-dark text-white;
-  }
 }

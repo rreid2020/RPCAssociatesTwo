@@ -989,6 +989,7 @@ const TaxCalculator: FC = () => {
                   )}
                 </div>
               </div>
+            </div>
 
               {/* Detailed breakdown now shown in right column above */}
 

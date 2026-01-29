@@ -21,4 +21,61 @@ services:
       - key: NODE_ENV
         value: production
         scope: RUN_TIME
+      - key: VITE_API_BASE_URL
+        value: https://rpcassociates.co
+        scope: RUN_TIME
 
+  - name: api
+    github:
+      repo: your-username/your-repo-name
+      branch: main
+      deploy_on_push: true
+    source_dir: api/server
+    build_command: npm install
+    run_command: npm start
+    environment_slug: node-js
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 3000
+    routes:
+      - path: /api
+    envs:
+      - key: NODE_ENV
+        value: production
+        scope: RUN_TIME
+      - key: PORT
+        value: "3000"
+        scope: RUN_TIME
+      # Database Configuration (PostgreSQL - Digital Ocean Managed Database)
+      - key: DB_HOST
+        value: db-postgresql-tor1-60715-do-user-20752759-0.e.db.ondigitalocean.com
+        scope: RUN_TIME
+      - key: DB_PORT
+        value: "25060"
+        scope: RUN_TIME
+      - key: DB_NAME
+        value: defaultdb
+        scope: RUN_TIME
+      - key: DB_USER
+        value: doadmin
+        scope: RUN_TIME
+      - key: DB_PASSWORD
+        value: REPLACE_IN_APP_PLATFORM
+        scope: RUN_TIME
+      - key: DB_SSL
+        value: "true"
+        scope: RUN_TIME
+      # Email Configuration (Resend)
+      - key: RESEND_API_KEY
+        value: REPLACE_IN_APP_PLATFORM
+        scope: RUN_TIME
+      - key: EMAIL_FROM
+        value: "RPC Associates <contacts@rpcassociates.co>"
+        scope: RUN_TIME
+      - key: NOTIFICATION_EMAIL
+        value: contacts@rpcassociates.co
+        scope: RUN_TIME
+      # CORS Configuration
+      - key: ALLOWED_ORIGINS
+        value: https://rpcassociates.co,https://www.rpcassociates.co,http://localhost:5173
+        scope: RUN_TIME

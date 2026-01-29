@@ -8,15 +8,15 @@ export default {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#183956',
-          dark: '#0f2538',
+          DEFAULT: '#14B87A',
+          dark: '#0E6A4D',
         },
-        background: '#f9f7f6',
+        background: '#F2FFF8',
         text: {
-          DEFAULT: '#333333',
-          light: '#666666',
+          DEFAULT: '#0B3A2C',
+          light: '#2F6B57',
         },
-        border: '#e0e0e0',
+        border: '#CDEFE0',
       },
       fontFamily: {
         sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif'],

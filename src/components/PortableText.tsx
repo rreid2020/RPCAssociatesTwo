@@ -80,11 +80,11 @@ const PortableText: FC<PortableTextProps> = ({ content }) => {
       code: ({ value }) => {
         if (!value?.code) return null
         return (
-          <pre className="my-lg bg-[#1e1e1e] rounded-lg overflow-hidden shadow-md">
+          <pre className="my-lg bg-slate-900 rounded-lg overflow-hidden shadow-md">
             {value.filename && (
-              <div className="bg-[#2d2d2d] px-4 py-2 text-sm text-gray-400 font-mono border-b border-[#3d3d3d]">{value.filename}</div>
+              <div className="bg-slate-800 px-4 py-2 text-sm text-gray-400 font-mono border-b border-slate-700">{value.filename}</div>
             )}
-            <code className={`block p-md overflow-x-auto font-mono text-sm leading-relaxed text-[#d4d4d4] bg-[#1e1e1e] language-${value.language || 'text'}`}>
+            <code className={`block p-md overflow-x-auto font-mono text-sm leading-relaxed text-slate-200 bg-slate-900 language-${value.language || 'text'}`}>
               {value.code}
             </code>
           </pre>

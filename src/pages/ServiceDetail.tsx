@@ -103,27 +103,6 @@ const ServiceDetail: FC = () => {
           </div>
         </section>
 
-        {/* Quick Overview Section */}
-        <section className="py-xxl bg-background">
-          <div className="max-w-[1200px] mx-auto px-md">
-            <div className="bg-white p-xl rounded-xl shadow-sm border border-border">
-              <h2 className="text-2xl font-bold text-primary-dark mb-md text-center">
-                What's Included
-              </h2>
-              <ul className="max-w-2xl mx-auto list-none">
-                {service.bullets.map((bullet, index) => (
-                  <li 
-                    key={index} 
-                    className="pl-md mb-sm relative before:content-['•'] before:absolute before:left-0 before:text-accent before:font-bold text-[0.9375rem] text-text-light"
-                  >
-                    {bullet}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </section>
-
         {/* CTA Section */}
         <section className="py-xxl bg-background">
           <div className="max-w-[1200px] mx-auto px-md text-center">

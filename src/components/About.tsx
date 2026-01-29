@@ -30,12 +30,6 @@ const About: FC = () => {
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-md p-lg bg-white rounded-xl shadow-sm">
-          <div className="text-[0.9375rem] pl-md relative before:content-['•'] before:absolute before:left-0 before:text-primary before:font-bold">Practical, plain-language advice</div>
-          <div className="text-[0.9375rem] pl-md relative before:content-['•'] before:absolute before:left-0 before:text-primary before:font-bold">Robust internal controls</div>
-          <div className="text-[0.9375rem] pl-md relative before:content-['•'] before:absolute before:left-0 before:text-primary before:font-bold">Modern cloud-based tools</div>
-          <div className="text-[0.9375rem] pl-md relative before:content-['•'] before:absolute before:left-0 before:text-primary before:font-bold">Flexibility and responsiveness</div>
-        </div>
       </div>
     </section>
   )

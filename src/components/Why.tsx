@@ -55,7 +55,7 @@ const Why: FC = () => {
           <div className="flex flex-col gap-lg">
             {reasons.map((reason) => (
               <div key={reason.number} className="flex gap-md">
-                <div className="flex-shrink-0 w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center font-bold text-lg">
+                <div className="flex-shrink-0 w-10 h-10 bg-accent text-white rounded-full flex items-center justify-center font-bold text-lg">
                   {reason.number}
                 </div>
                 <div>

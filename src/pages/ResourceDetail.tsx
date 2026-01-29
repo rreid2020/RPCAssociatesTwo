@@ -46,7 +46,7 @@ const ResourceDetail: FC = () => {
         />
         <main className="py-xxl min-h-[60vh]">
           <div className="max-w-[1200px] mx-auto px-md text-center">
-            <h1 className="text-4xl font-bold text-primary mb-md">Resource Not Found</h1>
+            <h1 className="text-4xl font-bold text-primary-dark mb-md">Resource Not Found</h1>
             <p className="text-lg text-text-light mb-lg">
               The resource you're looking for doesn't exist.
             </p>
@@ -164,7 +164,7 @@ const ResourceDetail: FC = () => {
                 <div className="space-y-8">
                   {/* Category Label */}
                   <div>
-                    <span className="text-sm font-semibold text-primary uppercase tracking-wider">
+                    <span className="text-sm font-semibold text-accent uppercase tracking-wider">
                       {resource.categoryLabel}
                     </span>
                   </div>
@@ -222,7 +222,7 @@ const ResourceDetail: FC = () => {
                             <ul className="space-y-3">
                               {bullets.map((bullet, index) => (
                                 <li key={index} className="flex items-start">
-                                  <svg className="w-5 h-5 text-primary mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <svg className="w-5 h-5 text-accent mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                   </svg>
                                   <span className="text-base text-gray-700">{bullet}</span>
@@ -265,7 +265,7 @@ const ResourceDetail: FC = () => {
                       <ul className="space-y-3">
                         {resource.benefits.slice(0, 4).map((benefit, index) => (
                           <li key={index} className="flex items-start">
-                            <svg className="w-5 h-5 text-primary mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-5 h-5 text-accent mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
                             <span className="text-base text-gray-700">{benefit}</span>
@@ -293,7 +293,7 @@ const ResourceDetail: FC = () => {
         <section className="py-xxl bg-background">
           <div className="max-w-[1200px] mx-auto px-md">
             <div className="bg-white p-xl rounded-xl shadow-sm border border-border text-center">
-              <h2 className="text-2xl lg:text-3xl font-bold text-primary mb-md">
+              <h2 className="text-2xl lg:text-3xl font-bold text-primary-dark mb-md">
                 Need Help with Your Finances?
               </h2>
               <p className="text-lg text-text-light mb-lg max-w-2xl mx-auto">

@@ -15,7 +15,7 @@ const Resources: FC = () => {
         to={`/resources/${resource.slug}`}
         className="bg-white p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
       >
-        <span className="inline-block px-3 py-1 bg-primary text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-md">
+        <span className="inline-block px-3 py-1 bg-accent text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-md">
           {resource.categoryLabel}
         </span>
         <h3 className="text-xl font-semibold text-primary mb-sm">
@@ -45,7 +45,7 @@ const Resources: FC = () => {
         <section className="py-xxl bg-background">
           <div className="max-w-[1200px] mx-auto px-md">
             <div className="text-center mb-xl max-w-[800px] mx-auto">
-              <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-md">Resources</h1>
+              <h1 className="text-3xl lg:text-4xl font-bold text-primary-dark mb-md">Resources</h1>
               <p className="text-lg text-text-light leading-relaxed">
                 Helpful resources, tools, and guides to support your business and personal financial planning. Access calculators, templates, and expert insights to make informed decisions.
               </p>
@@ -53,7 +53,7 @@ const Resources: FC = () => {
             
             {/* Online Calculator and Tools Section */}
             <div className="mb-xxl">
-              <h2 className="text-2xl lg:text-3xl font-bold text-primary mb-lg">
+              <h2 className="text-2xl lg:text-3xl font-bold text-primary-dark mb-lg">
                 Online Calculator and Tools
               </h2>
               {calculators.length > 0 ? (
@@ -67,7 +67,7 @@ const Resources: FC = () => {
 
             {/* Excel Templates Section */}
             <div className="mb-xxl">
-              <h2 className="text-2xl lg:text-3xl font-bold text-primary mb-lg">
+              <h2 className="text-2xl lg:text-3xl font-bold text-primary-dark mb-lg">
                 Excel Templates
               </h2>
               {excelTemplates.length > 0 ? (
@@ -81,7 +81,7 @@ const Resources: FC = () => {
 
             {/* Publications Section */}
             <div className="mb-xxl">
-              <h2 className="text-2xl lg:text-3xl font-bold text-primary mb-lg">
+              <h2 className="text-2xl lg:text-3xl font-bold text-primary-dark mb-lg">
                 Publications
               </h2>
               {publications.length > 0 ? (

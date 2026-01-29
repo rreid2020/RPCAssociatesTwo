@@ -48,7 +48,7 @@ const CashFlowTemplate: FC = () => {
         <section className="py-xxl bg-background">
           <div className="max-w-[1200px] mx-auto px-md">
             <div className="text-center mb-xl max-w-[800px] mx-auto">
-              <span className="inline-block px-4 py-2 bg-primary text-white text-sm font-semibold uppercase tracking-wider rounded-full mb-md">
+              <span className="inline-block px-4 py-2 bg-accent text-white text-sm font-semibold uppercase tracking-wider rounded-full mb-md">
                 Excel Template
               </span>
               <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-md">

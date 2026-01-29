@@ -15,7 +15,7 @@ const ServiceDetail: FC = () => {
         <main>
           <section className="py-xxl bg-background">
             <div className="max-w-[1200px] mx-auto px-md text-center">
-              <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-md">
+              <h1 className="text-3xl lg:text-4xl font-bold text-primary-dark mb-md">
                 Service Not Found
               </h1>
               <p className="text-lg text-text-light mb-lg">
@@ -69,10 +69,10 @@ const ServiceDetail: FC = () => {
         <section className="py-xxl bg-background">
           <div className="max-w-[1200px] mx-auto px-md">
             <div className="text-center mb-xl max-w-[800px] mx-auto">
-              <span className="inline-block px-4 py-2 bg-primary text-white text-sm font-semibold uppercase tracking-wider rounded-full mb-md">
+              <span className="inline-block px-4 py-2 bg-accent text-white text-sm font-semibold uppercase tracking-wider rounded-full mb-md">
                 {service.pill}
               </span>
-              <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-md">
+              <h1 className="text-3xl lg:text-4xl font-bold text-primary-dark mb-md">
                 {service.title}
               </h1>
               <p className="text-lg text-text-light leading-relaxed">
@@ -91,7 +91,7 @@ const ServiceDetail: FC = () => {
                   key={index}
                   className="bg-background p-lg rounded-xl border border-border hover:shadow-md transition-all"
                 >
-                  <h3 className="text-xl font-semibold text-primary mb-sm">
+                  <h3 className="text-xl font-semibold text-primary-dark mb-sm">
                     {detail.title}
                   </h3>
                   <p className="text-text-light leading-relaxed">
@@ -107,14 +107,14 @@ const ServiceDetail: FC = () => {
         <section className="py-xxl bg-background">
           <div className="max-w-[1200px] mx-auto px-md">
             <div className="bg-white p-xl rounded-xl shadow-sm border border-border">
-              <h2 className="text-2xl font-bold text-primary mb-md text-center">
+              <h2 className="text-2xl font-bold text-primary-dark mb-md text-center">
                 What's Included
               </h2>
               <ul className="max-w-2xl mx-auto list-none">
                 {service.bullets.map((bullet, index) => (
                   <li 
                     key={index} 
-                    className="pl-md mb-sm relative before:content-['•'] before:absolute before:left-0 before:text-primary before:font-bold text-[0.9375rem] text-text-light"
+                    className="pl-md mb-sm relative before:content-['•'] before:absolute before:left-0 before:text-accent before:font-bold text-[0.9375rem] text-text-light"
                   >
                     {bullet}
                   </li>
@@ -128,7 +128,7 @@ const ServiceDetail: FC = () => {
         <section className="py-xxl bg-background">
           <div className="max-w-[1200px] mx-auto px-md text-center">
             <div className="bg-white p-xl rounded-xl shadow-sm border border-border">
-              <h2 className="text-3xl lg:text-4xl font-bold text-primary mb-md">
+              <h2 className="text-3xl lg:text-4xl font-bold text-primary-dark mb-md">
                 Ready to Get Started?
               </h2>
               <p className="text-lg text-text-light mb-lg max-w-2xl mx-auto">

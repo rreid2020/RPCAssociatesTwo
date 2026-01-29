@@ -6,7 +6,7 @@ const About: FC = () => {
       <div className="max-w-[1200px] mx-auto px-md">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-xxl mb-xl">
           <div>
-            <span className="inline-block px-3 py-1 bg-primary text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-md">About RPC Associates</span>
+            <span className="inline-block px-3 py-1 bg-accent text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-md">About RPC Associates</span>
             <h2 className="mb-md">Practical accounting, advisory, and tech—under one roof</h2>
             <p className="mb-md">
               RPC Associates, Accounting, Consulting, and Tech Solutions is a boutique firm focused on helping businesses and professionals build strong financial foundations and smarter systems.

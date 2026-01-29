@@ -75,7 +75,7 @@ const Services: FC = () => {
         <section className="py-xxl bg-background">
           <div className="max-w-[1200px] mx-auto px-md">
             <div className="text-center mb-xl max-w-[800px] mx-auto">
-              <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-md">
+              <h1 className="text-3xl lg:text-4xl font-bold text-primary-dark mb-md">
                 Our Services
               </h1>
               <p className="text-lg text-text-light leading-relaxed">
@@ -96,14 +96,14 @@ const Services: FC = () => {
                   className="bg-background p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
                 >
                   <div className="flex items-center gap-3 mb-md">
-                    <div className="flex-shrink-0 text-primary">
+                    <div className="flex-shrink-0 text-accent">
                       <ServiceIcon icon={service.slug} />
                     </div>
-                    <span className="inline-block px-3 py-1 bg-primary text-white text-xs font-semibold uppercase tracking-wider rounded-full">
+                    <span className="inline-block px-3 py-1 bg-accent text-white text-xs font-semibold uppercase tracking-wider rounded-full">
                       {service.pill}
                     </span>
                   </div>
-                  <h3 className="text-xl font-semibold text-primary mb-sm">
+                  <h3 className="text-xl font-semibold text-primary-dark mb-sm">
                     {service.title}
                   </h3>
                   <p className="text-text-light mb-md text-[0.9375rem] leading-relaxed">
@@ -113,7 +113,7 @@ const Services: FC = () => {
                     {service.bullets.map((bullet, bulletIndex) => (
                       <li 
                         key={bulletIndex} 
-                        className="pl-md mb-xs relative before:content-['•'] before:absolute before:left-0 before:text-primary before:font-bold text-[0.9375rem] text-text-light"
+                        className="pl-md mb-xs relative before:content-['•'] before:absolute before:left-0 before:text-accent before:font-bold text-[0.9375rem] text-text-light"
                       >
                         {bullet}
                       </li>
@@ -129,7 +129,7 @@ const Services: FC = () => {
         <section className="py-xxl bg-background">
           <div className="max-w-[900px] mx-auto px-md text-center">
             <div className="bg-white p-xl rounded-xl shadow-sm border border-border">
-              <h2 className="text-3xl lg:text-4xl font-bold text-primary mb-md">
+              <h2 className="text-3xl lg:text-4xl font-bold text-primary-dark mb-md">
                 Ready to Get Started?
               </h2>
               <p className="text-lg text-text-light mb-lg max-w-2xl mx-auto">

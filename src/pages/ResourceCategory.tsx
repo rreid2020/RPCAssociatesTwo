@@ -19,7 +19,7 @@ const ResourceCategory: FC = () => {
         />
         <main className="py-xxl min-h-[60vh]">
           <div className="max-w-[1200px] mx-auto px-md text-center">
-            <h1 className="text-4xl font-bold text-primary mb-md">Resource Not Found</h1>
+            <h1 className="text-4xl font-bold text-primary-dark mb-md">Resource Not Found</h1>
             <p className="text-lg text-text-light mb-lg">
               The resource category you're looking for doesn't exist.
             </p>
@@ -75,7 +75,7 @@ const ResourceCategory: FC = () => {
         <section className="py-xxl bg-background">
           <div className="max-w-[1200px] mx-auto px-md">
             <div className="text-center mb-xl max-w-[800px] mx-auto">
-              <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-md">{category.title}</h1>
+              <h1 className="text-3xl lg:text-4xl font-bold text-primary-dark mb-md">{category.title}</h1>
               <p className="text-lg text-text-light leading-relaxed">
                 {category.description}
               </p>
@@ -90,10 +90,10 @@ const ResourceCategory: FC = () => {
                       to={`/resources/${resource.slug}`}
                       className="bg-white p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
                     >
-                      <span className="inline-block px-3 py-1 bg-primary text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-md">
+                      <span className="inline-block px-3 py-1 bg-accent text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-md">
                         {resource.categoryLabel}
                       </span>
-                      <h3 className="text-xl font-semibold text-primary mb-sm">
+                      <h3 className="text-xl font-semibold text-primary-dark mb-sm">
                         {resource.title}
                       </h3>
                       <p className="text-text-light text-[0.9375rem] leading-relaxed mb-sm">
@@ -128,7 +128,7 @@ const ResourceCategory: FC = () => {
             <section className="py-xxl bg-background">
               <div className="max-w-[900px] mx-auto px-md text-center">
                 <div className="bg-white p-xl rounded-xl shadow-sm border border-border">
-                  <h2 className="text-3xl lg:text-4xl font-bold text-primary mb-md">
+                  <h2 className="text-3xl lg:text-4xl font-bold text-primary-dark mb-md">
                     Need Help with Your Finances?
                   </h2>
                   <p className="text-lg text-text-light mb-lg max-w-2xl mx-auto">

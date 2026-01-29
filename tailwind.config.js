@@ -11,7 +11,7 @@ export default {
           DEFAULT: '#0E6A4D',
           dark: '#0B3A2C',
         },
-        background: '#F8FFFB',
+        background: '#FCFFFD',
         text: {
           DEFAULT: '#0B3A2C',
           light: '#2F6B57',

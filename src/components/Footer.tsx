@@ -1,11 +1,14 @@
 import { FC } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 
 const Footer: FC = () => {
   const currentYear = new Date().getFullYear()
+  const location = useLocation()
+  const isHome = location.pathname === '/'
+  const footerClass = isHome ? 'bg-primary-dark' : 'bg-primary'
 
   return (
-    <footer className="bg-primary text-white py-xl mt-xxl">
+    <footer className={`${footerClass} text-white py-xl mt-xxl`}>
       <div className="max-w-[1200px] mx-auto px-md">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-xl items-start">
           <div>

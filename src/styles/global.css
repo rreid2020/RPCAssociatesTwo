@@ -78,4 +78,25 @@
   .btn:disabled {
     @apply opacity-60 cursor-not-allowed;
   }
+
+  .home-theme h1,
+  .home-theme h2,
+  .home-theme h3,
+  .home-theme h4,
+  .home-theme h5,
+  .home-theme h6 {
+    @apply text-primary-dark;
+  }
+
+  .home-theme .btn--primary {
+    @apply bg-primary-dark;
+  }
+
+  .home-theme .btn--secondary {
+    @apply text-primary-dark border-primary-dark;
+  }
+
+  .home-theme .btn--secondary:hover {
+    @apply bg-primary-dark text-white;
+  }
 }

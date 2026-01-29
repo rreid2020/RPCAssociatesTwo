@@ -104,4 +104,13 @@
     @apply bg-background p-3 rounded-lg border border-border;
   }
 
+  .tax-calculator .tax-form .tax-row {
+    @apply flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3;
+  }
+
+  .tax-calculator .tax-form .tax-row .calc-input,
+  .tax-calculator .tax-form .tax-row .calc-select {
+    @apply sm:w-44;
+  }
+
 }

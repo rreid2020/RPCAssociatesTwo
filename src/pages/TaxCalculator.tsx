@@ -211,11 +211,11 @@ const TaxCalculator: FC = () => {
             <div className="max-w-[1800px] mx-auto">
               <div className="flex flex-col gap-xxl">
                 <div className="calc-card">
-                  <h2 className="text-2xl font-bold text-primary mb-md lg:mb-lg">Your Inputs</h2>
-                  <form className="flex flex-col gap-md" onSubmit={handleCalculate}>
+                  <h2 className="text-2xl font-bold text-primary mb-md lg:mb-lg">Income Tax Statement</h2>
+                  <form className="tax-form flex flex-col gap-3" onSubmit={handleCalculate}>
                     <div className="calc-panel">
                       <div className="mb-md">
-                        <div className="flex flex-col gap-1">
+                        <div className="tax-row">
                           <label htmlFor="province" className="font-semibold text-text text-sm mb-1">Choose province or territory</label>
                           <select
                             id="province"
@@ -235,7 +235,7 @@ const TaxCalculator: FC = () => {
                       <div className="mb-md">
                         <h3 className="calc-section-title">Personal Information</h3>
                         <div className="space-y-2">
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="dateOfBirth" className="font-semibold text-text text-xs mb-1">Date of Birth</label>
                             <input
                               type="date"
@@ -246,7 +246,7 @@ const TaxCalculator: FC = () => {
                             />
                           </div>
 
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="maritalStatus" className="font-semibold text-text text-xs mb-1">Marital Status</label>
                             <select
                               id="maritalStatus"
@@ -262,7 +262,7 @@ const TaxCalculator: FC = () => {
                             </select>
                           </div>
 
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="numberOfDependents" className="font-semibold text-text text-xs mb-1">Number of Dependents (18 years or younger)</label>
                             <input
                               type="number"
@@ -279,7 +279,7 @@ const TaxCalculator: FC = () => {
                       <div className="mb-md">
                         <h3 className="calc-section-title">Income</h3>
                         <div className="space-y-2">
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="employmentIncome" className="font-semibold text-text text-xs mb-1">Employment income (Line 10100)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Employment income and taxable benefits.</p>
                             <input
@@ -294,7 +294,7 @@ const TaxCalculator: FC = () => {
                             />
                           </div>
 
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="interestAndInvestmentIncome" className="font-semibold text-text text-xs mb-1">Interest and investment income (Line 12100)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Interest, dividends from foreign sources, and other investment income.</p>
                             <input
@@ -309,7 +309,7 @@ const TaxCalculator: FC = () => {
                             />
                           </div>
 
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="selfEmploymentIncome" className="font-semibold text-text text-xs mb-1">Net business income (Line 13500)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Business, professional, commission, partnership, fishing, and farming income.</p>
                             <input
@@ -324,7 +324,7 @@ const TaxCalculator: FC = () => {
                             />
                           </div>
 
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="capitalGains" className="font-semibold text-text text-xs mb-1">Capital gains</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Half of this amount is included in income.</p>
                             <input
@@ -339,7 +339,7 @@ const TaxCalculator: FC = () => {
                             />
                           </div>
 
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="eligibleDividends" className="font-semibold text-text text-xs mb-1">Eligible dividends</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Dividends from public Canadian companies. Enter the actual amount received.</p>
                             <input
@@ -354,7 +354,7 @@ const TaxCalculator: FC = () => {
                             />
                           </div>
 
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="ineligibleDividends" className="font-semibold text-text text-xs mb-1">Ineligible dividends</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Dividends from private Canadian companies. Enter the actual amount received.</p>
                             <input
@@ -369,7 +369,7 @@ const TaxCalculator: FC = () => {
                             />
                           </div>
 
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="otherIncome" className="font-semibold text-text text-xs mb-1">Other income</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Rental income, tips, EI, CPP, OAS, and other income sources.</p>
                             <input
@@ -389,7 +389,7 @@ const TaxCalculator: FC = () => {
                       <div className="mb-md">
                         <h3 className="calc-section-title">Deductions</h3>
                         <div className="space-y-2">
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="rrspContributions" className="font-semibold text-text text-xs mb-1">RRSP deduction (Line 20800)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">RRSP contributions subject to annual limits.</p>
                             <input
@@ -404,7 +404,7 @@ const TaxCalculator: FC = () => {
                             />
                           </div>
 
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="fhsaContributions" className="font-semibold text-text text-xs mb-1">FHSA deduction (Line 20805)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">First Home Savings Account contributions.</p>
                             <input
@@ -424,7 +424,7 @@ const TaxCalculator: FC = () => {
                       <div className="mb-md">
                         <h3 className="calc-section-title">Tax Credits</h3>
                         <div className="space-y-2">
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="cppContributions" className="font-semibold text-text text-xs mb-1">CPP contributions (Line 30800)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">CPP or QPP contributions through employment.</p>
                             <input
@@ -439,7 +439,7 @@ const TaxCalculator: FC = () => {
                             />
                           </div>
 
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="donations" className="font-semibold text-text text-xs mb-1">Donations and gifts (Schedule 9)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Charitable donations and gifts.</p>
                             <input
@@ -459,7 +459,7 @@ const TaxCalculator: FC = () => {
                       <div className="mb-md">
                         <h3 className="calc-section-title">Deductions (Worksheet)</h3>
                         <div className="space-y-2">
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="carryingCharges" className="font-semibold text-text text-xs mb-1">Carrying charges (Line 22100)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Investment-related expenses like safety deposit box, accounting fees.</p>
                             <input
@@ -473,7 +473,7 @@ const TaxCalculator: FC = () => {
                               onBlur={(e) => handleInputBlur('carryingCharges', e.target.value)}
                             />
                           </div>
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="interestExpenses" className="font-semibold text-text text-xs mb-1">Interest expenses (Line 22100)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Interest paid on money borrowed to earn investment income.</p>
                             <input
@@ -487,7 +487,7 @@ const TaxCalculator: FC = () => {
                               onBlur={(e) => handleInputBlur('interestExpenses', e.target.value)}
                             />
                           </div>
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="otherExpenses" className="font-semibold text-text text-xs mb-1">Other expenses (Line 22100)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Other investment-related expenses.</p>
                             <input
@@ -501,7 +501,7 @@ const TaxCalculator: FC = () => {
                               onBlur={(e) => handleInputBlur('otherExpenses', e.target.value)}
                             />
                           </div>
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="securityOptionsDeduction" className="font-semibold text-text text-xs mb-1">Additional security options deduction (Line 24901)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Deduction for security options benefits.</p>
                             <input
@@ -515,7 +515,7 @@ const TaxCalculator: FC = () => {
                               onBlur={(e) => handleInputBlur('securityOptionsDeduction', e.target.value)}
                             />
                           </div>
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="otherPaymentsDeduction" className="font-semibold text-text text-xs mb-1">Other payments deduction (Line 25000)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Other eligible payments and deductions.</p>
                             <input
@@ -535,7 +535,7 @@ const TaxCalculator: FC = () => {
                       <div className="mb-md">
                         <h3 className="calc-section-title">Social Benefits</h3>
                         <div className="space-y-2">
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="oasPension" className="font-semibold text-text text-xs mb-1">OAS pension (Line 11300)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Old Age Security pension amount.</p>
                             <input
@@ -549,7 +549,7 @@ const TaxCalculator: FC = () => {
                               onBlur={(e) => handleInputBlur('oasPension', e.target.value)}
                             />
                           </div>
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="netFederalSupplements" className="font-semibold text-text text-xs mb-1">Net federal supplements (Line 14600)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Guaranteed Income Supplement and Allowance amounts.</p>
                             <input
@@ -569,7 +569,7 @@ const TaxCalculator: FC = () => {
                       <div className="mb-md">
                         <h3 className="calc-section-title">Tax Credits (Worksheet)</h3>
                         <div className="space-y-2">
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="politicalContributions" className="font-semibold text-text text-xs mb-1">Political contributions (Line 40900)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Contributions to registered federal political parties.</p>
                             <input
@@ -583,7 +583,7 @@ const TaxCalculator: FC = () => {
                               onBlur={(e) => handleInputBlur('politicalContributions', e.target.value)}
                             />
                           </div>
-                          <div className="flex flex-col gap-1">
+                          <div className="tax-row">
                             <label htmlFor="medicalExpenses" className="font-semibold text-text text-xs mb-1">Medical expenses (Line 21500)</label>
                             <p className="text-xs text-text-light m-0 leading-snug mb-1">Eligible medical expenses for refundable supplement calculation.</p>
                             <input
@@ -602,7 +602,7 @@ const TaxCalculator: FC = () => {
 
                       <div className="mb-md">
                         <h3 className="calc-section-title">Taxes Paid</h3>
-                        <div className="flex flex-col gap-1">
+                        <div className="tax-row">
                           <label htmlFor="incomeTaxesPaid" className="font-semibold text-text text-xs mb-1">Income taxes paid (Line 43700)</label>
                           <p className="text-xs text-text-light m-0 leading-snug mb-1">Taxes deducted from paycheque. Don't include CPP/EI contributions.</p>
                             <input
@@ -2553,3 +2553,4 @@ const TaxCalculator: FC = () => {
 }
 
 export default TaxCalculator
+

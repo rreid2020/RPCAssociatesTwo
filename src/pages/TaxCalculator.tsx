@@ -896,7 +896,7 @@ const TaxCalculator: FC = () => {
                       </div>
                     </div>
                   ) : hasCalculated && results ? (
-                    <div className="flex flex-col gap-md bg-white p-md rounded-lg">
+                    <div className="flex flex-col gap-md calc-panel">
                       <div className="flex flex-col gap-1 pb-md border-b border-border last:border-b-0 last:pb-0">
                         <div className="flex flex-col gap-1">
                           <span className="font-semibold text-text text-sm">Total income</span>
@@ -1002,13 +1002,13 @@ const TaxCalculator: FC = () => {
                     Use this worksheet to calculate the amounts to enter on your return.
                   </p>
                   
-                  <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
+                  <div className="calc-card mb-xl">
                     <h3 className="text-2xl font-semibold text-primary mb-md">Lines 12000 and 12010 – Taxable amount of dividends from taxable Canadian corporations</h3>
                     <p className="text-sm text-text-light mb-md">Special rules apply for income from property (including shares) that one family member lends or transfers to another. For more information, about loans and transfers of property, go to canada.ca/line-12000.</p>
                     <p className="text-sm text-text-light mb-md">You may be able to claim a dividend tax credit for dividends you received from taxable Canadian corporations. See line 40425 of this worksheet.</p>
                     
                     <div className="space-y-2">
-                      <div className="bg-white border border-border p-md rounded-lg">
+                      <div className="calc-panel">
                         <h4 className="text-sm font-semibold text-primary mb-xs">Taxable amount of dividends (other than eligible)</h4>
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between items-center py-0.5 border-b border-border">
@@ -1049,7 +1049,7 @@ const TaxCalculator: FC = () => {
                         </div>
                       </div>
                       
-                      <div className="bg-white border border-border p-md rounded-lg">
+                      <div className="calc-panel">
                         <h4 className="text-sm font-semibold text-primary mb-xs">Taxable amount of dividends (eligible and other than eligible)</h4>
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between items-center py-0.5 border-b border-border">
@@ -1090,7 +1090,7 @@ const TaxCalculator: FC = () => {
                         </div>
                       </div>
 
-                      <div className="bg-white border border-border p-md rounded-lg">
+                      <div className="calc-panel">
                         <h4 className="text-sm font-semibold text-primary mb-xs">Taxable amount of dividends if you did not receive an information slip</h4>
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between items-center py-0.5 border-b border-border">
@@ -1151,9 +1151,9 @@ const TaxCalculator: FC = () => {
                     </div>
                   </div>
 
-                  <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
+                  <div className="calc-card mb-xl">
                     <h3 className="text-2xl font-semibold text-primary mb-md">Line 12100 – Interest and other investment income</h3>
-                    <div className="bg-white border border-border p-md rounded-lg">
+                    <div className="calc-panel">
                       <div className="space-y-1 text-xs">
                         <div className="flex justify-between items-center py-0.5 border-b border-border">
                           <span className="text-text">Box 25 of all T3 slips</span>
@@ -1236,9 +1236,9 @@ const TaxCalculator: FC = () => {
                     </div>
                   </div>
 
-                  <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
+                  <div className="calc-card mb-xl">
                     <h3 className="text-2xl font-semibold text-primary mb-md">Line 22100 – Carrying charges, interest expenses, and other expenses</h3>
-                    <div className="bg-white border border-border p-md rounded-lg">
+                    <div className="calc-panel">
                       <div className="space-y-1 text-xs">
                         <div className="flex justify-between items-center py-0.5 border-b border-border">
                           <span className="text-text">Total carrying charges</span>
@@ -1272,9 +1272,9 @@ const TaxCalculator: FC = () => {
                     </div>
                   </div>
 
-                  <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
+                  <div className="calc-card mb-xl">
                     <h3 className="text-2xl font-semibold text-primary mb-md">Line 24901 – Additional security options deduction</h3>
-                    <div className="bg-white border border-border p-md rounded-lg">
+                    <div className="calc-panel">
                       <div className="space-y-1 text-xs">
                         <div className="flex justify-between items-center py-0.5 border-b border-border">
                           <span className="text-text">Additional security options deduction</span>
@@ -1288,9 +1288,9 @@ const TaxCalculator: FC = () => {
                     </div>
                   </div>
 
-                  <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
+                  <div className="calc-card mb-xl">
                     <h3 className="text-2xl font-semibold text-primary mb-md">Line 25000 – Other payments deduction</h3>
-                    <div className="bg-white border border-border p-md rounded-lg">
+                    <div className="calc-panel">
                       <div className="space-y-1 text-xs">
                         <div className="flex justify-between items-center py-0.5 border-b border-border">
                           <span className="text-text">Amount from line 23400 of your return (if negative, enter "0")</span>
@@ -1366,7 +1366,7 @@ const TaxCalculator: FC = () => {
                     </div>
                   </div>
 
-                  <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
+                  <div className="calc-card mb-xl">
                     <h3 className="text-2xl font-semibold text-primary mb-md">Line 30000 – Basic personal amount</h3>
                     <p className="text-sm text-text-light mb-md">If the amount from line 23600 of your return is:</p>
                     <ul className="text-sm text-text-light mb-md list-disc list-inside">
@@ -1374,7 +1374,7 @@ const TaxCalculator: FC = () => {
                       <li>$253,414 or more, enter $14,538 on line 30000 of your return</li>
                       <li>Otherwise, complete the calculation below.</li>
                     </ul>
-                    <div className="bg-white border border-border p-md rounded-lg">
+                    <div className="calc-panel">
                       <div className="space-y-1 text-xs">
                         <div className="flex justify-between items-center py-0.5 border-b border-border">
                           <span className="text-text">Base amount</span>
@@ -1429,10 +1429,10 @@ const TaxCalculator: FC = () => {
                     </div>
                   </div>
 
-                  <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
+                  <div className="calc-card mb-xl">
                     <h3 className="text-2xl font-semibold text-primary mb-md">Line 40425 – Federal dividend tax credit</h3>
                     <div className="space-y-2">
-                      <div className="bg-white border border-border p-md rounded-lg">
+                      <div className="calc-panel">
                         <h4 className="text-sm font-semibold text-primary mb-xs">Calculation of the federal dividend tax credit as shown on your information slips</h4>
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between items-center py-0.5 border-b border-border">
@@ -1473,7 +1473,7 @@ const TaxCalculator: FC = () => {
                         </div>
                       </div>
                       
-                      <div className="bg-white border border-border p-md rounded-lg">
+                      <div className="calc-panel">
                         <h4 className="text-sm font-semibold text-primary mb-xs">Calculation of the federal dividend tax credit if you did not receive an information slip</h4>
                         <p className="text-xs text-text-light mb-xs italic">Note: Foreign dividends do not qualify for this credit.</p>
                         <p className="text-xs text-text-light mb-xs italic">(1) Enter only the amount of dividends that were not shown on an information slip.</p>
@@ -1539,14 +1539,14 @@ const TaxCalculator: FC = () => {
                     </div>
                   </div>
 
-                  <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
+                  <div className="calc-card mb-xl">
                     <h3 className="text-2xl font-semibold text-primary mb-md">Line 23500 – Social benefits repayment</h3>
                     <p className="text-sm text-text-light mb-md">Complete the chart below if one or both of the following applies:</p>
                     <ul className="text-sm text-text-light mb-md list-disc list-inside">
                       <li>You entered an amount on line 11900 of your return and the amount on line 23400 is more than $82,125</li>
                       <li>You entered an amount on line 11300 or line 14600 of your return and the amount on line 23400 is more than $93,454</li>
                     </ul>
-                    <div className="bg-white border border-border p-md rounded-lg">
+                    <div className="calc-panel">
                       <div className="space-y-1 text-xs">
                         <div className="flex justify-between items-center py-0.5 border-b border-border">
                           <span className="text-text">Old age security (OAS) pension from line 11300 of your return</span>
@@ -1699,9 +1699,9 @@ const TaxCalculator: FC = () => {
                     </div>
                   </div>
 
-                  <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
+                  <div className="calc-card mb-xl">
                     <h3 className="text-2xl font-semibold text-primary mb-md">Line 41000 – Federal political contribution tax credit</h3>
-                    <div className="bg-white border border-border p-md rounded-lg overflow-x-auto">
+                    <div className="calc-panel overflow-x-auto">
                       <div className="text-xs">
                         <div className="flex justify-between items-center py-0.5 border-b border-border mb-2">
                           <span className="text-text font-semibold">Total federal political contributions from line 40900 of your return</span>
@@ -1772,9 +1772,9 @@ const TaxCalculator: FC = () => {
                     </div>
                   </div>
 
-                  <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
+                  <div className="calc-card mb-xl">
                     <h3 className="text-2xl font-semibold text-primary mb-md">Line 45200 – Refundable medical expense supplement</h3>
-                    <div className="bg-white border border-border p-md rounded-lg overflow-x-auto">
+                    <div className="calc-panel overflow-x-auto">
                       <div className="text-xs">
                         <table className="w-full border-collapse text-xs">
                           <thead>
@@ -1904,7 +1904,7 @@ const TaxCalculator: FC = () => {
                   </h2>
                   
                   {/* Federal Tax Calculation Table */}
-                  <div className="bg-white p-lg rounded-xl shadow-sm mb-xl">
+                  <div className="calc-card mb-xl">
                     <h3 className="text-2xl font-semibold text-primary mb-md">Part A - Federal tax on taxable income</h3>
                     <p className="text-sm text-text-light mb-md">Use the amount from line 26000 to complete the appropriate column below.</p>
                     
@@ -2164,7 +2164,7 @@ const TaxCalculator: FC = () => {
                     if (!provincialData) return null
                     
                     return (
-                      <div className="bg-white p-lg rounded-xl shadow-sm">
+                      <div className="calc-card">
                         <h3 className="text-2xl font-semibold text-primary mb-md">Part A - {provinces.find(p => p.code === inputs.province)?.name || 'Provincial'} tax on taxable income</h3>
                         
                         {/* Line 1: Taxable income from line 26000 */}
@@ -2448,7 +2448,7 @@ const TaxCalculator: FC = () => {
                   </p>
                   
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-xl">
-                    <div className="bg-white p-lg rounded-lg shadow-sm">
+                    <div className="calc-card">
                       <h3 className="text-lg font-semibold text-primary mb-md">Canadian federal tax bracket</h3>
                       <table className="w-full border-collapse text-sm">
                         <thead>
@@ -2480,7 +2480,7 @@ const TaxCalculator: FC = () => {
                       </table>
                     </div>
 
-                    <div className="bg-white p-lg rounded-lg shadow-sm">
+                    <div className="calc-card">
                       <h3 className="text-lg font-semibold text-primary mb-md">
                         {provinces.find(p => p.code === inputs.province)?.name || 'Provincial'} tax bracket
                       </h3>

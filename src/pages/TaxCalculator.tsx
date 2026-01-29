@@ -196,7 +196,7 @@ const TaxCalculator: FC = () => {
         keywords="Canadian Income Tax, income tax calculator, Canadian tax calculator, tax planning, federal tax, provincial tax, tax brackets, tax rates, Canada tax, personal income tax, Ottawa tax calculator, Ontario tax calculator"
         canonical="/resources/canadian-personal-income-tax-calculator"
       />
-      <main className="py-xxl min-h-[60vh]">
+      <main className="py-xxl min-h-[60vh] tax-calculator">
         <div className="max-w-[1800px] mx-auto px-md">
           <section className="py-xxl">
             <div className="text-center mb-xxl max-w-[800px] mx-auto">
@@ -210,16 +210,16 @@ const TaxCalculator: FC = () => {
 
             <div className="max-w-[1800px] mx-auto">
               <div className="flex flex-col gap-xxl">
-                <div className="bg-white border border-border p-lg rounded-xl">
+                <div className="calc-card">
                   <h2 className="text-2xl font-bold text-primary mb-md lg:mb-lg">Your Inputs</h2>
                   <form className="flex flex-col gap-md" onSubmit={handleCalculate}>
-                    <div className="bg-white p-md rounded-lg">
+                    <div className="calc-panel">
                       <div className="mb-md">
                         <div className="flex flex-col gap-1">
                           <label htmlFor="province" className="font-semibold text-text text-sm mb-1">Choose province or territory</label>
                           <select
                             id="province"
-                            className="px-3.5 py-3 border border-border rounded-lg font-sans text-base transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary"
+                            className="calc-select"
                             value={inputs.province}
                             onChange={(e) => handleInputChange('province', e.target.value)}
                           >
@@ -233,14 +233,14 @@ const TaxCalculator: FC = () => {
                       </div>
 
                       <div className="mb-md">
-                        <h3 className="text-sm font-semibold text-primary mb-xs bg-background px-2 py-1 rounded text-xs">Personal Information</h3>
+                        <h3 className="calc-section-title">Personal Information</h3>
                         <div className="space-y-md">
                           <div className="flex flex-col gap-1">
                             <label htmlFor="dateOfBirth" className="font-semibold text-text text-xs mb-1">Date of Birth</label>
                             <input
                               type="date"
                               id="dateOfBirth"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary"
+                              className="calc-input"
                               value={inputs.dateOfBirth}
                               onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
                             />
@@ -250,7 +250,7 @@ const TaxCalculator: FC = () => {
                             <label htmlFor="maritalStatus" className="font-semibold text-text text-xs mb-1">Marital Status</label>
                             <select
                               id="maritalStatus"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary"
+                              className="calc-input"
                               value={inputs.maritalStatus}
                               onChange={(e) => handleInputChange('maritalStatus', e.target.value)}
                             >
@@ -267,7 +267,7 @@ const TaxCalculator: FC = () => {
                             <input
                               type="number"
                               id="numberOfDependents"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary"
+                              className="calc-input"
                               min="0"
                               value={inputs.numberOfDependents}
                               onChange={(e) => handleInputChange('numberOfDependents', e.target.value)}
@@ -277,7 +277,7 @@ const TaxCalculator: FC = () => {
                       </div>
 
                       <div className="mb-md">
-                        <h3 className="text-sm font-semibold text-primary mb-xs bg-background px-2 py-1 rounded text-xs">Income</h3>
+                        <h3 className="calc-section-title">Income</h3>
                         <div className="space-y-md">
                           <div className="flex flex-col gap-1">
                             <label htmlFor="employmentIncome" className="font-semibold text-text text-xs mb-1">Employment income (Line 10100)</label>
@@ -285,7 +285,7 @@ const TaxCalculator: FC = () => {
                             <input
                               type="text"
                               id="employmentIncome"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-text/50"
+                              className="calc-input"
                               placeholder="$0.00"
                               value={getInputValue('employmentIncome', inputs.employmentIncome)}
                               onChange={(e) => handleInputChange('employmentIncome', e.target.value)}
@@ -300,7 +300,7 @@ const TaxCalculator: FC = () => {
                             <input
                               type="text"
                               id="interestAndInvestmentIncome"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-text/50"
+                              className="calc-input"
                               placeholder="$0.00"
                               value={getInputValue('interestAndInvestmentIncome', inputs.interestAndInvestmentIncome)}
                               onChange={(e) => handleInputChange('interestAndInvestmentIncome', e.target.value)}
@@ -315,7 +315,7 @@ const TaxCalculator: FC = () => {
                             <input
                               type="text"
                               id="selfEmploymentIncome"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-text/50"
+                              className="calc-input"
                               placeholder="$0.00"
                               value={getInputValue('selfEmploymentIncome', inputs.selfEmploymentIncome)}
                               onChange={(e) => handleInputChange('selfEmploymentIncome', e.target.value)}
@@ -330,7 +330,7 @@ const TaxCalculator: FC = () => {
                             <input
                               type="text"
                               id="capitalGains"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-text/50"
+                              className="calc-input"
                               placeholder="$0.00"
                               value={getInputValue('capitalGains', inputs.capitalGains)}
                               onChange={(e) => handleInputChange('capitalGains', e.target.value)}
@@ -345,7 +345,7 @@ const TaxCalculator: FC = () => {
                             <input
                               type="text"
                               id="eligibleDividends"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-text/50"
+                              className="calc-input"
                               placeholder="$0.00"
                               value={getInputValue('eligibleDividends', inputs.eligibleDividends)}
                               onChange={(e) => handleInputChange('eligibleDividends', e.target.value)}
@@ -360,7 +360,7 @@ const TaxCalculator: FC = () => {
                             <input
                               type="text"
                               id="ineligibleDividends"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-text/50"
+                              className="calc-input"
                               placeholder="$0.00"
                               value={getInputValue('ineligibleDividends', inputs.ineligibleDividends)}
                               onChange={(e) => handleInputChange('ineligibleDividends', e.target.value)}
@@ -375,7 +375,7 @@ const TaxCalculator: FC = () => {
                             <input
                               type="text"
                               id="otherIncome"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-text/50"
+                              className="calc-input"
                               placeholder="$0.00"
                               value={getInputValue('otherIncome', inputs.otherIncome)}
                               onChange={(e) => handleInputChange('otherIncome', e.target.value)}
@@ -387,7 +387,7 @@ const TaxCalculator: FC = () => {
                       </div>
 
                       <div className="mb-md">
-                        <h3 className="text-sm font-semibold text-primary mb-xs bg-background px-2 py-1 rounded text-xs">Deductions</h3>
+                        <h3 className="calc-section-title">Deductions</h3>
                         <div className="space-y-md">
                           <div className="flex flex-col gap-1">
                             <label htmlFor="rrspContributions" className="font-semibold text-text text-xs mb-1">RRSP deduction (Line 20800)</label>
@@ -395,7 +395,7 @@ const TaxCalculator: FC = () => {
                             <input
                               type="text"
                               id="rrspContributions"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-text/50"
+                              className="calc-input"
                               placeholder="$0.00"
                               value={getInputValue('rrspContributions', inputs.rrspContributions)}
                               onChange={(e) => handleInputChange('rrspContributions', e.target.value)}
@@ -410,7 +410,7 @@ const TaxCalculator: FC = () => {
                             <input
                               type="text"
                               id="fhsaContributions"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-text/50"
+                              className="calc-input"
                               placeholder="$0.00"
                               value={getInputValue('fhsaContributions', inputs.fhsaContributions)}
                               onChange={(e) => handleInputChange('fhsaContributions', e.target.value)}
@@ -422,7 +422,7 @@ const TaxCalculator: FC = () => {
                       </div>
 
                       <div className="mb-md">
-                        <h3 className="text-sm font-semibold text-primary mb-xs bg-background px-2 py-1 rounded text-xs">Tax Credits</h3>
+                        <h3 className="calc-section-title">Tax Credits</h3>
                         <div className="space-y-md">
                           <div className="flex flex-col gap-1">
                             <label htmlFor="cppContributions" className="font-semibold text-text text-xs mb-1">CPP contributions (Line 30800)</label>
@@ -430,7 +430,7 @@ const TaxCalculator: FC = () => {
                             <input
                               type="text"
                               id="cppContributions"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-text/50"
+                              className="calc-input"
                               placeholder="$0.00"
                               value={getInputValue('cppContributions', inputs.cppContributions)}
                               onChange={(e) => handleInputChange('cppContributions', e.target.value)}
@@ -445,7 +445,7 @@ const TaxCalculator: FC = () => {
                             <input
                               type="text"
                               id="donations"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-text/50"
+                              className="calc-input"
                               placeholder="$0.00"
                               value={getInputValue('donations', inputs.donations)}
                               onChange={(e) => handleInputChange('donations', e.target.value)}
@@ -457,7 +457,7 @@ const TaxCalculator: FC = () => {
                       </div>
 
                       <div className="mb-md">
-                        <h3 className="text-sm font-semibold text-primary mb-xs bg-background px-2 py-1 rounded text-xs">Deductions (Worksheet)</h3>
+                        <h3 className="calc-section-title">Deductions (Worksheet)</h3>
                         <div className="space-y-md">
                           <div className="flex flex-col gap-1">
                             <label htmlFor="carryingCharges" className="font-semibold text-text text-xs mb-1">Carrying charges (Line 22100)</label>
@@ -465,7 +465,7 @@ const TaxCalculator: FC = () => {
                             <input
                               type="text"
                               id="carryingCharges"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-text/50"
+                              className="calc-input"
                               placeholder="$0.00"
                               value={getInputValue('carryingCharges', inputs.carryingCharges || 0)}
                               onChange={(e) => handleInputChange('carryingCharges', e.target.value)}
@@ -479,7 +479,7 @@ const TaxCalculator: FC = () => {
                             <input
                               type="text"
                               id="interestExpenses"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-text/50"
+                              className="calc-input"
                               placeholder="$0.00"
                               value={getInputValue('interestExpenses', inputs.interestExpenses || 0)}
                               onChange={(e) => handleInputChange('interestExpenses', e.target.value)}
@@ -493,7 +493,7 @@ const TaxCalculator: FC = () => {
                             <input
                               type="text"
                               id="otherExpenses"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-text/50"
+                              className="calc-input"
                               placeholder="$0.00"
                               value={getInputValue('otherExpenses', inputs.otherExpenses || 0)}
                               onChange={(e) => handleInputChange('otherExpenses', e.target.value)}
@@ -507,7 +507,7 @@ const TaxCalculator: FC = () => {
                             <input
                               type="text"
                               id="securityOptionsDeduction"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-text/50"
+                              className="calc-input"
                               placeholder="$0.00"
                               value={getInputValue('securityOptionsDeduction', inputs.securityOptionsDeduction || 0)}
                               onChange={(e) => handleInputChange('securityOptionsDeduction', e.target.value)}
@@ -521,7 +521,7 @@ const TaxCalculator: FC = () => {
                             <input
                               type="text"
                               id="otherPaymentsDeduction"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-text/50"
+                              className="calc-input"
                               placeholder="$0.00"
                               value={getInputValue('otherPaymentsDeduction', inputs.otherPaymentsDeduction || 0)}
                               onChange={(e) => handleInputChange('otherPaymentsDeduction', e.target.value)}
@@ -533,7 +533,7 @@ const TaxCalculator: FC = () => {
                       </div>
 
                       <div className="mb-md">
-                        <h3 className="text-sm font-semibold text-primary mb-xs bg-background px-2 py-1 rounded text-xs">Social Benefits</h3>
+                        <h3 className="calc-section-title">Social Benefits</h3>
                         <div className="space-y-md">
                           <div className="flex flex-col gap-1">
                             <label htmlFor="oasPension" className="font-semibold text-text text-xs mb-1">OAS pension (Line 11300)</label>
@@ -541,7 +541,7 @@ const TaxCalculator: FC = () => {
                             <input
                               type="text"
                               id="oasPension"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-text/50"
+                              className="calc-input"
                               placeholder="$0.00"
                               value={getInputValue('oasPension', inputs.oasPension || 0)}
                               onChange={(e) => handleInputChange('oasPension', e.target.value)}
@@ -555,7 +555,7 @@ const TaxCalculator: FC = () => {
                             <input
                               type="text"
                               id="netFederalSupplements"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-text/50"
+                              className="calc-input"
                               placeholder="$0.00"
                               value={getInputValue('netFederalSupplements', inputs.netFederalSupplements || 0)}
                               onChange={(e) => handleInputChange('netFederalSupplements', e.target.value)}
@@ -567,7 +567,7 @@ const TaxCalculator: FC = () => {
                       </div>
 
                       <div className="mb-md">
-                        <h3 className="text-sm font-semibold text-primary mb-xs bg-background px-2 py-1 rounded text-xs">Tax Credits (Worksheet)</h3>
+                        <h3 className="calc-section-title">Tax Credits (Worksheet)</h3>
                         <div className="space-y-md">
                           <div className="flex flex-col gap-1">
                             <label htmlFor="politicalContributions" className="font-semibold text-text text-xs mb-1">Political contributions (Line 40900)</label>
@@ -575,7 +575,7 @@ const TaxCalculator: FC = () => {
                             <input
                               type="text"
                               id="politicalContributions"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-text/50"
+                              className="calc-input"
                               placeholder="$0.00"
                               value={getInputValue('politicalContributions', inputs.politicalContributions || 0)}
                               onChange={(e) => handleInputChange('politicalContributions', e.target.value)}
@@ -589,7 +589,7 @@ const TaxCalculator: FC = () => {
                             <input
                               type="text"
                               id="medicalExpenses"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-text/50"
+                              className="calc-input"
                               placeholder="$0.00"
                               value={getInputValue('medicalExpenses', inputs.medicalExpenses || 0)}
                               onChange={(e) => handleInputChange('medicalExpenses', e.target.value)}
@@ -601,14 +601,14 @@ const TaxCalculator: FC = () => {
                       </div>
 
                       <div className="mb-md">
-                        <h3 className="text-sm font-semibold text-primary mb-xs bg-background px-2 py-1 rounded text-xs">Taxes Paid</h3>
+                        <h3 className="calc-section-title">Taxes Paid</h3>
                         <div className="flex flex-col gap-1">
                           <label htmlFor="incomeTaxesPaid" className="font-semibold text-text text-xs mb-1">Income taxes paid (Line 43700)</label>
                           <p className="text-xs text-text-light m-0 leading-snug mb-1">Taxes deducted from paycheque. Don't include CPP/EI contributions.</p>
                             <input
                               type="text"
                               id="incomeTaxesPaid"
-                              className="px-3 py-2 border border-border rounded-lg font-sans text-sm transition-all bg-white text-text w-full hover:border-text/40 focus:outline-2 focus:outline-primary focus:outline-offset-2 focus:border-primary placeholder:text-text/50"
+                              className="calc-input"
                               placeholder="$0.00"
                               value={getInputValue('incomeTaxesPaid', inputs.incomeTaxesPaid)}
                               onChange={(e) => handleInputChange('incomeTaxesPaid', e.target.value)}
@@ -625,14 +625,14 @@ const TaxCalculator: FC = () => {
                   </form>
                 </div>
 
-                <div className="bg-white border border-border p-lg rounded-xl">
+                <div className="calc-card">
                   <h2 className="text-2xl font-bold text-primary mb-md lg:mb-lg">Your Results</h2>
                   
                   {hasCalculated && results && results.detailedBreakdown ? (
-                    <div className="bg-white p-md rounded-lg max-h-[calc(100vh-200px)] overflow-y-auto">
+                    <div className="calc-panel max-h-[calc(100vh-200px)] overflow-y-auto">
                       {/* Taxpayer Information Section */}
                       <div className="mb-md pb-md border-b-2 border-primary">
-                        <h3 className="text-sm font-semibold text-primary mb-xs bg-background px-2 py-1 rounded text-xs">Taxpayer Information</h3>
+                        <h3 className="calc-section-title">Taxpayer Information</h3>
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between items-center py-0.5 border-b border-border">
                             <span className="text-text">Date of birth</span>
@@ -655,7 +655,7 @@ const TaxCalculator: FC = () => {
 
                       {/* Total Income Section */}
                       <div className="mb-md">
-                        <h3 className="text-sm font-semibold text-primary mb-xs bg-background px-2 py-1 rounded text-xs">Total income</h3>
+                        <h3 className="calc-section-title">Total income</h3>
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between items-center py-0.5 border-b border-border">
                             <span className="text-text">Employment (10100)</span>
@@ -690,7 +690,7 @@ const TaxCalculator: FC = () => {
 
                       {/* Net Income Section */}
                       <div className="mb-md">
-                        <h3 className="text-sm font-semibold text-primary mb-xs bg-background px-2 py-1 rounded text-xs">Net income</h3>
+                        <h3 className="calc-section-title">Net income</h3>
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between items-center py-0.5 border-b border-border">
                             <span className="text-text">RRSP deduction (20800)</span>
@@ -729,7 +729,7 @@ const TaxCalculator: FC = () => {
 
                       {/* Taxable Income */}
                       <div className="mb-md">
-                        <h3 className="text-sm font-semibold text-primary mb-xs bg-background px-2 py-1 rounded text-xs">Taxable income</h3>
+                        <h3 className="calc-section-title">Taxable income</h3>
                         <div className="flex justify-between items-center py-1 border-b border-primary">
                           <span className="text-text font-semibold text-xs">Taxable Income (26000)</span>
                           <span className="font-bold text-primary">{formatCurrency(results.detailedBreakdown.taxableIncome)}</span>
@@ -738,7 +738,7 @@ const TaxCalculator: FC = () => {
 
                       {/* Federal Credits */}
                       <div className="mb-md">
-                        <h3 className="text-sm font-semibold text-primary mb-xs bg-background px-2 py-1 rounded text-xs">Federal credits</h3>
+                        <h3 className="calc-section-title">Federal credits</h3>
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between items-center py-0.5 border-b border-border">
                             <span className="text-text">Basic personal (30000)</span>
@@ -785,7 +785,7 @@ const TaxCalculator: FC = () => {
 
                       {/* Federal Tax */}
                       <div className="mb-md">
-                        <h3 className="text-sm font-semibold text-primary mb-xs bg-background px-2 py-1 rounded text-xs">Net federal tax</h3>
+                        <h3 className="calc-section-title">Net federal tax</h3>
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between items-center py-0.5 border-b border-border">
                             <span className="text-text">Tax on taxable income (Line C)</span>
@@ -820,7 +820,7 @@ const TaxCalculator: FC = () => {
 
                       {/* Provincial Tax */}
                       <div className="mb-md">
-                        <h3 className="text-sm font-semibold text-primary mb-xs bg-background px-2 py-1 rounded text-xs">Provincial tax</h3>
+                        <h3 className="calc-section-title">Provincial tax</h3>
                         <div className="flex justify-between items-center py-1 border-b border-primary">
                           <span className="text-text font-semibold text-xs">Provincial tax (42800)</span>
                           <span className="font-bold text-primary">{formatCurrency(results.detailedBreakdown.provincialTax.net)}</span>
@@ -829,7 +829,7 @@ const TaxCalculator: FC = () => {
 
                       {/* Refund or Balance Owing */}
                       <div className="mb-md">
-                        <h3 className="text-sm font-semibold text-primary mb-xs bg-background px-2 py-1 rounded text-xs">Refund or Balance owing</h3>
+                        <h3 className="calc-section-title">Refund or Balance owing</h3>
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between items-center py-0.5 border-b border-border">
                             <span className="text-text">Net federal tax (42000)</span>
@@ -872,7 +872,7 @@ const TaxCalculator: FC = () => {
 
                       {/* Additional Information */}
                       <div>
-                        <h3 className="text-sm font-semibold text-primary mb-xs bg-background px-2 py-1 rounded text-xs">Additional information</h3>
+                        <h3 className="calc-section-title">Additional information</h3>
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between items-center py-0.5 border-b border-border">
                             <span className="text-text">Marginal tax rate</span>

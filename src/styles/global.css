@@ -79,4 +79,29 @@
     @apply opacity-60 cursor-not-allowed;
   }
 
+  .tax-calculator .calc-input,
+  .tax-calculator .calc-select {
+    @apply w-full px-2 py-1 border border-border rounded-none text-xs bg-white text-text focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary;
+  }
+
+  .tax-calculator .calc-input {
+    @apply text-right tabular-nums;
+  }
+
+  .tax-calculator input[type="date"].calc-input {
+    @apply text-left;
+  }
+
+  .tax-calculator .calc-section-title {
+    @apply bg-primary/10 text-primary font-semibold text-[11px] px-2.5 py-1 rounded mb-2;
+  }
+
+  .tax-calculator .calc-card {
+    @apply bg-white rounded-xl shadow-sm border border-border p-4 sm:p-6 lg:p-8;
+  }
+
+  .tax-calculator .calc-panel {
+    @apply bg-background p-3 rounded-lg border border-border;
+  }
+
 }

@@ -93,7 +93,7 @@
   }
 
   .tax-calculator .calc-section-title {
-    @apply bg-primary/10 text-primary font-semibold text-[11px] px-2.5 py-1 rounded mb-2;
+    @apply bg-border text-text font-semibold text-[11px] px-2.5 py-1 rounded mb-2;
   }
 
   .tax-calculator .calc-card {
@@ -101,7 +101,7 @@
   }
 
   .tax-calculator .calc-panel {
-    @apply bg-background p-3 rounded-lg border border-border;
+    @apply bg-white p-3 rounded-lg border border-border;
   }
 
   .tax-calculator .tax-form .tax-row {

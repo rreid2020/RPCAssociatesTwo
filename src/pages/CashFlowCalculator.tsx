@@ -330,7 +330,7 @@ const CashFlowCalculator: FC = () => {
 
             {/* Operating Activities (Indirect Method) */}
             <div className="mb-3">
-              <div className="bg-border text-text font-semibold text-[11px] px-2.5 py-1 rounded mb-2">
+              <div className="bg-primary-dark text-white font-semibold text-[11px] px-2.5 py-1 rounded mb-2">
                 Cash Flows from Operating Activities (Indirect Method)
               </div>
               <div className="space-y-1">
@@ -467,7 +467,7 @@ const CashFlowCalculator: FC = () => {
 
             {/* Investing Activities */}
             <div className="mb-3">
-              <div className="bg-border text-text font-semibold text-[11px] px-2.5 py-1 rounded mb-2">
+              <div className="bg-primary-dark text-white font-semibold text-[11px] px-2.5 py-1 rounded mb-2">
                 Cash Flows from Investing Activities
               </div>
               <div className="space-y-1">
@@ -518,7 +518,7 @@ const CashFlowCalculator: FC = () => {
 
             {/* Financing Activities */}
             <div className="mb-3">
-              <div className="bg-border text-text font-semibold text-[11px] px-2.5 py-1 rounded mb-2">
+              <div className="bg-primary-dark text-white font-semibold text-[11px] px-2.5 py-1 rounded mb-2">
                 Cash Flows from Financing Activities
               </div>
               <div className="space-y-1">
@@ -579,7 +579,7 @@ const CashFlowCalculator: FC = () => {
 
             {/* Totals */}
             <div className="bg-background p-2 rounded-lg border border-border">
-              <div className="flex justify-between items-center text-[11px] font-bold text-primary border-y-2 border-border py-1">
+              <div className="flex justify-between items-center text-[11px] font-bold text-primary-dark border-y-2 border-border py-1">
                 <span>Net Increase in Cash</span>
                 <span className={computedResults.netCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}>
                   {formatCurrency(computedResults.netCashFlow)}

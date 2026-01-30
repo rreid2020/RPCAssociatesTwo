@@ -13,7 +13,7 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold text-primary mb-md;
+    @apply font-semibold text-primary-dark mb-md;
     line-height: 1.2;
   }
 
@@ -93,7 +93,7 @@
   }
 
   .tax-calculator .calc-section-title {
-    @apply bg-border text-text font-semibold text-[11px] px-2.5 py-1 rounded mb-2;
+    @apply bg-primary-dark text-white font-semibold text-[11px] px-2.5 py-1 rounded mb-2;
   }
 
   .tax-calculator .calc-card {

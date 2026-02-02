@@ -1,6 +1,7 @@
 import { FC } from 'react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { HelmetProvider } from 'react-helmet-async'
+import { SignedIn, SignedOut } from '@clerk/clerk-react'
 import Header from './components/Header'
 import Footer from './components/Footer'
 import Home from './pages/Home'
@@ -27,6 +28,8 @@ import TaxGPT from './pages/portal/TaxGPT'
 import FileRepository from './pages/portal/FileRepository'
 import WorkingPapers from './pages/portal/WorkingPapers'
 import Integrations from './pages/portal/Integrations'
+import SignIn from './pages/portal/SignIn'
+import SignUp from './pages/portal/SignUp'
 
 const App: FC = () => {
   return (
@@ -35,13 +38,103 @@ const App: FC = () => {
         <ScrollToTop />
         <CanonicalRedirect />
         <Routes>
-          {/* Portal routes - no header/footer (handled by ClientPortalShell) */}
-          <Route path="/portal/dashboard" element={<Dashboard />} />
-          <Route path="/portal/taxgpt" element={<TaxGPT />} />
-          <Route path="/portal/files" element={<FileRepository />} />
-          <Route path="/portal/working-papers" element={<WorkingPapers />} />
-          <Route path="/portal/integrations" element={<Integrations />} />
-          <Route path="/portal" element={<Dashboard />} />
+          {/* Portal authentication routes - public */}
+          <Route
+            path="/portal/sign-in"
+            element={
+              <SignedOut>
+                <SignIn />
+              </SignedOut>
+            }
+          />
+          <Route
+            path="/portal/sign-up"
+            element={
+              <SignedOut>
+                <SignUp />
+              </SignedOut>
+            }
+          />
+          
+          {/* Portal routes - protected, no header/footer (handled by ClientPortalShell) */}
+          <Route
+            path="/portal/dashboard"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <Dashboard />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/taxgpt"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <TaxGPT />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/files"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <FileRepository />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/working-papers"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <WorkingPapers />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/integrations"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <Integrations />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <Navigate to="/portal/dashboard" replace />
+                </SignedIn>
+              </>
+            }
+          />
           
           {/* Marketing site routes - with header/footer */}
           <Route path="/*" element={

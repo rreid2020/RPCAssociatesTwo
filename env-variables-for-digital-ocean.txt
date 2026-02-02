@@ -35,3 +35,9 @@ VITE_SANITY_DATASET=production
 VITE_SANITY_API_VERSION=2024-01-01
 VITE_SANITY_USE_CDN=true
 VITE_API_BASE_URL=
+
+# Clerk Authentication (BUILD_TIME scope - required for client portal)
+# Get your key from https://dashboard.clerk.com → API Keys → RPCTaxGPT app
+# On Free Plan, use pk_test_... (works for both dev and production)
+# Production keys (pk_live_...) only available on paid plans
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_cm9tYW50aWMtc3RhbGxpb24tODIuY2xlcmsuYWNjb3VudHMuZGV2JA

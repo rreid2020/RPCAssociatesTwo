@@ -16,6 +16,7 @@
     "generate-sitemap": "node scripts/generate-sitemap.mjs"
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.60.0",
     "@portabletext/react": "^3.0.0",
     "@sanity/client": "^6.0.0",
     "@sanity/image-url": "^1.0.0",

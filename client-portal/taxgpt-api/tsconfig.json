@@ -1,0 +1,24 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "baseUrl": "./src",
+    "paths": {
+      "@shared/*": ["../../packages/shared/src/*"],
+      "@rag/*": ["../../packages/rag/src/*"],
+      "@crawler/*": ["../../packages/crawler/src/*"],
+      "@storage/*": ["../../packages/storage/src/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "../../packages/shared" },
+    { "path": "../../packages/rag" },
+    { "path": "../../packages/crawler" },
+    { "path": "../../packages/storage" }
+  ]
+}
+

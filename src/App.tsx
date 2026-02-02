@@ -11,7 +11,7 @@ import ArticleDetail from './pages/ArticleDetail'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import Sitemap from './pages/Sitemap'
-import ComingSoon from './pages/ComingSoon'
+import ClientPortal from './pages/ClientPortal'
 import TaxCalculator from './pages/TaxCalculator'
 import BookConsultation from './pages/BookConsultation'
 import ServiceDetail from './pages/ServiceDetail'
@@ -52,7 +52,7 @@ const App: FC = () => {
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/sitemap" element={<Sitemap />} />
-          <Route path="/client-portal" element={<ComingSoon />} />
+          <Route path="/client-portal" element={<ClientPortal />} />
         </Routes>
         <Footer />
       </Router>

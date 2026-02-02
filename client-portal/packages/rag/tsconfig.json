@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "baseUrl": "./src",
+    "moduleResolution": "bundler",
+    "composite": false,
+    "paths": {
+      "@shared/*": ["../../packages/shared/src/*"],
+      "@storage/*": ["../../packages/storage/src/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["src/**/__tests__/**/*", "src/**/*.test.ts", "src/**/*.spec.ts"],
+  "references": []
+}
+

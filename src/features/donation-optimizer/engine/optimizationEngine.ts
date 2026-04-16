@@ -254,7 +254,9 @@ function unusedOpportunities(): string[] {
   return [
     'Donation limits as a percentage of net income (federal / provincial) are not modeled.',
     'Full Schedule 9 apportionment of the 33% federal rate to income taxed at the top marginal rate is simplified to a single income threshold.',
-    'Provincial political credits and provinces other than Ontario are not included.',
+    'Quebec federal tax abatement and other cross-credit interactions are not modeled.',
+    'Ontario surtax-driven effective donation rates and trust-specific ON rates are not modeled.',
+    'Marginal rates are illustrative (tax on the next dollar of taxable income) and exclude CPP/EI and other levies.',
   ]
 }
 

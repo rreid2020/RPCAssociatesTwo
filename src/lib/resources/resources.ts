@@ -76,9 +76,9 @@ export const resources: ResourceDetail[] = [
     slug: 'donation-credit-optimizer',
     title: 'Donation Credit Optimizer',
     shortDescription:
-      'Estimate federal and Ontario charitable credits and federal political credits, and compare allocation strategies to maximize combined credits in this simplified model.',
+      'Estimate federal and provincial or territorial charitable credits and federal political credits, compare allocation strategies, marginal tax-rate context, and ranked scenarios in this simplified model.',
     longDescription:
-      'Use this tool to model Canadian charitable donation credits (federal and Ontario) and federal political contribution credits. For couples, explore assigning claims to the higher-income spouse and splitting political contributions where it helps household credits. Carryforward scenarios are planning-only—confirm results with your full return or advisor.',
+      'Use this tool to model Canadian charitable donation credits (federal plus any province or territory) and federal political contribution credits. Review scenario analysis, approximate marginal income tax rates, and for couples explore assigning claims to the higher-income spouse and splitting political contributions where it helps household credits. Carryforward scenarios are planning-only—confirm results with your full return or advisor.',
     category: 'calculator',
     categoryLabel: 'Calculator',
     requiresLeadCapture: false,

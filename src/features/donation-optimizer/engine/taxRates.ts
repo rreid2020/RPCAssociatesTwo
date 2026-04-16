@@ -8,8 +8,8 @@ export const DONATION_TAX_YEAR = 2025
 /** First dollar of taxable income taxed at the top federal rate (33% in 2025 data file). */
 export const FEDERAL_TOP_BRACKET_START = 253_414
 
-/** Federal charitable donation credit — first $200 at lowest credit rate. */
-export const FEDERAL_CHARITY_FIRST_200_RATE = 0.15
+/** Federal charitable donation credit — first $200 at lowest federal rate (2025: 14.5%). */
+export const FEDERAL_CHARITY_FIRST_200_RATE = 0.145
 /** Remainder when not in top bracket for donation credit purposes (simplified). */
 export const FEDERAL_CHARITY_ABOVE_200_RATE_STANDARD = 0.29
 /** Remainder when simplified high-income rule applies. */

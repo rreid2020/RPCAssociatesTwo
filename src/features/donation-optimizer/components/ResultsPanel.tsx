@@ -1,4 +1,5 @@
 import type { InputPayload, OptimizationResult } from '../engine/types'
+import { marginalRateBreakdown } from '../engine/marginalTaxRates'
 
 function formatCurrency(n: number): string {
   return new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(n)
@@ -6,6 +7,10 @@ function formatCurrency(n: number): string {
 
 function formatPct(n: number): string {
   return `${n.toFixed(1)}%`
+}
+
+function formatMarginalRate(r: number): string {
+  return `${(r * 100).toFixed(1)}%`
 }
 
 export interface ResultsPanelProps {
@@ -23,6 +28,9 @@ export function ResultsPanel({ inputs, result, sensitivityResult }: ResultsPanel
   const { bestScenario } = result
   const donationDenominator = Math.max(1, inputs.charitableDonations + inputs.politicalDonations)
   const effectivePct = (bestScenario.totalCredit / donationDenominator) * 100
+  const mTaxpayer = marginalRateBreakdown(inputs.taxpayerIncome, inputs.province)
+  const mSpouse =
+    inputs.filingType === 'couple' ? marginalRateBreakdown(inputs.spouseIncome, inputs.province) : null
 
   return (
     <section className="rounded-lg border border-border bg-white p-4 shadow-sm md:p-6">
@@ -56,6 +64,44 @@ export function ResultsPanel({ inputs, result, sensitivityResult }: ResultsPanel
         </div>
       </div>
 
+      <div className="mt-6 rounded-md border border-border p-4">
+        <h3 className="text-sm font-semibold text-text">Approximate marginal income tax rates (2025 brackets)</h3>
+        <p className="mt-1 text-xs text-text-light">
+          Combined federal + provincial rate on the next dollar of taxable income — for context only; not used to
+          compute donation credits (credits use statutory credit rates).
+        </p>
+        <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+          <div className="flex flex-wrap justify-between gap-2 border-b border-border py-2">
+            <dt className="text-text-light">Taxpayer — federal</dt>
+            <dd className="font-medium tabular-nums text-text">{formatMarginalRate(mTaxpayer.federal)}</dd>
+          </div>
+          <div className="flex flex-wrap justify-between gap-2 border-b border-border py-2">
+            <dt className="text-text-light">Taxpayer — provincial</dt>
+            <dd className="font-medium tabular-nums text-text">{formatMarginalRate(mTaxpayer.provincial)}</dd>
+          </div>
+          <div className="flex flex-wrap justify-between gap-2 border-b border-border py-2 sm:col-span-2">
+            <dt className="text-text-light">Taxpayer — combined</dt>
+            <dd className="font-medium tabular-nums text-text">{formatMarginalRate(mTaxpayer.combined)}</dd>
+          </div>
+          {mSpouse && (
+            <>
+              <div className="flex flex-wrap justify-between gap-2 border-b border-border py-2">
+                <dt className="text-text-light">Spouse — federal</dt>
+                <dd className="font-medium tabular-nums text-text">{formatMarginalRate(mSpouse.federal)}</dd>
+              </div>
+              <div className="flex flex-wrap justify-between gap-2 border-b border-border py-2">
+                <dt className="text-text-light">Spouse — provincial</dt>
+                <dd className="font-medium tabular-nums text-text">{formatMarginalRate(mSpouse.provincial)}</dd>
+              </div>
+              <div className="flex flex-wrap justify-between gap-2 border-b border-border py-2 sm:col-span-2">
+                <dt className="text-text-light">Spouse — combined</dt>
+                <dd className="font-medium tabular-nums text-text">{formatMarginalRate(mSpouse.combined)}</dd>
+              </div>
+            </>
+          )}
+        </dl>
+      </div>
+
       <div className="mt-6">
         <h3 className="text-sm font-semibold text-text">Credit breakdown</h3>
         <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
@@ -64,7 +110,7 @@ export function ResultsPanel({ inputs, result, sensitivityResult }: ResultsPanel
             <dd className="font-medium text-text">{formatCurrency(bestScenario.breakdown.charitable.federal)}</dd>
           </div>
           <div className="flex justify-between gap-2 border-b border-border py-2">
-            <dt className="text-text-light">Charitable — Ontario</dt>
+            <dt className="text-text-light">Charitable — provincial / territorial</dt>
             <dd className="font-medium text-text">{formatCurrency(bestScenario.breakdown.charitable.provincial)}</dd>
           </div>
           <div className="flex justify-between gap-2 border-b border-border py-2">
@@ -82,8 +128,8 @@ export function ResultsPanel({ inputs, result, sensitivityResult }: ResultsPanel
         <div className="mt-6 rounded-md border border-accent/30 bg-background p-4">
           <h3 className="text-sm font-semibold text-text">Insights</h3>
           <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-text-light">
-            {result.insights.map((line) => (
-              <li key={line}>{line}</li>
+            {result.insights.map((line, i) => (
+              <li key={i}>{line}</li>
             ))}
           </ul>
         </div>

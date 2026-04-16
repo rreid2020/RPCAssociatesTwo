@@ -1,5 +1,18 @@
-/** Supported provinces for provincial donation credits (extend later). */
-export type ProvinceCode = 'ON'
+/** All provinces and territories with modeled provincial charitable credit rates. */
+export type ProvinceCode =
+  | 'AB'
+  | 'BC'
+  | 'MB'
+  | 'NB'
+  | 'NL'
+  | 'NS'
+  | 'NT'
+  | 'NU'
+  | 'ON'
+  | 'PE'
+  | 'QC'
+  | 'SK'
+  | 'YT'
 
 export type FilingType = 'single' | 'couple'
 

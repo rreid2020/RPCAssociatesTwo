@@ -1,4 +1,5 @@
 import type { FilingType, InputPayload, ProvinceCode } from '../engine/types'
+import { PROVINCE_SELECT_OPTIONS } from './provinceOptions'
 
 const inputClass =
   'w-full rounded border border-border bg-white px-2 py-1.5 text-sm text-text shadow-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent'
@@ -22,8 +23,12 @@ export function DonationForm({ inputs, onChange }: DonationFormProps) {
       <h2 className="mb-4 text-lg font-semibold text-text">Donations & income</h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div>
-          <label className={labelClass} htmlFor="province" title="Provincial charitable credit; only Ontario modeled.">
-            Province
+          <label
+            className={labelClass}
+            htmlFor="province"
+            title="Province or territory of residence — sets provincial charitable credit rates and marginal provincial tax bracket."
+          >
+            Province / territory
           </label>
           <select
             id="province"
@@ -31,7 +36,11 @@ export function DonationForm({ inputs, onChange }: DonationFormProps) {
             value={inputs.province}
             onChange={(e) => onChange({ province: e.target.value as ProvinceCode })}
           >
-            <option value="ON">Ontario</option>
+            {PROVINCE_SELECT_OPTIONS.map(({ value, label }) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
           </select>
         </div>
         <div>

@@ -1,5 +1,6 @@
 import { DonationForm } from './DonationForm'
 import { ResultsPanel } from './ResultsPanel'
+import { ScenarioAnalysis } from './ScenarioAnalysis'
 import { ScenarioComparison } from './ScenarioComparison'
 import { useDonationOptimizer } from '../hooks/useDonationOptimizer'
 
@@ -42,6 +43,7 @@ export default function DonationOptimizer() {
       </section>
 
       <ResultsPanel inputs={inputs} result={result} sensitivityResult={sensitivityResult} />
+      <ScenarioAnalysis result={result} />
       <ScenarioComparison result={result} />
     </div>
   )

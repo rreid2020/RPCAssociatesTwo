@@ -20,6 +20,7 @@ import ScrollToTop from './components/ScrollToTop'
 import CanonicalRedirect from './components/CanonicalRedirect'
 import CashFlowCalculator from './pages/CashFlowCalculator'
 import CashFlowStatementDirectMethod from './pages/CashFlowStatementDirectMethod'
+import DonationOptimizerPage from './pages/DonationOptimizerPage'
 import ResourceCategory from './pages/ResourceCategory'
 import ResourceDetail from './pages/ResourceDetail'
 import Services from './pages/Services'
@@ -28,6 +29,7 @@ import TaxGPT from './pages/portal/TaxGPT'
 import FileRepository from './pages/portal/FileRepository'
 import WorkingPapers from './pages/portal/WorkingPapers'
 import Integrations from './pages/portal/Integrations'
+import Subscription from './pages/portal/Subscription'
 import SignIn from './pages/portal/SignIn'
 import SignUp from './pages/portal/SignUp'
 
@@ -123,6 +125,19 @@ const App: FC = () => {
             }
           />
           <Route
+            path="/portal/subscription"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <Subscription />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
             path="/portal"
             element={
               <>
@@ -149,6 +164,7 @@ const App: FC = () => {
                 <Route path="/resources/canadian-personal-income-tax-calculator" element={<TaxCalculator />} />
                 <Route path="/resources/cash-flow-calculator" element={<CashFlowCalculator />} />
                 <Route path="/resources/cash-flow-statement-direct-method" element={<CashFlowStatementDirectMethod />} />
+                <Route path="/resources/donation-credit-optimizer" element={<DonationOptimizerPage />} />
                 <Route path="/resources/cash-flow-statement-template" element={<ResourceDetail />} />
                 <Route path="/resources/cfi-financial-ratios-guide" element={<ResourceDetail />} />
                 {/* Resource category routes */}

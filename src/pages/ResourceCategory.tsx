@@ -49,10 +49,11 @@ const ResourceCategory: FC = () => {
   const categoryType = getCategoryType(category.slug)
   const resources = categoryType ? getResourcesByCategory(categoryType) : []
   const orderedResources = categoryType === 'calculator'
-    ? [
+        ? [
         'canadian-personal-income-tax-calculator',
         'cash-flow-calculator',
         'cash-flow-statement-direct-method',
+        'donation-credit-optimizer',
       ]
         .map((slugValue) => resources.find((resource) => resource.slug === slugValue))
         .filter((resource): resource is ResourceDetail => Boolean(resource))
@@ -60,6 +61,7 @@ const ResourceCategory: FC = () => {
           'canadian-personal-income-tax-calculator',
           'cash-flow-calculator',
           'cash-flow-statement-direct-method',
+          'donation-credit-optimizer',
         ].includes(resource.slug)))
     : resources
 

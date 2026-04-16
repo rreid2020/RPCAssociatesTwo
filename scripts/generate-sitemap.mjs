@@ -81,6 +81,8 @@ async function generateSitemap() {
       { url: '/resources/category/publications', priority: '0.8', changefreq: 'monthly' },
       { url: '/resources/canadian-personal-income-tax-calculator', priority: '0.8', changefreq: 'monthly' },
       { url: '/resources/cash-flow-calculator', priority: '0.8', changefreq: 'monthly' },
+      { url: '/resources/cash-flow-statement-direct-method', priority: '0.8', changefreq: 'monthly' },
+      { url: '/resources/donation-credit-optimizer', priority: '0.8', changefreq: 'monthly' },
       { url: '/resources/cash-flow-statement-template', priority: '0.8', changefreq: 'monthly' },
       { url: '/resources/cfi-financial-ratios-guide', priority: '0.8', changefreq: 'monthly' },
       { url: '/articles', priority: '0.8', changefreq: 'weekly' },

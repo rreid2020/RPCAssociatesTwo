@@ -102,6 +102,10 @@ export interface OptimizationResult {
 /** Result of the “this or that” comparison: same $X → charitable credits vs political credits. */
 export interface ThisOrThatResult {
   contributionAmount: number
+  /** Taxable income used for charitable federal/provincial tier rules (not used for political credits). */
+  charitableIncomeUsed: number
+  /** Short label for UI, e.g. "Taxpayer" vs "Higher of spouses". */
+  charitableIncomeBasisLabel: string
   charitable: {
     totalCredit: number
     breakdown: CharitableBreakdown

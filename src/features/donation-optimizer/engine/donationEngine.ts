@@ -115,12 +115,26 @@ export function calculateTotalCredit({
 const TIE_EPS = 0.005
 
 /**
+ * Taxable income used for charitable **credit** tiers (federal 29% vs 33% on amount over $200; some provincial balance rates).
+ * For couples, uses the **higher** of the two incomes — a common planning assumption when pooling claims on one return.
+ */
+export function charitableTaxableIncomeForCredits(inputs: ComparisonInputPayload): number {
+  const t = Math.max(0, inputs.taxpayerIncome)
+  const s = Math.max(0, inputs.spouseIncome)
+  if (inputs.filingType === 'couple') return Math.max(t, s)
+  return t
+}
+
+/**
  * “This or that”: same dollar amount X is modeled as 100% charitable contributions vs 100% federal political contributions.
  * Credits are not additive between the two rows — you are comparing mutually exclusive uses of X.
  */
 export function compareThisOrThat(inputs: ComparisonInputPayload): ThisOrThatResult {
   const x = Math.max(0, inputs.contributionAmount)
-  const taxableIncome = Math.max(0, inputs.taxpayerIncome)
+  const taxableIncome = charitableTaxableIncomeForCredits(inputs)
+  const charitableIncomeBasisLabel =
+    inputs.filingType === 'couple' ? 'Higher of taxpayer and spouse' : 'Taxpayer'
+
   const charitableBreakdown = calculateCharitableCredit({
     amount: x,
     taxableIncome,
@@ -154,13 +168,22 @@ export function compareThisOrThat(inputs: ComparisonInputPayload): ThisOrThatRes
     summary = `For ${fmt(x)}, a federal political contribution yields about ${fmt(advantageDollars)} more in federal credits than the same amount as charitable donations (${fmt(p)} vs ${fmt(c)}). Provincial credits apply only to charitable donations.`
   }
 
+  const coupleNote =
+    inputs.filingType === 'couple'
+      ? 'When filing as a couple, the model uses the higher of the two taxable incomes for charitable tier rules (as if donations were claimed on the higher earner’s return).'
+      : 'When filing single, only the taxpayer’s taxable income affects charitable tier rules.'
+
   const footnotes = [
-    'Charitable scenario: federal + provincial or territorial donation credits using the taxpayer’s taxable income. Political scenario: federal political contribution credit only (no provincial political credit modeled).',
+    `${coupleNote} Income used for those rules: ${fmt(taxableIncome)}.`,
+    'Political path: federal political credits depend only on the contribution amount (tiers and a maximum credit), not on taxable income or filing type.',
     'You cannot claim both scenarios for the same dollars — this compares which use of the same budget produces higher credits.',
+    `Charitable credits for this donation size only change when income crosses certain thresholds (for example federal taxable income above about ${fmt(FEDERAL_TOP_BRACKET_START)} in this model switches the federal rate on donations over $200 from 29% to 33%; BC and Quebec have additional high-income balance rates).`,
   ]
 
   return {
     contributionAmount: x,
+    charitableIncomeUsed: taxableIncome,
+    charitableIncomeBasisLabel,
     charitable: { totalCredit: c, breakdown: charitableBreakdown },
     political: { totalCredit: p, breakdown: politicalBreakdown },
     betterStrategy,

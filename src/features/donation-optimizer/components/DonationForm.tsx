@@ -68,7 +68,7 @@ export function DonationForm({ inputs, onChange }: DonationFormProps) {
           </select>
         </div>
         <div>
-          <label className={labelClass} htmlFor="filingType">
+          <label className={labelClass} htmlFor="filingType" title="Couple: charitable tiers use the higher spouse income.">
             Filing type
           </label>
           <select
@@ -80,6 +80,12 @@ export function DonationForm({ inputs, onChange }: DonationFormProps) {
             <option value="single">Single</option>
             <option value="couple">Couple</option>
           </select>
+          <p className="mt-1.5 text-xs leading-relaxed text-text-light">
+            <strong className="font-medium text-text">Couple:</strong> charitable credits use the{' '}
+            <strong className="font-medium text-text">higher</strong> of taxpayer and spouse taxable income (common when
+            claiming donations on one return). <strong className="font-medium text-text">Single:</strong> only
+            taxpayer income applies. Political credits never use income.
+          </p>
         </div>
         <div>
           <label className={labelClass} htmlFor="taxpayerIncome">
@@ -109,6 +115,9 @@ export function DonationForm({ inputs, onChange }: DonationFormProps) {
               value={inputs.spouseIncome || ''}
               onChange={(e) => onChange({ spouseIncome: num(e.target.value) })}
             />
+            <p className="mt-1.5 text-xs text-text-light">
+              If this is higher than the taxpayer income, charitable credit tiers follow this amount instead.
+            </p>
           </div>
         )}
       </div>

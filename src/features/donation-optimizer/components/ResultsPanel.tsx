@@ -42,7 +42,28 @@ export function ResultsPanel({ inputs, result }: ResultsPanelProps) {
   return (
     <section className="rounded-lg border border-border bg-white p-4 shadow-sm md:p-6">
       <h2 className="mb-2 text-lg font-semibold text-text">Results</h2>
-      <p className="mb-6 text-sm text-text-light">{result.summary}</p>
+      <p className="mb-4 text-sm text-text-light">{result.summary}</p>
+
+      <div className="mb-6 rounded-md border border-border bg-background p-4 text-sm text-text">
+        <p className="font-medium text-text">How filing type and income affect these numbers</p>
+        <ul className="mt-2 list-inside list-disc space-y-1 text-text-light">
+          <li>
+            <span className="text-text">Charitable path: </span>
+            uses <strong className="font-semibold text-text">{formatCurrency(result.charitableIncomeUsed)}</strong>{' '}
+            taxable income for federal and provincial <em>donation credit</em> tiers ({result.charitableIncomeBasisLabel}
+            ).
+          </li>
+          <li>
+            <span className="text-text">Political path: </span>
+            federal credit depends only on how much you give (tiers up to a cap) — it does not use income or filing
+            type.
+          </li>
+          <li>
+            If you change income but charitable totals stay the same, you are likely still below a threshold (for
+            example the top federal bracket that triggers 33% on donations over $200 in this model). See Notes below.
+          </li>
+        </ul>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className={`${cardBase} ${highlightCharitable}`}>

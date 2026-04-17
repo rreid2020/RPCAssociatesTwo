@@ -9,7 +9,7 @@ const DonationOptimizerPage: FC = () => {
     <>
       <SEO
         title="Donation Credit Optimizer | Charitable & Political Credits - RPC Associates"
-        description="Estimate Canadian charitable and federal political donation credits for any province or territory. Compare allocation strategies, marginal tax rates, ranked scenarios, and potential credit improvement versus a simple single-return claim."
+        description="Compare tax credits for the same contribution amount to charitable causes versus federal political contributions. See which yields higher credits and view marginal tax rates by province."
         canonical="/resources/donation-credit-optimizer"
         keywords={[
           'donation tax credit',
@@ -25,9 +25,9 @@ const DonationOptimizerPage: FC = () => {
           <section className="mb-8 text-center sm:mb-10">
             <h1 className="mb-4 text-2xl font-bold text-primary sm:text-3xl lg:text-4xl">Donation Credit Optimizer</h1>
             <p className="mx-auto max-w-3xl text-base leading-relaxed text-text-light sm:text-lg">
-              Interactive tool for federal and provincial or territorial charitable credits, federal political credits,
-              marginal tax-rate context, and multi-scenario comparison. Results are illustrative—use for planning only
-              and confirm with your T1, provincial return, or a qualified advisor.
+              Compare the same dollar amount as charitable donations versus federal political contributions: which option
+              produces higher non-refundable tax credits in this model. Includes marginal rate context by province.
+              Illustrative only—confirm with your T1, provincial return, or advisor.
             </p>
           </section>
 

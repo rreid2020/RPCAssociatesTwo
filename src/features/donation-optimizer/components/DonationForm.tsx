@@ -1,4 +1,4 @@
-import type { FilingType, InputPayload, ProvinceCode } from '../engine/types'
+import type { ComparisonInputPayload, FilingType, ProvinceCode } from '../engine/types'
 import { PROVINCE_SELECT_OPTIONS } from './provinceOptions'
 
 const inputClass =
@@ -11,8 +11,8 @@ function num(v: string): number {
 }
 
 export interface DonationFormProps {
-  inputs: InputPayload
-  onChange: (patch: Partial<InputPayload>) => void
+  inputs: ComparisonInputPayload
+  onChange: (patch: Partial<ComparisonInputPayload>) => void
 }
 
 export function DonationForm({ inputs, onChange }: DonationFormProps) {
@@ -20,8 +20,32 @@ export function DonationForm({ inputs, onChange }: DonationFormProps) {
 
   return (
     <section className="rounded-lg border border-border bg-white p-4 shadow-sm md:p-6">
-      <h2 className="mb-4 text-lg font-semibold text-text">Donations & income</h2>
+      <h2 className="mb-2 text-lg font-semibold text-text">This or that</h2>
+      <p className="mb-4 text-sm text-text-light">
+        Enter one contribution total. The calculator compares the tax credits if you donate that full amount to{' '}
+        <strong className="font-semibold text-text">registered charitable causes</strong> versus the same amount to{' '}
+        <strong className="font-semibold text-text">federal political contributions</strong> — two separate scenarios,
+        not a split.
+      </p>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="sm:col-span-2 lg:col-span-1">
+          <label
+            className={labelClass}
+            htmlFor="contributionAmount"
+            title="Same dollar amount applied entirely to charity in one scenario and entirely to political contributions in the other."
+          >
+            Contribution amount to compare (CAD)
+          </label>
+          <input
+            id="contributionAmount"
+            type="number"
+            min={0}
+            step={50}
+            className={inputClass}
+            value={inputs.contributionAmount || ''}
+            onChange={(e) => onChange({ contributionAmount: num(e.target.value) })}
+          />
+        </div>
         <div>
           <label
             className={labelClass}
@@ -59,7 +83,7 @@ export function DonationForm({ inputs, onChange }: DonationFormProps) {
         </div>
         <div>
           <label className={labelClass} htmlFor="taxpayerIncome">
-            Taxpayer income (CAD)
+            Taxpayer taxable income (CAD)
           </label>
           <input
             id="taxpayerIncome"
@@ -74,7 +98,7 @@ export function DonationForm({ inputs, onChange }: DonationFormProps) {
         {showSpouse && (
           <div>
             <label className={labelClass} htmlFor="spouseIncome">
-              Spouse income (CAD)
+              Spouse taxable income (CAD)
             </label>
             <input
               id="spouseIncome"
@@ -87,60 +111,6 @@ export function DonationForm({ inputs, onChange }: DonationFormProps) {
             />
           </div>
         )}
-        <div>
-          <label
-            className={labelClass}
-            htmlFor="charitableDonations"
-            title="Current-year charitable donations (cash or gifts in kind)."
-          >
-            Charitable donations
-          </label>
-          <input
-            id="charitableDonations"
-            type="number"
-            min={0}
-            step={50}
-            className={inputClass}
-            value={inputs.charitableDonations || ''}
-            onChange={(e) => onChange({ charitableDonations: num(e.target.value) })}
-          />
-        </div>
-        <div>
-          <label
-            className={labelClass}
-            htmlFor="politicalDonations"
-            title="Federal political contributions — credit tiers apply per person."
-          >
-            Political donations
-          </label>
-          <input
-            id="politicalDonations"
-            type="number"
-            min={0}
-            step={50}
-            className={inputClass}
-            value={inputs.politicalDonations || ''}
-            onChange={(e) => onChange({ politicalDonations: num(e.target.value) })}
-          />
-        </div>
-        <div>
-          <label
-            className={labelClass}
-            htmlFor="priorCharitableDonations"
-            title="Unused charitable donations carried forward from prior years (simplified)."
-          >
-            Prior charitable carryforward
-          </label>
-          <input
-            id="priorCharitableDonations"
-            type="number"
-            min={0}
-            step={50}
-            className={inputClass}
-            value={inputs.priorCharitableDonations || ''}
-            onChange={(e) => onChange({ priorCharitableDonations: num(e.target.value) })}
-          />
-        </div>
       </div>
     </section>
   )

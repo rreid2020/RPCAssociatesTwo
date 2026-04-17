@@ -1,4 +1,10 @@
-import type { CharitableBreakdown, PoliticalBreakdown, ProvinceCode } from './types'
+import type {
+  CharitableBreakdown,
+  ComparisonInputPayload,
+  PoliticalBreakdown,
+  ProvinceCode,
+  ThisOrThatResult,
+} from './types'
 import { calculateProvincialCharitableCreditForProvince } from './provincialCharitableCredits'
 import {
   FEDERAL_CHARITY_ABOVE_200_RATE_HIGH,
@@ -103,5 +109,63 @@ export function calculateTotalCredit({
     charitable,
     political,
     total: round2(charitable.total + political.total),
+  }
+}
+
+const TIE_EPS = 0.005
+
+/**
+ * “This or that”: same dollar amount X is modeled as 100% charitable contributions vs 100% federal political contributions.
+ * Credits are not additive between the two rows — you are comparing mutually exclusive uses of X.
+ */
+export function compareThisOrThat(inputs: ComparisonInputPayload): ThisOrThatResult {
+  const x = Math.max(0, inputs.contributionAmount)
+  const taxableIncome = Math.max(0, inputs.taxpayerIncome)
+  const charitableBreakdown = calculateCharitableCredit({
+    amount: x,
+    taxableIncome,
+    province: inputs.province,
+  })
+  const politicalFederal = calculatePoliticalCredit(x)
+  const politicalBreakdown: PoliticalBreakdown = {
+    federal: politicalFederal,
+    total: politicalFederal,
+  }
+
+  const c = charitableBreakdown.total
+  const p = politicalBreakdown.total
+  let betterStrategy: ThisOrThatResult['betterStrategy']
+  if (Math.abs(c - p) < TIE_EPS) betterStrategy = 'tie'
+  else betterStrategy = c > p ? 'charitable' : 'political'
+
+  const advantageDollars = round2(Math.max(c, p) - Math.min(c, p))
+
+  const fmt = (n: number) =>
+    n.toLocaleString('en-CA', { style: 'currency', currency: 'CAD', minimumFractionDigits: 2 })
+
+  let summary: string
+  if (x <= 0) {
+    summary = 'Enter a contribution amount greater than zero to compare credits.'
+  } else if (betterStrategy === 'tie') {
+    summary = `For ${fmt(x)}, charitable and federal political credits are about the same in this model (${fmt(c)} each).`
+  } else if (betterStrategy === 'charitable') {
+    summary = `For ${fmt(x)}, charitable donations yield about ${fmt(advantageDollars)} more in combined federal + provincial credits than the same amount as a federal political contribution (${fmt(c)} vs ${fmt(p)}).`
+  } else {
+    summary = `For ${fmt(x)}, a federal political contribution yields about ${fmt(advantageDollars)} more in federal credits than the same amount as charitable donations (${fmt(p)} vs ${fmt(c)}). Provincial credits apply only to charitable donations.`
+  }
+
+  const footnotes = [
+    'Charitable scenario: federal + provincial or territorial donation credits using the taxpayer’s taxable income. Political scenario: federal political contribution credit only (no provincial political credit modeled).',
+    'You cannot claim both scenarios for the same dollars — this compares which use of the same budget produces higher credits.',
+  ]
+
+  return {
+    contributionAmount: x,
+    charitable: { totalCredit: c, breakdown: charitableBreakdown },
+    political: { totalCredit: p, breakdown: politicalBreakdown },
+    betterStrategy,
+    advantageDollars,
+    summary,
+    footnotes,
   }
 }

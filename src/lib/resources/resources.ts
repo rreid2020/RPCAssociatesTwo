@@ -76,26 +76,25 @@ export const resources: ResourceDetail[] = [
     slug: 'donation-credit-optimizer',
     title: 'Donation Credit Optimizer',
     shortDescription:
-      'Estimate federal and provincial or territorial charitable credits and federal political credits, compare allocation strategies, marginal tax-rate context, and ranked scenarios in this simplified model.',
+      'Enter one dollar amount and see whether the same contribution to registered charities or to federal political contributions produces higher tax credits — plus marginal tax-rate context by province.',
     longDescription:
-      'Use this tool to model Canadian charitable donation credits (federal plus any province or territory) and federal political contribution credits. Review scenario analysis, approximate marginal income tax rates, and for couples explore assigning claims to the higher-income spouse and splitting political contributions where it helps household credits. Carryforward scenarios are planning-only—confirm results with your full return or advisor.',
+      'This tool compares two mutually exclusive uses of the same budget: 100% to charitable donations (federal + provincial credits) versus 100% to federal political contributions (federal credit). It shows which strategy yields more non-refundable credits in this simplified model and displays approximate marginal income tax rates. Not a substitute for a full return—confirm with your advisor.',
     category: 'calculator',
     categoryLabel: 'Calculator',
     requiresLeadCapture: false,
     benefits: [
-      'Federal and Ontario charitable credit estimates with one household $200 step (single-claimant pooling)',
-      'Federal political credit tiers and household split scenarios',
-      'Compare naive vs optimized allocations and see dollar improvement',
-      'Optional charitable sensitivity slider for quick what-if',
+      'Same dollar amount compared: charitable (federal + provincial credits) vs federal political (federal credit only)',
+      'All provinces and territories for charitable credits; marginal tax-rate context from 2025 brackets',
+      'Clear “this or that” result showing which strategy yields more credits',
       'No registration required',
     ],
     metaDescription:
-      'Free donation credit optimizer for Canada. Model charitable and political donation credits for Ontario and federal taxes and compare allocation strategies.',
+      'Free donation credit comparison for Canada: same amount to charity vs political contributions — see which yields higher tax credits by province.',
     keywords: [
       'donation tax credit',
       'charitable donation credit',
       'political contribution credit',
-      'Ontario donation credit',
+      'charity vs political donation',
       'tax planning',
       'Canada',
       'Ottawa',

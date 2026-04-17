@@ -1,33 +1,21 @@
 import { useCallback, useMemo, useState } from 'react'
-import type { FilingType, InputPayload, ProvinceCode } from '../engine/types'
-import { optimizeDonations } from '../engine/optimizationEngine'
+import type { ComparisonInputPayload, FilingType, ProvinceCode } from '../engine/types'
+import { compareThisOrThat } from '../engine/donationEngine'
 
-const defaultInputs: InputPayload = {
+const defaultInputs: ComparisonInputPayload = {
   province: 'ON',
   filingType: 'single',
   taxpayerIncome: 85_000,
   spouseIncome: 0,
-  charitableDonations: 1_200,
-  politicalDonations: 450,
-  priorCharitableDonations: 0,
+  contributionAmount: 1_200,
 }
 
 export function useDonationOptimizer() {
-  const [inputs, setInputs] = useState<InputPayload>(defaultInputs)
-  /** What-if offset applied only to the displayed charitable amount for sensitivity (does not change political). */
-  const [charitableSensitivityDelta, setCharitableSensitivityDelta] = useState(0)
+  const [inputs, setInputs] = useState<ComparisonInputPayload>(defaultInputs)
 
-  const result = useMemo(() => optimizeDonations(inputs), [inputs])
+  const result = useMemo(() => compareThisOrThat(inputs), [inputs])
 
-  const sensitivityResult = useMemo(() => {
-    if (charitableSensitivityDelta === 0) return null
-    return optimizeDonations({
-      ...inputs,
-      charitableDonations: Math.max(0, round0(inputs.charitableDonations + charitableSensitivityDelta)),
-    })
-  }, [inputs, charitableSensitivityDelta])
-
-  const patchInputs = useCallback((patch: Partial<InputPayload>) => {
+  const patchInputs = useCallback((patch: Partial<ComparisonInputPayload>) => {
     setInputs((prev) => {
       const next = { ...prev, ...patch }
       if (patch.filingType === 'single') {
@@ -46,12 +34,5 @@ export function useDonationOptimizer() {
     setProvince,
     setFilingType,
     result,
-    charitableSensitivityDelta,
-    setCharitableSensitivityDelta,
-    sensitivityResult,
   }
-}
-
-function round0(n: number): number {
-  return Math.round(n)
 }

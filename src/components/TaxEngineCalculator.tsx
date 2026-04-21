@@ -20,10 +20,12 @@ function ResultBlock({
   title,
   cell,
   note,
+  constrainedNote,
 }: {
   title: string
   cell: { salary: number; dividend: number; result: StrategyResult; score?: number }
   note?: string
+  constrainedNote?: string
 }) {
   const r = cell.result
   const pool = r.poolAfterCorpTax ?? 0
@@ -31,6 +33,7 @@ function ResultBlock({
   return (
     <div className="rounded-md border border-accent/30 bg-background p-4 text-sm">
       <p className="font-semibold text-text">{title}</p>
+      {constrainedNote && <p className="mt-1 text-xs text-primary-dark">{constrainedNote}</p>}
       {note && <p className="mt-1 text-xs text-text-light">{note}</p>}
       <dl className="mt-3 space-y-2">
         <div className="flex flex-wrap justify-between gap-2 border-b border-border py-1">
@@ -83,6 +86,12 @@ export default function TaxEngineCalculator() {
   const [corpGross, setCorpGross] = useState(200_000)
   const [salaryStep, setSalaryStep] = useState(5000)
   const [dividendStep, setDividendStep] = useState(5000)
+  const [minNetCashInput, setMinNetCashInput] = useState('')
+
+  const minimumNetCashToOwner = useMemo(() => {
+    const v = num(minNetCashInput)
+    return v > 0 ? v : undefined
+  }, [minNetCashInput])
 
   const optimization = useMemo(() => {
     if (corpGross <= 0) return null
@@ -93,8 +102,14 @@ export default function TaxEngineCalculator() {
       salaryStep,
       dividendStep,
       taxWeight: 0.35,
+      minimumNetCashToOwner,
     })
-  }, [corpGross, province, salaryStep, dividendStep])
+  }, [corpGross, province, salaryStep, dividendStep, minimumNetCashToOwner])
+
+  const constrainedNote =
+    optimization?.resultsRespectMinimumNetCash && optimization.minimumNetCashToOwner != null
+      ? `Among strategies with net cash to you ≥ ${fmt(optimization.minimumNetCashToOwner)}.`
+      : undefined
 
   return (
     <div className="flex flex-col gap-6 text-text">
@@ -136,6 +151,25 @@ export default function TaxEngineCalculator() {
             onChange={(e) => setCorpGross(Math.max(0, num(e.target.value)))}
           />
         </div>
+        <div className="sm:col-span-2 lg:col-span-4">
+          <label className={labelClass} htmlFor="te-min-cash">
+            Minimum net cash you need this year (optional)
+          </label>
+          <input
+            id="te-min-cash"
+            type="number"
+            min={0}
+            step={1000}
+            className={inputClass}
+            placeholder="e.g. 120000"
+            value={minNetCashInput}
+            onChange={(e) => setMinNetCashInput(e.target.value)}
+          />
+          <p className="mt-1 text-xs text-text-light">
+            Net cash means what stays in your pocket after personal tax and CPP/QPP on salary and dividends. When set, the
+            strategies below only include combinations that meet at least this amount (if any exist).
+          </p>
+        </div>
         <div>
           <label className={labelClass} htmlFor="te-sal-step">
             Salary grid step ($)
@@ -166,26 +200,68 @@ export default function TaxEngineCalculator() {
         </div>
       </div>
 
+      <div className="rounded-lg border border-border bg-white p-4 text-sm text-text-light">
+        <p className="font-medium text-text">How the grid steps work</p>
+        <p className="mt-2">
+          The model cannot try every real number. It steps through <strong className="font-medium text-text">salary</strong>{' '}
+          from $0 up to your active business income in increments of the salary step (for example, $5,000 at a time). For
+          each salary level, it steps through{' '}
+          <strong className="font-medium text-text">non-eligible dividends paid</strong> from $0 up to the corporate
+          after-tax pool in increments of the dividend step, and always includes the exact top of the range so nothing is
+          skipped. Smaller steps explore more combinations and can find slightly better answers but run slower; larger
+          steps are faster but coarser.
+        </p>
+      </div>
+
       {!optimization && corpGross <= 0 && (
         <p className="text-sm text-text-light">Enter active business income greater than zero to run the model.</p>
+      )}
+
+      {optimization && !optimization.constraintFeasible && optimization.minimumNetCashToOwner != null && (
+        <div
+          className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-text"
+          role="alert"
+        >
+          <p className="font-medium">No strategy reaches your minimum net cash</p>
+          <p className="mt-1 text-text-light">
+            None of the combinations on this grid deliver at least {fmt(optimization.minimumNetCashToOwner)} net to you
+            after personal tax and CPP/QPP. Try lowering the minimum, increasing active business income, or using smaller
+            grid steps. The results below use the full grid without that floor.
+          </p>
+        </div>
       )}
 
       {optimization && (
         <div className="flex flex-col gap-5">
           <ResultBlock
             title="Lowest total tax (corp + personal)"
-            note="May pay no salary or dividends and retain all after-tax profits—lowest combined tax, but little or no cash to you this year."
+            note={
+              optimization.resultsRespectMinimumNetCash
+                ? 'Lowest combined tax among strategies that meet your net cash floor.'
+                : 'May pay no salary or dividends and retain all after-tax profits—lowest combined tax, but little or no cash to you this year.'
+            }
+            constrainedNote={constrainedNote}
             cell={optimization.bestByTotalTax}
           />
           <ResultBlock
             title="Highest net cash to you"
-            note="Maximizes cash after personal taxes; often pays more in total tax than the minimum above."
+            note={
+              optimization.resultsRespectMinimumNetCash
+                ? 'Highest net cash among strategies that meet your floor (often well above the minimum).'
+                : 'Maximizes cash after personal taxes; often pays more in total tax than the minimum above.'
+            }
+            constrainedNote={constrainedNote}
             cell={optimization.bestByNetCash}
           />
-          <ResultBlock title="Balanced (net cash − 0.35 × total tax)" cell={optimization.bestBalanced} />
+          <ResultBlock
+            title="Balanced (net cash − 0.35 × total tax)"
+            constrainedNote={constrainedNote}
+            cell={optimization.bestBalanced}
+          />
           <ResultBlock
             title="Best when all after-tax profit is paid as dividends"
             note="For each salary level, the model pays the full corporate after-tax pool as non-eligible dividends (no discretionary retention). Picks the salary that minimizes total tax under that rule—similar to the older one-payout-path model."
+            constrainedNote={constrainedNote}
             cell={optimization.bestFullDistribution}
           />
         </div>

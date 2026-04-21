@@ -6,7 +6,7 @@ import { calculateCorporateTax } from './engine/corporateTax'
 import { federalEligibleCreditOnGrossUp, grossUpEligible } from './engine/dividendTax'
 import { calculateCPP } from './engine/cppCalc'
 import { calculateProgressiveTax } from './engine/personalTax'
-import { evaluateCcpcExtraction } from './strategies/optimization'
+import { evaluateCcpcExtraction, optimizeSalaryDividend } from './strategies/optimization'
 
 describe('calculateProgressiveTax', () => {
   it('returns 0 for non-positive income', () => {
@@ -63,5 +63,22 @@ describe('evaluateCcpcExtraction', () => {
     expect(partial.retainedInCorporation).toBeCloseTo((full.poolAfterCorpTax ?? 0) - 50_000, 1)
     expect(partial.personalTax).toBeLessThan(full.personalTax)
     expect(partial.totalTax).toBeLessThan(full.totalTax)
+  })
+})
+
+describe('optimizeSalaryDividend', () => {
+  it('respects minimum net cash when feasible', () => {
+    const r = optimizeSalaryDividend({
+      corporateGross: 200_000,
+      province: 'ON',
+      corporate: { isSbdEligible: true },
+      salaryStep: 10_000,
+      dividendStep: 10_000,
+      minimumNetCashToOwner: 80_000,
+    })
+    expect(r.constraintFeasible).toBe(true)
+    expect(r.resultsRespectMinimumNetCash).toBe(true)
+    expect(r.bestByTotalTax.result.netCash + 1e-6).toBeGreaterThanOrEqual(80_000)
+    expect(r.bestByNetCash.result.netCash + 1e-6).toBeGreaterThanOrEqual(80_000)
   })
 })

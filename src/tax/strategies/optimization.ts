@@ -18,6 +18,11 @@ export interface OptimizationParams {
   step?: number
   /** Weight on total tax in balanced score (higher = prefer lower tax vs cash). */
   taxWeight?: number
+  /**
+   * If set (CAD), only strategies where net cash to the owner (salary + dividends − personal tax/CPP) is at least this
+   * amount are considered for the “best” outcomes. Use 0 or omit for no floor.
+   */
+  minimumNetCashToOwner?: number
 }
 
 export interface OptimizationCell {
@@ -38,7 +43,16 @@ export interface OptimizationResult {
    * Comparable to the historical one-dimensional “full payout” model.
    */
   bestFullDistribution: OptimizationCell
+  /** Every salary × dividend combination evaluated (before applying a net-cash floor). */
   grid: OptimizationCell[]
+  /** Subset of `grid` meeting `minimumNetCashToOwner`, if that parameter was used. */
+  feasibleGrid: OptimizationCell[]
+  /** True when no minimum was set, or at least one grid point meets the minimum. */
+  constraintFeasible: boolean
+  /** Echo of the minimum net cash requirement, if any. */
+  minimumNetCashToOwner?: number
+  /** True when results below were chosen from `feasibleGrid` rather than the full `grid`. */
+  resultsRespectMinimumNetCash: boolean
 }
 
 function round2(n: number): number {
@@ -118,49 +132,10 @@ function pushSalaryEndpoint(
   }
 }
 
-/**
- * 2D grid: salary and dividend payout. Retention = pool − dividend (no personal tax on retained amounts this year).
- */
-export function optimizeSalaryDividend(params: OptimizationParams): OptimizationResult {
-  const salaryStep = params.salaryStep ?? params.step ?? 1000
-  const dividendStep = params.dividendStep ?? params.salaryStep ?? params.step ?? 1000
-  const taxWeight = params.taxWeight ?? 0.35
-  const { corporateGross, province, corporate } = params
-  const G = Math.max(0, corporateGross)
-
-  const grid: OptimizationCell[] = []
-
-  for (let salary = 0; salary <= G; salary += salaryStep) {
-    pushSalaryEndpoint(G, province, corporate, salary, dividendStep, grid)
-  }
-  if (G > 0) {
-    const lastRow = grid.filter((c) => c.salary >= G - 0.005)
-    if (lastRow.length === 0 || lastRow[0]!.salary < G) {
-      pushSalaryEndpoint(G, province, corporate, G, dividendStep, grid)
-    }
-  }
-
-  if (grid.length === 0) {
-    const empty: StrategyResult = {
-      corporateTax: 0,
-      personalTax: 0,
-      totalTax: 0,
-      netCash: 0,
-      rrspRoom: 0,
-      dividendPaid: 0,
-      retainedInCorporation: 0,
-      poolAfterCorpTax: 0,
-    }
-    const cell: OptimizationCell = { salary: 0, dividend: 0, result: empty }
-    return {
-      bestByTotalTax: cell,
-      bestByNetCash: cell,
-      bestBalanced: { ...cell, score: 0 },
-      bestFullDistribution: cell,
-      grid: [],
-    }
-  }
-
+function pickBests(
+  grid: OptimizationCell[],
+  taxWeight: number
+): Pick<OptimizationResult, 'bestByTotalTax' | 'bestByNetCash' | 'bestBalanced' | 'bestFullDistribution'> {
   let bestByTotalTax = grid[0]!
   let bestByNetCash = grid[0]!
   let bestBalanced = grid[0]!
@@ -195,6 +170,77 @@ export function optimizeSalaryDividend(params: OptimizationParams): Optimization
     bestByNetCash,
     bestBalanced: { ...bestBalanced, score: bestScore },
     bestFullDistribution: bestFullDistribution ?? bestByTotalTax,
+  }
+}
+
+/**
+ * 2D grid: salary and dividend payout. Retention = pool − dividend (no personal tax on retained amounts this year).
+ */
+export function optimizeSalaryDividend(params: OptimizationParams): OptimizationResult {
+  const salaryStep = params.salaryStep ?? params.step ?? 1000
+  const dividendStep = params.dividendStep ?? params.salaryStep ?? params.step ?? 1000
+  const taxWeight = params.taxWeight ?? 0.35
+  const minRaw = params.minimumNetCashToOwner
+  const minimumNetCashToOwner =
+    minRaw != null && Number.isFinite(minRaw) && minRaw > 0 ? minRaw : undefined
+  const { corporateGross, province, corporate } = params
+  const G = Math.max(0, corporateGross)
+
+  const grid: OptimizationCell[] = []
+
+  for (let salary = 0; salary <= G; salary += salaryStep) {
+    pushSalaryEndpoint(G, province, corporate, salary, dividendStep, grid)
+  }
+  if (G > 0) {
+    const lastRow = grid.filter((c) => c.salary >= G - 0.005)
+    if (lastRow.length === 0 || lastRow[0]!.salary < G) {
+      pushSalaryEndpoint(G, province, corporate, G, dividendStep, grid)
+    }
+  }
+
+  if (grid.length === 0) {
+    const empty: StrategyResult = {
+      corporateTax: 0,
+      personalTax: 0,
+      totalTax: 0,
+      netCash: 0,
+      rrspRoom: 0,
+      dividendPaid: 0,
+      retainedInCorporation: 0,
+      poolAfterCorpTax: 0,
+    }
+    const cell: OptimizationCell = { salary: 0, dividend: 0, result: empty }
+    return {
+      bestByTotalTax: cell,
+      bestByNetCash: cell,
+      bestBalanced: { ...cell, score: 0 },
+      bestFullDistribution: cell,
+      grid: [],
+      feasibleGrid: [],
+      constraintFeasible: true,
+      minimumNetCashToOwner,
+      resultsRespectMinimumNetCash: false,
+    }
+  }
+
+  const feasibleGrid =
+    minimumNetCashToOwner != null
+      ? grid.filter((c) => c.result.netCash + 1e-6 >= minimumNetCashToOwner)
+      : grid
+  const constraintFeasible = minimumNetCashToOwner == null || feasibleGrid.length > 0
+  const useFeasible =
+    minimumNetCashToOwner != null && feasibleGrid.length > 0
+  const workingGrid = useFeasible ? feasibleGrid : grid
+  const resultsRespectMinimumNetCash = useFeasible
+
+  const bests = pickBests(workingGrid, taxWeight)
+
+  return {
+    ...bests,
     grid,
+    feasibleGrid,
+    constraintFeasible,
+    minimumNetCashToOwner,
+    resultsRespectMinimumNetCash,
   }
 }

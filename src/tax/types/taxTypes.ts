@@ -55,8 +55,15 @@ export interface StrategyResult {
   corporateTax: number
   personalTax: number
   totalTax: number
+  /** Cash received by the owner: salary + dividends actually paid, minus personal income taxes and CPP/QPP. */
   netCash: number
   rrspRoom: number
+  /** Non-eligible dividends paid in the CCPC extraction model (optional). */
+  dividendPaid?: number
+  /** After-tax corporate cash not distributed as dividends (not personally taxed this year). */
+  retainedInCorporation?: number
+  /** Pool available for dividends or retention after corporate tax on (ABI − salary). */
+  poolAfterCorpTax?: number
 }
 
 /** Detailed personal tax output for APIs / TaxGPT. */

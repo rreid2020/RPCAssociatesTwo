@@ -9,7 +9,7 @@ const TaxEngineCalculatorPage: FC = () => {
     <>
       <SEO
         title="CCPC Salary & Dividend Planner | Canadian Tax Engine - RPC Associates"
-        description="Estimate 2025 personal federal and provincial tax with dividends and CPP/QPP. Explore CCPC salary versus dividend strategies with a configurable grid search."
+        description="For owner-managers with only CCPC income: optimize salary, non-eligible dividends, and corporate retention after 2025 federal and provincial parameters."
         canonical="/resources/ccpc-salary-dividend-calculator"
         keywords={[
           'CCPC',
@@ -27,9 +27,9 @@ const TaxEngineCalculatorPage: FC = () => {
               CCPC Salary & Dividend Planner
             </h1>
             <p className="mx-auto max-w-3xl text-base leading-relaxed text-text-light sm:text-lg">
-              Powered by our modular Canadian tax engine (2025 parameters). Model personal taxes with employment income,
-              eligible and non-eligible dividends, and CPP or QPP. Optionally compare salary versus dividend extraction
-              from active business income. For planning only—not tax advice.
+              Assumes no income outside your corporation. The model searches salary, dividends paid from after-tax
+              corporate profits, and amounts retained in the company (no personal tax until dividends are declared). For
+              planning only—not tax advice.
             </p>
           </section>
 

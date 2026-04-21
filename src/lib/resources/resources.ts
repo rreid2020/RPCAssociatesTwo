@@ -104,20 +104,20 @@ export const resources: ResourceDetail[] = [
     slug: 'ccpc-salary-dividend-calculator',
     title: 'CCPC Salary & Dividend Planner',
     shortDescription:
-      'Estimate 2025 personal federal and provincial tax with employment income, eligible and non-eligible dividends, and CPP or QPP. Model salary versus dividend extraction from active business income.',
+      'For owner-managers with only CCPC income: grid search over salary, non-eligible dividends, and amounts retained in the corporation after corporate tax (2025 parameters).',
     longDescription:
-      'This planner uses our internal Canadian tax engine with 2025 federal and provincial parameters. Enter employment and other income, eligible and non-eligible dividends, and your province or territory to see an estimated breakdown of federal and provincial tax plus CPP or QPP. The CCPC section runs a grid search over salary paid from active business income versus non-eligible dividends after corporate tax to illustrate total tax and net cash trade-offs. Illustrative only—confirm with your advisor or T1.',
+      'This planner assumes the shareholder has no income other than what they take from their CCPC. It uses 2025 federal and provincial parameters to search salary levels, dividend payouts from after-tax corporate profits, and retention (no personal tax on amounts left in the company). Compare outcomes that minimize total tax, maximize cash to you, or use a balanced score, plus a “full payout” scenario for comparison. Illustrative only—confirm with your advisor or T1.',
     category: 'calculator',
     categoryLabel: 'Calculator',
     requiresLeadCapture: false,
     benefits: [
-      'Personal tax estimate with dividend gross-up and credits',
-      'CPP or QPP on employment income by province',
-      'Optional CCPC salary versus dividend mix from active business income',
+      'Salary, dividends, and corporate retention in one model',
+      'CPP or QPP on salary; personal tax only on amounts paid to you',
+      'Full-payout comparison (all after-tax profit as dividends)',
       'No registration required',
     ],
     metaDescription:
-      'Free CCPC salary versus dividend planner and Canadian personal tax estimate for 2025 — federal, provincial, dividends, and CPP or QPP.',
+      'Free CCPC planner for 2025: salary vs dividends vs retained earnings for owner-managers with only corporate income.',
     keywords: [
       'CCPC',
       'salary vs dividend',

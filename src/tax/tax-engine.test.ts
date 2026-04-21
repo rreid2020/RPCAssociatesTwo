@@ -6,6 +6,7 @@ import { calculateCorporateTax } from './engine/corporateTax'
 import { federalEligibleCreditOnGrossUp, grossUpEligible } from './engine/dividendTax'
 import { calculateCPP } from './engine/cppCalc'
 import { calculateProgressiveTax } from './engine/personalTax'
+import { evaluateCcpcExtraction } from './strategies/optimization'
 
 describe('calculateProgressiveTax', () => {
   it('returns 0 for non-positive income', () => {
@@ -49,5 +50,18 @@ describe('corporate CCPC ON', () => {
     })
     const expectedCombinedRate = 0.09 + 0.032
     expect(r.total).toBeCloseTo(100_000 * expectedCombinedRate, 1)
+  })
+})
+
+describe('evaluateCcpcExtraction', () => {
+  it('retains undistributed after-tax pool and lowers personal tax vs full payout', () => {
+    const corp = { isSbdEligible: true as const }
+    const full = evaluateCcpcExtraction(200_000, 0, Number.POSITIVE_INFINITY, 'ON', corp)
+    const partial = evaluateCcpcExtraction(200_000, 0, 50_000, 'ON', corp)
+    expect(full.poolAfterCorpTax).toBe(full.dividendPaid)
+    expect(partial.dividendPaid).toBe(50_000)
+    expect(partial.retainedInCorporation).toBeCloseTo((full.poolAfterCorpTax ?? 0) - 50_000, 1)
+    expect(partial.personalTax).toBeLessThan(full.personalTax)
+    expect(partial.totalTax).toBeLessThan(full.totalTax)
   })
 })

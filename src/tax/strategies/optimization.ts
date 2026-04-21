@@ -93,6 +93,9 @@ export function evaluateCcpcExtraction(
   )
   const netCash = round2(S + D - personalTotal)
   const rrspRoom = round2(S * 0.18)
+  const fedNet = round2(personal.federal.netTax)
+  const provNet = round2(personal.provincial.netTax)
+  const cppEmp = round2(personal.cpp.employee)
   return {
     corporateTax: corp.total,
     personalTax: personalTotal,
@@ -102,6 +105,9 @@ export function evaluateCcpcExtraction(
     dividendPaid: D,
     retainedInCorporation: retained,
     poolAfterCorpTax: pool,
+    personalFederalNet: fedNet,
+    personalProvincialNet: provNet,
+    cppEmployee: cppEmp,
   }
 }
 
@@ -208,6 +214,9 @@ export function optimizeSalaryDividend(params: OptimizationParams): Optimization
       dividendPaid: 0,
       retainedInCorporation: 0,
       poolAfterCorpTax: 0,
+      personalFederalNet: 0,
+      personalProvincialNet: 0,
+      cppEmployee: 0,
     }
     const cell: OptimizationCell = { salary: 0, dividend: 0, result: empty }
     return {

@@ -53,6 +53,7 @@ export interface TaxBreakdown {
 
 export interface StrategyResult {
   corporateTax: number
+  /** Federal net tax + provincial net tax + CPP/QPP employee (matches detailed lines when present). */
   personalTax: number
   totalTax: number
   /** Cash received by the owner: salary + dividends actually paid, minus personal income taxes and CPP/QPP. */
@@ -64,6 +65,10 @@ export interface StrategyResult {
   retainedInCorporation?: number
   /** Pool available for dividends or retention after corporate tax on (ABI − salary). */
   poolAfterCorpTax?: number
+  /** Populated by CCPC extraction for clearer UI breakdown. */
+  personalFederalNet?: number
+  personalProvincialNet?: number
+  cppEmployee?: number
 }
 
 /** Detailed personal tax output for APIs / TaxGPT. */

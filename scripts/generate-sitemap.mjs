@@ -83,6 +83,7 @@ async function generateSitemap() {
       { url: '/resources/cash-flow-calculator', priority: '0.8', changefreq: 'monthly' },
       { url: '/resources/cash-flow-statement-direct-method', priority: '0.8', changefreq: 'monthly' },
       { url: '/resources/donation-credit-optimizer', priority: '0.8', changefreq: 'monthly' },
+      { url: '/resources/ccpc-salary-dividend-calculator', priority: '0.8', changefreq: 'monthly' },
       { url: '/resources/cash-flow-statement-template', priority: '0.8', changefreq: 'monthly' },
       { url: '/resources/cfi-financial-ratios-guide', priority: '0.8', changefreq: 'monthly' },
       { url: '/articles', priority: '0.8', changefreq: 'weekly' },

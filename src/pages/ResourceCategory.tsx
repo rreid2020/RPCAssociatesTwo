@@ -54,6 +54,7 @@ const ResourceCategory: FC = () => {
         'cash-flow-calculator',
         'cash-flow-statement-direct-method',
         'donation-credit-optimizer',
+        'ccpc-salary-dividend-calculator',
       ]
         .map((slugValue) => resources.find((resource) => resource.slug === slugValue))
         .filter((resource): resource is ResourceDetail => Boolean(resource))
@@ -62,6 +63,7 @@ const ResourceCategory: FC = () => {
           'cash-flow-calculator',
           'cash-flow-statement-direct-method',
           'donation-credit-optimizer',
+          'ccpc-salary-dividend-calculator',
         ].includes(resource.slug)))
     : resources
 

@@ -21,6 +21,7 @@ import CanonicalRedirect from './components/CanonicalRedirect'
 import CashFlowCalculator from './pages/CashFlowCalculator'
 import CashFlowStatementDirectMethod from './pages/CashFlowStatementDirectMethod'
 import DonationOptimizerPage from './pages/DonationOptimizerPage'
+import TaxEngineCalculatorPage from './pages/TaxEngineCalculatorPage'
 import ResourceCategory from './pages/ResourceCategory'
 import ResourceDetail from './pages/ResourceDetail'
 import Services from './pages/Services'
@@ -165,6 +166,7 @@ const App: FC = () => {
                 <Route path="/resources/cash-flow-calculator" element={<CashFlowCalculator />} />
                 <Route path="/resources/cash-flow-statement-direct-method" element={<CashFlowStatementDirectMethod />} />
                 <Route path="/resources/donation-credit-optimizer" element={<DonationOptimizerPage />} />
+                <Route path="/resources/ccpc-salary-dividend-calculator" element={<TaxEngineCalculatorPage />} />
                 <Route path="/resources/cash-flow-statement-template" element={<ResourceDetail />} />
                 <Route path="/resources/cfi-financial-ratios-guide" element={<ResourceDetail />} />
                 {/* Resource category routes */}

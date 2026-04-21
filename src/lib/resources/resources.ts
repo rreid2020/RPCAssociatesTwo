@@ -101,6 +101,33 @@ export const resources: ResourceDetail[] = [
     ],
   },
   {
+    slug: 'ccpc-salary-dividend-calculator',
+    title: 'CCPC Salary & Dividend Planner',
+    shortDescription:
+      'Estimate 2025 personal federal and provincial tax with employment income, eligible and non-eligible dividends, and CPP or QPP. Model salary versus dividend extraction from active business income.',
+    longDescription:
+      'This planner uses our internal Canadian tax engine with 2025 federal and provincial parameters. Enter employment and other income, eligible and non-eligible dividends, and your province or territory to see an estimated breakdown of federal and provincial tax plus CPP or QPP. The CCPC section runs a grid search over salary paid from active business income versus non-eligible dividends after corporate tax to illustrate total tax and net cash trade-offs. Illustrative only—confirm with your advisor or T1.',
+    category: 'calculator',
+    categoryLabel: 'Calculator',
+    requiresLeadCapture: false,
+    benefits: [
+      'Personal tax estimate with dividend gross-up and credits',
+      'CPP or QPP on employment income by province',
+      'Optional CCPC salary versus dividend mix from active business income',
+      'No registration required',
+    ],
+    metaDescription:
+      'Free CCPC salary versus dividend planner and Canadian personal tax estimate for 2025 — federal, provincial, dividends, and CPP or QPP.',
+    keywords: [
+      'CCPC',
+      'salary vs dividend',
+      'Canadian tax calculator',
+      'small business',
+      'dividend tax credit',
+      'Ottawa',
+    ],
+  },
+  {
     slug: 'cash-flow-statement-template',
     title: 'Cash Flow Statement Template',
     shortDescription: 'Track cash inflows and outflows with this comprehensive Excel template. Monitor liquidity, plan for major expenditures, and make informed financial decisions.',

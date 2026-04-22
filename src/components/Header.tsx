@@ -181,19 +181,22 @@ const Header: FC = () => {
 
       <header className="sticky top-0 bg-white shadow-sm z-[1000]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 md:min-h-[6.5rem] lg:min-h-32 md:py-1.5 lg:py-2">
+          <div className="flex w-full items-center h-16 md:min-h-[6.5rem] lg:min-h-32 md:py-1.5 lg:py-2">
             {/* Logo */}
             <Link
               to="/"
               aria-label="Axiom Financial & Technology"
-              className="no-underline flex-shrink-0 min-w-0 max-w-[min(100%,40rem)] sm:max-w-none"
+              className="no-underline shrink-0 min-w-0 max-w-[min(100%,40rem)] sm:max-w-none"
             >
               <AxiomWordmark size="md" />
             </Link>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden lg:flex lg:items-center lg:gap-6 xl:gap-8">
-              <ul className="flex items-center gap-6 xl:gap-8 list-none">
+            {/* Main links: centered in the space between logo and account/CTA */}
+            <nav
+              className="hidden lg:flex flex-1 min-w-0 items-center justify-center self-center mx-1 xl:mx-3 2xl:mx-4"
+              aria-label="Main navigation"
+            >
+              <ul className="m-0 p-0 list-none flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 xl:gap-x-5 2xl:gap-x-6">
                 {/* Services Dropdown */}
                 <li 
                   className="relative"
@@ -201,7 +204,7 @@ const Header: FC = () => {
                   onMouseLeave={() => handleMenuLeave('services', 300)}
                 >
                   <button
-                    className="flex items-center gap-1 text-text font-medium hover:text-primary-dark transition-colors py-2 whitespace-nowrap"
+                    className="min-h-11 inline-flex items-center gap-1 text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
                   >
                     Services
                     <svg 
@@ -253,7 +256,7 @@ const Header: FC = () => {
                 <li>
                   <a 
                     href="#about" 
-                    className="text-text font-medium hover:text-primary-dark transition-colors py-2 whitespace-nowrap"
+                    className="min-h-11 inline-flex items-center text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
                     onClick={(e) => { e.preventDefault(); scrollToSection('about') }}
                   >
                     About
@@ -262,7 +265,7 @@ const Header: FC = () => {
                 <li>
                   <a 
                     href="#remote" 
-                    className="text-text font-medium hover:text-primary-dark transition-colors py-2 whitespace-nowrap"
+                    className="min-h-11 inline-flex items-center text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
                     onClick={(e) => { e.preventDefault(); scrollToSection('remote') }}
                   >
                     Remote
@@ -271,7 +274,7 @@ const Header: FC = () => {
                 <li>
                   <a 
                     href="#contact" 
-                    className="text-text font-medium hover:text-primary-dark transition-colors py-2 whitespace-nowrap"
+                    className="min-h-11 inline-flex items-center text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
                     onClick={(e) => { e.preventDefault(); scrollToSection('contact') }}
                   >
                     Contact
@@ -285,7 +288,7 @@ const Header: FC = () => {
                   onMouseLeave={() => handleMenuLeave('resources', 300)}
                 >
                   <button
-                    className="flex items-center gap-1 text-text font-medium hover:text-primary-dark transition-colors py-2 whitespace-nowrap"
+                    className="min-h-11 inline-flex items-center gap-1 text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
                   >
                     Resources
                     <svg 
@@ -341,7 +344,7 @@ const Header: FC = () => {
                 >
                   <Link 
                     to="/articles" 
-                    className="flex items-center gap-1 text-text font-medium hover:text-primary-dark transition-colors py-2 whitespace-nowrap"
+                    className="min-h-11 inline-flex items-center gap-1 text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
                   >
                     Articles
                     <svg 
@@ -385,32 +388,33 @@ const Header: FC = () => {
                     </div>
                   )}
                 </li>
-
-                <li>
-                <Link 
-                  to="/client-portal" 
-                  className="btn btn--secondary whitespace-nowrap"
-                  onClick={closeMenu}
-                >
-                    Client Portal
-                  </Link>
-                </li>
               </ul>
-              <div className="ml-4 flex items-center gap-4">
-                <Link
-                  to="/portal/sign-in"
-                  className="text-sm font-semibold text-text hover:text-primary-dark whitespace-nowrap"
-                  onClick={closeMenu}
-                >
-                  Sign in
-                </Link>
-                <CalendlyButton className="btn btn--primary whitespace-nowrap" />
-              </div>
             </nav>
 
+            {/* Account + conversion (even spacing, aligned to full header height) */}
+            <div
+              className="hidden lg:flex items-center justify-end shrink-0 self-center gap-x-4 xl:gap-x-5 2xl:gap-x-6"
+            >
+              <Link
+                to="/client-portal"
+                className="btn btn--secondary inline-flex items-center justify-center whitespace-nowrap min-h-11 text-[0.9375rem] leading-none"
+                onClick={closeMenu}
+              >
+                Client Portal
+              </Link>
+              <Link
+                to="/portal/sign-in"
+                className="inline-flex h-11 items-center text-sm font-semibold text-text hover:text-primary-dark whitespace-nowrap px-1"
+                onClick={closeMenu}
+              >
+                Sign in
+              </Link>
+              <CalendlyButton className="btn btn--primary inline-flex items-center justify-center min-h-11 whitespace-nowrap" />
+            </div>
+
             {/* Mobile Hamburger Button */}
-            <button 
-              className="lg:hidden flex flex-col gap-1.5 bg-transparent border-none cursor-pointer p-2 z-[1001]"
+            <button
+              className="lg:hidden ml-auto flex flex-col gap-1.5 bg-transparent border-none cursor-pointer p-2 z-[1001]"
               onClick={toggleMenu}
               aria-label="Toggle menu"
               aria-expanded={isMenuOpen}

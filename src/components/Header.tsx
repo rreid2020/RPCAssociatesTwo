@@ -396,7 +396,14 @@ const Header: FC = () => {
                   </Link>
                 </li>
               </ul>
-              <div className="ml-4">
+              <div className="ml-4 flex items-center gap-4">
+                <Link
+                  to="/portal/sign-in"
+                  className="text-sm font-semibold text-text hover:text-primary-dark whitespace-nowrap"
+                  onClick={closeMenu}
+                >
+                  Sign in
+                </Link>
                 <CalendlyButton className="btn btn--primary whitespace-nowrap" />
               </div>
             </nav>
@@ -574,12 +581,20 @@ const Header: FC = () => {
                 )}
               </div>
 
-              <Link 
-                to="/client-portal" 
+              <Link
+                to="/client-portal"
                 className="block btn btn--secondary whitespace-nowrap text-center"
                 onClick={closeMenu}
               >
                 Client Portal
+              </Link>
+
+              <Link
+                to="/portal/sign-in"
+                className="block text-center font-semibold text-primary-dark py-2"
+                onClick={closeMenu}
+              >
+                Sign in to portal
               </Link>
 
               <div className="pt-4 border-t border-primary/20">

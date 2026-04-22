@@ -1,4 +1,5 @@
 import { FC } from 'react'
+import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 import CalendlyButton from '../components/CalendlyButton'
 
@@ -24,12 +25,20 @@ const ClientPortal: FC = () => {
                 <p className="text-lg text-text-light mb-lg">
                   Centralize communication, documents, and tax intelligence in a single portal built for fast, secure client collaboration. Access your dashboard, research tax questions, share files, and connect your accounting tools—all in one place.
                 </p>
-                <div className="flex gap-md mb-lg flex-wrap">
-                  <CalendlyButton text="Request Portal Access" />
+                <div className="flex gap-md mb-md flex-wrap items-center">
+                  <Link to="/portal/sign-in" className="btn btn--primary">
+                    Sign in to portal
+                  </Link>
+                  <CalendlyButton text="Request Portal Access" className="btn btn--secondary" />
                   <a href="tel:6138840208" className="btn btn--secondary">
                     Call: 613-884-0208
                   </a>
                 </div>
+                <p className="text-sm text-text-light">
+                  New user? <Link to="/portal/sign-up" className="text-accent font-semibold hover:underline">Create an account</Link>
+                  {' · '}
+                  <Link to="/portal/sign-in" className="text-accent font-semibold hover:underline">Sign in</Link> if you already have one.
+                </p>
               </div>
               <div className="bg-white p-xl rounded-xl shadow-md">
                 <h3 className="text-2xl mb-md text-primary-dark">Why use the Client Portal?</h3>
@@ -56,6 +65,11 @@ const ClientPortal: FC = () => {
               <p className="text-lg text-text-light">
                 Five powerful modules working together to streamline your accounting, tax, and business advisory needs.
               </p>
+              <div className="mt-lg">
+                <Link to="/portal/sign-in" className="btn btn--primary inline-block">
+                  Open the portal
+                </Link>
+              </div>
             </div>
           </div>
         </section>
@@ -494,10 +508,13 @@ const ClientPortal: FC = () => {
                 Ready to Get Started?
               </h2>
               <p className="text-lg text-text-light mb-lg max-w-[600px] mx-auto">
-                Join clients who are already using the Client Portal to streamline their accounting, tax, and business advisory needs. Request access today.
+                Join clients who are already using the Client Portal to streamline your accounting, tax, and business advisory needs. Request access today, or sign in if you already have an account.
               </p>
               <div className="flex gap-md justify-center flex-wrap">
-                <CalendlyButton text="Request Portal Access" />
+                <Link to="/portal/sign-in" className="btn btn--primary">
+                  Sign in to portal
+                </Link>
+                <CalendlyButton text="Request Portal Access" className="btn btn--secondary" />
                 <a href="mailto:roger.reid@rpcassociates.co" className="btn btn--secondary">
                   Email Us
                 </a>

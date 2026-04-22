@@ -2,7 +2,7 @@ import { FC, useState } from 'react'
 import { useSignUp, useClerk } from '@clerk/clerk-react'
 import { useNavigate, Link } from 'react-router-dom'
 import SEO from '../../components/SEO'
-import brandLogo from '../../assets/axiom-logo.svg'
+import AxiomWordmark from '../../components/AxiomWordmark'
 
 const SignUp: FC = () => {
   const { signUp, isLoaded } = useSignUp()
@@ -121,7 +121,7 @@ const SignUp: FC = () => {
       <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <img src={brandLogo} alt="Axiom" className="h-12 w-12 mx-auto mb-4" />
+            <AxiomWordmark size="lg" centered className="mb-4" />
             <h1 className="text-3xl font-bold text-primary-dark mb-2">Create Account</h1>
             <p className="text-text-light">Get started with the client portal</p>
           </div>

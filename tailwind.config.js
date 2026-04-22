@@ -23,6 +23,8 @@ export default {
       },
       fontFamily: {
         sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif'],
+        cinzel: ['"Cinzel"', 'Georgia', 'serif'],
+        montserrat: ['"Montserrat"', 'system-ui', 'sans-serif'],
       },
       spacing: {
         'xs': '0.5rem',

@@ -1,7 +1,7 @@
 import { FC, useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import logo from '../assets/axiom-logo.svg'
 import CalendlyButton from './CalendlyButton'
+import AxiomWordmark from './AxiomWordmark'
 import { services } from '../lib/services/data'
 import { resourceCategories } from '../lib/resources/data'
 
@@ -183,12 +183,12 @@ const Header: FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 md:h-20">
             {/* Logo */}
-            <Link to="/" aria-label="Axiom Home" className="flex items-center gap-2 sm:gap-3 no-underline flex-shrink-0">
-              <img src={logo} alt="Axiom" className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0" />
-              <div className="flex flex-col">
-                <span className="text-base sm:text-lg md:text-xl font-semibold text-primary-dark leading-tight">Axiom</span>
-                <span className="text-[10px] sm:text-xs font-normal text-text-light leading-tight">Financial &amp; Technology</span>
-              </div>
+            <Link
+              to="/"
+              aria-label="Axiom Financial & Technology"
+              className="no-underline flex-shrink-0"
+            >
+              <AxiomWordmark size="md" />
             </Link>
 
             {/* Desktop Navigation */}

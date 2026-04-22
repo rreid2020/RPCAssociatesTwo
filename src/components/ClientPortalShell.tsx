@@ -2,7 +2,7 @@ import { FC, ReactNode, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useUser, useClerk } from '@clerk/clerk-react'
 import { useFeatureAccess } from '../lib/subscriptions/hooks'
-import brandLogo from '../assets/axiom-logo.svg'
+import AxiomWordmark from './AxiomWordmark'
 
 interface NavItem {
   to: string
@@ -124,13 +124,7 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
         <div className="flex flex-col h-full">
           {/* Logo and close button */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-            <div className="flex items-center gap-3">
-              <img src={brandLogo} alt="Axiom" className="h-8 w-8" />
-              <div>
-                <p className="text-sm font-semibold text-primary-dark">Axiom</p>
-                <p className="text-xs text-text-light">Client Portal</p>
-              </div>
-            </div>
+            <AxiomWordmark size="sm" line3="Client Portal" />
             <button
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden p-2 rounded-md text-text-light hover:bg-background"

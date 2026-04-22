@@ -186,17 +186,17 @@ const Header: FC = () => {
             <Link
               to="/"
               aria-label="Axiom Financial & Technology"
-              className="no-underline shrink-0 min-w-0 max-w-[min(100%,40rem)] sm:max-w-none"
+              className="no-underline shrink-0 max-w-[min(100%,40rem)] sm:max-w-[min(100%,28rem)] md:max-w-[min(100%,32rem)] lg:max-w-[18rem] xl:max-w-[22rem] 2xl:max-w-[26rem]"
             >
-              <AxiomWordmark size="md" />
+              <AxiomWordmark size="md" className="max-w-full" />
             </Link>
 
-            {/* Single row: all links + actions spread with justify-between (Tailwind-style navbar) */}
+            {/* Fills space beside logo: no overflow scroll — items spread with justify-between */}
             <nav
-              className="hidden lg:flex flex-1 min-w-0 self-center min-h-0 ml-2 pl-1 xl:ml-4 2xl:ml-6"
+              className="hidden lg:flex flex-1 min-w-0 self-center pl-2 xl:pl-4 2xl:pl-5"
               aria-label="Main navigation"
             >
-              <ul className="m-0 p-0 w-full min-w-0 list-none flex flex-nowrap items-center justify-between gap-x-0.5 overflow-x-auto overflow-y-hidden scroll-smooth">
+              <ul className="m-0 p-0 w-full list-none flex flex-nowrap items-center justify-between overflow-visible gap-x-1.5 lg:gap-x-2.5 xl:gap-x-3 2xl:gap-x-4">
                 {/* Services Dropdown */}
                 <li
                   className="relative shrink-0"

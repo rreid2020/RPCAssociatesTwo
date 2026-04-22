@@ -7,17 +7,17 @@ type Size = 'sm' | 'md' | 'lg'
 const sizes: Record<Size, { mark: string; logotype: string; line3: string }> = {
   sm: {
     mark: 'h-8 w-auto sm:h-9',
-    logotype: 'h-7 w-auto sm:h-8 max-w-[min(100%,11rem)]',
+    logotype: 'h-8 w-auto sm:h-9 max-w-[min(100%,12.5rem)]',
     line3: 'text-[9px] sm:text-[10px] text-text-light mt-0.5',
   },
   md: {
-    mark: 'h-9 w-auto sm:h-10 md:h-11',
-    logotype: 'h-8 w-auto sm:h-9 md:h-10 max-w-[min(100%,16rem)] sm:max-w-none',
+    mark: 'h-10 w-auto sm:h-11 md:h-12',
+    logotype: 'h-12 w-auto sm:h-12 md:h-14 max-w-[min(100%,20rem)] sm:max-w-none',
     line3: 'text-[9px] sm:text-[10px] text-text-light mt-0.5',
   },
   lg: {
-    mark: 'h-12 w-auto sm:h-14',
-    logotype: 'h-10 w-auto sm:h-12',
+    mark: 'h-12 w-auto sm:h-16',
+    logotype: 'h-12 w-auto sm:h-16',
     line3: 'text-xs sm:text-sm text-text-light mt-1',
   },
 }

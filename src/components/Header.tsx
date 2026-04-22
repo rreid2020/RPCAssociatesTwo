@@ -181,12 +181,12 @@ const Header: FC = () => {
 
       <header className="sticky top-0 bg-white shadow-sm z-[1000]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 md:h-20">
+          <div className="flex items-center justify-between h-16 md:h-24">
             {/* Logo */}
             <Link
               to="/"
               aria-label="Axiom Financial & Technology"
-              className="no-underline flex-shrink-0 min-w-0 max-w-[min(100%,22rem)] sm:max-w-none"
+              className="no-underline flex-shrink-0 min-w-0 max-w-[min(100%,28rem)] sm:max-w-none"
             >
               <AxiomWordmark size="md" />
             </Link>

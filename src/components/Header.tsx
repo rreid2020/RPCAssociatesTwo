@@ -186,7 +186,7 @@ const Header: FC = () => {
             <Link
               to="/"
               aria-label="Axiom Financial & Technology"
-              className="no-underline flex-shrink-0"
+              className="no-underline flex-shrink-0 min-w-0 max-w-[min(100%,22rem)] sm:max-w-none"
             >
               <AxiomWordmark size="md" />
             </Link>

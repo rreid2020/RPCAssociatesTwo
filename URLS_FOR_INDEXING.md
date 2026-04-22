@@ -86,7 +86,7 @@ The sitemap will automatically include:
 
 ## Notes
 
-- **Client Portal** (`/client-portal`) is a "Coming Soon" page - you may want to exclude this from indexing or submit it later
+- **Client Portal** (`/client-portal`) describes live modules (Dashboard, TaxGPT, files, working papers, integration requests). When you want the brochure indexed, submit it via sitemap or URL Inspection like other marketing pages
 - Article pages are dynamically generated from Sanity CMS and will be included in your sitemap automatically
 - Google will crawl and index pages from your sitemap over time, so you don't need to manually submit every single URL
 - Focus on submitting the high-priority pages (homepage, services, key resources) first

@@ -1,14 +1,17 @@
 import { FC, ReactNode, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useUser, useClerk } from '@clerk/clerk-react'
-import { useSubscription } from '../lib/subscriptions/hooks'
+import { useFeatureAccess } from '../lib/subscriptions/hooks'
 import rpcLogo from '../assets/rpc-logo.svg'
 
 interface NavItem {
   to: string
   label: string
   icon: JSX.Element
-  badge?: string
+  /** Gated: link disabled when the user does not have this feature. */
+  featureKey?: 'fileRepository' | 'workingPapers' | 'integrations'
+  /** Shown on top of a locked item (e.g. Premium) */
+  lockedLabel?: string
 }
 
 interface ClientPortalShellProps {
@@ -20,7 +23,17 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
   const location = useLocation()
   const { user } = useUser()
   const { signOut } = useClerk()
-  const subscriptionPlan = useSubscription()
+  const fileRepo = useFeatureAccess('fileRepository')
+  const workingPapers = useFeatureAccess('workingPapers')
+  const integrations = useFeatureAccess('integrations')
+
+  const isLocked = (item: NavItem) => {
+    if (!item.featureKey) return false
+    if (item.featureKey === 'fileRepository') return !fileRepo
+    if (item.featureKey === 'workingPapers') return !workingPapers
+    if (item.featureKey === 'integrations') return !integrations
+    return false
+  }
 
   const navigation: NavItem[] = [
     {
@@ -44,32 +57,35 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
     {
       to: '/portal/files',
       label: 'File Repository',
+      featureKey: 'fileRepository',
+      lockedLabel: 'Premium',
       icon: (
         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
         </svg>
       ),
-      badge: subscriptionPlan === 'free' ? 'Premium' : 'Coming Soon',
     },
     {
       to: '/portal/working-papers',
       label: 'Working Papers',
+      featureKey: 'workingPapers',
+      lockedLabel: 'Premium',
       icon: (
         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
       ),
-      badge: subscriptionPlan === 'free' ? 'Premium' : 'Coming Soon',
     },
     {
       to: '/portal/integrations',
       label: 'Integrations',
+      featureKey: 'integrations',
+      lockedLabel: 'Premium',
       icon: (
         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
       ),
-      badge: subscriptionPlan === 'free' ? 'Premium' : 'Coming Soon',
     },
     {
       to: '/portal/subscription',
@@ -129,6 +145,7 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
           <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
               const active = isActive(item.to)
+              const locked = isLocked(item)
               return (
                 <Link
                   key={item.to}
@@ -138,18 +155,18 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
                     active
                       ? 'bg-primary-dark text-white'
                       : 'text-text hover:bg-background hover:text-primary-dark'
-                  } ${item.badge ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  } ${locked ? 'opacity-60 cursor-not-allowed' : ''}`}
                   onClickCapture={(e) => {
-                    if (item.badge) {
+                    if (locked) {
                       e.preventDefault()
                     }
                   }}
                 >
                   <span className={active ? 'text-white' : 'text-text-light'}>{item.icon}</span>
                   <span className="flex-1">{item.label}</span>
-                  {item.badge && (
+                  {locked && item.lockedLabel && (
                     <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">
-                      {item.badge}
+                      {item.lockedLabel}
                     </span>
                   )}
                 </Link>

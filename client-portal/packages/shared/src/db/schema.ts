@@ -1,4 +1,4 @@
-import { pgTable, pgSchema, text, timestamp, jsonb, integer, uuid, varchar, customType } from 'drizzle-orm/pg-core';
+import { pgTable, pgSchema, text, timestamp, jsonb, integer, uuid, varchar, customType, boolean } from 'drizzle-orm/pg-core';
 import type { SourceType, SourceCategory, IngestStatus, Priority, RiskLevel } from '../types';
 
 // Create a dedicated schema for this application
@@ -156,5 +156,78 @@ export const taxFormAliases = taxgptSchema.table('tax_form_aliases', {
     .references(() => taxForms.id, { onDelete: 'cascade' }),
   alias: text('alias').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+/* —— Client portal (RPC marketing /portal) —— */
+
+export const portalOpenItems = taxgptSchema.table('portal_open_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  clerkUserId: text('clerk_user_id').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  status: varchar('status', { length: 20 }).notNull().default('open'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  dueAt: timestamp('due_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const portalDeadlines = taxgptSchema.table('portal_deadlines', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  clerkUserId: text('clerk_user_id').notNull(),
+  title: text('title').notNull(),
+  dueAt: timestamp('due_at').notNull(),
+  category: varchar('category', { length: 64 }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const portalActivity = taxgptSchema.table('portal_activity', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  clerkUserId: text('clerk_user_id').notNull(),
+  kind: varchar('kind', { length: 32 }).notNull(),
+  title: text('title').notNull(),
+  body: text('body'),
+  metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const portalClientFiles = taxgptSchema.table('portal_client_files', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  clerkUserId: text('clerk_user_id').notNull(),
+  storageKey: text('storage_key').notNull(),
+  fileName: text('file_name').notNull(),
+  mime: text('mime'),
+  sizeBytes: integer('size_bytes'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const portalChecklists = taxgptSchema.table('portal_checklists', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  clerkUserId: text('clerk_user_id').notNull(),
+  name: text('name').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const portalChecklistItems = taxgptSchema.table('portal_checklist_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  checklistId: uuid('checklist_id')
+    .notNull()
+    .references(() => portalChecklists.id, { onDelete: 'cascade' }),
+  label: text('label').notNull(),
+  done: boolean('done').notNull().default(false),
+  sortOrder: integer('sort_order').notNull().default(0),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const portalIntegrations = taxgptSchema.table('portal_integrations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  clerkUserId: text('clerk_user_id').notNull(),
+  provider: varchar('provider', { length: 64 }).notNull(),
+  status: varchar('status', { length: 32 }).notNull().default('disconnected'),
+  connectedAt: timestamp('connected_at'),
+  metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 

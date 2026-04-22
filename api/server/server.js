@@ -8,6 +8,8 @@ import { fileURLToPath } from 'url'
 import { createPool } from './db/pool.js'
 import { sendEmail } from './utils/email.js'
 import { createLeadsTable, createContactsTable } from './db/migrations.js'
+import { ensurePortalSchema } from './db/ensurePortalSchema.js'
+import { createPortalRouter } from './routes/portalRoutes.js'
 
 dotenv.config()
 
@@ -262,6 +264,9 @@ app.post('/api/contact', async (req, res) => {
   }
 })
 
+// Client Portal API (Clerk JWT; data in taxgpt.*)
+app.use('/api/portal', createPortalRouter(pool))
+
 // Initialize database tables
 async function initializeDatabase() {
   try {
@@ -278,6 +283,7 @@ async function initializeDatabase() {
     
     await createLeadsTable(pool)
     await createContactsTable(pool)
+    await ensurePortalSchema(pool)
     console.log('Database tables initialized successfully')
   } catch (error) {
     console.error('Error initializing database:', error)
@@ -321,7 +327,7 @@ app.use('/api', (req, res, next) => {
     error: 'API endpoint not found',
     method: req.method,
     path: req.path,
-    availableEndpoints: ['/api/health', '/api/leads', '/api/contact']
+    availableEndpoints: ['/api/health', '/api/leads', '/api/contact', '/api/portal/v1/...']
   })
 })
 

@@ -28,7 +28,6 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@crawler/core": "workspace:*",
     "drizzle-orm": "^0.29.1",
     "postgres": "^3.4.3",
     "dotenv": "^16.3.1"

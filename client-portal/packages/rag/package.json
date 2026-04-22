@@ -17,9 +17,9 @@
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {
-    "@shared/types": "workspace:*",
-    "@storage/core": "workspace:*",
-    "@crawler/core": "workspace:*",
+    "@shared/types": "file:../shared",
+    "@storage/core": "file:../storage",
+    "@crawler/core": "file:../crawler",
     "@mozilla/readability": "^0.5.0",
     "cheerio": "^1.0.0-rc.12",
     "drizzle-orm": "^0.29.1",

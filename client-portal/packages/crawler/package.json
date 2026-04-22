@@ -17,7 +17,7 @@
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {
-    "@shared/types": "workspace:*",
+    "@shared/types": "file:../shared",
     "drizzle-orm": "^0.29.1",
     "cheerio": "^1.0.0-rc.12",
     "robots-parser": "^3.0.1",

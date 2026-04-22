@@ -1,11 +1,75 @@
-import { FC } from 'react'
+import { FC, useCallback, useEffect, useState } from 'react'
+import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../components/SEO'
 import ClientPortalShell from '../../components/ClientPortalShell'
 import { useFeatureAccess } from '../../lib/subscriptions/hooks'
 import UpgradePrompt from '../../components/UpgradePrompt'
+import { portalFetch } from '../../lib/portalApi'
+
+type ChecklistItem = { id: string; label: string; done: boolean; sort_order: number }
+type Checklist = { id: string; name: string; items: ChecklistItem[] }
+
+const defaultYearEnd = ['T2 / corporate return', 'Year-end financial statements', 'Adjusting entries reviewed', 'Notice of assessment on file']
 
 const WorkingPapers: FC = () => {
   const hasAccess = useFeatureAccess('workingPapers')
+  const { getToken } = useAuth()
+  const [lists, setLists] = useState<Checklist[]>([])
+  const [err, setErr] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState<string | null>(null)
+  const [name, setName] = useState('Year-end package')
+
+  const load = useCallback(async () => {
+    if (!hasAccess) return
+    setErr(null)
+    setLoading(true)
+    try {
+      const { checklists } = await portalFetch<{ checklists: Checklist[] }>('/v1/checklists', getToken)
+      setLists(checklists)
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Failed to load')
+    } finally {
+      setLoading(false)
+    }
+  }, [getToken, hasAccess])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const addDefaultChecklist = async () => {
+    setErr(null)
+    setSaving('new')
+    try {
+      await portalFetch('/v1/checklists', getToken, {
+        method: 'POST',
+        body: JSON.stringify({ name: name.trim() || 'Checklist', items: defaultYearEnd })
+      })
+      setName('Year-end package')
+      void load()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not create checklist')
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  const toggle = async (itemId: string, done: boolean) => {
+    setErr(null)
+    setSaving(itemId)
+    try {
+      await portalFetch('/v1/checklists/items/' + itemId, getToken, {
+        method: 'PATCH',
+        body: JSON.stringify({ done: !done })
+      })
+      void load()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Update failed')
+    } finally {
+      setSaving(null)
+    }
+  }
 
   return (
     <>
@@ -24,18 +88,64 @@ const WorkingPapers: FC = () => {
               </span>
             )}
           </div>
-          
+
           {!hasAccess ? (
             <UpgradePrompt feature="Working Papers" />
           ) : (
-            <div className="bg-white p-8 rounded-lg border border-border shadow-sm text-center">
-              <svg className="h-12 w-12 text-text-light mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <h2 className="text-xl font-semibold text-primary-dark mb-2">Working Papers Coming Soon</h2>
-              <p className="text-text-light max-w-md mx-auto">
-                Digital workpapers, collaborative checklists, contextual notes, and template library will be available here soon.
-              </p>
+            <div className="space-y-6">
+              {err && <p className="text-sm text-red-700" role="alert">{err}</p>}
+
+              <div className="bg-white p-6 rounded-lg border border-border shadow-sm">
+                <h2 className="text-lg font-semibold text-primary-dark mb-2">Add a checklist</h2>
+                <p className="text-sm text-text-light mb-4">
+                  Shared checklists help you and RPC track what is done for a filing or project. The dashboard count reflects how many checklists you have in progress.
+                </p>
+                <div className="flex flex-wrap items-end gap-2">
+                  <div>
+                    <label className="block text-xs text-text-light mb-1" htmlFor="cl-name">Name</label>
+                    <input
+                      id="cl-name"
+                      className="border border-border rounded-md px-3 py-2 text-sm w-64 max-w-full"
+                      value={name}
+                      onChange={(e) => { setName(e.target.value) }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn--primary text-sm py-2 px-4"
+                    disabled={saving === 'new'}
+                    onClick={() => { void addDefaultChecklist() }}
+                  >
+                    {saving === 'new' ? 'Creating…' : 'Create with year-end items'}
+                  </button>
+                </div>
+              </div>
+
+              {loading && <p className="text-text-light">Loading&hellip;</p>}
+
+              {!loading && lists.length === 0 && !err && (
+                <p className="text-text-light">No checklists yet. Create one to get started.</p>
+              )}
+
+              {lists.map((c) => (
+                <div key={c.id} className="bg-white p-6 rounded-lg border border-border shadow-sm">
+                  <h3 className="text-md font-semibold text-primary-dark mb-4">{c.name}</h3>
+                  <ul className="space-y-2">
+                    {c.items.map((i) => (
+                      <li key={i.id} className="flex items-start gap-2">
+                        <input
+                          type="checkbox"
+                          className="mt-1 h-4 w-4"
+                          checked={i.done}
+                          disabled={saving === i.id}
+                          onChange={() => { void toggle(i.id, i.done) }}
+                        />
+                        <span className={i.done ? 'text-text-light line-through' : 'text-text'}>{i.label}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
           )}
         </div>

@@ -70,6 +70,7 @@ const ClientPortal: FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" />
                   </svg>
                   <span className="text-sm font-semibold text-accent uppercase tracking-wider">Dashboard</span>
+                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">Available</span>
                 </div>
                 <h2 className="text-3xl lg:text-4xl font-bold mb-md text-primary-dark">
                   At-a-glance visibility into your account status
@@ -158,6 +159,7 @@ const ClientPortal: FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3l2.5 5 5.5 2.5-5.5 2.5L12 18l-2.5-5-5.5-2.5 5.5-2.5L12 3z" />
                   </svg>
                   <span className="text-sm font-semibold text-accent uppercase tracking-wider">TaxGPT</span>
+                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">Available</span>
                 </div>
                 <h2 className="text-3xl lg:text-4xl font-bold mb-md text-primary-dark">
                   AI-powered tax research and guidance
@@ -206,7 +208,7 @@ const ClientPortal: FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
                   <span className="text-sm font-semibold text-accent uppercase tracking-wider">File Repository</span>
-                  <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">Coming Soon</span>
+                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">Available</span>
                 </div>
                 <h2 className="text-3xl lg:text-4xl font-bold mb-md text-primary-dark">
                   Secure document sharing and organization
@@ -295,7 +297,7 @@ const ClientPortal: FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                   <span className="text-sm font-semibold text-accent uppercase tracking-wider">Working Papers</span>
-                  <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">Coming Soon</span>
+                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">Available</span>
                 </div>
                 <h2 className="text-3xl lg:text-4xl font-bold mb-md text-primary-dark">
                   Centralized collaboration on workpapers and checklists
@@ -344,13 +346,14 @@ const ClientPortal: FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                   <span className="text-sm font-semibold text-accent uppercase tracking-wider">Integrations</span>
-                  <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">Coming Soon</span>
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">Request-based</span>
                 </div>
                 <h2 className="text-3xl lg:text-4xl font-bold mb-md text-primary-dark">
                   Connect your accounting apps and streamline data flow
                 </h2>
                 <p className="text-lg text-text-light mb-lg">
-                  Stop manually exporting and importing data. Connect your accounting software, banking apps, and business tools directly to the portal for seamless data synchronization and reporting.
+                  You can request connections to common providers from the portal; our team follows up to complete setup. Deeper automatic sync
+                  is on the roadmap. Stop manually exporting and importing data as we roll out each integration.
                 </p>
                 <div className="space-y-md">
                   <div>

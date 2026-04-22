@@ -12,6 +12,8 @@ export {
   getCrawlerConfig,
   getAppConfig,
   getClerkConfig,
+  getCorsOrigins,
+  getPortalStaffClerkIds,
   type DatabaseConfig,
   type OpenAIConfig,
   type StorageConfig,
@@ -21,7 +23,25 @@ export {
 } from './config/index.js';
 
 // Re-export db schema and functions for convenience
-export { sources, documents, chunks, embeddings, chatSessions, chatMessages, users, taxForms, taxFormSourceRefs, taxFormAliases } from './db/schema.js';
+export {
+  sources,
+  documents,
+  chunks,
+  embeddings,
+  chatSessions,
+  chatMessages,
+  users,
+  taxForms,
+  taxFormSourceRefs,
+  taxFormAliases,
+  portalOpenItems,
+  portalDeadlines,
+  portalActivity,
+  portalClientFiles,
+  portalChecklists,
+  portalChecklistItems,
+  portalIntegrations,
+} from './db/schema.js';
 export { getDb, ensureDbValidated } from './db/client.js';// Re-export http functions
 export { requestText, requestBytes } from './http/client.js';
 

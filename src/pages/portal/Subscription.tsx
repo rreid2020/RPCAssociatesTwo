@@ -148,9 +148,8 @@ const Subscription: FC = () => {
             <div className="bg-background p-6 rounded-lg border border-border">
               <h3 className="text-lg font-semibold text-primary-dark mb-2">Free Plan Active</h3>
               <p className="text-text-light">
-                You're currently on the free plan, which provides access to the Dashboard and TaxGPT.
-                Paid subscription plans will be available in the future to unlock additional features
-                like File Repository, Working Papers, and Integrations.
+                You are on the free plan: Dashboard and TaxGPT are included. Upgrade to Basic for File Repository, or Professional
+                and Enterprise for Working Papers and the integrations request workflow.
               </p>
             </div>
           )}

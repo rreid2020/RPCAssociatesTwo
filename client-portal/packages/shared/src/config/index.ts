@@ -117,3 +117,23 @@ export function getClerkConfig(): ClerkConfig {
   };
 }
 
+/** Comma-separated browser origins allowed to call the API (e.g. https://rpcassociates.co,http://localhost:5173). */
+export function getCorsOrigins(): string[] {
+  const fromEnv = process.env.CORS_ORIGIN || process.env.APP_URL || 'http://localhost:5173';
+  return fromEnv
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+/** Clerk user IDs (comma-separated) that may use staff portal routes. */
+export function getPortalStaffClerkIds(): Set<string> {
+  const raw = process.env.PORTAL_STAFF_CLERK_IDS || '';
+  return new Set(
+    raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
+}
+

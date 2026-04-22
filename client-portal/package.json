@@ -1,0 +1,16 @@
+{
+  "name": "client-portal-workspace",
+  "private": true,
+  "workspaces": [
+    "taxgpt-api",
+    "taxgpt-web",
+    "packages/shared",
+    "packages/rag",
+    "packages/crawler",
+    "packages/storage"
+  ],
+  "scripts": {
+    "build:shared": "npm run build -w @shared/types",
+    "typecheck:api": "npm run typecheck -w @api/server"
+  }
+}

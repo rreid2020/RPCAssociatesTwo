@@ -180,13 +180,13 @@ const Header: FC = () => {
       )}
 
       <header className="sticky top-0 bg-white shadow-sm z-[1000]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-[min(100%,108rem)] mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 2xl:px-20 min-[1920px]:px-24">
           <div className="flex w-full items-center h-16 md:min-h-[6.5rem] lg:min-h-32 md:py-1.5 lg:py-2">
             {/* Logo */}
             <Link
               to="/"
               aria-label="Axiom Financial & Technology"
-              className="no-underline shrink-0 max-w-[min(100%,40rem)] sm:max-w-[min(100%,28rem)] md:max-w-[min(100%,32rem)] lg:max-w-[18rem] xl:max-w-[22rem] 2xl:max-w-[26rem]"
+              className="no-underline shrink-0 max-w-[min(100%,40rem)] sm:max-w-[min(100%,28rem)] md:max-w-[min(100%,32rem)] lg:max-w-[20rem] xl:max-w-[24rem] 2xl:max-w-[30rem] min-[1920px]:max-w-[32rem]"
             >
               <AxiomWordmark size="md" className="max-w-full" />
             </Link>
@@ -196,7 +196,7 @@ const Header: FC = () => {
               className="hidden lg:flex flex-1 min-w-0 self-center pl-2 xl:pl-4 2xl:pl-5"
               aria-label="Main navigation"
             >
-              <ul className="m-0 p-0 w-full list-none flex flex-nowrap items-center justify-between overflow-visible gap-x-1.5 lg:gap-x-2.5 xl:gap-x-3 2xl:gap-x-4">
+              <ul className="m-0 p-0 w-full list-none flex flex-nowrap items-center justify-between overflow-visible gap-x-2 lg:gap-x-3 xl:gap-x-4 2xl:gap-x-5 min-[1920px]:gap-x-6">
                 {/* Services Dropdown */}
                 <li
                   className="relative shrink-0"

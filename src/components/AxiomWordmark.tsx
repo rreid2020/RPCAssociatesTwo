@@ -10,14 +10,15 @@ const sizes: Record<Size, { mark: string; logotype: string; line3: string }> = {
     logotype: 'h-8 w-auto sm:h-9 max-w-[min(100%,12.5rem)]',
     line3: 'text-[9px] sm:text-[10px] text-text-light mt-0.5',
   },
+  /* Header: one PNG; scale height so 2nd/3rd text bands in the art read clearly. */
   md: {
-    mark: 'h-10 w-auto sm:h-11 md:h-12',
-    logotype: 'h-12 w-auto sm:h-12 md:h-14 max-w-[min(100%,20rem)] sm:max-w-none',
+    mark: 'h-9 w-auto sm:h-12 md:h-14 xl:h-[3.75rem]',
+    logotype: 'h-12 w-auto sm:h-14 md:h-[4.5rem] lg:h-[5.25rem] xl:h-24 2xl:h-28',
     line3: 'text-[9px] sm:text-[10px] text-text-light mt-0.5',
   },
   lg: {
-    mark: 'h-12 w-auto sm:h-16',
-    logotype: 'h-12 w-auto sm:h-16',
+    mark: 'h-12 w-auto sm:h-16 md:h-[4.5rem]',
+    logotype: 'h-12 w-auto sm:h-20 md:h-[5.5rem] lg:h-28',
     line3: 'text-xs sm:text-sm text-text-light mt-1',
   },
 }
@@ -50,7 +51,7 @@ const AxiomWordmark: FC<AxiomWordmarkProps> = ({
       <div
         className={`flex items-center ${
           centered ? 'justify-center' : 'justify-start'
-        } gap-2 sm:gap-3 min-w-0`}
+        } gap-2.5 sm:gap-4 md:gap-5 min-w-0`}
       >
         <img
           src={markSrc}

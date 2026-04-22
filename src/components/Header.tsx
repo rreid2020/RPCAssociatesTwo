@@ -255,24 +255,6 @@ const Header: FC = () => {
                 {/* Other Navigation Items */}
                 <li className="shrink-0">
                   <a
-                    href="#about"
-                    className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
-                    onClick={(e) => { e.preventDefault(); scrollToSection('about') }}
-                  >
-                    About
-                  </a>
-                </li>
-                <li className="shrink-0">
-                  <a
-                    href="#remote"
-                    className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
-                    onClick={(e) => { e.preventDefault(); scrollToSection('remote') }}
-                  >
-                    Remote
-                  </a>
-                </li>
-                <li className="shrink-0">
-                  <a
                     href="#contact"
                     className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
                     onClick={(e) => { e.preventDefault(); scrollToSection('contact') }}
@@ -477,21 +459,7 @@ const Header: FC = () => {
               </div>
 
               {/* Other Navigation Items */}
-              <a 
-                href="#about" 
-                className="block text-text font-medium py-2"
-                onClick={(e) => { e.preventDefault(); scrollToSection('about') }}
-              >
-                About
-              </a>
-              <a 
-                href="#remote" 
-                className="block text-text font-medium py-2"
-                onClick={(e) => { e.preventDefault(); scrollToSection('remote') }}
-              >
-                Remote
-              </a>
-              <a 
+              <a
                 href="#contact" 
                 className="block text-text font-medium py-2"
                 onClick={(e) => { e.preventDefault(); scrollToSection('contact') }}

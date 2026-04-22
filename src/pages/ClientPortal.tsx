@@ -515,7 +515,7 @@ const ClientPortal: FC = () => {
                   Sign in to portal
                 </Link>
                 <CalendlyButton text="Request Portal Access" className="btn btn--secondary" />
-                <a href="mailto:roger.reid@axiomfinancial.tech" className="btn btn--secondary">
+                <a href="mailto:roger.reid@axiomft.ca" className="btn btn--secondary">
                   Email Us
                 </a>
                 <a href="tel:6138840208" className="btn btn--secondary">

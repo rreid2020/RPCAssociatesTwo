@@ -2,7 +2,7 @@
 // Update this URL when your Budibase instance is ready
 
 // Client portal app URL; update when the portal is hosted on the new domain
-export const PORTAL_URL = 'https://portal.axiomfinancial.tech'
+export const PORTAL_URL = 'https://portal.axiomft.ca'
 
 // To update the portal URL:
 // 1. Replace the URL above with your actual Budibase portal URL

@@ -127,7 +127,7 @@ const Contact: FC = () => {
             )}
             {submitStatus === 'error' && (
               <div className="p-md rounded-lg mt-sm text-[0.9375rem] bg-red-100 text-red-800 border border-red-300">
-                {errorMessage || 'Something went wrong. Please try again or email us directly at info@axiomfinancial.tech'}
+                {errorMessage || 'Something went wrong. Please try again or email us directly at info@axiomft.ca'}
               </div>
             )}
           </form>
@@ -139,7 +139,7 @@ const Contact: FC = () => {
             <div className="flex flex-col gap-md">
               <div className="text-[0.9375rem]">
                 <span className="font-semibold text-primary mr-xs">Email:</span>
-                info@axiomfinancial.tech
+                info@axiomft.ca
               </div>
               <div className="text-[0.9375rem]">
                 <span className="font-semibold text-primary mr-xs">Location:</span>

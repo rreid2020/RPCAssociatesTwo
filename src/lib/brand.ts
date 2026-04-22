@@ -12,10 +12,10 @@ export const BRAND = {
 
 /** Public site origin (no trailing slash). Update when DNS moves. */
 export const siteUrl =
-  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SITE_URL) || 'https://axiomfinancial.tech'
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SITE_URL) || 'https://axiomft.ca'
 
 export const contactEmail =
-  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CONTACT_EMAIL) || 'roger.reid@axiomfinancial.tech'
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CONTACT_EMAIL) || 'roger.reid@axiomft.ca'
 
 export const infoEmail =
-  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_INFO_EMAIL) || 'info@axiomfinancial.tech'
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_INFO_EMAIL) || 'info@axiomft.ca'

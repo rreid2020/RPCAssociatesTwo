@@ -26,7 +26,7 @@ app.use(helmet({
 
 // CORS for API routes only
 app.use('/api', cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['https://rpcassociates.co', 'http://localhost:5173'],
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['https://axiomft.ca', 'https://www.axiomft.ca', 'http://localhost:5173'],
   credentials: true
 }))
 

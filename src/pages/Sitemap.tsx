@@ -80,7 +80,7 @@ const Sitemap: FC = () => {
             <h2 className="text-2xl lg:text-3xl font-semibold text-primary mb-md pb-xs border-b-2 border-primary">External Links</h2>
             <ul className="list-none p-0 m-0">
               <li className="mb-lg pb-md border-b border-border last:border-b-0">
-                <a href="https://portal.axiomfinancial.tech" target="_blank" rel="noopener noreferrer" className="text-lg lg:text-xl font-semibold text-primary no-underline mb-xs block transition-all hover:underline">
+                <a href="https://portal.axiomft.ca" target="_blank" rel="noopener noreferrer" className="text-lg lg:text-xl font-semibold text-primary no-underline mb-xs block transition-all hover:underline">
                   Client Portal
                 </a>
                 <p className="text-sm text-text-light m-0 ml-0">Secure client portal for file sharing and communication</p>

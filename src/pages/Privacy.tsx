@@ -20,7 +20,7 @@ const Privacy: FC = () => {
 
           <div className="bg-background p-md rounded-lg mb-lg">
             <p className="mb-xs"><strong>Company Name:</strong> Axiom Financial &amp; Technology</p>
-            <p className="mb-0"><strong>Website:</strong> axiomfinancial.tech</p>
+            <p className="mb-0"><strong>Website:</strong> axiomft.ca</p>
           </div>
 
           <p>
@@ -182,7 +182,7 @@ const Privacy: FC = () => {
             <div className="bg-background p-md rounded-lg mt-md">
               <p className="mb-sm"><strong>Axiom Financial &amp; Technology</strong></p>
               <p className="mb-sm">
-                <strong>Email:</strong> <a href="mailto:roger.reid@axiomfinancial.tech" className="text-primary hover:underline">roger.reid@axiomfinancial.tech</a>
+                <strong>Email:</strong> <a href="mailto:roger.reid@axiomft.ca" className="text-primary hover:underline">roger.reid@axiomft.ca</a>
               </p>
               <p className="mb-0">
                 <strong>Phone:</strong> <a href="tel:6138840208" className="text-primary hover:underline">613-884-0208</a>

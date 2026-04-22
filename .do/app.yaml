@@ -21,9 +21,22 @@ services:
       - key: NODE_ENV
         value: production
         scope: RUN_TIME
+      # Vite inlines VITE_* at build — use BUILD_TIME or RUN_AND_BUILD_TIME in DO so `npm run build` sees them
+      - key: VITE_SITE_URL
+        value: https://axiomft.ca
+        scope: RUN_AND_BUILD_TIME
       - key: VITE_API_BASE_URL
-        value: https://rpcassociates.co
-        scope: RUN_TIME
+        value: https://axiomft.ca
+        scope: RUN_AND_BUILD_TIME
+      - key: VITE_SANITY_PROJECT_ID
+        value: t3zpylpm
+        scope: RUN_AND_BUILD_TIME
+      - key: VITE_SANITY_DATASET
+        value: production
+        scope: RUN_AND_BUILD_TIME
+      - key: VITE_SANITY_API_VERSION
+        value: "2024-01-01"
+        scope: RUN_AND_BUILD_TIME
 
   - name: api
     github:
@@ -77,5 +90,5 @@ services:
         scope: RUN_TIME
       # CORS Configuration
       - key: ALLOWED_ORIGINS
-        value: https://rpcassociates.co,https://www.rpcassociates.co,http://localhost:5173
+        value: https://axiomft.ca,https://www.axiomft.ca,http://localhost:5173
         scope: RUN_TIME

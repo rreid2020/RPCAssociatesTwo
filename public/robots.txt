@@ -1,7 +1,7 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://rpcassociates.co/sitemap.xml
+Sitemap: https://axiomft.ca/sitemap.xml
 
 
 

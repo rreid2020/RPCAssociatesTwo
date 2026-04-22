@@ -22,19 +22,21 @@ EMAIL_FROM="RPC Associates <contacts@rpcassociates.co>"
 NOTIFICATION_EMAIL=contacts@rpcassociates.co
 
 # CORS Configuration
-ALLOWED_ORIGINS=https://rpcassociates.co,https://www.rpcassociates.co,http://localhost:5173
+ALLOWED_ORIGINS=https://axiomft.ca,https://www.axiomft.ca,http://localhost:5173
 
 # ============================================
 # BUILD-TIME VARIABLES (BUILD_TIME scope)
 # ============================================
 # Note: These might already be set at app-level. 
 # If they are, you can skip them here or they'll override app-level values
-# Replace with your actual Sanity values:
-VITE_SANITY_PROJECT_ID=your-sanity-project-id-here
+# Match sanity-studio/sanity.config.ts (default project) unless you use a different project in production:
+VITE_SANITY_PROJECT_ID=t3zpylpm
 VITE_SANITY_DATASET=production
 VITE_SANITY_API_VERSION=2024-01-01
 VITE_SANITY_USE_CDN=true
-VITE_API_BASE_URL=
+# If articles are empty in production, ensure these are BUILD_TIME (or RUN_AND_BUILD_TIME) on the web component
+# and add CORS origins in https://www.sanity.io/manage → your project → API → CORS (https://axiomft.ca, https://www.axiomft.ca)
+VITE_API_BASE_URL=https://axiomft.ca
 
 # Clerk Authentication (BUILD_TIME scope - required for client portal)
 # Get your key from https://dashboard.clerk.com → API Keys → RPCTaxGPT app

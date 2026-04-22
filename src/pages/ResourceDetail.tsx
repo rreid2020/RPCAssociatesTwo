@@ -40,7 +40,7 @@ const ResourceDetail: FC = () => {
     return (
       <>
         <SEO
-          title="Resource Not Found - RPC Associates"
+          title="Resource Not Found - Axiom"
           description="The requested resource could not be found."
           canonical="/resources"
         />
@@ -62,7 +62,7 @@ const ResourceDetail: FC = () => {
   return (
     <>
       <SEO
-        title={`${resource.title} - RPC Associates`}
+        title={`${resource.title} - Axiom`}
         description={resource.metaDescription}
         canonical={`/resources/${resource.slug}`}
         keywords={resource.keywords}

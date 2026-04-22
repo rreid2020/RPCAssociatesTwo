@@ -8,7 +8,7 @@ import { hasAccessedResource } from '../lib/utils/leadCapture'
 
 const CashFlowTemplate: FC = () => {
   const downloadUrl = SPACES_FILES.cashFlowTemplate
-  const fileName = 'RPC Cash Flow Statement.xlsx'
+  const fileName = 'Axiom Cash Flow Statement.xlsx'
   const resourceName = 'Cash Flow Statement Template'
   
   const [hasAccess, setHasAccess] = useState(false)
@@ -25,7 +25,7 @@ const CashFlowTemplate: FC = () => {
   return (
     <>
       <SEO
-        title="Cash Flow Statement Template (Excel) | Free Download - RPC Associates"
+        title="Cash Flow Statement Template (Excel) | Free Download - Axiom"
         description="Download our free Excel cash flow statement template for small businesses. Track cash inflows and outflows, monitor liquidity, and plan for major expenditures. Customizable template with operating, investing, and financing activities."
         canonical="/resources/cash-flow-statement-template"
         keywords={[

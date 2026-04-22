@@ -8,7 +8,7 @@ const DonationOptimizerPage: FC = () => {
   return (
     <>
       <SEO
-        title="Donation Credit Optimizer | Charitable & Political Credits - RPC Associates"
+        title="Donation Credit Optimizer | Charitable & Political Credits - Axiom"
         description="Compare tax credits for the same contribution amount to charitable causes versus federal political contributions. See which yields higher credits and view marginal tax rates by province."
         canonical="/resources/donation-credit-optimizer"
         keywords={[
@@ -17,7 +17,7 @@ const DonationOptimizerPage: FC = () => {
           'political contribution credit',
           'Ontario charitable credit',
           'tax credit optimizer',
-          'RPC Associates',
+          'Axiom',
         ]}
       />
       <main className="min-h-[60vh] bg-background py-xxl">

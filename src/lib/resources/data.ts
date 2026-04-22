@@ -12,21 +12,21 @@ export const resourceCategories: ResourceCategory[] = [
     title: 'Online Calculators',
     description: 'Interactive tools to help you calculate taxes, plan finances, and make informed decisions.',
     icon: 'calculator',
-    metaDescription: 'Free online calculators for Canadian income tax, financial planning, and business calculations. Accurate, easy-to-use tools from RPC Associates.'
+    metaDescription: 'Free online calculators for Canadian income tax, financial planning, and business calculations. Accurate, easy-to-use tools from Axiom.'
   },
   {
     slug: 'excel-templates',
     title: 'Excel Templates & Tools',
     description: 'Professional Excel templates and tools to streamline your financial tracking and reporting.',
     icon: 'excel',
-    metaDescription: 'Download free Excel templates for cash flow statements, financial planning, and business reporting. Professional-grade tools from RPC Associates.'
+    metaDescription: 'Download free Excel templates for cash flow statements, financial planning, and business reporting. Professional-grade tools from Axiom.'
   },
   {
     slug: 'publications',
     title: 'Publications',
     description: 'Guides, articles, and resources to help you understand accounting, tax, and business topics.',
     icon: 'publications',
-    metaDescription: 'Access guides, publications, and resources on Canadian accounting, tax planning, and business consulting from RPC Associates.'
+    metaDescription: 'Access guides, publications, and resources on Canadian accounting, tax planning, and business consulting from Axiom.'
   }
 ]
 

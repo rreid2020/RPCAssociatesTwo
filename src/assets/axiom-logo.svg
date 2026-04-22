@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Axiom">
+  <defs>
+    <linearGradient id="axA" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00204a"/>
+      <stop offset="100%" stop-color="#4a6b8a"/>
+    </linearGradient>
+  </defs>
+  <!-- Stylized A: left + arch -->
+  <path fill="#00204a" d="M8 40 L18 10 L22 10 L32 40 L27 40 L24.5 32 L15.5 32 L13 40 Z M17 28 L23 28 L20 18 Z"/>
+  <path fill="none" stroke="#00204a" stroke-width="2.2" stroke-linecap="round" d="M19 14 Q24 20 30 10"/>
+  <!-- Right leg -->
+  <path fill="#707372" d="M30 10 L32 10 L32 40 L28 40 Z"/>
+  <!-- Bar chart under arch -->
+  <rect x="17" y="32" width="3.5" height="5" rx="0.5" fill="#00204a"/>
+  <rect x="21.5" y="30" width="3.5" height="7" rx="0.5" fill="#2d4a6a"/>
+  <rect x="26" y="27" width="3.5" height="10" rx="0.5" fill="#707372"/>
+</svg>

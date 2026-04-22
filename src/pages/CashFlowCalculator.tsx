@@ -279,7 +279,7 @@ const CashFlowCalculator: FC = () => {
   return (
     <>
       <SEO
-        title="Cash Flow Calculator | Free Business Cash Flow Tool - RPC Associates"
+        title="Cash Flow Calculator | Free Business Cash Flow Tool - Axiom"
         description="Calculate your business cash flow with our free online calculator. Track operating, investing, and financing activities to understand your cash position and liquidity."
         canonical="/resources/cash-flow-calculator"
         keywords={[

@@ -8,7 +8,7 @@ const ClientPortal: FC = () => {
     <>
       <SEO
         title="Client Portal | Secure Workspace for Tax, Documents & Collaboration"
-        description="RPC Associates Client Portal: Dashboard insights, TaxGPT AI research, secure file repository, working papers, and accounting app integrations. One secure workspace for everything we do together."
+        description="Axiom Client Portal: Dashboard insights, TaxGPT AI research, secure file repository, working papers, and accounting app integrations. One secure workspace for everything we do together."
         keywords="client portal, secure file sharing, tax research, document management, accounting portal, client collaboration, TaxGPT, working papers, accounting integrations"
         canonical="/client-portal"
       />
@@ -234,7 +234,7 @@ const ClientPortal: FC = () => {
                   <div>
                     <h4 className="text-lg font-semibold mb-xs text-primary-dark">Secure Upload & Storage</h4>
                     <p className="text-text-light">
-                      Upload documents with bank-level encryption. Files are stored securely and accessible only to you and your RPC Associates team. No more emailing sensitive financial documents.
+                      Upload documents with bank-level encryption. Files are stored securely and accessible only to you and your Axiom team. No more emailing sensitive financial documents.
                     </p>
                   </div>
                   <div>
@@ -252,7 +252,7 @@ const ClientPortal: FC = () => {
                   <div>
                     <h4 className="text-lg font-semibold mb-xs text-primary-dark">Quick Sharing</h4>
                     <p className="text-text-light">
-                      Share files with your RPC team instantly. Set permissions, add comments, and get notifications when files are accessed or updated. Collaboration made simple.
+                      Share files with the Axiom team instantly. Set permissions, add comments, and get notifications when files are accessed or updated. Collaboration made simple.
                     </p>
                   </div>
                 </div>
@@ -329,7 +329,7 @@ const ClientPortal: FC = () => {
                   <div>
                     <h4 className="text-lg font-semibold mb-xs text-primary-dark">Collaborative Checklists</h4>
                     <p className="text-text-light">
-                      Shared checklists for tax preparation, year-end close, and compliance tasks. Both you and your RPC team can update progress, add notes, and mark items complete in real-time.
+                      Shared checklists for tax preparation, year-end close, and compliance tasks. Both you and the Axiom team can update progress, add notes, and mark items complete in real-time.
                     </p>
                   </div>
                   <div>
@@ -515,7 +515,7 @@ const ClientPortal: FC = () => {
                   Sign in to portal
                 </Link>
                 <CalendlyButton text="Request Portal Access" className="btn btn--secondary" />
-                <a href="mailto:roger.reid@rpcassociates.co" className="btn btn--secondary">
+                <a href="mailto:roger.reid@axiomfinancial.tech" className="btn btn--secondary">
                   Email Us
                 </a>
                 <a href="tel:6138840208" className="btn btn--secondary">

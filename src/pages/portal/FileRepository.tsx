@@ -90,7 +90,7 @@ const FileRepository: FC = () => {
     <>
       <SEO
         title="File Repository | Client Portal"
-        description="Secure document sharing and organization in the RPC Associates Client Portal."
+        description="Secure document sharing and organization in the Axiom Client Portal."
         canonical="/portal/files"
       />
       <ClientPortalShell>
@@ -121,7 +121,7 @@ const FileRepository: FC = () => {
               {err && <p className="text-sm text-red-700 mb-4" role="alert">{err}</p>}
               {loading && <p className="text-text-light">Loading&hellip;</p>}
               {!loading && files.length === 0 && !err && (
-                <p className="text-text-light">No files yet. Use Upload to add a document. Files are private to your account and RPC.</p>
+                <p className="text-text-light">No files yet. Use Upload to add a document. Files are private to your account and Axiom.</p>
               )}
               {!loading && files.length > 0 && (
                 <ul className="divide-y divide-border">

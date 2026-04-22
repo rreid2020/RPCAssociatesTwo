@@ -48,7 +48,7 @@ const Dashboard: FC = () => {
     <>
       <SEO
         title="Dashboard | Client Portal"
-        description="View your account status, open items, and upcoming milestones in the RPC Associates Client Portal."
+        description="View your account status, open items, and upcoming milestones in the Axiom Client Portal."
         canonical="/portal/dashboard"
       />
       <ClientPortalShell>

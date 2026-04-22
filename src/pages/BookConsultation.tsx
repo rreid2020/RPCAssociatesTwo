@@ -19,8 +19,8 @@ const BookConsultation: FC = () => {
   return (
     <>
       <SEO 
-        title="Book a Consultation - RPC Associates" 
-        description="Schedule a free consultation with RPC Associates. Book your appointment online."
+        title="Book a Consultation - Axiom" 
+        description="Schedule a free consultation with Axiom. Book your appointment online."
         canonical="/book-consultation"
         keywords={['book consultation', 'schedule appointment', 'tax consultation', 'accounting consultation', 'Ottawa']}
       />

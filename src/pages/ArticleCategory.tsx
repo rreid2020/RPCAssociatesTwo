@@ -5,6 +5,7 @@ import SEO from '../components/SEO'
 import ArticleCard from '../components/ArticleCard'
 import { getArticles, getCategoryBySlug, getCategories } from '../lib/sanity/queries'
 import { SanityArticle, SanityCategory } from '../lib/sanity/types'
+import { siteUrl } from '../lib/brand'
 
 const ArticleCategory: FC = () => {
   const { categorySlug } = useParams<{ categorySlug: string }>()
@@ -74,13 +75,14 @@ const ArticleCategory: FC = () => {
 
   const categoryTitle = category ? category.title : categorySlug ? categorySlug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : 'Category'
   const categoryName = category?.title || (categorySlug ? categorySlug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : 'expert')
-  const categoryDescription = category?.description || `Browse our collection of ${categoryName} articles covering accounting, tax planning, and business consulting. Expert insights and practical advice from RPC Associates, serving businesses across Canada.`
-  const canonicalUrl = `https://rpcassociates.co/articles/category/${categorySlug}`
+  const categoryDescription = category?.description || `Browse our collection of ${categoryName} articles covering accounting, tax planning, and business consulting. Expert insights and practical advice from Axiom, serving businesses across Canada.`
+  const base = siteUrl.replace(/\/$/, '')
+  const canonicalUrl = `${base}/articles/category/${categorySlug}`
 
   return (
     <>
       <SEO
-        title={`${categoryTitle} Articles | RPC Associates`}
+        title={`${categoryTitle} Articles | Axiom`}
         description={categoryDescription}
         keywords={category?.title?.toLowerCase().includes('tax') || categorySlug?.toLowerCase().includes('tax') 
           ? `Canadian Income Tax, ${category?.title || categorySlug}, tax articles, tax advice, tax planning, Ottawa tax services, Ottawa accountant, Canadian tax information`
@@ -103,17 +105,17 @@ const ArticleCategory: FC = () => {
                 position: index + 1,
                 item: {
                   '@type': 'Article',
-                  '@id': `https://rpcassociates.co/articles/${article.slug.current}`,
+                  '@id': `${base}/articles/${article.slug.current}`,
                   name: article.title,
                   description: article.excerpt || article.seo?.metaDescription,
-                  url: `https://rpcassociates.co/articles/${article.slug.current}`
+                  url: `${base}/articles/${article.slug.current}`
                 }
               }))
             },
             publisher: {
               '@type': 'Organization',
-              name: 'RPC Associates',
-              url: 'https://rpcassociates.co'
+              name: 'Axiom Financial & Technology',
+              url: base
             }
           })}
         </script>
@@ -134,7 +136,7 @@ const ArticleCategory: FC = () => {
                 </p>
               )}
               <p className="text-base text-text-light">
-                RPC Associates provides professional accounting, consulting, and tech solutions for businesses across Canada. 
+                Axiom provides professional accounting, consulting, and tech solutions for businesses across Canada. 
                 Our articles offer valuable insights to help you make informed financial decisions.
               </p>
             </div>

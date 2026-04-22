@@ -1,7 +1,7 @@
 {
-  "name": "RPC Associates",
-  "short_name": "RPC Associates",
-  "description": "RPC Associates - Accounting, Consulting & Tech Solutions",
+  "name": "Axiom Financial & Technology",
+  "short_name": "Axiom",
+  "description": "Axiom Financial & Technology – accounting, advisory, automation, and intelligence",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",
@@ -16,7 +16,7 @@
       "purpose": "maskable"
     }
   ],
-  "theme_color": "#183956",
+  "theme_color": "#00204a",
   "background_color": "#ffffff",
   "display": "standalone",
   "start_url": "/"

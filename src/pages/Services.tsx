@@ -49,7 +49,7 @@ const Services: FC = () => {
   return (
     <>
       <SEO
-        title="Our Services | Accounting, Consulting & Tech Solutions - RPC Associates"
+        title="Our Services | Accounting, Consulting & Tech Solutions - Axiom"
         description="Comprehensive accounting, consulting, and tech solutions for growing businesses. Core accounting, year-end reporting, tax planning, cash flow forecasting, fractional controller services, and accounting systems. Expert CPA services across Canada."
         canonical="/services"
         keywords={[

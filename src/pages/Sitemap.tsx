@@ -7,7 +7,7 @@ const Sitemap: FC = () => {
     <>
       <SEO
         title="Site Map"
-        description="Complete site map of RPC Associates website. Find all pages, sections, and resources for accounting, consulting, and tech solutions."
+        description="Complete site map of Axiom website. Find all pages, sections, and resources for accounting, consulting, and tech solutions."
         canonical="/sitemap"
       />
       <main className="py-xxl min-h-[60vh]">
@@ -15,7 +15,7 @@ const Sitemap: FC = () => {
         <div className="leading-relaxed">
           <h1 className="text-4xl lg:text-5xl font-bold text-primary mb-md">Site Map</h1>
           <p className="text-lg text-text-light mb-xl">
-            Find all pages and sections of the RPC Associates website below.
+            Find all pages and sections of the Axiom website below.
           </p>
 
           <section className="mb-xl">
@@ -49,7 +49,7 @@ const Sitemap: FC = () => {
               </li>
               <li className="mb-lg pb-md border-b border-border last:border-b-0">
                 <a href="/#about" className="text-lg lg:text-xl font-semibold text-primary no-underline mb-xs block transition-all hover:underline">About</a>
-                <p className="text-sm text-text-light m-0 ml-0">Learn about RPC Associates</p>
+                <p className="text-sm text-text-light m-0 ml-0">Learn about Axiom</p>
               </li>
               <li className="mb-lg pb-md border-b border-border last:border-b-0">
                 <a href="/#remote" className="text-lg lg:text-xl font-semibold text-primary no-underline mb-xs block transition-all hover:underline">Remote Services</a>
@@ -80,7 +80,7 @@ const Sitemap: FC = () => {
             <h2 className="text-2xl lg:text-3xl font-semibold text-primary mb-md pb-xs border-b-2 border-primary">External Links</h2>
             <ul className="list-none p-0 m-0">
               <li className="mb-lg pb-md border-b border-border last:border-b-0">
-                <a href="https://portal.rpcassociates.co" target="_blank" rel="noopener noreferrer" className="text-lg lg:text-xl font-semibold text-primary no-underline mb-xs block transition-all hover:underline">
+                <a href="https://portal.axiomfinancial.tech" target="_blank" rel="noopener noreferrer" className="text-lg lg:text-xl font-semibold text-primary no-underline mb-xs block transition-all hover:underline">
                   Client Portal
                 </a>
                 <p className="text-sm text-text-light m-0 ml-0">Secure client portal for file sharing and communication</p>

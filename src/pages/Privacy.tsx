@@ -6,7 +6,7 @@ const Privacy: FC = () => {
     <>
       <SEO
         title="Privacy Policy"
-        description="RPC Associates Privacy Policy - Learn how we collect, use, and protect your personal information when you use our accounting, consulting, and tech services."
+        description="Axiom Privacy Policy - Learn how we collect, use, and protect your personal information when you use our accounting, consulting, and tech services."
         canonical="/privacy"
       />
       <main className="py-xxl min-h-[60vh]">
@@ -19,12 +19,12 @@ const Privacy: FC = () => {
           </p>
 
           <div className="bg-background p-md rounded-lg mb-lg">
-            <p className="mb-xs"><strong>Company Name:</strong> RPC Associates – Accounting, Consulting, and Tech Solutions</p>
-            <p className="mb-0"><strong>Website:</strong> rpcassociates.co</p>
+            <p className="mb-xs"><strong>Company Name:</strong> Axiom Financial &amp; Technology</p>
+            <p className="mb-0"><strong>Website:</strong> axiomfinancial.tech</p>
           </div>
 
           <p>
-            RPC Associates ("we," "our," or "us") is committed to protecting the privacy, confidentiality, and security of personal information entrusted to us. This Privacy Policy outlines how we collect, use, disclose, store, and protect your information when you visit our website, use our software tools, or engage our accounting, consulting, or technology services.
+            Axiom Financial &amp; Technology (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;) is committed to protecting the privacy, confidentiality, and security of personal information entrusted to us. This Privacy Policy outlines how we collect, use, disclose, store, and protect your information when you visit our website, use our software tools, or engage our accounting, consulting, or technology services.
           </p>
 
           <p>
@@ -180,9 +180,9 @@ const Privacy: FC = () => {
             <h2 className="text-3xl font-semibold text-primary mt-xl mb-md pb-xs border-b-2 border-primary">11. Contact Information</h2>
             <p className="mb-md">For questions, concerns, or requests related to this Privacy Policy, please contact:</p>
             <div className="bg-background p-md rounded-lg mt-md">
-              <p className="mb-sm"><strong>RPC Associates – Accounting, Consulting, and Tech Solutions</strong></p>
+              <p className="mb-sm"><strong>Axiom Financial &amp; Technology</strong></p>
               <p className="mb-sm">
-                <strong>Email:</strong> <a href="mailto:roger.reid@rpcassociates.co" className="text-primary hover:underline">roger.reid@rpcassociates.co</a>
+                <strong>Email:</strong> <a href="mailto:roger.reid@axiomfinancial.tech" className="text-primary hover:underline">roger.reid@axiomfinancial.tech</a>
               </p>
               <p className="mb-0">
                 <strong>Phone:</strong> <a href="tel:6138840208" className="text-primary hover:underline">613-884-0208</a>

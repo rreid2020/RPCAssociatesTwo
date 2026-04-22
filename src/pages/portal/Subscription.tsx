@@ -13,7 +13,7 @@ const Subscription: FC = () => {
     <>
       <SEO
         title="Subscription | Client Portal"
-        description="Manage your RPC Associates Client Portal subscription"
+        description="Manage your Axiom Client Portal subscription"
         canonical="/portal/subscription"
       />
       <ClientPortalShell>

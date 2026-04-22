@@ -36,8 +36,8 @@ const Resources: FC = () => {
   return (
     <>
       <SEO
-        title="Resources - RPC Associates"
-        description="Helpful resources, tools, and guides for your business from RPC Associates. Access calculators, templates, and expert insights."
+        title="Resources - Axiom"
+        description="Helpful resources, tools, and guides for your business from Axiom. Access calculators, templates, and expert insights."
         canonical="/resources"
         keywords={['resources', 'tax calculator', 'tools', 'guides', 'Ottawa', 'Canada']}
       />

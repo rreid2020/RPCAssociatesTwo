@@ -68,7 +68,7 @@ const Articles: FC = () => {
     <>
       <SEO
         title="Articles"
-        description="Insights, tips, and updates on accounting, consulting, and technology from RPC Associates. Stay informed with expert articles and industry news."
+        description="Insights, tips, and updates on accounting, consulting, and technology from Axiom. Stay informed with expert articles and industry news."
         keywords="accounting articles, tax tips, business advice, financial insights, Canadian Income Tax, tax planning, accounting advice, business consulting, Ottawa accountant, Ottawa tax advice"
         canonical="/articles"
       />

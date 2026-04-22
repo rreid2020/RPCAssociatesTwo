@@ -250,7 +250,7 @@ const CashFlowStatementDirectMethod: FC = () => {
   return (
     <>
       <SEO
-        title="Cash Flow Statement (Direct Method) | RPC Associates"
+        title="Cash Flow Statement (Direct Method) | Axiom"
         description="Build a direct method cash flow statement by entering cash receipts and cash payments across operating, investing, and financing activities."
         canonical="/resources/cash-flow-statement-direct-method"
         keywords={[

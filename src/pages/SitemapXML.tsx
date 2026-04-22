@@ -1,6 +1,7 @@
 import { FC, useEffect, useState } from 'react'
 import { getArticles } from '../lib/sanity/queries'
 import { services } from '../lib/services/data'
+import { siteUrl } from '../lib/brand'
 
 interface SitemapPage {
   url: string
@@ -20,7 +21,7 @@ const SitemapXML: FC = () => {
         const articles = await getArticles({ limit: 1000 })
         
         // Always use non-www canonical URL
-        const baseUrl = 'https://rpcassociates.co'
+        const baseUrl = siteUrl.replace(/\/$/, '')
         const currentDate = new Date().toISOString().split('T')[0]
 
         // Static pages
@@ -82,10 +83,11 @@ ${allPages.map(page => `  <url>
         console.error('Error generating sitemap:', error)
         // Fallback to basic sitemap
         const fallbackDate = new Date().toISOString().split('T')[0]
+        const home = siteUrl.replace(/\/$/, '')
         setXmlContent(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://rpcassociates.co/</loc>
+    <loc>${home}/</loc>
     <lastmod>${fallbackDate}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>

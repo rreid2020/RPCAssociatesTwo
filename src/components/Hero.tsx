@@ -17,7 +17,7 @@ const Hero: FC = () => {
             <div className="inline-block text-sm font-semibold text-accent uppercase tracking-wider mb-md">Accounting · Consulting · Tech Solutions</div>
             <h1 className="text-4xl lg:text-5xl font-bold mb-md">Financial clarity and modern systems for growing businesses.</h1>
             <p className="text-lg text-text-light mb-lg">
-              RPC Associates helps entrepreneurs and organizations gain control of their numbers, strengthen internal controls, and implement practical tech solutions—so they can focus on running and growing the business.
+              Axiom helps entrepreneurs and organizations gain control of their numbers, strengthen internal controls, and implement practical tech solutions—so they can focus on running and growing the business.
             </p>
             <div className="flex gap-md mb-lg flex-wrap">
               <CalendlyButton text="Schedule a Free Consultation" />

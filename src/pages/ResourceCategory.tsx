@@ -13,7 +13,7 @@ const ResourceCategory: FC = () => {
     return (
       <>
         <SEO
-          title="Resource Not Found - RPC Associates"
+          title="Resource Not Found - Axiom"
           description="The requested resource category could not be found."
           canonical="/resources"
         />
@@ -70,7 +70,7 @@ const ResourceCategory: FC = () => {
   return (
     <>
       <SEO
-        title={`${category.title} - RPC Associates`}
+        title={`${category.title} - Axiom`}
         description={category.metaDescription}
         canonical={`/resources/category/${category.slug}`}
         keywords={[category.slug, 'resources', 'tools', 'Ottawa', 'Canada']}

@@ -2,7 +2,7 @@ import { FC, ReactNode, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useUser, useClerk } from '@clerk/clerk-react'
 import { useFeatureAccess } from '../lib/subscriptions/hooks'
-import rpcLogo from '../assets/rpc-logo.svg'
+import brandLogo from '../assets/axiom-logo.svg'
 
 interface NavItem {
   to: string
@@ -125,9 +125,9 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
           {/* Logo and close button */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-border">
             <div className="flex items-center gap-3">
-              <img src={rpcLogo} alt="RPC Associates" className="h-8 w-8" />
+              <img src={brandLogo} alt="Axiom" className="h-8 w-8" />
               <div>
-                <p className="text-sm font-semibold text-primary-dark">RPC Associates</p>
+                <p className="text-sm font-semibold text-primary-dark">Axiom</p>
                 <p className="text-xs text-text-light">Client Portal</p>
               </div>
             </div>

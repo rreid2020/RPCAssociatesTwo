@@ -75,7 +75,7 @@ const WorkingPapers: FC = () => {
     <>
       <SEO
         title="Working Papers | Client Portal"
-        description="Centralized collaboration on workpapers and checklists in the RPC Associates Client Portal."
+        description="Centralized collaboration on workpapers and checklists in the Axiom Client Portal."
         canonical="/portal/working-papers"
       />
       <ClientPortalShell>
@@ -98,7 +98,7 @@ const WorkingPapers: FC = () => {
               <div className="bg-white p-6 rounded-lg border border-border shadow-sm">
                 <h2 className="text-lg font-semibold text-primary-dark mb-2">Add a checklist</h2>
                 <p className="text-sm text-text-light mb-4">
-                  Shared checklists help you and RPC track what is done for a filing or project. The dashboard count reflects how many checklists you have in progress.
+                  Shared checklists help you and the Axiom team track what is done for a filing or project. The dashboard count reflects how many checklists you have in progress.
                 </p>
                 <div className="flex flex-wrap items-end gap-2">
                   <div>

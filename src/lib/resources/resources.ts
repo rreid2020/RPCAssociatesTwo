@@ -193,7 +193,7 @@ This resource is provided for general informational purposes only and does not c
     category: 'excel-template',
     categoryLabel: 'Excel Template',
     downloadUrl: SPACES_FILES.cashFlowTemplate,
-    fileName: 'RPC Cash Flow Statement.xlsx',
+    fileName: 'Axiom Cash Flow Statement.xlsx',
     requiresLeadCapture: true,
     benefits: [
       'Monitor liquidity and short-term solvency',

@@ -60,7 +60,7 @@ const Integrations: FC = () => {
     <>
       <SEO
         title="Integrations | Client Portal"
-        description="Connect your accounting apps and streamline data flow in the RPC Associates Client Portal."
+        description="Connect your accounting apps and streamline data flow in the Axiom Client Portal."
         canonical="/portal/integrations"
       />
       <ClientPortalShell>

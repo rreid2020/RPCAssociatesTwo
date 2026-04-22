@@ -1,5 +1,6 @@
 import { FC } from 'react'
 import { Link } from 'react-router-dom'
+import { contactEmail } from '../lib/brand'
 
 const Footer: FC = () => {
   const currentYear = new Date().getFullYear()
@@ -10,7 +11,7 @@ const Footer: FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-xl items-start">
           <div>
             <div className="text-sm opacity-90">
-              © {currentYear} RPC Associates. All rights reserved.
+              © {currentYear} Axiom Financial &amp; Technology. All rights reserved.
             </div>
           </div>
           <div className="text-center md:text-left">
@@ -77,8 +78,8 @@ const Footer: FC = () => {
               </div>
               <div className="text-sm flex flex-row gap-xs items-baseline">
                 <span className="font-semibold opacity-90">Email:</span>
-                <a href="mailto:roger.reid@rpcassociates.co" className="text-white opacity-90 no-underline transition-all hover:opacity-100 hover:underline">
-                  roger.reid@rpcassociates.co
+                <a href={`mailto:${contactEmail}`} className="text-white opacity-90 no-underline transition-all hover:opacity-100 hover:underline">
+                  {contactEmail}
                 </a>
               </div>
             </div>

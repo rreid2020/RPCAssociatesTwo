@@ -1,5 +1,6 @@
 import { FC } from 'react'
 import { Helmet } from 'react-helmet-async'
+import { BRAND, siteUrl, contactEmail } from '../lib/brand'
 
 interface SEOProps {
   title?: string
@@ -30,12 +31,14 @@ interface SEOProps {
   }
 }
 
+const defaultOgImage = `${siteUrl}/og-image.jpg`
+
 const SEO: FC<SEOProps> = ({
-  title = 'RPC Associates | Accounting, Consulting & Tech Solutions',
-  description = 'RPC Associates provides accounting, consulting, and tech solutions for growing businesses. Get financial clarity, modern systems, and strategic guidance.',
-  keywords = 'accounting, consulting, tech solutions, CPA, CMA, CGAP, tax preparation, financial advisory, business consulting, Canada, Canadian Income Tax, Ottawa accountant, Ottawa accounting services, Ottawa tax services, Ontario accountant',
-  canonical = 'https://rpcassociates.co',
-  ogImage = 'https://rpcassociates.co/og-image.jpg',
+  title = `${BRAND.name} | ${BRAND.tagline}`,
+  description = BRAND.description,
+  keywords = 'accounting, consulting, tax preparation, financial advisory, business consulting, Canada, Canadian Income Tax, Ottawa, CPA, CMA, CGAP, Axiom, automation, intelligence, Roger Reid',
+  canonical = siteUrl,
+  ogImage = defaultOgImage,
   ogType,
   type = 'website',
   noIndex = false,
@@ -46,71 +49,61 @@ const SEO: FC<SEOProps> = ({
   twitterImage,
   schemaType,
   schemaAuthor,
-  schemaPublisher = 'RPC Associates',
+  schemaPublisher = BRAND.name,
   schemaPublisherLogo,
   publishedDate,
   modifiedDate,
   schemaService
 }) => {
-  const fullTitle = title.includes('RPC Associates') ? title : `${title} | RPC Associates`
+  const fullTitle = title.includes(BRAND.name) ? title : `${title} | ${BRAND.name}`
   // Always use non-www canonical URL, strip query parameters
-  const baseUrl = 'https://rpcassociates.co'
+  const baseUrl = siteUrl.replace(/\/$/, '')
   let fullCanonical: string
   if (canonical.startsWith('http')) {
-    // Remove www if present and strip query parameters
     fullCanonical = canonical.replace(/^https?:\/\/(www\.)?/, 'https://').split('?')[0]
   } else {
-    // Strip query parameters from relative URLs
     fullCanonical = `${baseUrl}${canonical.split('?')[0]}`
   }
   
-  // Handle keywords as string or array
   const keywordsString = Array.isArray(keywords) ? keywords.join(', ') : keywords
-  
-  // Use OG type if provided, otherwise use type prop
+
   const ogTypeValue = ogType || type
-  
-  // Twitter values with fallbacks
+
   const twitterTitleValue = twitterTitle || fullTitle
   const twitterDescriptionValue = twitterDescription || description
   const twitterImageValue = twitterImage || ogImage
 
   return (
     <Helmet>
-      {/* Primary Meta Tags */}
       <title>{fullTitle}</title>
       <meta name="title" content={fullTitle} />
       <meta name="description" content={description} />
       {keywordsString && <meta name="keywords" content={keywordsString} />}
       <link rel="canonical" href={fullCanonical} />
 
-      {/* Open Graph / Facebook */}
       <meta property="og:type" content={ogTypeValue} />
       <meta property="og:url" content={fullCanonical} />
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />
       <meta property="og:image" content={ogImage} />
-      <meta property="og:site_name" content="RPC Associates" />
+      <meta property="og:site_name" content={BRAND.nameFull} />
       {publishedDate && <meta property="article:published_time" content={publishedDate} />}
       {modifiedDate && <meta property="article:modified_time" content={modifiedDate} />}
 
-      {/* Twitter */}
       <meta property="twitter:card" content={twitterCard} />
       <meta property="twitter:url" content={fullCanonical} />
       <meta property="twitter:title" content={twitterTitleValue} />
       <meta property="twitter:description" content={twitterDescriptionValue} />
       <meta property="twitter:image" content={twitterImageValue} />
 
-      {/* Additional SEO */}
       <meta name="robots" content={noIndex || noFollow ? `${noIndex ? 'noindex' : 'index'}, ${noFollow ? 'nofollow' : 'follow'}` : "index, follow"} />
       <meta name="language" content="English" />
-      <meta name="author" content="RPC Associates" />
+      <meta name="author" content={BRAND.nameFull} />
       <meta name="geo.region" content="CA-ON" />
       <meta name="geo.placename" content="Ottawa, Ontario, Canada" />
       <meta name="geo.position" content="45.4215;-75.6972" />
       <meta name="ICBM" content="45.4215, -75.6972" />
 
-      {/* Structured Data */}
       <script type="application/ld+json">
         {JSON.stringify(
           schemaService ? {
@@ -120,11 +113,11 @@ const SEO: FC<SEOProps> = ({
             description: schemaService.description,
             provider: {
               '@type': 'AccountingService',
-              name: schemaService.provider || 'RPC Associates',
-              url: 'https://rpcassociates.co',
-              logo: 'https://rpcassociates.co/logo.png',
+              name: schemaService.provider || BRAND.nameFull,
+              url: siteUrl,
+              logo: `${siteUrl}/og-image.jpg`,
               telephone: '+1-613-884-0208',
-              email: 'roger.reid@rpcassociates.co',
+              email: contactEmail,
               address: {
                 '@type': 'PostalAddress',
                 addressLocality: 'Ottawa',
@@ -162,17 +155,17 @@ const SEO: FC<SEOProps> = ({
                   name: schemaAuthor
                 } : {
                   '@type': 'Organization',
-                  name: 'RPC Associates'
+                  name: BRAND.nameFull
                 },
                 publisher: {
                   '@type': 'Organization',
-                  name: schemaPublisher || 'RPC Associates',
+                  name: schemaPublisher || BRAND.nameFull,
                   logo: schemaPublisherLogo ? {
                     '@type': 'ImageObject',
                     url: schemaPublisherLogo
                   } : {
                     '@type': 'ImageObject',
-                    url: 'https://rpcassociates.co/logo.png'
+                    url: `${siteUrl}/og-image.jpg`
                   }
                 },
                 mainEntityOfPage: {
@@ -183,19 +176,19 @@ const SEO: FC<SEOProps> = ({
             : {
                 '@context': 'https://schema.org',
                 '@type': 'AccountingService',
-                name: 'RPC Associates',
+                name: BRAND.nameFull,
                 description: description,
-                url: 'https://rpcassociates.co',
-                logo: 'https://rpcassociates.co/logo.png',
-                image: 'https://rpcassociates.co/logo.png',
+                url: siteUrl,
+                logo: `${siteUrl}/og-image.jpg`,
+                image: `${siteUrl}/og-image.jpg`,
                 telephone: '+1-613-884-0208',
-                email: 'roger.reid@rpcassociates.co',
+                email: contactEmail,
                 priceRange: '$$',
                 contactPoint: {
                   '@type': 'ContactPoint',
                   telephone: '+1-613-884-0208',
                   contactType: 'Customer Service',
-                  email: 'roger.reid@rpcassociates.co',
+                  email: contactEmail,
                   areaServed: ['CA', 'CA-ON'],
                   availableLanguage: 'English'
                 },
@@ -212,7 +205,7 @@ const SEO: FC<SEOProps> = ({
                   longitude: -75.6972
                 },
                 sameAs: [
-                  'https://rpcassociates.co'
+                  siteUrl
                 ],
                 areaServed: [
                   {
@@ -252,7 +245,3 @@ const SEO: FC<SEOProps> = ({
 }
 
 export default SEO
-
-
-
-

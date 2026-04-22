@@ -377,7 +377,7 @@ const LeadCaptureForm: FC<LeadCaptureFormProps> = ({
                 required
               />
               <span className="text-sm text-text">
-                I GIVE MY CONSENT TO RECEIVE MARKETING COMMUNICATIONS FROM RPC
+                I GIVE MY CONSENT TO RECEIVE MARKETING COMMUNICATIONS FROM AXIOM
                 ASSOCIATES <span className="text-red-500">*</span>
               </span>
             </label>

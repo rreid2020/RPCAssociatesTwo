@@ -51,7 +51,7 @@ const ServiceDetail: FC = () => {
   return (
     <>
       <SEO 
-        title={`${service.title} | Ottawa Accounting Services - RPC Associates`}
+        title={`${service.title} | Ottawa Accounting Services - Axiom`}
         description={service.metaDescription}
         canonical={`/services/${service.slug}`}
         keywords={keywords}
@@ -59,7 +59,7 @@ const ServiceDetail: FC = () => {
         schemaService={{
           name: service.title,
           description: service.metaDescription,
-          provider: 'RPC Associates',
+          provider: 'Axiom',
           areaServed: ['CA', 'CA-ON', 'Ottawa'],
           serviceType: service.title
         }}

@@ -8,7 +8,7 @@ const TaxEngineCalculatorPage: FC = () => {
   return (
     <>
       <SEO
-        title="CCPC Salary & Dividend Planner | Canadian Tax Engine - RPC Associates"
+        title="CCPC Salary & Dividend Planner | Canadian Tax Engine - Axiom"
         description="For owner-managers with only CCPC income: minimize combined corporate and personal tax across salary, dividends, and retained earnings (2025 parameters)."
         canonical="/resources/ccpc-salary-dividend-calculator"
         keywords={[
@@ -17,7 +17,7 @@ const TaxEngineCalculatorPage: FC = () => {
           'Canadian tax',
           'small business',
           'dividend tax credit',
-          'RPC Associates',
+          'Axiom',
         ]}
       />
       <main className="min-h-[60vh] bg-background py-xxl">

@@ -6,7 +6,7 @@ const Terms: FC = () => {
     <>
       <SEO
         title="Terms of Service"
-        description="RPC Associates Terms of Service - Read our terms and conditions for using our accounting, consulting, and tech solutions services."
+        description="Axiom Terms of Service - Read our terms and conditions for using our accounting, consulting, and tech solutions services."
         canonical="/terms"
       />
       <main className="py-xxl min-h-[60vh]">
@@ -19,7 +19,7 @@ const Terms: FC = () => {
           </p>
 
           <p>
-            Welcome to RPC Associates, Accounting, Consulting, and Tech Solutions ("Company," "we," "our," or "us"). These Terms of Service ("Terms") govern your access to and use of our website, applications, client portals, products, and services (collectively, the "Services"). By accessing or using our Services, you agree to be bound by these Terms. If you do not agree, please discontinue use immediately.
+            Welcome to Axiom Financial &amp; Technology ("Company," "we," "our," or "us"). These Terms of Service ("Terms") govern your access to and use of our website, applications, client portals, products, and services (collectively, the "Services"). By accessing or using our Services, you agree to be bound by these Terms. If you do not agree, please discontinue use immediately.
           </p>
 
           <section className="mb-xl mt-xl">
@@ -56,7 +56,7 @@ const Terms: FC = () => {
 
           <section className="mb-xl mt-xl">
             <h2 className="text-3xl font-semibold text-primary mt-xl mb-md pb-xs border-b-2 border-primary">4. Intellectual Property</h2>
-            <p className="mb-md">All content, branding, trademarks, text, graphics, code, and software on our website are the exclusive property of RPC Associates unless otherwise stated.</p>
+            <p className="mb-md">All content, branding, trademarks, text, graphics, code, and software on our website are the exclusive property of Axiom Financial &amp; Technology unless otherwise stated.</p>
             <p className="mb-md">You may not:</p>
             <ul className="mb-md pl-lg">
               <li className="mb-sm">Copy, reproduce, distribute, or create derivative works without written permission.</li>
@@ -97,7 +97,7 @@ const Terms: FC = () => {
 
           <section className="mb-xl mt-xl">
             <h2 className="text-3xl font-semibold text-primary mt-xl mb-md pb-xs border-b-2 border-primary">8. Indemnification</h2>
-            <p className="mb-md">You agree to indemnify and hold harmless RPC Associates, its officers, employees, contractors, and partners from any claims, damages, liabilities, or expenses arising from:</p>
+            <p className="mb-md">You agree to indemnify and hold harmless Axiom Financial &amp; Technology, its officers, employees, contractors, and partners from any claims, damages, liabilities, or expenses arising from:</p>
             <ul className="mb-md pl-lg">
               <li className="mb-sm">Your use or misuse of the Services.</li>
               <li className="mb-sm">Your violation of these Terms or any applicable law.</li>
@@ -132,15 +132,15 @@ const Terms: FC = () => {
             <h2 className="text-3xl font-semibold text-primary mt-xl mb-md pb-xs border-b-2 border-primary">12. Contact Information</h2>
             <p className="mb-md">If you have questions about these Terms, you may contact us at:</p>
             <div className="bg-background p-md rounded-lg mt-md">
-              <p className="mb-sm"><strong>RPC Associates, Accounting, Consulting, and Tech Solutions</strong></p>
+              <p className="mb-sm"><strong>Axiom Financial &amp; Technology</strong></p>
               <p className="mb-sm">
-                <strong>Email:</strong> <a href="mailto:roger.reid@rpcassociates.co" className="text-primary hover:underline">roger.reid@rpcassociates.co</a>
+                <strong>Email:</strong> <a href="mailto:roger.reid@axiomfinancial.tech" className="text-primary hover:underline">roger.reid@axiomfinancial.tech</a>
               </p>
               <p className="mb-sm">
                 <strong>Phone:</strong> <a href="tel:6138840208" className="text-primary hover:underline">613-884-0208</a>
               </p>
               <p className="mb-0">
-                <strong>Website:</strong> <a href="https://rpcassociates.co" className="text-primary hover:underline">rpcassociates.co</a>
+                <strong>Website:</strong> <a href="https://axiomfinancial.tech" className="text-primary hover:underline">axiomfinancial.tech</a>
               </p>
             </div>
           </section>

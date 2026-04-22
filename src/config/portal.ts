@@ -1,7 +1,8 @@
 // Budibase Client Portal Configuration
 // Update this URL when your Budibase instance is ready
 
-export const PORTAL_URL = 'https://portal.rpcassociates.co'
+// Client portal app URL; update when the portal is hosted on the new domain
+export const PORTAL_URL = 'https://portal.axiomfinancial.tech'
 
 // To update the portal URL:
 // 1. Replace the URL above with your actual Budibase portal URL

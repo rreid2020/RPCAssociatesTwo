@@ -191,26 +191,26 @@ const Header: FC = () => {
               <AxiomWordmark size="md" />
             </Link>
 
-            {/* Main links: centered in the space between logo and account/CTA */}
+            {/* Single row: all links + actions spread with justify-between (Tailwind-style navbar) */}
             <nav
-              className="hidden lg:flex flex-1 min-w-0 items-center justify-center self-center mx-1 xl:mx-3 2xl:mx-4"
+              className="hidden lg:flex flex-1 min-w-0 self-center min-h-0 ml-2 pl-1 xl:ml-4 2xl:ml-6"
               aria-label="Main navigation"
             >
-              <ul className="m-0 p-0 list-none flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 xl:gap-x-5 2xl:gap-x-6">
+              <ul className="m-0 p-0 w-full min-w-0 list-none flex flex-nowrap items-center justify-between gap-x-0.5 overflow-x-auto overflow-y-hidden scroll-smooth">
                 {/* Services Dropdown */}
-                <li 
-                  className="relative"
+                <li
+                  className="relative shrink-0"
                   onMouseEnter={() => handleMenuEnter('services')}
                   onMouseLeave={() => handleMenuLeave('services', 300)}
                 >
                   <button
-                    className="min-h-11 inline-flex items-center gap-1 text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
+                    className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center gap-1.5 text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
                   >
                     Services
-                    <svg 
-                      className={`w-4 h-4 transition-transform ${isServicesOpen ? 'rotate-180' : ''}`} 
-                      fill="none" 
-                      stroke="currentColor" 
+                    <svg
+                      className={`w-5 h-5 shrink-0 transition-transform ${isServicesOpen ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
                       viewBox="0 0 24 24"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -253,28 +253,28 @@ const Header: FC = () => {
                 </li>
 
                 {/* Other Navigation Items */}
-                <li>
-                  <a 
-                    href="#about" 
-                    className="min-h-11 inline-flex items-center text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
+                <li className="shrink-0">
+                  <a
+                    href="#about"
+                    className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
                     onClick={(e) => { e.preventDefault(); scrollToSection('about') }}
                   >
                     About
                   </a>
                 </li>
-                <li>
-                  <a 
-                    href="#remote" 
-                    className="min-h-11 inline-flex items-center text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
+                <li className="shrink-0">
+                  <a
+                    href="#remote"
+                    className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
                     onClick={(e) => { e.preventDefault(); scrollToSection('remote') }}
                   >
                     Remote
                   </a>
                 </li>
-                <li>
-                  <a 
-                    href="#contact" 
-                    className="min-h-11 inline-flex items-center text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
+                <li className="shrink-0">
+                  <a
+                    href="#contact"
+                    className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
                     onClick={(e) => { e.preventDefault(); scrollToSection('contact') }}
                   >
                     Contact
@@ -282,19 +282,19 @@ const Header: FC = () => {
                 </li>
 
                 {/* Resources Dropdown */}
-                <li 
-                  className="relative"
+                <li
+                  className="relative shrink-0"
                   onMouseEnter={() => handleMenuEnter('resources')}
                   onMouseLeave={() => handleMenuLeave('resources', 300)}
                 >
                   <button
-                    className="min-h-11 inline-flex items-center gap-1 text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
+                    className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center gap-1.5 text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
                   >
                     Resources
-                    <svg 
-                      className={`w-4 h-4 transition-transform ${isResourcesOpen ? 'rotate-180' : ''}`} 
-                      fill="none" 
-                      stroke="currentColor" 
+                    <svg
+                      className={`w-5 h-5 shrink-0 transition-transform ${isResourcesOpen ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
                       viewBox="0 0 24 24"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -337,20 +337,20 @@ const Header: FC = () => {
                 </li>
 
                 {/* Articles Dropdown */}
-                <li 
-                  className="relative"
+                <li
+                  className="relative shrink-0"
                   onMouseEnter={() => handleMenuEnter('articles')}
                   onMouseLeave={() => handleMenuLeave('articles', 300)}
                 >
                   <Link 
                     to="/articles" 
-                    className="min-h-11 inline-flex items-center gap-1 text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
+                    className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center gap-1.5 text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
                   >
                     Articles
-                    <svg 
-                      className={`w-4 h-4 transition-transform ${isArticlesOpen ? 'rotate-180' : ''}`} 
-                      fill="none" 
-                      stroke="currentColor" 
+                    <svg
+                      className={`w-5 h-5 shrink-0 transition-transform ${isArticlesOpen ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
                       viewBox="0 0 24 24"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -388,29 +388,30 @@ const Header: FC = () => {
                     </div>
                   )}
                 </li>
+
+                <li className="shrink-0">
+                  <Link
+                    to="/client-portal"
+                    className="btn btn--secondary inline-flex items-center justify-center whitespace-nowrap min-h-12 text-base font-medium leading-none"
+                    onClick={closeMenu}
+                  >
+                    Client Portal
+                  </Link>
+                </li>
+                <li className="shrink-0">
+                  <Link
+                    to="/portal/sign-in"
+                    className="inline-flex h-12 items-center px-1.5 text-base font-semibold text-text hover:text-primary-dark whitespace-nowrap"
+                    onClick={closeMenu}
+                  >
+                    Sign in
+                  </Link>
+                </li>
+                <li className="shrink-0 pl-0.5">
+                  <CalendlyButton className="btn btn--primary inline-flex items-center justify-center min-h-12 text-base whitespace-nowrap" />
+                </li>
               </ul>
             </nav>
-
-            {/* Account + conversion (even spacing, aligned to full header height) */}
-            <div
-              className="hidden lg:flex items-center justify-end shrink-0 self-center gap-x-4 xl:gap-x-5 2xl:gap-x-6"
-            >
-              <Link
-                to="/client-portal"
-                className="btn btn--secondary inline-flex items-center justify-center whitespace-nowrap min-h-11 text-[0.9375rem] leading-none"
-                onClick={closeMenu}
-              >
-                Client Portal
-              </Link>
-              <Link
-                to="/portal/sign-in"
-                className="inline-flex h-11 items-center text-sm font-semibold text-text hover:text-primary-dark whitespace-nowrap px-1"
-                onClick={closeMenu}
-              >
-                Sign in
-              </Link>
-              <CalendlyButton className="btn btn--primary inline-flex items-center justify-center min-h-11 whitespace-nowrap" />
-            </div>
 
             {/* Mobile Hamburger Button */}
             <button

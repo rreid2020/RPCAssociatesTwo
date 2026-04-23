@@ -2,6 +2,7 @@ import { FC, useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import CalendlyButton from './CalendlyButton'
 import AxiomWordmark from './AxiomWordmark'
+import HeaderPortalAuthLink from './HeaderPortalAuthLink'
 import { services } from '../lib/services/data'
 import { resourceCategories } from '../lib/resources/data'
 
@@ -381,13 +382,11 @@ const Header: FC = () => {
                   </Link>
                 </li>
                 <li className="shrink-0">
-                  <Link
-                    to="/portal/sign-in"
-                    className="inline-flex h-12 items-center px-1.5 text-base font-semibold text-text hover:text-primary-dark whitespace-nowrap"
-                    onClick={closeMenu}
-                  >
-                    Sign in
-                  </Link>
+                  <HeaderPortalAuthLink
+                    classNameSignIn="inline-flex h-12 items-center px-1.5 text-base font-semibold text-text hover:text-primary-dark whitespace-nowrap"
+                    classNameSignedIn="inline-flex h-12 items-center px-1.5 text-base font-semibold text-text hover:text-primary-dark whitespace-nowrap"
+                    onNavigate={closeMenu}
+                  />
                 </li>
                 <li className="shrink-0 pl-0.5">
                   <CalendlyButton className="btn btn--primary inline-flex items-center justify-center min-h-12 text-base whitespace-nowrap" />
@@ -562,13 +561,14 @@ const Header: FC = () => {
                 Client Portal
               </Link>
 
-              <Link
-                to="/portal/sign-in"
-                className="block text-center font-semibold text-primary-dark py-2"
-                onClick={closeMenu}
-              >
-                Sign in to portal
-              </Link>
+              <div className="text-center">
+                <HeaderPortalAuthLink
+                  classNameSignIn="block font-semibold text-primary-dark py-2"
+                  classNameSignedIn="block font-semibold text-primary-dark py-2"
+                  signInLabel="Sign in to portal"
+                  onNavigate={closeMenu}
+                />
+              </div>
 
               <div className="pt-4 border-t border-primary/20">
                 <CalendlyButton className="btn btn--primary w-full" />

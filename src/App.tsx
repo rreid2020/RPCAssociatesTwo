@@ -45,17 +45,27 @@ const App: FC = () => {
           <Route
             path="/portal/sign-in"
             element={
-              <SignedOut>
-                <SignIn />
-              </SignedOut>
+              <>
+                <SignedOut>
+                  <SignIn />
+                </SignedOut>
+                <SignedIn>
+                  <Navigate to="/portal/dashboard" replace />
+                </SignedIn>
+              </>
             }
           />
           <Route
             path="/portal/sign-up"
             element={
-              <SignedOut>
-                <SignUp />
-              </SignedOut>
+              <>
+                <SignedOut>
+                  <SignUp />
+                </SignedOut>
+                <SignedIn>
+                  <Navigate to="/portal/dashboard" replace />
+                </SignedIn>
+              </>
             }
           />
           

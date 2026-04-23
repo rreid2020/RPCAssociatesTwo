@@ -1,5 +1,9 @@
 import { createClient } from '@sanity/client'
 
+// Browser: each production origin (e.g. https://axiomft.ca) must be listed in
+// https://www.sanity.io/manage → this project → API → CORS origins, or fetches
+// to *.apicdn.sanity.io fail with CORS. Add both apex and www if you use them.
+
 const projectId = import.meta.env.VITE_SANITY_PROJECT_ID
 const dataset = import.meta.env.VITE_SANITY_DATASET || 'production'
 const apiVersion = import.meta.env.VITE_SANITY_API_VERSION || '2024-01-01'

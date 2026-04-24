@@ -15,7 +15,16 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api/portal': {
+      // Express API (forms, portal, health) — run `npm start` in api/server
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+    },
+  },
+  preview: {
+    proxy: {
+      '/api': {
         target: 'http://localhost:3000',
         changeOrigin: true,
       },

@@ -1,5 +1,6 @@
 import { FC, useState, FormEvent } from 'react'
 import { API_ENDPOINTS } from '../lib/config/api'
+import { parseFormApiJson } from '../lib/formApiResponse'
 import { markResourceAsAccessed } from '../lib/utils/leadCapture'
 
 interface LeadCaptureFormProps {
@@ -81,18 +82,9 @@ const LeadCaptureForm: FC<LeadCaptureFormProps> = ({
       return
     }
 
-    // Check if API endpoint is configured
-    if (!API_ENDPOINTS.leads) {
-      setErrors({ 
-        email: 'API server is not configured. Please contact support or try again later.' 
-      })
-      return
-    }
-
     setIsSubmitting(true)
 
     try {
-      // Submit to API
       const response = await fetch(API_ENDPOINTS.leads, {
         method: 'POST',
         headers: {
@@ -112,21 +104,22 @@ const LeadCaptureForm: FC<LeadCaptureFormProps> = ({
         }),
       })
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        const errorMessage = errorData.message || errorData.error || `Server error: ${response.status} ${response.statusText}`
-        console.error('API Error Response:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorData
-        })
-        throw new Error(errorMessage)
+      const payload = await parseFormApiJson<{
+        success?: boolean
+        message?: string
+        error?: string
+      }>(response)
+
+      if (!response.ok || !payload.success) {
+        const msg =
+          payload.error ||
+          payload.message ||
+          `Server error: ${response.status} ${response.statusText}`
+        console.error('API Error Response:', { status: response.status, payload })
+        throw new Error(msg)
       }
 
-      // Mark resource as accessed in localStorage (for client-side tracking)
       markResourceAsAccessed(resourceName)
-
-      // Call success callback
       onSuccess()
     } catch (error) {
       console.error('Error submitting form:', error)

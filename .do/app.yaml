@@ -25,9 +25,6 @@ services:
       - key: VITE_SITE_URL
         value: https://axiomft.ca
         scope: RUN_AND_BUILD_TIME
-      - key: VITE_API_BASE_URL
-        value: https://axiomft.ca
-        scope: RUN_AND_BUILD_TIME
       - key: VITE_SANITY_PROJECT_ID
         value: t3zpylpm
         scope: RUN_AND_BUILD_TIME
@@ -83,10 +80,10 @@ services:
         value: REPLACE_IN_APP_PLATFORM
         scope: RUN_TIME
       - key: EMAIL_FROM
-        value: "RPC Associates <contacts@rpcassociates.co>"
+        value: "Axiom Financial & Technology <noreply@axiomft.ca>"
         scope: RUN_TIME
       - key: NOTIFICATION_EMAIL
-        value: contacts@rpcassociates.co
+        value: info@axiomft.ca
         scope: RUN_TIME
       # CORS Configuration
       - key: ALLOWED_ORIGINS

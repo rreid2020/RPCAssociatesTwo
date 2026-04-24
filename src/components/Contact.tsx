@@ -1,5 +1,6 @@
 import { FC, FormEvent, useState } from 'react'
 import { API_ENDPOINTS } from '../lib/config/api'
+import { parseFormApiJson } from '../lib/formApiResponse'
 
 const Contact: FC = () => {
   const [formData, setFormData] = useState({
@@ -33,19 +34,29 @@ const Contact: FC = () => {
         }
       )
 
-      if (response.ok) {
+      const data = await parseFormApiJson<{
+        success?: boolean
+        error?: string
+        message?: string
+      }>(response)
+
+      if (response.ok && data.success) {
         setSubmitStatus('success')
         setFormData({ name: '', email: '', company: '', message: '' })
-        // Reset success message after 5 seconds
         setTimeout(() => setSubmitStatus('idle'), 5000)
       } else {
-        const data = await response.json().catch(() => ({}))
         setSubmitStatus('error')
-        setErrorMessage(data.error || 'Something went wrong. Please try again.')
+        setErrorMessage(
+          data.error || data.message || 'Something went wrong. Please try again.'
+        )
       }
     } catch (error) {
       setSubmitStatus('error')
-      setErrorMessage('Network error. Please check your connection and try again.')
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Network error. Please check your connection and try again.'
+      )
     } finally {
       setIsSubmitting(false)
     }

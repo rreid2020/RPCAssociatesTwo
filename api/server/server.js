@@ -10,6 +10,8 @@ import { sendEmail } from './utils/email.js'
 import { createLeadsTable, createContactsTable } from './db/migrations.js'
 import { ensurePortalSchema } from './db/ensurePortalSchema.js'
 import { createPortalRouter } from './routes/portalRoutes.js'
+import { getNotificationInbox } from './config/mail.js'
+import { escapeHtml, singleLine } from './utils/html.js'
 
 dotenv.config()
 
@@ -74,100 +76,66 @@ app.post('/api/leads', async (req, res) => {
       return res.status(400).json({ error: 'Invalid email address' })
     }
 
-    // Check if lead already exists for this email and resource
-    const existingLead = await pool.query(
-      `SELECT id, created_at FROM leads 
-       WHERE email = $1 AND resource_name = $2 
-       ORDER BY created_at DESC 
-       LIMIT 1`,
-      [email, resourceName]
+    // Persist every submission (re-downloads and repeat submits get their own row)
+    const result = await pool.query(
+      `INSERT INTO leads (
+        first_name, last_name, company_name, email, business_phone,
+        business_type, business_owner_status, speak_to_advisor,
+        marketing_consent, resource_name, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+      RETURNING id`,
+      [
+        firstName,
+        lastName,
+        companyName,
+        email,
+        businessPhone,
+        businessType,
+        businessOwnerStatus,
+        speakToAdvisor || false,
+        marketingConsent,
+        resourceName
+      ]
     )
+    const leadId = result.rows[0].id
+    console.log(`Lead saved (ID: ${leadId})`)
 
-    let leadId
-    let isNewLead = false
-
-    if (existingLead.rows.length > 0) {
-      // Lead already exists - return existing ID
-      leadId = existingLead.rows[0].id
-      console.log(`Lead already exists for ${email} and ${resourceName} (ID: ${leadId})`)
-    } else {
-      // Insert new lead into database
-      const result = await pool.query(
-        `INSERT INTO leads (
-          first_name, last_name, company_name, email, business_phone,
-          business_type, business_owner_status, speak_to_advisor,
-          marketing_consent, resource_name, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
-        RETURNING id`,
-        [
-          firstName,
-          lastName,
-          companyName,
-          email,
-          businessPhone,
-          businessType,
-          businessOwnerStatus,
-          speakToAdvisor || false,
-          marketingConsent,
-          resourceName
-        ]
-      )
-      leadId = result.rows[0].id
-      isNewLead = true
-      console.log(`New lead created (ID: ${leadId})`)
-    }
-
-    // Send email notification only for new leads
-    if (isNewLead) {
-      try {
-        const notificationEmail = process.env.NOTIFICATION_EMAIL || 
-          process.env.SHARED_MAILBOX_ADDRESS || 
-          'contacts@rpcassociates.co'
-        
-        console.log('Attempting to send email notification to:', notificationEmail)
-        console.log('RESEND_API_KEY configured:', !!process.env.RESEND_API_KEY)
-        console.log('EMAIL_FROM:', process.env.EMAIL_FROM)
-        
-        await sendEmail({
-          to: notificationEmail,
-          subject: `New Lead: ${resourceName} - ${firstName} ${lastName}`,
-          html: `
+    try {
+      const notificationEmail = getNotificationInbox()
+      console.log('Attempting to send email notification to:', notificationEmail)
+      console.log('RESEND_API_KEY configured:', !!process.env.RESEND_API_KEY)
+      await sendEmail({
+        to: notificationEmail,
+        replyTo: email,
+        subject: `New Lead: ${singleLine(resourceName)} — ${singleLine(firstName + ' ' + lastName, 80)}`,
+        html: `
             <h2>New Lead Submission</h2>
-            <p><strong>Resource:</strong> ${resourceName}</p>
+            <p><strong>Resource:</strong> ${escapeHtml(resourceName)} (Lead ID: ${leadId})</p>
             <h3>Contact Information</h3>
             <ul>
-              <li><strong>Name:</strong> ${firstName} ${lastName}</li>
-              <li><strong>Company:</strong> ${companyName}</li>
-              <li><strong>Email:</strong> ${email}</li>
-              <li><strong>Phone:</strong> ${businessPhone}</li>
-              <li><strong>Business Type:</strong> ${businessType}</li>
-              <li><strong>Business Owner Status:</strong> ${businessOwnerStatus}</li>
+              <li><strong>Name:</strong> ${escapeHtml(firstName)} ${escapeHtml(lastName)}</li>
+              <li><strong>Company:</strong> ${escapeHtml(companyName)}</li>
+              <li><strong>Email:</strong> ${escapeHtml(email)}</li>
+              <li><strong>Phone:</strong> ${escapeHtml(businessPhone)}</li>
+              <li><strong>Business Type:</strong> ${escapeHtml(businessType)}</li>
+              <li><strong>Business Owner Status:</strong> ${escapeHtml(businessOwnerStatus)}</li>
               <li><strong>Wants to Speak to Advisor:</strong> ${speakToAdvisor ? 'Yes' : 'No'}</li>
               <li><strong>Marketing Consent:</strong> ${marketingConsent ? 'Yes' : 'No'}</li>
             </ul>
             <p><strong>Submitted:</strong> ${new Date().toLocaleString()}</p>
           `
-        })
-        console.log('✅ Email notification sent successfully')
-      } catch (emailError) {
-        console.error('❌ Failed to send email notification:', emailError)
-        console.error('Email error details:', {
-          name: emailError.name,
-          message: emailError.message,
-          code: emailError.code,
-          response: emailError.response
-        })
-        // Don't fail the request if email fails
-      }
-    } else {
-      console.log('Skipping email notification - lead already exists')
+      })
+      console.log('Email notification sent successfully')
+    } catch (emailError) {
+      console.error('Failed to send email notification:', emailError)
+      // Don't fail the request if email fails; row is already saved
     }
 
     res.status(201).json({ 
       success: true, 
-      message: isNewLead ? 'Lead captured successfully' : 'Access granted (existing lead)',
+      message: 'Lead captured successfully',
       id: leadId,
-      isNewLead
+      isNewLead: true
     })
   } catch (error) {
     console.error('Error processing lead:', error)
@@ -225,23 +193,22 @@ app.post('/api/contact', async (req, res) => {
 
     // Send email notification
     try {
-      const notificationEmail = process.env.NOTIFICATION_EMAIL || 
-        process.env.SHARED_MAILBOX_ADDRESS || 
-        'contacts@rpcassociates.co'
-      
+      const notificationEmail = getNotificationInbox()
+      const safeMsg = escapeHtml(message).replace(/\n/g, '<br>')
       await sendEmail({
         to: notificationEmail,
-        subject: `New Contact Form Submission from ${name}`,
+        replyTo: email,
+        subject: `New contact: ${singleLine(name, 100)} (ID ${contactId})`,
         html: `
           <h2>New Contact Form Submission</h2>
           <h3>Contact Information</h3>
           <ul>
-            <li><strong>Name:</strong> ${name}</li>
-            <li><strong>Email:</strong> ${email}</li>
-            ${company ? `<li><strong>Company:</strong> ${company}</li>` : ''}
+            <li><strong>Name:</strong> ${escapeHtml(name)}</li>
+            <li><strong>Email:</strong> ${escapeHtml(email)}</li>
+            ${company ? `<li><strong>Company:</strong> ${escapeHtml(company)}</li>` : ''}
           </ul>
           <h3>Message</h3>
-          <p>${message.replace(/\n/g, '<br>')}</p>
+          <p>${safeMsg}</p>
           <p><strong>Submitted:</strong> ${new Date().toLocaleString()}</p>
         `
       })

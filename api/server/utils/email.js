@@ -91,14 +91,17 @@ function createTransporter() {
  * @param {string} options.html - HTML email body
  * @param {string} options.text - Plain text email body (optional)
  */
-export async function sendEmail({ to, subject, html, text }) {
+const DEFAULT_FROM = '"Axiom Financial & Technology" <noreply@axiomft.ca>'
+
+export async function sendEmail({ to, subject, html, text, replyTo }) {
   const transporter = createTransporter()
 
-  // For shared mailboxes, use the shared mailbox address as "from" but authenticate with a user account
   const fromAddress = process.env.EMAIL_FROM || 
-    (process.env.SHARED_MAILBOX_ADDRESS 
-      ? `"RPC Associates" <${process.env.SHARED_MAILBOX_ADDRESS}>`
-      : `"RPC Associates" <${process.env.SMTP_USER}>`)
+    (process.env.SHARED_MAILBOX_ADDRESS
+      ? `"Axiom Financial & Technology" <${process.env.SHARED_MAILBOX_ADDRESS}>`
+      : process.env.SMTP_USER
+        ? `"Axiom Financial & Technology" <${process.env.SMTP_USER}>`
+        : DEFAULT_FROM)
 
   const mailOptions = {
     from: fromAddress,
@@ -106,6 +109,9 @@ export async function sendEmail({ to, subject, html, text }) {
     subject,
     html,
     text: text || html.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+  }
+  if (replyTo) {
+    mailOptions.replyTo = replyTo
   }
 
   try {

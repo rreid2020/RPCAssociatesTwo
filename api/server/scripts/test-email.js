@@ -13,7 +13,7 @@ async function testEmail() {
     console.log('\nSending test email...')
 
     await sendEmail({
-      to: process.env.NOTIFICATION_EMAIL || 'contacts@rpcassociates.co',
+      to: process.env.NOTIFICATION_EMAIL || 'info@axiomft.ca',
       subject: 'Test Email from RPC Associates API',
       html: `
         <h2>Test Email</h2>
@@ -24,7 +24,7 @@ async function testEmail() {
     })
 
     console.log('✅ Test email sent successfully!')
-    console.log(`Check your inbox at: ${process.env.NOTIFICATION_EMAIL || 'contacts@rpcassociates.co'}`)
+    console.log(`Check your inbox at: ${process.env.NOTIFICATION_EMAIL || 'info@axiomft.ca'}`)
     process.exit(0)
   } catch (error) {
     console.error('❌ Failed to send test email:', error.message)

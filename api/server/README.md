@@ -22,7 +22,7 @@ cp .env.example .env
 Required variables:
 - **Database**: PostgreSQL connection details
 - **Email**: SMTP or SendGrid configuration
-- **NOTIFICATION_EMAIL**: Where to send form submission notifications (contacts@rpcassociates.co)
+- **NOTIFICATION_EMAIL**: Inbox for lead + contact notifications (e.g. `contact@axiomft.ca`); also set **EMAIL_FROM** (e.g. `noreply@axiomft.ca` via Resend)
 
 ### 3. Initialize Database
 

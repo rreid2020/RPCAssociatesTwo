@@ -27,11 +27,15 @@ const SignUp: FC = () => {
       return
     }
 
+    const origin = window.location.origin
+    const ssoCallback = `${origin}/sso-callback`
+    const afterAuth = `${origin}/portal/dashboard`
+
     try {
       await signUp.authenticateWithRedirect({
         strategy,
-        redirectUrl: '/portal/dashboard',
-        redirectUrlComplete: '/portal/dashboard',
+        redirectUrl: ssoCallback,
+        redirectUrlComplete: afterAuth,
       })
     } catch (err: unknown) {
       const e = err as { errors?: { message: string }[] }

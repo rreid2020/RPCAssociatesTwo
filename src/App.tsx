@@ -1,7 +1,7 @@
 import { FC } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { HelmetProvider } from 'react-helmet-async'
-import { SignedIn, SignedOut } from '@clerk/clerk-react'
+import { AuthenticateWithRedirectCallback, SignedIn, SignedOut } from '@clerk/clerk-react'
 import Header from './components/Header'
 import Footer from './components/Footer'
 import Home from './pages/Home'
@@ -41,6 +41,11 @@ const App: FC = () => {
         <ScrollToTop />
         <CanonicalRedirect />
         <Routes>
+          {/*
+            OAuth (GitHub / Google) round-trip: Clerk must run handleRedirectCallback on
+            a dedicated route. Without this, users return signed-out and see sign-in again.
+          */}
+          <Route path="/sso-callback" element={<AuthenticateWithRedirectCallback />} />
           {/* Portal authentication routes - public */}
           <Route
             path="/portal/sign-in"

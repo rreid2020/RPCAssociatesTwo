@@ -25,11 +25,16 @@ const SignIn: FC = () => {
       return
     }
 
+    const origin = window.location.origin
+    const ssoCallback = `${origin}/sso-callback`
+    const afterAuth = `${origin}/portal/dashboard`
+
     try {
       await signIn.authenticateWithRedirect({
         strategy,
-        redirectUrl: '/portal/dashboard',
-        redirectUrlComplete: '/portal/dashboard',
+        // Must match a route that mounts <AuthenticateWithRedirectCallback /> (App.tsx)
+        redirectUrl: ssoCallback,
+        redirectUrlComplete: afterAuth,
       })
     } catch (err: unknown) {
       const e = err as { errors?: { message: string }[] }

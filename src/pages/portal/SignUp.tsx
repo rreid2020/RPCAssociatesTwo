@@ -137,6 +137,13 @@ const SignUp: FC = () => {
               </div>
             )}
 
+            <div
+              id="clerk-captcha"
+              className="mb-4 flex min-h-0 justify-center"
+              data-cl-theme="light"
+              data-cl-size="flexible"
+            />
+
             {verifying ? (
               <form onSubmit={handleVerify} className="space-y-4">
                 <p className="text-sm text-text">

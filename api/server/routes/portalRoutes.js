@@ -190,7 +190,10 @@ export function createPortalRouter (pool) {
       )
       res.json({ folder: rows[0] })
     } catch (e) {
-      if (e && (e.code === '23505' || /unique|duplicate/i.test(String((e).message || ''))) {
+      const msg = e && e.message != null ? String(e.message) : ''
+      const isUniqueViolation =
+        (e && e.code === '23505') || (msg.length > 0 && /unique|duplicate/i.test(msg))
+      if (isUniqueViolation) {
         return res.status(409).json({ error: 'A folder with that name already exists here' })
       }
       console.error('POST /v1/folders', e)

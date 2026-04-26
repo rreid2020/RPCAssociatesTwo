@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { randomUUID } from 'crypto'
 
@@ -43,4 +43,12 @@ export async function presignGet (key) {
   if (!s3) return null
   const cmd = new GetObjectCommand({ Bucket: s3.bucket, Key: key })
   return getSignedUrl(s3.client, cmd, { expiresIn: TTL })
+}
+
+/** Best-effort delete; returns true if S3 is configured and delete was sent, false if storage unavailable. */
+export async function deleteObject (key) {
+  const s3 = getS3()
+  if (!s3) return null
+  await s3.client.send(new DeleteObjectCommand({ Bucket: s3.bucket, Key: key }))
+  return true
 }

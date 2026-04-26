@@ -21,13 +21,13 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, SubscriptionPlanConfig
   free: {
     id: 'free',
     name: 'Free Plan',
-    description: 'Basic access to client portal',
+    description: 'Basic access to the client portal, including secure file storage',
     price: null,
     features: {
       dashboard: true,
       taxgpt: true,
       taxgptPremium: false,
-      fileRepository: false,
+      fileRepository: true,
       workingPapers: false,
       integrations: false,
     },

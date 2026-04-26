@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { getClerkUser, isStaff } from '../middleware/portalAuth.js'
-import { buildPortalObjectKey, presignGet, presignPut } from '../services/portalS3.js'
+import { buildPortalObjectKey, deleteObject, presignGet, presignPut } from '../services/portalS3.js'
 
 export function createPortalRouter (pool) {
   const r = Router()
@@ -185,6 +185,35 @@ export function createPortalRouter (pool) {
     const url = await presignGet(rows[0].storage_key)
     if (!url) return res.status(503).json({ error: 'Storage not configured' })
     res.json({ url })
+  })
+
+  r.delete('/v1/files/:id', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const { rows } = await pool.query(
+      'SELECT * FROM taxgpt.portal_client_files WHERE id = $1::uuid AND clerk_user_id = $2',
+      [req.params.id, session.userId]
+    )
+    if (!rows[0]) return res.status(404).json({ error: 'Not found' })
+    const { storage_key: storageKey, file_name: fileName } = rows[0]
+    if (storageKey) {
+      try {
+        await deleteObject(storageKey)
+      } catch (e) {
+        console.error('portal S3 deleteObject', e)
+        return res.status(502).json({ error: 'Could not delete file from storage' })
+      }
+    }
+    await pool.query('DELETE FROM taxgpt.portal_client_files WHERE id = $1::uuid AND clerk_user_id = $2', [
+      req.params.id,
+      session.userId
+    ])
+    await pool.query(
+      `INSERT INTO taxgpt.portal_activity (clerk_user_id, kind, title, created_at)
+       VALUES ($1, 'file', $2, now())`,
+      [session.userId, `Removed: ${fileName}`]
+    )
+    res.json({ ok: true })
   })
 
   r.get('/v1/checklists', async (req, res) => {

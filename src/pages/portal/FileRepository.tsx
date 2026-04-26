@@ -5,6 +5,7 @@ import ClientPortalShell from '../../components/ClientPortalShell'
 import { useFeatureAccess } from '../../lib/subscriptions/hooks'
 import UpgradePrompt from '../../components/UpgradePrompt'
 import { portalFetch } from '../../lib/portalApi'
+import { formatBytes } from '../../lib/utils/formatBytes'
 
 type PortalFile = {
   id: string
@@ -21,6 +22,7 @@ const FileRepository: FC = () => {
   const [err, setErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!hasAccess) return
@@ -40,34 +42,43 @@ const FileRepository: FC = () => {
     void load()
   }, [load])
 
+  const putOne = async (file: File) => {
+    const pres = await portalFetch<{
+      uploadUrl: string
+      storageKey: string
+    }>('/v1/files/presign-put', getToken, {
+      method: 'POST',
+      body: JSON.stringify({ fileName: file.name, contentType: file.type || 'application/octet-stream' })
+    })
+    const put = await fetch(pres.uploadUrl, {
+      method: 'PUT',
+      body: file,
+      headers: { 'Content-Type': file.type || 'application/octet-stream' }
+    })
+    if (!put.ok) {
+      throw new Error('Upload failed (storage). Check server bucket configuration.')
+    }
+    await portalFetch('/v1/files/complete', getToken, {
+      method: 'POST',
+      body: JSON.stringify({
+        storageKey: pres.storageKey,
+        fileName: file.name,
+        mime: file.type || null,
+        sizeBytes: file.size
+      })
+    })
+  }
+
   const onUpload: ChangeEventHandler<HTMLInputElement> = async (ev) => {
-    const file = ev.target.files?.[0]
+    const list = ev.target.files
     ev.target.value = ''
-    if (!file) return
+    if (!list?.length) return
     setUploading(true)
     setErr(null)
     try {
-      const pres = await portalFetch<{
-        uploadUrl: string
-        storageKey: string
-        fileId: string
-      }>('/v1/files/presign-put', getToken, {
-        method: 'POST',
-        body: JSON.stringify({ fileName: file.name, contentType: file.type || 'application/octet-stream' })
-      })
-      const put = await fetch(pres.uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type || 'application/octet-stream' } })
-      if (!put.ok) {
-        throw new Error('Upload failed (storage). Check server bucket configuration.')
+      for (const file of list) {
+        await putOne(file)
       }
-      await portalFetch('/v1/files/complete', getToken, {
-        method: 'POST',
-        body: JSON.stringify({
-          storageKey: pres.storageKey,
-          fileName: file.name,
-          mime: file.type || null,
-          sizeBytes: file.size
-        })
-      })
       void load()
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Upload failed')
@@ -86,6 +97,20 @@ const FileRepository: FC = () => {
     }
   }
 
+  const onDelete = async (id: string) => {
+    if (!window.confirm('Remove this file? This cannot be undone.')) return
+    setErr(null)
+    setDeletingId(id)
+    try {
+      await portalFetch<{ ok: boolean }>(`/v1/files/${id}`, getToken, { method: 'DELETE' })
+      void load()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not remove file')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   return (
     <>
       <SEO
@@ -95,8 +120,8 @@ const FileRepository: FC = () => {
       />
       <ClientPortalShell>
         <div>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
+            <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-3xl font-bold text-primary-dark">File Repository</h1>
               {!hasAccess && (
                 <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
@@ -106,13 +131,18 @@ const FileRepository: FC = () => {
             </div>
             {hasAccess && (
               <label className="inline-flex items-center gap-2 cursor-pointer">
-                <input type="file" className="hidden" onChange={onUpload} disabled={uploading} />
+                <input type="file" className="hidden" multiple onChange={onUpload} disabled={uploading} />
                 <span className="btn btn--primary text-sm py-2 px-4">
-                  {uploading ? 'Uploading…' : 'Upload a file'}
+                  {uploading ? 'Uploading…' : 'Upload file(s)'}
                 </span>
               </label>
             )}
           </div>
+          {hasAccess && (
+            <p className="text-text-light text-sm mb-6 max-w-2xl">
+              Uploads are stored privately for your account. You can download or remove files here anytime.
+            </p>
+          )}
 
           {!hasAccess ? (
             <UpgradePrompt feature="File Repository" />
@@ -126,17 +156,34 @@ const FileRepository: FC = () => {
               {!loading && files.length > 0 && (
                 <ul className="divide-y divide-border">
                   {files.map((f) => (
-                    <li key={f.id} className="py-3 flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <p className="font-medium text-text">{f.file_name}</p>
-                        <p className="text-sm text-text-light">
-                          {new Date(f.created_at).toLocaleString()}
-                          {f.size_bytes != null && ` — ${(f.size_bytes / 1024).toFixed(1)} KB`}
+                    <li
+                      key={f.id}
+                      className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium text-text break-words">{f.file_name}</p>
+                        <p className="text-sm text-text-light mt-0.5">
+                          {new Date(f.created_at).toLocaleString()} · {formatBytes(f.size_bytes)}
+                          {f.mime && ` · ${f.mime}`}
                         </p>
                       </div>
-                      <button type="button" className="text-sm font-medium text-accent hover:underline" onClick={() => { void onDownload(f.id) }}>
-                        Download
-                      </button>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          className="text-sm font-medium text-accent hover:underline px-2 py-1"
+                          onClick={() => { void onDownload(f.id) }}
+                        >
+                          Download
+                        </button>
+                        <button
+                          type="button"
+                          className="text-sm font-medium text-text-light hover:text-red-700 px-2 py-1"
+                          disabled={deletingId === f.id}
+                          onClick={() => { void onDelete(f.id) }}
+                        >
+                          {deletingId === f.id ? 'Removing…' : 'Remove'}
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>

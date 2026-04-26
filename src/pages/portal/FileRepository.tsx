@@ -25,6 +25,15 @@ type PortalFolder = {
 
 type Crumb = { id: 'root' | string; name: string }
 
+/** Bumped when UI changes; if you do not see Create folder, the CDN/site is not serving a fresh `npm run build`. */
+const FILE_REPO_UI_ID = 'folders-v1'
+
+function folderApiProbablyMissing (e: unknown): boolean {
+  const m = (e instanceof Error && e.message) || String(e)
+  if (!m) return false
+  return /not found|404|not found\./i.test(m) || m.toLowerCase().includes('endpoint not found') || m.includes('API endpoint not found')
+}
+
 const FileRepository: FC = () => {
   const hasAccess = useFeatureAccess('fileRepository')
   const { getToken } = useAuth()
@@ -32,6 +41,8 @@ const FileRepository: FC = () => {
   const [folders, setFolders] = useState<PortalFolder[]>([])
   const [breadcrumbs, setBreadcrumbs] = useState<Crumb[]>([{ id: 'root', name: 'All files' }])
   const [currentFolderId, setCurrentFolderId] = useState<'root' | string>('root')
+  /** Set when the API has no /v1/folders route (old deploy) — we list all files and hide folder tools. */
+  const [legacyListMode, setLegacyListMode] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
@@ -48,11 +59,29 @@ const FileRepository: FC = () => {
     if (!hasAccess) return
     setLoading(true)
     try {
-      const [fr, fl] = await Promise.all([
-        portalFetch<{ folders: PortalFolder[] }>(`/v1/folders?parentId=${parentQuery}`, getToken),
-        portalFetch<{ files: PortalFile[] }>(`/v1/files?folderId=${parentQuery}`, getToken)
-      ])
-      setFolders(fr.folders)
+      let useLegacy = false
+      let folderList: PortalFolder[] = []
+      try {
+        const fr = await portalFetch<{ folders: PortalFolder[] }>(`/v1/folders?parentId=${parentQuery}`, getToken)
+        folderList = fr.folders
+        setLegacyListMode(false)
+      } catch (e) {
+        if (folderApiProbablyMissing(e)) {
+          useLegacy = true
+          setLegacyListMode(true)
+          setBreadcrumbs([{ id: 'root', name: 'All files' }])
+          setCurrentFolderId('root')
+        } else {
+          throw e
+        }
+      }
+      if (!useLegacy) {
+        setFolders(folderList)
+      } else {
+        setFolders([])
+      }
+      const filesUrl = useLegacy ? '/v1/files' : `/v1/files?folderId=${parentQuery}`
+      const fl = await portalFetch<{ files: PortalFile[] }>(filesUrl, getToken)
       setFiles(fl.files)
       setErr(null)
     } catch (e) {
@@ -263,16 +292,36 @@ const FileRepository: FC = () => {
           </div>
           {hasAccess && (
             <p className="text-text-light text-sm mb-4 max-w-2xl">
-              Organize with folders, upload into the current folder, and use Download or Remove for each file. Folders
-              and file metadata are stored in your account database; file contents live in Axiom’s private object
-              storage.
+              {legacyListMode
+                ? (
+                  'Listing all of your files (folder API is not on this server yet). Uploads still save metadata in the database and bytes in object storage when the API is configured. Deploy the latest api from main to enable full folder tools.'
+                )
+                : (
+                  'Organize with folders, upload into the current folder, and use Download or Remove for each file. Folders and file metadata are stored in your account database; file contents live in Axiom’s private object storage.'
+                )}
             </p>
           )}
 
           {!hasAccess ? (
             <UpgradePrompt feature="File Repository" />
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4" data-file-repo-ui={FILE_REPO_UI_ID}>
+              <div className="rounded-md border border-amber-200 bg-amber-50/95 text-amber-950 text-sm p-3">
+                <p>
+                  <strong>Seeing only an empty &ldquo;Your files&rdquo; table with no &ldquo;Create folder&rdquo; row?</strong>{' '}
+                  That is an <strong>old</strong> JavaScript bundle. Redeploy the site from the latest <code className="text-xs bg-amber-100/90 px-1.5 py-0.5 rounded">main</code> (run <code className="text-xs bg-amber-100/90 px-1.5 py-0.5 rounded">npm run build</code>), then hard-refresh. No <code className="text-xs bg-amber-100/90 px-1.5 py-0.5 rounded">portal/</code> in Spaces until an upload returns 200 for presign, PUT, and <code className="text-xs bg-amber-100/90 px-1.5 py-0.5 rounded">/complete</code> (needs <code className="text-xs bg-amber-100/90 px-1.5 py-0.5 rounded">DO_SPACES_*</code> on the API and DB).
+                </p>
+                <p className="text-xs mt-2 text-amber-900/90">
+                  This page build id: <code className="text-xs font-mono bg-amber-100/90 px-1 rounded">{FILE_REPO_UI_ID}</code> — you should also see {''}
+                  <strong>All files / This folder / Create folder</strong> in the layout below.
+                </p>
+              </div>
+              {legacyListMode && (
+                <p className="text-sm text-text border border-border bg-background rounded-md px-3 py-2">
+                  <strong>Basic file list</strong> — the API did not return folder routes (deploy <code className="text-xs px-1 bg-background">api/server</code> from the same repo, then <code className="text-xs px-1 bg-background">npm run db:ensure-portal</code>).
+                </p>
+              )}
+              {!legacyListMode && (
               <nav
                 className="text-sm text-text flex flex-wrap items-center gap-1"
                 aria-label="Folder path"
@@ -301,10 +350,13 @@ const FileRepository: FC = () => {
                   )
                 })}
               </nav>
+              )}
 
               <div className="bg-white p-6 rounded-lg border border-border shadow-sm">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-                  <h2 className="text-lg font-semibold text-primary-dark">This folder</h2>
+                  <h2 className="text-lg font-semibold text-primary-dark">
+                    {legacyListMode ? 'All your files' : 'This folder'}
+                  </h2>
                   <div className="flex flex-wrap items-center gap-2 sm:justify-end" aria-live="polite">
                     {loading && <span className="text-sm text-text-light">Loading&hellip;</span>}
                     {!loading && err && (
@@ -319,7 +371,7 @@ const FileRepository: FC = () => {
                   </div>
                 </div>
 
-                {hasAccess && (
+                {hasAccess && !legacyListMode && (
                   <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 mb-6 p-3 rounded-md border border-dashed border-border bg-background/80">
                     <div className="flex flex-1 min-w-[12rem] gap-2">
                       <label htmlFor="new-folder-name" className="sr-only">
@@ -378,7 +430,7 @@ const FileRepository: FC = () => {
                   </p>
                 )}
 
-                {folders.length > 0 && (
+                {!legacyListMode && folders.length > 0 && (
                   <div className="mb-6">
                     <h3 className="text-sm font-semibold text-text mb-2">Folders</h3>
                     <ul className="border border-border rounded-md divide-y divide-border">

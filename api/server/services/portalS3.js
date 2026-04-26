@@ -52,3 +52,16 @@ export async function deleteObject (key) {
   await s3.client.send(new DeleteObjectCommand({ Bucket: s3.bucket, Key: key }))
   return true
 }
+
+/** Log once at API startup. No `portal/` prefix appears in the bucket until this is ON and a upload completes. */
+export function logPortalObjectStorageConfig () {
+  const s3 = getS3()
+  if (s3) {
+    console.log(`[portal files] Object storage: configured (bucket: ${s3.bucket})`)
+  } else {
+    console.warn(
+      '[portal files] Object storage: NOT configured — set DO_SPACES_ENDPOINT, DO_SPACES_BUCKET, DO_SPACES_KEY, DO_SPACES_SECRET (or S3_*). ' +
+        'POST /v1/files/presign-put returns 503; the bucket will not get a portal/ prefix until this is fixed.'
+    )
+  }
+}

@@ -9,6 +9,7 @@ import { createPool } from './db/pool.js'
 import { sendEmail } from './utils/email.js'
 import { createLeadsTable, createContactsTable } from './db/migrations.js'
 import { ensurePortalSchema } from './db/ensurePortalSchema.js'
+import { logPortalObjectStorageConfig } from './services/portalS3.js'
 import { createPortalRouter } from './routes/portalRoutes.js'
 import { getNotificationInbox } from './config/mail.js'
 import { escapeHtml, singleLine } from './utils/html.js'
@@ -267,6 +268,8 @@ async function initializeDatabase() {
     
     // Continue anyway - server will still start, but API calls will fail
     console.warn('⚠️  Server starting without database connection. API endpoints will fail.')
+  } finally {
+    logPortalObjectStorageConfig()
   }
 }
 

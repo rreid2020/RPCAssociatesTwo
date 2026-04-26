@@ -7,8 +7,23 @@ function getApiPrefix (): string {
   return base ? `${base}/api/portal` : '/api/portal'
 }
 
-function parseJson<T> (r: Response): Promise<T> {
-  return r.json() as Promise<T>
+const htmlInsteadOfJsonHint =
+  'The app received a web page instead of API data. The portal API must be reachable at /api (same host) or set VITE_API_BASE_URL to your API origin at build time, with CORS enabled on the API.'
+
+function parseJsonBody<T> (text: string, allowEmpty: boolean): T {
+  const t = text.trim()
+  if (!t) {
+    if (allowEmpty) return undefined as T
+    throw new Error('Empty response from server.')
+  }
+  if (t.startsWith('<!') || t.toLowerCase().includes('<html')) {
+    throw new Error(htmlInsteadOfJsonHint)
+  }
+  try {
+    return JSON.parse(t) as T
+  } catch {
+    throw new Error('Server response was not valid JSON. Confirm the portal API is deployed and the request URL is correct.')
+  }
 }
 
 export async function portalFetch<T> (
@@ -28,18 +43,21 @@ export async function portalFetch<T> (
       ...init.headers
     }
   })
+  const text = await res.text()
   if (!res.ok) {
     let err = res.statusText
     try {
-      const j = await res.json() as { error?: string }
+      const j = parseJsonBody<{ error?: string }>(text, false)
       if (j.error) err = j.error
-    } catch { /* empty */ }
+    } catch (e) {
+      if (e instanceof Error && e.message === htmlInsteadOfJsonHint) err = e.message
+    }
     throw new Error(err)
   }
   if (res.status === 204) {
     return undefined as T
   }
-  return parseJson<T>(res)
+  return parseJsonBody<T>(text, false)
 }
 
 export type PortalDashboard = {

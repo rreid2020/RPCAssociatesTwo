@@ -1,4 +1,4 @@
-import { type ChangeEventHandler, FC, useCallback, useEffect, useState } from 'react'
+import { type ChangeEventHandler, FC, useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../components/SEO'
 import ClientPortalShell from '../../components/ClientPortalShell'
@@ -24,16 +24,22 @@ const FileRepository: FC = () => {
   const [uploading, setUploading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const load = useCallback(async () => {
     if (!hasAccess) return
-    setErr(null)
     setLoading(true)
     try {
       const { files: list } = await portalFetch<{ files: PortalFile[] }>('/v1/files', getToken)
       setFiles(list)
+      setErr(null)
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Failed to load file list. Check the portal API and network (see error above).')
+      setSuccessMessage(null)
+      setErr(
+        e instanceof Error
+          ? e.message
+          : 'Failed to load file list. Check the portal API and network (see error above).'
+      )
     } finally {
       setLoading(false)
     }
@@ -145,17 +151,32 @@ const FileRepository: FC = () => {
               )}
             </div>
             {hasAccess && (
-              <label className="inline-flex items-center gap-2 cursor-pointer">
-                <input type="file" className="hidden" multiple onChange={onUpload} disabled={uploading} />
-                <span className="btn btn--primary text-sm py-2 px-4">
+              <>
+                <input
+                  id="portal-file-repo-input"
+                  ref={fileInputRef}
+                  type="file"
+                  className="sr-only"
+                  multiple
+                  onChange={onUpload}
+                  disabled={uploading}
+                  tabIndex={-1}
+                />
+                <button
+                  type="button"
+                  className="btn btn--primary text-sm py-2 px-4"
+                  disabled={uploading}
+                  onClick={() => { fileInputRef.current?.click() }}
+                >
                   {uploading ? 'Uploading…' : 'Upload file(s)'}
-                </span>
-              </label>
+                </button>
+              </>
             )}
           </div>
           {hasAccess && (
             <p className="text-text-light text-sm mb-6 max-w-2xl">
-              Uploads are stored privately for your account. You can download or remove files here anytime.
+              Uploads are sent securely to Axiom’s storage, listed below for your account. You can download or
+              remove files from this list anytime.
             </p>
           )}
 
@@ -163,55 +184,124 @@ const FileRepository: FC = () => {
             <UpgradePrompt feature="File Repository" />
           ) : (
             <div className="bg-white p-6 rounded-lg border border-border shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                <h2 className="text-lg font-semibold text-primary-dark">Your files</h2>
+                <div className="flex flex-wrap items-center gap-2 sm:justify-end" aria-live="polite">
+                  {loading && (
+                    <span className="text-sm text-text-light">Loading list&hellip;</span>
+                  )}
+                  {!loading && err && (
+                    <button
+                      type="button"
+                      className="text-sm font-medium text-accent hover:underline"
+                      onClick={() => { void load() }}
+                    >
+                      Retry loading list
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {uploading && (
+                <div
+                  className="text-sm text-text border border-border bg-background rounded-md px-3 py-2 mb-4"
+                  role="status"
+                >
+                  Uploading and saving your file(s). This can take a moment for larger files.
+                </div>
+              )}
+
               {err && (
-                <p className="text-sm text-red-800 bg-red-50 border border-red-200 rounded-md p-3 mb-4" role="alert">
+                <p
+                  className="text-sm text-red-800 bg-red-50 border border-red-200 rounded-md p-3 mb-4"
+                  role="alert"
+                >
                   {err}
                 </p>
               )}
               {successMessage && !err && (
-                <p className="text-sm text-primary-dark bg-primary-dark/5 border border-border rounded-md p-3 mb-4" role="status">
+                <p
+                  className="text-sm text-primary-dark bg-primary-dark/5 border border-border rounded-md p-3 mb-4"
+                  role="status"
+                >
                   {successMessage}
                 </p>
               )}
-              {loading && <p className="text-text-light">Loading&hellip;</p>}
-              {!loading && files.length === 0 && !err && (
-                <p className="text-text-light">No files yet. Use Upload to add a document. Files are private to your account and Axiom.</p>
-              )}
-              {!loading && files.length > 0 && (
-                <ul className="divide-y divide-border">
-                  {files.map((f) => (
-                    <li
-                      key={f.id}
-                      className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
-                    >
-                      <div className="min-w-0">
-                        <p className="font-medium text-text break-words">{f.file_name}</p>
-                        <p className="text-sm text-text-light mt-0.5">
-                          {new Date(f.created_at).toLocaleString()} · {formatBytes(f.size_bytes)}
-                          {f.mime && ` · ${f.mime}`}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          className="text-sm font-medium text-accent hover:underline px-2 py-1"
-                          onClick={() => { void onDownload(f.id) }}
-                        >
-                          Download
-                        </button>
-                        <button
-                          type="button"
-                          className="text-sm font-medium text-text-light hover:text-red-700 px-2 py-1"
-                          disabled={deletingId === f.id}
-                          onClick={() => { void onDelete(f.id) }}
-                        >
-                          {deletingId === f.id ? 'Removing…' : 'Remove'}
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
+
+              <div className="overflow-x-auto -mx-2 sm:mx-0">
+                <table className="w-full min-w-[32rem] text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-text-light text-xs font-semibold uppercase tracking-wide">
+                      <th className="px-2 py-2 w-[40%] sm:w-[36%]">Name</th>
+                      <th className="px-2 py-2 w-[20%] hidden sm:table-cell">Size</th>
+                      <th className="px-2 py-2 w-[18%] hidden md:table-cell">Added</th>
+                      <th className="px-2 py-2 w-[24%] text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading && files.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-2 py-6 text-text-light">
+                          Fetching your files&hellip;
+                        </td>
+                      </tr>
+                    )}
+                    {!loading && files.length === 0 && !err && (
+                      <tr>
+                        <td colSpan={4} className="px-2 py-6 text-text-light">
+                          <p className="mb-1 font-medium text-text">No files yet</p>
+                          <p>Choose <strong>Upload file(s)</strong> above, pick one or more documents, and they will
+                          appear here. If nothing happens when you click Upload, try again after a full page refresh.</p>
+                        </td>
+                      </tr>
+                    )}
+                    {!loading && files.length === 0 && err && (
+                      <tr>
+                        <td colSpan={4} className="px-2 py-4 text-text-light text-sm">
+                          The list could not be loaded. Fix the error above, then use &ldquo;Retry loading list&rdquo; or
+                          re-open this page. You can still try to upload: if the error is only for listing, your upload
+                          may succeed.
+                        </td>
+                      </tr>
+                    )}
+                    {files.map((f) => (
+                      <tr key={f.id} className="border-b border-border last:border-0 align-top">
+                        <td className="px-2 py-3">
+                          <p className="font-medium text-text break-words">{f.file_name}</p>
+                          <p className="text-xs text-text-light mt-1 sm:hidden">
+                            {formatBytes(f.size_bytes)} · {new Date(f.created_at).toLocaleDateString()}
+                          </p>
+                        </td>
+                        <td className="px-2 py-3 text-text hidden sm:table-cell">
+                          {formatBytes(f.size_bytes)}
+                          {f.mime && <span className="block text-xs text-text-light mt-0.5">{f.mime}</span>}
+                        </td>
+                        <td className="px-2 py-3 text-text-light hidden md:table-cell whitespace-nowrap">
+                          {new Date(f.created_at).toLocaleString()}
+                        </td>
+                        <td className="px-2 py-3 text-right">
+                          <button
+                            type="button"
+                            className="text-sm font-medium text-accent hover:underline px-1 py-0.5"
+                            onClick={() => { void onDownload(f.id) }}
+                          >
+                            Download
+                          </button>
+                          <span className="text-text-light mx-1" aria-hidden>·</span>
+                          <button
+                            type="button"
+                            className="text-sm font-medium text-text-light hover:text-red-700 px-1 py-0.5"
+                            disabled={deletingId === f.id}
+                            onClick={() => { void onDelete(f.id) }}
+                          >
+                            {deletingId === f.id ? 'Removing…' : 'Remove'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

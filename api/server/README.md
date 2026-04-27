@@ -2,6 +2,8 @@
 
 Backend API server for handling form submissions and storing data in PostgreSQL.
 
+**File repository (DigitalOcean Spaces, CORS, env):** see **[`PORTAL_FILE_STORAGE_SETUP.md`](./PORTAL_FILE_STORAGE_SETUP.md)** for step-by-step instructions.
+
 ## Setup
 
 ### 1. Install Dependencies

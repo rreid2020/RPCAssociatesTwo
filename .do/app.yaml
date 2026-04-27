@@ -87,5 +87,13 @@ services:
         scope: RUN_TIME
       # CORS Configuration
       - key: ALLOWED_ORIGINS
-        value: https://axiomft.ca,https://www.axiomft.ca,https://portal.axiomft.ca,http://localhost:5173
+        value: https://axiomft.ca,https://www.axiomft.ca,https://portal.axiomft.ca,https://rpcassociates.co,https://www.rpcassociates.co,http://localhost:5173
         scope: RUN_TIME
+      # File repository: add these on the **api** component in the App Platform UI (Settings → App-Level Environment Variables) or here with SECRET type—do not commit real keys:
+      #   CLERK_SECRET_KEY
+      #   DO_SPACES_ENDPOINT=https://tor1.digitaloceanspaces.com
+      #   DO_SPACES_BUCKET=rpc-associates-space
+      #   DO_SPACES_KEY= (Spaces access key)
+      #   DO_SPACES_SECRET= (Spaces secret; use encrypted/SECRET in UI)
+      #   DO_SPACES_REGION=us-east-1
+      # See api/server/PORTAL_FILE_STORAGE_SETUP.md

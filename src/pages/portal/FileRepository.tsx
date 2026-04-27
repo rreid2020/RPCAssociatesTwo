@@ -464,6 +464,10 @@ const FileRepository: FC = () => {
                 For browser uploads, add <strong>CORS</strong> on the Space: allow your site origin, methods{' '}
                 <code className="text-xs">PUT</code>, <code className="text-xs">GET</code>, <code className="text-xs">HEAD</code>.
               </p>
+              <p className="mt-2 text-xs">
+                <strong>Admins:</strong> use the step-by-step guide in the project:{' '}
+                <code className="bg-white/80 px-1 rounded">api/server/PORTAL_FILE_STORAGE_SETUP.md</code>
+              </p>
             </div>
           )}
 

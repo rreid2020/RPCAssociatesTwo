@@ -33,8 +33,6 @@ app.use('/api', cors({
     'https://axiomft.ca',
     'https://www.axiomft.ca',
     'https://portal.axiomft.ca',
-    'https://rpcassociates.co',
-    'https://www.rpcassociates.co',
     'http://localhost:5173',
   ],
   credentials: true

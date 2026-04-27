@@ -55,7 +55,7 @@ export default async function handler(req, res) {
     // Build the post content
     const postTitle = post.title
     const postExcerpt = post.excerpt || ''
-    const postUrl = `https://rpcassociates.co/articles/${post.slug?.current || post.slug}`
+    const postUrl = `https://axiomft.ca/articles/${post.slug?.current || post.slug}`
     
     // Create social media messages
     const linkedInMessage = createLinkedInPost(postTitle, postExcerpt, postUrl)

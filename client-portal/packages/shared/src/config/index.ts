@@ -117,7 +117,7 @@ export function getClerkConfig(): ClerkConfig {
   };
 }
 
-/** Comma-separated browser origins allowed to call the API (e.g. https://rpcassociates.co,http://localhost:5173). */
+/** Comma-separated browser origins allowed to call the API (e.g. https://axiomft.ca,http://localhost:5173). */
 export function getCorsOrigins(): string[] {
   const fromEnv = process.env.CORS_ORIGIN || process.env.APP_URL || 'http://localhost:5173';
   return fromEnv

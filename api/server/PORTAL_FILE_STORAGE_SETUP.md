@@ -29,9 +29,7 @@ The browser `PUT`s the file to DigitalOcean. The Space must allow your **website
 
 1. Open your **Space** → **Settings** → **CORS** (or CORS configurations).
 2. For **each origin** where users open the app, add a rule (or one rule with multiple origins, if the UI allows it), for example:
-   - `https://rpcassociates.co`  
-   - `https://www.rpcassociates.co` (if you use it)  
-   - `https://axiomft.ca` and `https://www.axiomft.ca` (if the portal is there)  
+   - `https://axiomft.ca` and `https://www.axiomft.ca`  
    - `https://portal.axiomft.ca` (if you use a portal subdomain)  
    - `http://localhost:5173` (local dev with Vite)
 3. **Allowed methods** must include at least: **GET**, **PUT**, **HEAD** (and often **POST** / **DELETE** for future use).
@@ -53,7 +51,7 @@ These must be available to the process that runs `node server.js` (e.g. **App Pl
 | `DO_SPACES_SECRET` | Your Spaces secret key |
 | `DO_SPACES_REGION` | `us-east-1` (works with most Spaces + AWS SDK v3 examples; if presign fails, try `tor1` per [DO Spaces docs](https://docs.digitalocean.com/products/spaces/reference/s3-compatibility/)) |
 | `CLERK_SECRET_KEY` | From Clerk dashboard → your app → **API keys** (required in production for `/api/portal`) |
-| `ALLOWED_ORIGINS` | Comma-separated list of your real site URLs (no spaces after commas is safest), e.g. `https://rpcassociates.co,https://www.rpcassociates.co,https://axiomft.ca,https://www.axiomft.ca,https://portal.axiomft.ca,http://localhost:5173` |
+| `ALLOWED_ORIGINS` | Comma-separated list of your real site URLs (no spaces after commas is safest), e.g. `https://axiomft.ca,https://www.axiomft.ca,https://portal.axiomft.ca,http://localhost:5173` |
 
 **Do not** set `DO_SPACES_*` in the Vite “web” app unless you only use them server-side in a custom setup—the file upload flow reads them in **api/server** only.
 

@@ -1,9 +1,7 @@
-import { type ChangeEventHandler, FC, useCallback, useEffect, useRef, useState } from 'react'
+import { type ChangeEventHandler, FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../components/SEO'
 import ClientPortalShell from '../../components/ClientPortalShell'
-import { useFeatureAccess } from '../../lib/subscriptions/hooks'
-import UpgradePrompt from '../../components/UpgradePrompt'
 import { portalFetch } from '../../lib/portalApi'
 import { formatBytes } from '../../lib/utils/formatBytes'
 
@@ -25,29 +23,53 @@ type PortalFolder = {
 
 type Crumb = { id: 'root' | string; name: string }
 
-/** Bumped when UI changes; if you do not see Create folder, the CDN/site is not serving a fresh `npm run build`. */
-const FILE_REPO_UI_ID = 'folders-v1'
+type FoldersListResponse = {
+  homeFolder?: PortalFolder
+  folders: PortalFolder[]
+}
 
-function folderApiProbablyMissing (e: unknown): boolean {
-  const m = (e instanceof Error && e.message) || String(e)
-  if (!m) return false
-  return /not found|404|not found\./i.test(m) || m.toLowerCase().includes('endpoint not found') || m.includes('API endpoint not found')
+type FilesListResponse = {
+  homeFolder?: PortalFolder
+  files: PortalFile[]
+}
+
+type FlatFoldersResponse = {
+  homeFolder: PortalFolder
+  folders: PortalFolder[]
+}
+
+function folderMap (rows: PortalFolder[]) {
+  return new Map(rows.map((r) => [r.id, r] as const))
+}
+
+function pathLabel (folderId: string, m: ReturnType<typeof folderMap>): string {
+  const parts: string[] = []
+  let id: string | null = folderId
+  for (let i = 0; i < 64 && id; i++) {
+    const f = m.get(id)
+    if (!f) break
+    parts.unshift(f.name)
+    id = f.parent_id
+  }
+  return parts.join(' / ')
 }
 
 const FileRepository: FC = () => {
-  const hasAccess = useFeatureAccess('fileRepository')
   const { getToken } = useAuth()
   const [files, setFiles] = useState<PortalFile[]>([])
   const [folders, setFolders] = useState<PortalFolder[]>([])
-  const [breadcrumbs, setBreadcrumbs] = useState<Crumb[]>([{ id: 'root', name: 'All files' }])
+  const [breadcrumbs, setBreadcrumbs] = useState<Crumb[]>([{ id: 'root', name: 'My files' }])
   const [currentFolderId, setCurrentFolderId] = useState<'root' | string>('root')
-  /** Set when the API has no /v1/folders route (old deploy) — we list all files and hide folder tools. */
-  const [legacyListMode, setLegacyListMode] = useState(false)
+  const [homeName, setHomeName] = useState('My files')
+  const [homeId, setHomeId] = useState<string | null>(null)
+  const [allFolders, setAllFolders] = useState<PortalFolder[]>([])
   const [err, setErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null)
+  const [movingId, setMovingId] = useState<string | null>(null)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [newFolderName, setNewFolderName] = useState('')
   const [folderSubmitting, setFolderSubmitting] = useState(false)
@@ -55,33 +77,35 @@ const FileRepository: FC = () => {
 
   const parentQuery = currentFolderId === 'root' ? 'root' : currentFolderId
 
+  const fMap = useMemo(() => folderMap(allFolders), [allFolders])
+  const homeRow = useMemo(
+    () => (homeId ? fMap.get(homeId) ?? { id: homeId, name: homeName, parent_id: null, created_at: '' } : null),
+    [fMap, homeId, homeName]
+  )
+
   const load = useCallback(async () => {
-    if (!hasAccess) return
     setLoading(true)
     try {
-      let useLegacy = false
-      let folderList: PortalFolder[] = []
-      try {
-        const fr = await portalFetch<{ folders: PortalFolder[] }>(`/v1/folders?parentId=${parentQuery}`, getToken)
-        folderList = fr.folders
-        setLegacyListMode(false)
-      } catch (e) {
-        if (folderApiProbablyMissing(e)) {
-          useLegacy = true
-          setLegacyListMode(true)
-          setBreadcrumbs([{ id: 'root', name: 'All files' }])
-          setCurrentFolderId('root')
-        } else {
-          throw e
-        }
+      const flatP = portalFetch<FlatFoldersResponse>('/v1/folders/flat', getToken)
+      const [fr, fl, flat] = await Promise.all([
+        portalFetch<FoldersListResponse>(`/v1/folders?parentId=${parentQuery}`, getToken),
+        portalFetch<FilesListResponse>(`/v1/files?folderId=${parentQuery}`, getToken),
+        flatP
+      ])
+      if (flat.homeFolder) {
+        setHomeName(flat.homeFolder.name)
+        setHomeId(flat.homeFolder.id)
       }
-      if (!useLegacy) {
-        setFolders(folderList)
-      } else {
-        setFolders([])
+      setAllFolders(flat.folders)
+      if (fr.homeFolder) {
+        setHomeName(fr.homeFolder.name)
+        setHomeId(fr.homeFolder.id)
       }
-      const filesUrl = useLegacy ? '/v1/files' : `/v1/files?folderId=${parentQuery}`
-      const fl = await portalFetch<{ files: PortalFile[] }>(filesUrl, getToken)
+      if (fl.homeFolder) {
+        setHomeName(fl.homeFolder.name)
+        setHomeId(fl.homeFolder.id)
+      }
+      setFolders(fr.folders)
       setFiles(fl.files)
       setErr(null)
     } catch (e) {
@@ -89,12 +113,12 @@ const FileRepository: FC = () => {
       setErr(
         e instanceof Error
           ? e.message
-          : 'Failed to load file list. Check the portal API and network (see error above).'
+          : 'We couldn’t load your file library. Please try again in a moment.'
       )
     } finally {
       setLoading(false)
     }
-  }, [getToken, hasAccess, parentQuery])
+  }, [getToken, parentQuery])
 
   useEffect(() => {
     void load()
@@ -114,7 +138,7 @@ const FileRepository: FC = () => {
       headers: { 'Content-Type': file.type || 'application/octet-stream' }
     })
     if (!put.ok) {
-      throw new Error('Upload failed (storage). On production, set DO_SPACES_* (or S3_*) on the API and ensure the bucket allows PUT from the browser (CORS).')
+      throw new Error('Upload could not be completed. Please try again, or contact us if the problem continues.')
     }
     const body: Record<string, unknown> = {
       storageKey: pres.storageKey,
@@ -188,6 +212,79 @@ const FileRepository: FC = () => {
     }
   }
 
+  const onMove = async (file: PortalFile, nextFolder: string) => {
+    if (!nextFolder) return
+    if (!homeId) {
+      setErr('Still loading your folders. Please try again.')
+      return
+    }
+    const asUuid = (file.folder_id && String(file.folder_id)) || homeId
+    if (nextFolder === 'root' && asUuid === homeId) return
+    if (nextFolder !== 'root' && nextFolder === asUuid) return
+    setErr(null)
+    setSuccessMessage(null)
+    setMovingId(file.id)
+    try {
+      await portalFetch<{ file: PortalFile }>(`/v1/files/${file.id}`, getToken, {
+        method: 'PATCH',
+        body: JSON.stringify({ folderId: nextFolder === 'root' ? 'root' : nextFolder })
+      })
+      setSuccessMessage('File moved.')
+      void load()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not move file')
+    } finally {
+      setMovingId(null)
+    }
+  }
+
+  const onRename = async (f: PortalFile) => {
+    const n = window.prompt('Rename file (only the name shown in your library changes)', f.file_name)
+    if (n == null) return
+    const trimmed = n.trim()
+    if (!trimmed) {
+      setErr('Name cannot be empty.')
+      return
+    }
+    if (trimmed === f.file_name) return
+    setErr(null)
+    setSuccessMessage(null)
+    setRenamingId(f.id)
+    try {
+      await portalFetch<{ file: PortalFile }>(`/v1/files/${f.id}`, getToken, {
+        method: 'PATCH',
+        body: JSON.stringify({ fileName: trimmed })
+      })
+      setSuccessMessage('File name updated.')
+      void load()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not rename file')
+    } finally {
+      setRenamingId(null)
+    }
+  }
+
+  const moveOptions = useCallback(
+    (file: PortalFile) => {
+      if (!homeRow || !homeId) {
+        return [] as { value: string; label: string }[]
+      }
+      const cur = file.folder_id || homeId
+      const m = fMap
+      const out: { value: string; label: string }[] = []
+      if (cur !== homeId) {
+        out.push({ value: 'root', label: homeRow.name })
+      }
+      for (const fold of allFolders) {
+        if (fold.id === homeId) continue
+        if (fold.id === cur) continue
+        out.push({ value: fold.id, label: pathLabel(fold.id, m) })
+      }
+      return out.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }))
+    },
+    [allFolders, fMap, homeRow, homeId]
+  )
+
   const openFolder = (f: PortalFolder) => {
     setCurrentFolderId(f.id)
     setBreadcrumbs((b) => [...b, { id: f.id, name: f.name }])
@@ -198,7 +295,7 @@ const FileRepository: FC = () => {
     if (!c) return
     if (c.id === 'root') {
       setCurrentFolderId('root')
-      setBreadcrumbs([breadcrumbs[0]])
+      setBreadcrumbs([{ id: 'root', name: homeName }])
       return
     }
     setCurrentFolderId(c.id)
@@ -231,7 +328,7 @@ const FileRepository: FC = () => {
   const onDeleteFolder = async (f: PortalFolder) => {
     if (
       !window.confirm(
-        `Delete the folder “${f.name}”? Subfolders are removed. Files in deleted folders are moved to All files (unfiled) at the top level.`
+        `Delete the folder “${f.name}” and everything inside? Files are moved to your main folder first; this only removes the folder.`
       )
     ) {
       return
@@ -241,6 +338,18 @@ const FileRepository: FC = () => {
     setDeletingFolderId(f.id)
     try {
       await portalFetch(`/v1/folders/${f.id}`, getToken, { method: 'DELETE' })
+      const idx = breadcrumbs.findIndex((b) => b.id === f.id)
+      if (idx >= 0) {
+        const at = Math.max(0, idx - 1)
+        const t = breadcrumbs[at]
+        if (t?.id === 'root') {
+          setCurrentFolderId('root')
+          setBreadcrumbs([{ id: 'root', name: homeName }])
+        } else if (t) {
+          setCurrentFolderId(t.id)
+          setBreadcrumbs(breadcrumbs.slice(0, idx))
+        }
+      }
       void load()
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not delete folder')
@@ -253,7 +362,7 @@ const FileRepository: FC = () => {
     <>
       <SEO
         title="File Repository | Client Portal"
-        description="Secure document sharing and organization in the Axiom Client Portal."
+        description="Secure document storage and organization in the Axiom Client Portal."
         canonical="/portal/files"
       />
       <ClientPortalShell>
@@ -261,258 +370,230 @@ const FileRepository: FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-3xl font-bold text-primary-dark">File Repository</h1>
-              {!hasAccess && (
-                <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
-                  Premium
-                </span>
-              )}
             </div>
-            {hasAccess && (
-              <>
-                <input
-                  id="portal-file-repo-input"
-                  ref={fileInputRef}
-                  type="file"
-                  className="sr-only"
-                  multiple
-                  onChange={onUpload}
-                  disabled={uploading}
-                  tabIndex={-1}
-                />
-                <button
-                  type="button"
-                  className="btn btn--primary text-sm py-2 px-4"
-                  disabled={uploading}
-                  onClick={() => { fileInputRef.current?.click() }}
-                >
-                  {uploading ? 'Uploading…' : 'Upload file(s) here'}
-                </button>
-              </>
-            )}
+            <div>
+              <input
+                id="portal-file-repo-input"
+                ref={fileInputRef}
+                type="file"
+                className="sr-only"
+                multiple
+                onChange={onUpload}
+                disabled={uploading}
+                tabIndex={-1}
+              />
+              <button
+                type="button"
+                className="btn btn--primary text-sm py-2 px-4"
+                disabled={uploading}
+                onClick={() => { fileInputRef.current?.click() }}
+              >
+                {uploading ? 'Uploading…' : 'Upload file(s) here'}
+              </button>
+            </div>
           </div>
-          {hasAccess && (
-            <p className="text-text-light text-sm mb-4 max-w-2xl">
-              {legacyListMode
-                ? (
-                  'Listing all of your files (folder API is not on this server yet). Uploads still save metadata in the database and bytes in object storage when the API is configured. Deploy the latest api from main to enable full folder tools.'
-                )
-                : (
-                  'Organize with folders, upload into the current folder, and use Download or Remove for each file. Folders and file metadata are stored in your account database; file contents live in Axiom’s private object storage.'
-                )}
-            </p>
-          )}
+          <p className="text-text-light text-sm mb-4 max-w-2xl">
+            Your <strong>My files</strong> folder is created for you when you use the client portal. Add subfolders, upload
+            and rename files, move items between your folders, or download and remove them. Only you can see your
+            content.
+          </p>
 
-          {!hasAccess ? (
-            <UpgradePrompt feature="File Repository" />
-          ) : (
-            <div className="space-y-4" data-file-repo-ui={FILE_REPO_UI_ID}>
-              <div className="rounded-md border border-amber-200 bg-amber-50/95 text-amber-950 text-sm p-3">
-                <p>
-                  <strong>Seeing only an empty &ldquo;Your files&rdquo; table with no &ldquo;Create folder&rdquo; row?</strong>{' '}
-                  That is an <strong>old</strong> JavaScript bundle. Redeploy the site from the latest <code className="text-xs bg-amber-100/90 px-1.5 py-0.5 rounded">main</code> (run <code className="text-xs bg-amber-100/90 px-1.5 py-0.5 rounded">npm run build</code>), then hard-refresh. No <code className="text-xs bg-amber-100/90 px-1.5 py-0.5 rounded">portal/</code> in Spaces until an upload returns 200 for presign, PUT, and <code className="text-xs bg-amber-100/90 px-1.5 py-0.5 rounded">/complete</code> (needs <code className="text-xs bg-amber-100/90 px-1.5 py-0.5 rounded">DO_SPACES_*</code> on the API and DB).
-                </p>
-                <p className="text-xs mt-2 text-amber-900/90">
-                  This page build id: <code className="text-xs font-mono bg-amber-100/90 px-1 rounded">{FILE_REPO_UI_ID}</code> — you should also see {''}
-                  <strong>All files / This folder / Create folder</strong> in the layout below.
+          <div className="space-y-4">
+            <nav
+              className="text-sm text-text flex flex-wrap items-center gap-1"
+              aria-label="Folder path"
+            >
+              {breadcrumbs.map((c, i) => {
+                const isLast = i === breadcrumbs.length - 1
+                const label = c.id === 'root' ? homeName : c.name
+                return (
+                  <span key={c.id === 'root' ? 'root' : c.id} className="inline-flex items-center gap-1">
+                    {i > 0 && <span className="text-text-light" aria-hidden>/</span>}
+                    {isLast
+                      ? (
+                      <span className="font-semibold text-primary-dark" aria-current="page">
+                        {label}
+                      </span>
+                        )
+                      : (
+                      <button
+                        type="button"
+                        onClick={() => { goBreadcrumb(i) }}
+                        className="text-accent font-medium hover:underline"
+                      >
+                        {label}
+                      </button>
+                        )}
+                  </span>
+                )
+              })}
+            </nav>
+
+            <div className="bg-white p-6 rounded-lg border border-border shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                <h2 className="text-lg font-semibold text-primary-dark">This folder</h2>
+                <div className="flex flex-wrap items-center gap-2 sm:justify-end" aria-live="polite">
+                  {loading && <span className="text-sm text-text-light">Loading&hellip;</span>}
+                  {!loading && err && (
+                    <button
+                      type="button"
+                      className="text-sm font-medium text-accent hover:underline"
+                      onClick={() => { void load() }}
+                    >
+                      Retry
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 mb-6 p-3 rounded-md border border-dashed border-border bg-background/80">
+                <div className="flex flex-1 min-w-[12rem] gap-2">
+                  <label htmlFor="new-folder-name" className="sr-only">
+                    New folder name
+                  </label>
+                  <input
+                    id="new-folder-name"
+                    type="text"
+                    value={newFolderName}
+                    onChange={(e) => { setNewFolderName(e.target.value) }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { void onCreateFolder() }
+                    }}
+                    placeholder="New subfolder name"
+                    className="flex-1 min-w-0 px-3 py-2 border border-border rounded-md text-sm"
+                    disabled={folderSubmitting}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn--secondary text-sm py-2 px-3"
+                    disabled={folderSubmitting || !newFolderName.trim()}
+                    onClick={() => { void onCreateFolder() }}
+                  >
+                    {folderSubmitting ? 'Creating…' : 'Create folder'}
+                  </button>
+                </div>
+                <p className="text-xs text-text-light w-full sm:w-auto self-center sm:pl-2">
+                  Subfolders are created in the path shown above (under your main folder or another subfolder).
                 </p>
               </div>
-              {legacyListMode && (
-                <p className="text-sm text-text border border-border bg-background rounded-md px-3 py-2">
-                  <strong>Basic file list</strong> — the API did not return folder routes (deploy <code className="text-xs px-1 bg-background">api/server</code> from the same repo, then <code className="text-xs px-1 bg-background">npm run db:ensure-portal</code>).
+
+              {uploading && (
+                <div
+                  className="text-sm text-text border border-border bg-background rounded-md px-3 py-2 mb-4"
+                  role="status"
+                >
+                  Uploading and saving your file(s). This can take a moment for larger files.
+                </div>
+              )}
+
+              {err && (
+                <p
+                  className="text-sm text-red-800 bg-red-50 border border-red-200 rounded-md p-3 mb-4"
+                  role="alert"
+                >
+                  {err}
                 </p>
               )}
-              {!legacyListMode && (
-              <nav
-                className="text-sm text-text flex flex-wrap items-center gap-1"
-                aria-label="Folder path"
-              >
-                {breadcrumbs.map((c, i) => {
-                  const isLast = i === breadcrumbs.length - 1
-                  return (
-                    <span key={c.id === 'root' ? 'root' : c.id} className="inline-flex items-center gap-1">
-                      {i > 0 && <span className="text-text-light" aria-hidden>/</span>}
-                      {isLast
-                        ? (
-                        <span className="font-semibold text-primary-dark" aria-current="page">
-                          {c.name}
-                        </span>
-                          )
-                        : (
-                        <button
-                          type="button"
-                          onClick={() => { goBreadcrumb(i) }}
-                          className="text-accent font-medium hover:underline"
-                        >
-                          {c.name}
-                        </button>
-                          )}
-                    </span>
-                  )
-                })}
-              </nav>
+              {successMessage && !err && (
+                <p
+                  className="text-sm text-primary-dark bg-primary-dark/5 border border-border rounded-md p-3 mb-4"
+                  role="status"
+                >
+                  {successMessage}
+                </p>
               )}
 
-              <div className="bg-white p-6 rounded-lg border border-border shadow-sm">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-                  <h2 className="text-lg font-semibold text-primary-dark">
-                    {legacyListMode ? 'All your files' : 'This folder'}
-                  </h2>
-                  <div className="flex flex-wrap items-center gap-2 sm:justify-end" aria-live="polite">
-                    {loading && <span className="text-sm text-text-light">Loading&hellip;</span>}
-                    {!loading && err && (
-                      <button
-                        type="button"
-                        className="text-sm font-medium text-accent hover:underline"
-                        onClick={() => { void load() }}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-text mb-2">Subfolders</h3>
+                {folders.length > 0
+                  ? (
+                  <ul className="border border-border rounded-md divide-y divide-border">
+                    {folders.map((f) => (
+                      <li
+                        key={f.id}
+                        className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm"
                       >
-                        Retry
-                      </button>
-                    )}
-                  </div>
-                </div>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-text-light shrink-0" aria-hidden>
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"
+                              />
+                            </svg>
+                          </span>
+                          <span className="font-medium text-text truncate">{f.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            className="text-sm font-medium text-accent hover:underline"
+                            onClick={() => { openFolder(f) }}
+                          >
+                            Open
+                          </button>
+                          <button
+                            type="button"
+                            className="text-sm font-medium text-text-light hover:text-red-700"
+                            disabled={deletingFolderId === f.id}
+                            onClick={() => { void onDeleteFolder(f) }}
+                          >
+                            {deletingFolderId === f.id ? 'Removing…' : 'Delete'}
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                    )
+                  : !loading
+                    ? (
+                    <p className="text-sm text-text-light py-2">No subfolders here yet. Add one with Create folder above.</p>
+                      )
+                    : null}
+              </div>
 
-                {hasAccess && !legacyListMode && (
-                  <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 mb-6 p-3 rounded-md border border-dashed border-border bg-background/80">
-                    <div className="flex flex-1 min-w-[12rem] gap-2">
-                      <label htmlFor="new-folder-name" className="sr-only">
-                        New folder name
-                      </label>
-                      <input
-                        id="new-folder-name"
-                        type="text"
-                        value={newFolderName}
-                        onChange={(e) => { setNewFolderName(e.target.value) }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') { void onCreateFolder() }
-                        }}
-                        placeholder="New folder name"
-                        className="flex-1 min-w-0 px-3 py-2 border border-border rounded-md text-sm"
-                        disabled={folderSubmitting}
-                      />
-                      <button
-                        type="button"
-                        className="btn btn--secondary text-sm py-2 px-3"
-                        disabled={folderSubmitting || !newFolderName.trim()}
-                        onClick={() => { void onCreateFolder() }}
-                      >
-                        {folderSubmitting ? 'Creating…' : 'Create folder'}
-                      </button>
-                    </div>
-                    <p className="text-xs text-text-light w-full sm:w-auto self-center sm:pl-2">
-                      Files you upload are placed in the folder shown in the path above.
-                    </p>
-                  </div>
-                )}
-
-                {uploading && (
-                  <div
-                    className="text-sm text-text border border-border bg-background rounded-md px-3 py-2 mb-4"
-                    role="status"
-                  >
-                    Uploading and saving your file(s). This can take a moment for larger files.
-                  </div>
-                )}
-
-                {err && (
-                  <p
-                    className="text-sm text-red-800 bg-red-50 border border-red-200 rounded-md p-3 mb-4"
-                    role="alert"
-                  >
-                    {err}
-                  </p>
-                )}
-                {successMessage && !err && (
-                  <p
-                    className="text-sm text-primary-dark bg-primary-dark/5 border border-border rounded-md p-3 mb-4"
-                    role="status"
-                  >
-                    {successMessage}
-                  </p>
-                )}
-
-                {!legacyListMode && folders.length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="text-sm font-semibold text-text mb-2">Folders</h3>
-                    <ul className="border border-border rounded-md divide-y divide-border">
-                      {folders.map((f) => (
-                        <li
-                          key={f.id}
-                          className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-text-light shrink-0" aria-hidden>
-                              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"
-                                />
-                              </svg>
-                            </span>
-                            <span className="font-medium text-text truncate">{f.name}</span>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <button
-                              type="button"
-                              className="text-sm font-medium text-accent hover:underline"
-                              onClick={() => { openFolder(f) }}
-                            >
-                              Open
-                            </button>
-                            <button
-                              type="button"
-                              className="text-sm font-medium text-text-light hover:text-red-700"
-                              disabled={deletingFolderId === f.id}
-                              onClick={() => { void onDeleteFolder(f) }}
-                            >
-                              {deletingFolderId === f.id ? 'Removing…' : 'Delete'}
-                            </button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                <h3 className="text-sm font-semibold text-text mb-2">Files</h3>
-                <div className="overflow-x-auto -mx-2 sm:mx-0">
-                  <table className="w-full min-w-[32rem] text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-border text-text-light text-xs font-semibold uppercase tracking-wide">
-                        <th className="px-2 py-2 w-[40%] sm:w-[36%]">Name</th>
-                        <th className="px-2 py-2 w-[20%] hidden sm:table-cell">Size</th>
-                        <th className="px-2 py-2 w-[18%] hidden md:table-cell">Added</th>
-                        <th className="px-2 py-2 w-[24%] text-right">Actions</th>
+              <h3 className="text-sm font-semibold text-text mb-2">Files</h3>
+              <div className="overflow-x-auto -mx-2 sm:mx-0">
+                <table className="w-full min-w-[32rem] text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-text-light text-xs font-semibold uppercase tracking-wide">
+                      <th className="px-2 py-2 w-[32%] sm:w-[30%]">Name</th>
+                      <th className="px-2 py-2 w-[12%] hidden sm:table-cell">Size</th>
+                      <th className="px-2 py-2 w-[12%] hidden md:table-cell">Added</th>
+                      <th className="px-2 py-2 w-[20%] hidden lg:table-cell">Move to</th>
+                      <th className="px-2 py-2 w-[20%] text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading && files.length === 0 && folders.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-2 py-6 text-text-light">
+                          Fetching&hellip;
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {loading && files.length === 0 && folders.length === 0 && (
-                        <tr>
-                          <td colSpan={4} className="px-2 py-6 text-text-light">
-                            Fetching&hellip;
-                          </td>
-                        </tr>
-                      )}
-                      {!loading && files.length === 0 && !err && (
-                        <tr>
-                          <td colSpan={4} className="px-2 py-6 text-text-light">
-                            <p className="mb-1 font-medium text-text">No files in this folder</p>
-                            <p>
-                              Use <strong>Upload file(s) here</strong> to add files to this location, or create a
-                              subfolder above.
-                            </p>
-                          </td>
-                        </tr>
-                      )}
-                      {!loading && files.length === 0 && err && (
-                        <tr>
-                          <td colSpan={4} className="px-2 py-4 text-text-light text-sm">
-                            The list could not be loaded. Fix the error, then use Retry, or re-open this page.
-                          </td>
-                        </tr>
-                      )}
-                      {files.map((f) => (
+                    )}
+                    {!loading && files.length === 0 && !err && (
+                      <tr>
+                        <td colSpan={5} className="px-2 py-6 text-text-light">
+                          <p className="mb-1 font-medium text-text">No files in this folder</p>
+                          <p>
+                            Use <strong>Upload file(s) here</strong> to add files, or add a subfolder first.
+                          </p>
+                        </td>
+                      </tr>
+                    )}
+                    {!loading && files.length === 0 && err && (
+                      <tr>
+                        <td colSpan={5} className="px-2 py-4 text-text-light text-sm">
+                          The list could not be loaded. Fix the error, then use Retry, or re-open this page.
+                        </td>
+                      </tr>
+                    )}
+                    {files.map((f) => {
+                      const opts = moveOptions(f)
+                      return (
                         <tr key={f.id} className="border-b border-border last:border-0 align-top">
                           <td className="px-2 py-3">
                             <p className="font-medium text-text break-words">{f.file_name}</p>
@@ -527,32 +608,88 @@ const FileRepository: FC = () => {
                           <td className="px-2 py-3 text-text-light hidden md:table-cell whitespace-nowrap">
                             {new Date(f.created_at).toLocaleString()}
                           </td>
+                          <td className="px-2 py-3 hidden lg:table-cell min-w-[10rem]">
+                            {opts.length > 0
+                              ? (
+                              <span className="block">
+                                <label className="sr-only" htmlFor={`move-${f.id}`}>
+                                  Move file
+                                </label>
+                                <select
+                                  id={`move-${f.id}`}
+                                  className="w-full max-w-full text-xs sm:text-sm border border-border rounded-md px-2 py-1.5 bg-white"
+                                  value=""
+                                  disabled={movingId === f.id}
+                                  onChange={(e) => {
+                                    const v = e.target.value
+                                    e.currentTarget.value = ''
+                                    void onMove(f, v)
+                                  }}
+                                >
+                                  <option value="" disabled>Move to…</option>
+                                  {opts.map((o) => (
+                                    <option key={o.value} value={o.value}>{o.label}</option>
+                                  ))}
+                                </select>
+                              </span>
+                                )
+                              : <span className="text-text-light text-xs">—</span>}
+                          </td>
                           <td className="px-2 py-3 text-right">
-                            <button
-                              type="button"
-                              className="text-sm font-medium text-accent hover:underline px-1 py-0.5"
-                              onClick={() => { void onDownload(f.id) }}
-                            >
-                              Download
-                            </button>
-                            <span className="text-text-light mx-1" aria-hidden>·</span>
-                            <button
-                              type="button"
-                              className="text-sm font-medium text-text-light hover:text-red-700 px-1 py-0.5"
-                              disabled={deletingId === f.id}
-                              onClick={() => { void onDelete(f.id) }}
-                            >
-                              {deletingId === f.id ? 'Removing…' : 'Remove'}
-                            </button>
+                            <div className="lg:hidden mb-1">
+                              {opts.length > 0 && (
+                                <select
+                                  className="w-full text-xs border border-border rounded-md px-2 py-1 mb-1"
+                                  value=""
+                                  disabled={movingId === f.id}
+                                  onChange={(e) => {
+                                    const v = e.target.value
+                                    e.currentTarget.value = ''
+                                    void onMove(f, v)
+                                  }}
+                                >
+                                  <option value="" disabled>Move to…</option>
+                                  {opts.map((o) => (
+                                    <option key={o.value} value={o.value}>{o.label}</option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap justify-end gap-x-1">
+                              <button
+                                type="button"
+                                className="text-sm font-medium text-accent hover:underline px-1 py-0.5"
+                                onClick={() => { void onDownload(f.id) }}
+                              >
+                                Download
+                              </button>
+                              <span className="text-text-light" aria-hidden>·</span>
+                              <button
+                                type="button"
+                                className="text-sm font-medium text-text-light hover:text-primary-dark px-1 py-0.5"
+                                disabled={renamingId === f.id}
+                                onClick={() => { void onRename(f) }}
+                              >
+                                Rename
+                              </button>
+                              <span className="text-text-light" aria-hidden>·</span>
+                              <button
+                                className="text-sm font-medium text-text-light hover:text-red-700 px-1 py-0.5"
+                                disabled={deletingId === f.id}
+                                onClick={() => { void onDelete(f.id) }}
+                              >
+                                {deletingId === f.id ? 'Removing…' : 'Remove'}
+                              </button>
+                            </div>
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
-          )}
+          </div>
         </div>
       </ClientPortalShell>
     </>

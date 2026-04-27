@@ -9,7 +9,7 @@ interface NavItem {
   label: string
   icon: JSX.Element
   /** Gated: link disabled when the user does not have this feature. */
-  featureKey?: 'fileRepository' | 'workingPapers' | 'integrations'
+  featureKey?: 'workingPapers' | 'integrations'
   /** Shown on top of a locked item (e.g. Premium) */
   lockedLabel?: string
 }
@@ -23,13 +23,11 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
   const location = useLocation()
   const { user } = useUser()
   const { signOut } = useClerk()
-  const fileRepo = useFeatureAccess('fileRepository')
   const workingPapers = useFeatureAccess('workingPapers')
   const integrations = useFeatureAccess('integrations')
 
   const isLocked = (item: NavItem) => {
     if (!item.featureKey) return false
-    if (item.featureKey === 'fileRepository') return !fileRepo
     if (item.featureKey === 'workingPapers') return !workingPapers
     if (item.featureKey === 'integrations') return !integrations
     return false
@@ -57,8 +55,6 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
     {
       to: '/portal/files',
       label: 'File Repository',
-      featureKey: 'fileRepository',
-      lockedLabel: 'Premium',
       icon: (
         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />

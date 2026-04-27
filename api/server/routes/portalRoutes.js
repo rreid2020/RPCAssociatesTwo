@@ -6,6 +6,47 @@ const MAX_UPLOAD_BYTES = parseInt(process.env.PORTAL_MAX_UPLOAD_BYTES || String(
 
 const folderNameRe = /^[^/\\<>:|?"*]+$/u
 
+const HOME_ROOT_NAME = 'My files'
+
+/**
+ * One top-level (parent_id null) “home” folder per user. Creates or consolidates, migrates
+ * unfiled (folder_id null) into home. Returns the home row.
+ */
+export async function ensureUserHomeFolder (pool, userId) {
+  const { rows: roots } = await pool.query(
+    'SELECT * FROM taxgpt.portal_folders WHERE clerk_user_id = $1 AND parent_id IS NULL ORDER BY created_at ASC',
+    [userId]
+  )
+  let home
+  if (!roots.length) {
+    const { rows: inserted } = await pool.query(
+      `INSERT INTO taxgpt.portal_folders (clerk_user_id, parent_id, name, created_at)
+       VALUES ($1, NULL, $2, now()) RETURNING *`,
+      [userId, HOME_ROOT_NAME]
+    )
+    home = inserted[0]
+  } else {
+    home = roots[0]
+    if (roots.length > 1) {
+      for (let i = 1; i < roots.length; i++) {
+        try {
+          await pool.query(
+            'UPDATE taxgpt.portal_folders SET parent_id = $1::uuid WHERE id = $2::uuid AND clerk_user_id = $3',
+            [home.id, roots[i].id, userId]
+          )
+        } catch (e) {
+          console.error('reparent extra root folder', e)
+        }
+      }
+    }
+  }
+  await pool.query(
+    'UPDATE taxgpt.portal_client_files SET folder_id = $1::uuid WHERE clerk_user_id = $2 AND folder_id IS NULL',
+    [home.id, userId]
+  )
+  return home
+}
+
 export function createPortalRouter (pool) {
   const r = Router()
 
@@ -135,16 +176,38 @@ export function createPortalRouter (pool) {
     res.json({ deadline: rows[0] })
   })
 
+  r.get('/v1/folders/flat', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const home = await ensureUserHomeFolder(pool, session.userId)
+      const { rows } = await pool.query(
+        'SELECT id, parent_id, name, created_at FROM taxgpt.portal_folders WHERE clerk_user_id = $1 ORDER BY lower(btrim(name))',
+        [session.userId]
+      )
+      res.json({ homeFolder: home, folders: rows })
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: 'Could not list folders' })
+    }
+  })
+
   r.get('/v1/folders', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
     const parentParam = req.query.parentId
     if (!parentParam || parentParam === 'root') {
-      const { rows } = await pool.query(
-        'SELECT * FROM taxgpt.portal_folders WHERE clerk_user_id = $1 AND parent_id IS NULL ORDER BY lower(btrim(name))',
-        [session.userId]
-      )
-      return res.json({ folders: rows })
+      try {
+        const home = await ensureUserHomeFolder(pool, session.userId)
+        const { rows } = await pool.query(
+          'SELECT * FROM taxgpt.portal_folders WHERE clerk_user_id = $1 AND parent_id = $2::uuid ORDER BY lower(btrim(name))',
+          [session.userId, home.id]
+        )
+        return res.json({ homeFolder: home, folders: rows })
+      } catch (e) {
+        console.error(e)
+        return res.status(500).json({ error: 'Could not list folders' })
+      }
     }
     const { rows: parent } = await pool.query(
       'SELECT id FROM taxgpt.portal_folders WHERE id = $1::uuid AND clerk_user_id = $2',
@@ -168,7 +231,8 @@ export function createPortalRouter (pool) {
     if (!folderNameRe.test(name)) {
       return res.status(400).json({ error: 'Folder name cannot include /, \\, or other reserved characters' })
     }
-    let pId = null
+    const home = await ensureUserHomeFolder(pool, session.userId)
+    let pId = home.id
     if (parentId && String(parentId) !== 'root') {
       const { rows: pr } = await pool.query(
         'SELECT id FROM taxgpt.portal_folders WHERE id = $1::uuid AND clerk_user_id = $2',
@@ -204,11 +268,33 @@ export function createPortalRouter (pool) {
   r.delete('/v1/folders/:id', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const home = await ensureUserHomeFolder(pool, session.userId)
+    if (String(req.params.id) === String(home.id)) {
+      return res.status(400).json({ error: 'The main “My files” folder cannot be deleted' })
+    }
     const { rows: folder } = await pool.query(
       'SELECT id, name FROM taxgpt.portal_folders WHERE id = $1::uuid AND clerk_user_id = $2',
       [req.params.id, session.userId]
     )
     if (!folder[0]) return res.status(404).json({ error: 'Not found' })
+    const { rows: inTree } = await pool.query(
+      `WITH RECURSIVE t AS (
+         SELECT id FROM taxgpt.portal_folders WHERE id = $1::uuid AND clerk_user_id = $2
+         UNION ALL
+         SELECT f.id FROM taxgpt.portal_folders f INNER JOIN t ON f.parent_id = t.id
+         WHERE f.clerk_user_id = $2
+       ) SELECT id FROM t`,
+      [req.params.id, session.userId]
+    )
+    const treeIds = inTree.map((r) => r.id)
+    if (treeIds.length) {
+      await pool.query(
+        `UPDATE taxgpt.portal_client_files
+         SET folder_id = $1::uuid
+         WHERE clerk_user_id = $2 AND folder_id = ANY($3::uuid[])`,
+        [home.id, session.userId, treeIds]
+      )
+    }
     await pool.query('DELETE FROM taxgpt.portal_folders WHERE id = $1::uuid', [req.params.id])
     await pool.query(
       `INSERT INTO taxgpt.portal_activity (clerk_user_id, kind, title, created_at)
@@ -240,8 +326,9 @@ export function createPortalRouter (pool) {
     if (sizeBytes != null && Number.isFinite(sizeBytes) && sizeBytes > MAX_UPLOAD_BYTES) {
       return res.status(400).json({ error: `File exceeds maximum size of ${MAX_UPLOAD_BYTES} bytes` })
     }
-    let folderFid = null
-    if (folderId && String(folderId) !== 'root' && String(folderId).length) {
+    const home = await ensureUserHomeFolder(pool, session.userId)
+    let folderFid = home.id
+    if (folderId && String(folderId) !== 'root' && String(folderId) !== String(home.id) && String(folderId).length) {
       const { rows: fr } = await pool.query(
         'SELECT id FROM taxgpt.portal_folders WHERE id = $1::uuid AND clerk_user_id = $2',
         [String(folderId), session.userId]
@@ -275,14 +362,15 @@ export function createPortalRouter (pool) {
       return res.json({ files: rows })
     }
     if (folderId === '' || folderId === 'root') {
+      const home = await ensureUserHomeFolder(pool, session.userId)
       const { rows } = await pool.query(
-        'SELECT * FROM taxgpt.portal_client_files WHERE clerk_user_id = $1 AND folder_id IS NULL ORDER BY created_at DESC',
-        [session.userId]
+        'SELECT * FROM taxgpt.portal_client_files WHERE clerk_user_id = $1 AND folder_id = $2::uuid ORDER BY created_at DESC',
+        [session.userId, home.id]
       )
-      return res.json({ files: rows })
+      return res.json({ homeFolder: home, files: rows })
     }
     const { rows: fold } = await pool.query(
-      'SELECT 1 AS ok FROM taxgpt.portal_folders WHERE id = $1::uuid AND clerk_user_id = $2',
+      'SELECT * FROM taxgpt.portal_folders WHERE id = $1::uuid AND clerk_user_id = $2',
       [String(folderId), session.userId]
     )
     if (!fold[0]) return res.status(404).json({ error: 'Folder not found' })
@@ -296,23 +384,64 @@ export function createPortalRouter (pool) {
   r.patch('/v1/files/:id', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    if (!Object.prototype.hasOwnProperty.call(req.body || {}, 'folderId')) {
-      return res.status(400).json({ error: 'folderId required' })
+    const body = req.body || {}
+    const hasFolder = Object.prototype.hasOwnProperty.call(body, 'folderId')
+    const hasName = Object.prototype.hasOwnProperty.call(body, 'fileName')
+    if (!hasFolder && !hasName) {
+      return res.status(400).json({ error: 'Provide folderId and/or fileName' })
     }
-    const { folderId } = req.body || {}
-    let target = null
-    if (folderId && String(folderId) !== 'root' && String(folderId).length) {
-      const { rows } = await pool.query(
-        'SELECT id FROM taxgpt.portal_folders WHERE id = $1::uuid AND clerk_user_id = $2',
-        [String(folderId), session.userId]
+    const { rows: existing } = await pool.query(
+      'SELECT * FROM taxgpt.portal_client_files WHERE id = $1::uuid AND clerk_user_id = $2',
+      [req.params.id, session.userId]
+    )
+    if (!existing[0]) return res.status(404).json({ error: 'Not found' })
+    const home = hasFolder ? await ensureUserHomeFolder(pool, session.userId) : null
+    let targetFolder = existing[0].folder_id
+    if (hasFolder) {
+      const { folderId } = body
+      if (folderId == null || String(folderId) === 'root' || !String(folderId).length) {
+        targetFolder = home.id
+      } else {
+        if (String(folderId) === String(home.id)) {
+          targetFolder = home.id
+        } else {
+          const { rows } = await pool.query(
+            'SELECT id FROM taxgpt.portal_folders WHERE id = $1::uuid AND clerk_user_id = $2',
+            [String(folderId), session.userId]
+          )
+          if (!rows[0]) return res.status(400).json({ error: 'Invalid folder' })
+          targetFolder = rows[0].id
+        }
+      }
+    }
+    let newName = existing[0].file_name
+    if (hasName) {
+      newName = String(body.fileName ?? '').trim()
+      if (newName.length < 1) return res.status(400).json({ error: 'fileName must not be empty' })
+      if (newName.length > 500) return res.status(400).json({ error: 'fileName too long' })
+    }
+    if (!hasFolder) {
+      const { rowCount, rows: out } = await pool.query(
+        `UPDATE taxgpt.portal_client_files SET file_name = $1
+         WHERE id = $2::uuid AND clerk_user_id = $3 RETURNING *`,
+        [newName, req.params.id, session.userId]
       )
-      if (!rows[0]) return res.status(400).json({ error: 'Invalid folder' })
-      target = rows[0].id
+      if (!rowCount) return res.status(404).json({ error: 'Not found' })
+      return res.json({ file: out[0] })
+    }
+    if (!hasName) {
+      const { rowCount, rows: out } = await pool.query(
+        `UPDATE taxgpt.portal_client_files SET folder_id = $1::uuid
+         WHERE id = $2::uuid AND clerk_user_id = $3 RETURNING *`,
+        [targetFolder, req.params.id, session.userId]
+      )
+      if (!rowCount) return res.status(404).json({ error: 'Not found' })
+      return res.json({ file: out[0] })
     }
     const { rowCount, rows: out } = await pool.query(
-      `UPDATE taxgpt.portal_client_files SET folder_id = $1
-       WHERE id = $2::uuid AND clerk_user_id = $3 RETURNING *`,
-      [target, req.params.id, session.userId]
+      `UPDATE taxgpt.portal_client_files SET folder_id = $1::uuid, file_name = $2
+       WHERE id = $3::uuid AND clerk_user_id = $4 RETURNING *`,
+      [targetFolder, newName, req.params.id, session.userId]
     )
     if (!rowCount) return res.status(404).json({ error: 'Not found' })
     res.json({ file: out[0] })

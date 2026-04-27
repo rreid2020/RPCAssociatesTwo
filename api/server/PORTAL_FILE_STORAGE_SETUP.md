@@ -27,6 +27,8 @@ Follow these in order. Uploads use **your API** to get a presigned URL, then the
 
 The browser `PUT`s the file to DigitalOcean. The Space must allow your **website origin(s)** and the **PUT** method.
 
+**Path vs origin:** If the client portal is at e.g. `https://axiomft.ca/portal/dashboard`, the CORS **Origin** is still **`https://axiomft.ca`** (scheme + host + port only—no path). The same origin covers `/portal/files` and the rest of the site.
+
 1. Open your **Space** → **Settings** → **CORS** (or CORS configurations).
 2. For **each origin** where users open the app, add a rule (or one rule with multiple origins, if the UI allows it), for example:
    - `https://axiomft.ca` and `https://www.axiomft.ca`  

@@ -9,6 +9,42 @@ const folderNameRe = /^[^/\\<>:|?"*]+$/u
 const HOME_ROOT_NAME = 'My files'
 
 /**
+ * TaxGPT’s `taxgpt.users` table is a mirror of Clerk (optional; used by other features).
+ * Portal data uses `clerk_user_id` text on portal_* tables and does not FK to `users.id`.
+ * We upsert here so each active portal user has a row for reporting / admin tools.
+ */
+async function mirrorClerkUserToUsersTable (pool, clerkUserId) {
+  try {
+    await pool.query(
+      `INSERT INTO taxgpt.users (id, clerk_user_id, created_at, updated_at)
+       VALUES (gen_random_uuid(), $1, now(), now())
+       ON CONFLICT (clerk_user_id) DO UPDATE SET updated_at = now()`,
+      [clerkUserId]
+    )
+  } catch (e) {
+    if (e && e.code === '42P01') {
+      return
+    }
+    if (e && e.code === '42703') {
+      try {
+        await pool.query(
+          `INSERT INTO taxgpt.users (id, clerk_user_id, created_at)
+           VALUES (gen_random_uuid(), $1, now())
+           ON CONFLICT (clerk_user_id) DO NOTHING`,
+          [clerkUserId]
+        )
+        return
+      } catch (e2) {
+        if (e2 && e2.code === '42P01') return
+        console.warn('mirrorClerkUserToUsersTable (fallback):', e2)
+        return
+      }
+    }
+    console.warn('mirrorClerkUserToUsersTable:', e)
+  }
+}
+
+/**
  * One top-level (parent_id null) “home” folder per user. Creates or consolidates, migrates
  * unfiled (folder_id null) into home. Returns the home row.
  */
@@ -57,6 +93,7 @@ export async function ensureUserHomeFolder (pool, userId) {
     'UPDATE taxgpt.portal_client_files SET folder_id = $1::uuid WHERE clerk_user_id = $2 AND folder_id IS NULL',
     [home.id, userId]
   )
+  await mirrorClerkUserToUsersTable(pool, userId)
   return home
 }
 

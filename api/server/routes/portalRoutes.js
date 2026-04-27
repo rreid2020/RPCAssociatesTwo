@@ -19,12 +19,25 @@ export async function ensureUserHomeFolder (pool, userId) {
   )
   let home
   if (!roots.length) {
-    const { rows: inserted } = await pool.query(
-      `INSERT INTO taxgpt.portal_folders (clerk_user_id, parent_id, name, created_at)
-       VALUES ($1, NULL, $2, now()) RETURNING *`,
-      [userId, HOME_ROOT_NAME]
-    )
-    home = inserted[0]
+    try {
+      const { rows: inserted } = await pool.query(
+        `INSERT INTO taxgpt.portal_folders (clerk_user_id, parent_id, name, created_at)
+         VALUES ($1, NULL, $2, now()) RETURNING *`,
+        [userId, HOME_ROOT_NAME]
+      )
+      home = inserted[0]
+    } catch (e) {
+      // Concurrent first requests can race two INSERTs; the unique (sibling name) index rejects the loser.
+      const msg = e && e.message != null ? String(e.message) : ''
+      const isUnique = (e && e.code === '23505') || (msg.length > 0 && /unique|duplicate/i.test(msg))
+      if (!isUnique) throw e
+      const { rows: r2 } = await pool.query(
+        'SELECT * FROM taxgpt.portal_folders WHERE clerk_user_id = $1 AND parent_id IS NULL ORDER BY created_at ASC',
+        [userId]
+      )
+      if (!r2[0]) throw e
+      home = r2[0]
+    }
   } else {
     home = roots[0]
     if (roots.length > 1) {

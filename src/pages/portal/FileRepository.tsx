@@ -96,7 +96,7 @@ const FileRepository: FC = () => {
         setHomeName(flat.homeFolder.name)
         setHomeId(flat.homeFolder.id)
       }
-      setAllFolders(flat.folders)
+      setAllFolders(Array.isArray(flat.folders) ? flat.folders : [])
       if (fr.homeFolder) {
         setHomeName(fr.homeFolder.name)
         setHomeId(fr.homeFolder.id)
@@ -105,8 +105,8 @@ const FileRepository: FC = () => {
         setHomeName(fl.homeFolder.name)
         setHomeId(fl.homeFolder.id)
       }
-      setFolders(fr.folders)
-      setFiles(fl.files)
+      setFolders(Array.isArray(fr.folders) ? fr.folders : [])
+      setFiles(Array.isArray(fl.files) ? fl.files : [])
       setErr(null)
     } catch (e) {
       setSuccessMessage(null)

@@ -1,6 +1,10 @@
 /**
  * JSON API for the Express `/api/portal` routes. Uses Clerk session token.
- * Dev: Vite proxies `/api/portal` to the local API. Prod: same-origin or set `VITE_API_BASE_URL`.
+ *
+ * Local dev: run the API (e.g. `npm start` in api/server) so Vite can proxy `/api` to port 3000.
+ * Production: the browser must call an origin that actually serves `/api/portal` (e.g. App Platform
+ * with an `/api` service), OR set VITE_API_BASE_URL to the full API site origin (no path), e.g.
+ * `https://your-api.ondigitalocean.app`, and allow that CORS origin on the API.
  */
 function getApiPrefix (): string {
   const base = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') || ''

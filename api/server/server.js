@@ -29,7 +29,12 @@ app.use(helmet({
 
 // CORS for API routes only
 app.use('/api', cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['https://axiomft.ca', 'https://www.axiomft.ca', 'http://localhost:5173'],
+  origin: process.env.ALLOWED_ORIGINS?.split(',').map((o) => o.trim()).filter(Boolean) || [
+    'https://axiomft.ca',
+    'https://www.axiomft.ca',
+    'https://portal.axiomft.ca',
+    'http://localhost:5173',
+  ],
   credentials: true
 }))
 

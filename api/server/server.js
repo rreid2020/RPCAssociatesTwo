@@ -27,16 +27,23 @@ app.use(helmet({
   contentSecurityPolicy: false, // Allow inline scripts for React
 }))
 
-// CORS for API routes only
-app.use('/api', cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',').map((o) => o.trim()).filter(Boolean) || [
-    'https://axiomft.ca',
-    'https://www.axiomft.ca',
-    'https://portal.axiomft.ca',
-    'http://localhost:5173',
-  ],
-  credentials: true
-}))
+// CORS for /api: portalFetch sends JSON + Authorization (Clerk) — preflight must allow them.
+const corsOrigins = process.env.ALLOWED_ORIGINS?.split(',').map((o) => o.trim()).filter(Boolean) || [
+  'https://axiomft.ca',
+  'https://www.axiomft.ca',
+  'https://portal.axiomft.ca',
+  'http://localhost:5173',
+]
+app.use(
+  '/api',
+  cors({
+    origin: corsOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    optionsSuccessStatus: 204,
+  })
+)
 
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))

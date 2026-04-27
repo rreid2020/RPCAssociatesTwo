@@ -95,13 +95,23 @@ These must be available to the process that runs `node server.js` (e.g. **App Pl
 
 ---
 
-## 9) Still broken? Quick checks
+## 9) Still broken? CORS: API vs Space (and the yellow banner)
+
+**Yellow “object storage is not configured”** means the **API** does not have `DO_SPACES_*` set (or the service didn’t restart). That is **not** fixed by Space CORS.
+
+**“CORS” in the console** can be two different things:
+
+1. **Request to your API** (`/api/portal/...` or an `*.ondigitalocean.app` API host) — **Express CORS**. The browser sends `Authorization: Bearer` (Clerk) + JSON. The server must list your page’s `Origin` in `ALLOWED_ORIGINS` and allow preflight for `Authorization` and `Content-Type` (the API is configured for this; check `ALLOWED_ORIGINS` has no typos, no path—only `https://axiomft.ca` or `https://www.axiomft.ca` as needed).
+2. **Request to `https://<region>.digitaloceanspaces.com/...`** — **Space CORS**. Add the **same** `Origin` you see in the failed request (often `https://axiomft.ca` *or* `https://www.axiomft.ca`—add **two** DO rules if you use both). Methods: at least **PUT**, **GET**, **HEAD**. Headers: **Content-Type**; if it still fails, set **Allowed headers** to `*` on the Space if the UI allows it.
+
+In **Network** → click the failed (red) request → **Headers** — note **Request URL** and **Request Headers** → `Origin` to see which side to fix.
 
 | Symptom | What to check |
 |--------|----------------|
 | Yellow “object storage is not configured” | API env + redeploy; logs for `Object storage: configured` |
 | Presign 401 / 503 on portal | `CLERK_SECRET_KEY` on API; user signed in |
-| Presign 200, then PUT fails (CORS / network) | Space CORS: **PUT** + your **exact** origin |
+| Presign 200, then PUT fails (CORS / network) | Space CORS: **PUT** + **exact** origin; try `*` for allowed headers |
+| API request blocked, cross-origin | `ALLOWED_ORIGINS` on API must include the site’s `Origin` |
 | Presign 200, PUT 403 | Key permissions, bucket name, endpoint/region |
 | Complete 400 “Invalid key” | Same user as presign; don’t change Clerk between steps |
 

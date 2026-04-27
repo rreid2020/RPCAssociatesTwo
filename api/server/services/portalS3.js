@@ -38,6 +38,11 @@ export async function presignPut (key, contentType) {
   return { url }
 }
 
+/** True when env has Spaces/S3 credentials; used by the API to tell the UI if uploads are possible. */
+export function isPortalObjectStorageConfigured () {
+  return getS3() != null
+}
+
 export async function presignGet (key) {
   const s3 = getS3()
   if (!s3) return null
@@ -57,7 +62,14 @@ export async function deleteObject (key) {
 export function logPortalObjectStorageConfig () {
   const s3 = getS3()
   if (s3) {
-    console.log(`[portal files] Object storage: configured (bucket: ${s3.bucket})`)
+    const host = (() => {
+      try {
+        return new URL(process.env.S3_ENDPOINT || process.env.DO_SPACES_ENDPOINT).host
+      } catch {
+        return 'configured'
+      }
+    })()
+    console.log(`[portal files] Object storage: configured (bucket: ${s3.bucket}, endpoint: ${host})`)
   } else {
     console.warn(
       '[portal files] Object storage: NOT configured — set DO_SPACES_ENDPOINT, DO_SPACES_BUCKET, DO_SPACES_KEY, DO_SPACES_SECRET (or S3_*). ' +

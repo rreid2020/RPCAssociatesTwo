@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { getClerkUser, isStaff } from '../middleware/portalAuth.js'
-import { buildPortalObjectKey, deleteObject, presignGet, presignPut } from '../services/portalS3.js'
+import { buildPortalObjectKey, deleteObject, isPortalObjectStorageConfigured, presignGet, presignPut } from '../services/portalS3.js'
 
 const MAX_UPLOAD_BYTES = parseInt(process.env.PORTAL_MAX_UPLOAD_BYTES || String(100 * 1024 * 1024), 10)
 
@@ -235,7 +235,11 @@ export function createPortalRouter (pool) {
         'SELECT id, parent_id, name, created_at FROM taxgpt.portal_folders WHERE clerk_user_id = $1 ORDER BY lower(btrim(name))',
         [session.userId]
       )
-      res.json({ homeFolder: home, folders: rows })
+      res.json({
+        homeFolder: home,
+        folders: rows,
+        objectStorageReady: isPortalObjectStorageConfigured()
+      })
     } catch (e) {
       console.error(e)
       res.status(500).json({ error: 'Could not list folders' })
@@ -361,7 +365,15 @@ export function createPortalRouter (pool) {
     if (!fileName || !contentType) return res.status(400).json({ error: 'fileName, contentType required' })
     const { key, fileId } = buildPortalObjectKey(session.userId, fileName)
     const signed = await presignPut(key, contentType)
-    if (!signed) return res.status(503).json({ error: 'Object storage not configured' })
+    if (!signed) {
+      console.warn(
+        '[portal files] presign-put: object storage not configured. Set DO_SPACES_ENDPOINT, DO_SPACES_BUCKET, DO_SPACES_KEY, DO_SPACES_SECRET on the API (see api/server/.env.example).'
+      )
+      return res.status(503).json({
+        error: 'Object storage is not configured on the server. Add DigitalOcean Spaces (S3) env vars to the API.',
+        code: 'STORAGE_NOT_CONFIGURED'
+      })
+    }
     res.json({ uploadUrl: signed.url, storageKey: key, fileId })
   })
 

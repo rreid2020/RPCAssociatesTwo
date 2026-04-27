@@ -36,6 +36,8 @@ type FilesListResponse = {
 type FlatFoldersResponse = {
   homeFolder: PortalFolder
   folders: PortalFolder[]
+  /** False when the API is missing DO Spaces / S3 env; uploads return 503 until configured. */
+  objectStorageReady?: boolean
 }
 
 function folderMap (rows: PortalFolder[]) {
@@ -73,6 +75,7 @@ const FileRepository: FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [newFolderName, setNewFolderName] = useState('')
   const [folderSubmitting, setFolderSubmitting] = useState(false)
+  const [objectStorageReady, setObjectStorageReady] = useState(true)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const parentQuery = currentFolderId === 'root' ? 'root' : currentFolderId
@@ -97,6 +100,7 @@ const FileRepository: FC = () => {
         setHomeId(flat.homeFolder.id)
       }
       setAllFolders(Array.isArray(flat.folders) ? flat.folders : [])
+      setObjectStorageReady(flat.objectStorageReady !== false)
       if (fr.homeFolder) {
         setHomeName(fr.homeFolder.name)
         setHomeId(fr.homeFolder.id)
@@ -125,20 +129,48 @@ const FileRepository: FC = () => {
   }, [load])
 
   const putOne = async (file: File, inFolder: 'root' | string): Promise<PortalFile> => {
-    const pres = await portalFetch<{
-      uploadUrl: string
-      storageKey: string
-    }>('/v1/files/presign-put', getToken, {
-      method: 'POST',
-      body: JSON.stringify({ fileName: file.name, contentType: file.type || 'application/octet-stream' })
-    })
-    const put = await fetch(pres.uploadUrl, {
-      method: 'PUT',
-      body: file,
-      headers: { 'Content-Type': file.type || 'application/octet-stream' }
-    })
+    if (import.meta.env.DEV) {
+      console.info('[FileRepository] presign-put for', { name: file.name, size: file.size, type: file.type || '(empty—using octet-stream)' })
+    }
+    let pres: { uploadUrl: string; storageKey: string }
+    try {
+      pres = await portalFetch<{
+        uploadUrl: string
+        storageKey: string
+      }>('/v1/files/presign-put', getToken, {
+        method: 'POST',
+        body: JSON.stringify({ fileName: file.name, contentType: file.type || 'application/octet-stream' })
+      })
+    } catch (e) {
+      console.error('[FileRepository] /v1/files/presign-put failed', e)
+      throw e
+    }
+    if (import.meta.env.DEV) {
+      console.info('[FileRepository] PUT to Spaces/S3 (browser → storage)…', pres.storageKey)
+    }
+    let put: Response
+    try {
+      put = await fetch(pres.uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type || 'application/octet-stream' }
+      })
+    } catch (e) {
+      const base =
+        e instanceof TypeError
+          ? 'The browser could not complete the direct upload to storage. Most often the DigitalOcean Space needs CORS: allow your site origin, methods GET+PUT+HEAD, headers Content-Type. See comments in api/server/.env.example.'
+          : (e instanceof Error ? e.message : 'Network error during upload to storage.')
+      console.error('[FileRepository] fetch(PUT) to presigned URL failed', e)
+      throw new Error(base)
+    }
     if (!put.ok) {
-      throw new Error('Upload could not be completed. Please try again, or contact us if the problem continues.')
+      const detail = (await put.text().catch(() => '')).trim().slice(0, 400)
+      const msg = `Storage returned ${put.status} for the upload${detail ? `: ${detail}` : ''}.`
+      console.error('[FileRepository] PUT to storage not OK', put.status, detail)
+      throw new Error(msg)
+    }
+    if (import.meta.env.DEV) {
+      console.info('[FileRepository] Telling API /v1/files/complete to save DB row…')
     }
     const body: Record<string, unknown> = {
       storageKey: pres.storageKey,
@@ -153,6 +185,9 @@ const FileRepository: FC = () => {
       method: 'POST',
       body: JSON.stringify(body)
     })
+    if (import.meta.env.DEV) {
+      console.info('[FileRepository] File saved in library', { id: record.id, name: record.file_name })
+    }
     return record
   }
 
@@ -160,6 +195,13 @@ const FileRepository: FC = () => {
     const list = ev.target.files
     ev.target.value = ''
     if (!list?.length) return
+    if (!objectStorageReady) {
+      setErr('File storage is not configured on the server yet (no DigitalOcean Spaces / S3 keys). The API must have DO_SPACES_* set. See api/server/.env.example.')
+      return
+    }
+    if (import.meta.env.DEV) {
+      console.info(`[FileRepository] Starting upload: ${String(list.length)} file(s) → folder ${String(currentFolderId)}`)
+    }
     setUploading(true)
     setErr(null)
     setSuccessMessage(null)
@@ -181,6 +223,7 @@ const FileRepository: FC = () => {
       )
       void load()
     } catch (e) {
+      console.error('[FileRepository] Upload flow failed', e)
       setErr(e instanceof Error ? e.message : 'Upload failed')
     } finally {
       setUploading(false)
@@ -379,14 +422,21 @@ const FileRepository: FC = () => {
                 className="sr-only"
                 multiple
                 onChange={onUpload}
-                disabled={uploading}
+                disabled={uploading || !objectStorageReady}
                 tabIndex={-1}
               />
               <button
                 type="button"
                 className="btn btn--primary text-sm py-2 px-4"
-                disabled={uploading}
-                onClick={() => { fileInputRef.current?.click() }}
+                disabled={uploading || !objectStorageReady}
+                onClick={() => {
+                  if (!objectStorageReady) {
+                    setErr('Configure DigitalOcean Spaces on the API (DO_SPACES_*). See the yellow notice on this page and api/server/.env.example.')
+                    return
+                  }
+                  fileInputRef.current?.click()
+                }}
+                title={!objectStorageReady ? 'Object storage (DO Spaces) is not configured on the server' : 'Choose files to upload'}
               >
                 {uploading ? 'Uploading…' : 'Upload file(s) here'}
               </button>
@@ -397,6 +447,25 @@ const FileRepository: FC = () => {
             and rename files, move items between your folders, or download and remove them. Only you can see your
             content.
           </p>
+          {!loading && !objectStorageReady && (
+            <div
+              className="mb-4 p-4 rounded-lg border-2 border-amber-500/80 bg-amber-50 text-amber-950 text-sm max-w-3xl"
+              role="alert"
+            >
+              <p className="font-semibold">Uploads are turned off: object storage is not configured on the API</p>
+              <p className="mt-2">
+                The server must have a DigitalOcean Space (S3) connection. Set on the <strong>API</strong> (not the Vite app):
+                <code className="mx-1 text-xs bg-white/80 px-1 rounded">DO_SPACES_ENDPOINT</code>,
+                <code className="mx-1 text-xs bg-white/80 px-1 rounded">DO_SPACES_BUCKET</code>,
+                <code className="mx-1 text-xs bg-white/80 px-1 rounded">DO_SPACES_KEY</code>,
+                <code className="mx-1 text-xs bg-white/80 px-1 rounded">DO_SPACES_SECRET</code>
+                (see <code className="text-xs">api/server/.env.example</code>).
+                Redeploy the API and confirm startup logs: <em>Object storage: configured</em>.
+                For browser uploads, add <strong>CORS</strong> on the Space: allow your site origin, methods{' '}
+                <code className="text-xs">PUT</code>, <code className="text-xs">GET</code>, <code className="text-xs">HEAD</code>.
+              </p>
+            </div>
+          )}
 
           <div className="space-y-4">
             <nav

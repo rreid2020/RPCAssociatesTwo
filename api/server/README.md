@@ -193,4 +193,14 @@ CMD ["npm", "start"]
 
 ## Environment Variables
 
-See `.env.example` for all available configuration options.
+See `.env.example` for all available configuration options. Highlights:
+
+### Client portal file repository (DO Spaces / S3)
+
+Uploads are **not** sent through the Express app body: the API returns a **presigned PUT URL** and the **browser** uploads the file to your Space. You must set **`DO_SPACES_ENDPOINT`**, **`DO_SPACES_BUCKET`**, **`DO_SPACES_KEY`**, and **`DO_SPACES_SECRET`** on the API. After restart, the log should show: `[portal files] Object storage: configured (bucket: …)`.
+
+You also need **CORS** on the Space: allow the origins where users use the app (e.g. `https://…`, `http://localhost:5173` for local dev) and allow methods **PUT**, **GET**, **HEAD**. Without CORS, the `fetch(PUT)` in the browser fails; the new UI shows a specific error. See the long comment in `api/server/.env.example` for a sample CORS JSON.
+
+`CLERK_SECRET_KEY` is required in production for `/api/portal/…` to accept tokens.
+
+Database, email, and the rest: see `.env.example`.

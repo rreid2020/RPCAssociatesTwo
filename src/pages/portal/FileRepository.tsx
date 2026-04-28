@@ -38,6 +38,8 @@ type FlatFoldersResponse = {
   folders: PortalFolder[]
   /** False when the API is missing DO Spaces / S3 env; uploads return 503 until configured. */
   objectStorageReady?: boolean
+  /** From API: human-readable names of env vars the API process is still missing. */
+  objectStorageMissing?: string[]
 }
 
 function folderMap (rows: PortalFolder[]) {
@@ -76,6 +78,7 @@ const FileRepository: FC = () => {
   const [newFolderName, setNewFolderName] = useState('')
   const [folderSubmitting, setFolderSubmitting] = useState(false)
   const [objectStorageReady, setObjectStorageReady] = useState(true)
+  const [objectStorageMissing, setObjectStorageMissing] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const parentQuery = currentFolderId === 'root' ? 'root' : currentFolderId
@@ -101,6 +104,9 @@ const FileRepository: FC = () => {
       }
       setAllFolders(Array.isArray(flat.folders) ? flat.folders : [])
       setObjectStorageReady(flat.objectStorageReady !== false)
+      setObjectStorageMissing(
+        Array.isArray(flat.objectStorageMissing) ? flat.objectStorageMissing : []
+      )
       if (fr.homeFolder) {
         setHomeName(fr.homeFolder.name)
         setHomeId(fr.homeFolder.id)
@@ -453,6 +459,17 @@ const FileRepository: FC = () => {
               role="alert"
             >
               <p className="font-semibold">Uploads are turned off: object storage is not configured on the API</p>
+              {objectStorageMissing.length > 0 && (
+                <p className="mt-2 font-medium">
+                  The API process reports that these are still empty or missing:{' '}
+                  {objectStorageMissing.map((m, i) => (
+                    <span key={m}>
+                      {i > 0 ? ' · ' : null}
+                      <code className="text-xs bg-white/80 px-1 rounded break-all">{m}</code>
+                    </span>
+                  ))}
+                </p>
+              )}
               <p className="mt-2">
                 The server must have a DigitalOcean Space (S3) connection. Set on the <strong>API</strong> (not the Vite app):
                 <code className="mx-1 text-xs bg-white/80 px-1 rounded">DO_SPACES_ENDPOINT</code>,

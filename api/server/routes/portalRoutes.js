@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { getClerkUser, isStaff } from '../middleware/portalAuth.js'
-import { buildPortalObjectKey, deleteObject, isPortalObjectStorageConfigured, presignGet, presignPut } from '../services/portalS3.js'
+import { buildPortalObjectKey, deleteObject, getObjectStorageConfigDiagnostics, presignGet, presignPut } from '../services/portalS3.js'
 
 const MAX_UPLOAD_BYTES = parseInt(process.env.PORTAL_MAX_UPLOAD_BYTES || String(100 * 1024 * 1024), 10)
 
@@ -235,10 +235,12 @@ export function createPortalRouter (pool) {
         'SELECT id, parent_id, name, created_at FROM taxgpt.portal_folders WHERE clerk_user_id = $1 ORDER BY lower(btrim(name))',
         [session.userId]
       )
+      const diag = getObjectStorageConfigDiagnostics()
       res.json({
         homeFolder: home,
         folders: rows,
-        objectStorageReady: isPortalObjectStorageConfigured()
+        objectStorageReady: diag.objectStorageReady,
+        objectStorageMissing: diag.objectStorageMissing
       })
     } catch (e) {
       console.error(e)

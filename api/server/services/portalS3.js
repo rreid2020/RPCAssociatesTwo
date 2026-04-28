@@ -4,18 +4,42 @@ import { randomUUID } from 'crypto'
 
 const TTL = 300
 
+function readSpacesEnv () {
+  return {
+    endpoint: (process.env.S3_ENDPOINT || process.env.DO_SPACES_ENDPOINT || '').trim(),
+    bucket: (process.env.S3_BUCKET || process.env.DO_SPACES_BUCKET || '').trim(),
+    accessKey: (process.env.S3_ACCESS_KEY || process.env.DO_SPACES_KEY || '').trim(),
+    secretKey: (process.env.S3_SECRET_KEY || process.env.DO_SPACES_SECRET || '').trim(),
+    region: (process.env.S3_REGION || process.env.DO_SPACES_REGION || 'us-east-1').trim()
+  }
+}
+
+/**
+ * For the UI: which env vars are missing (names only, no secrets). Helps when the API service
+ * was never given DO_SPACES_* (common mix-up: set on the web app only).
+ */
+export function getObjectStorageConfigDiagnostics () {
+  const e = readSpacesEnv()
+  const missing = []
+  if (!e.endpoint) missing.push('DO_SPACES_ENDPOINT (or S3_ENDPOINT)')
+  if (!e.bucket) missing.push('DO_SPACES_BUCKET (or S3_BUCKET)')
+  if (!e.accessKey) missing.push('DO_SPACES_KEY (or S3_ACCESS_KEY)')
+  if (!e.secretKey) missing.push('DO_SPACES_SECRET (or S3_SECRET_KEY)')
+  return {
+    objectStorageReady: missing.length === 0,
+    objectStorageMissing: missing
+  }
+}
+
 function getS3 () {
-  const endpoint = process.env.S3_ENDPOINT || process.env.DO_SPACES_ENDPOINT
-  const bucket = process.env.S3_BUCKET || process.env.DO_SPACES_BUCKET
-  const accessKey = process.env.S3_ACCESS_KEY || process.env.DO_SPACES_KEY
-  const secretKey = process.env.S3_SECRET_KEY || process.env.DO_SPACES_SECRET
-  const region = process.env.S3_REGION || process.env.DO_SPACES_REGION || 'us-east-1'
+  const e = readSpacesEnv()
+  const { endpoint, bucket, accessKey, secretKey, region } = e
   if (!endpoint || !bucket || !accessKey || !secretKey) {
     return null
   }
   return {
     client: new S3Client({
-      region,
+      region: e.region,
       endpoint,
       forcePathStyle: true,
       credentials: { accessKeyId: accessKey, secretAccessKey: secretKey }
@@ -71,9 +95,11 @@ export function logPortalObjectStorageConfig () {
     })()
     console.log(`[portal files] Object storage: configured (bucket: ${s3.bucket}, endpoint: ${host})`)
   } else {
+    const { objectStorageMissing } = getObjectStorageConfigDiagnostics()
     console.warn(
-      '[portal files] Object storage: NOT configured — set DO_SPACES_ENDPOINT, DO_SPACES_BUCKET, DO_SPACES_KEY, DO_SPACES_SECRET (or S3_*). ' +
-        'POST /v1/files/presign-put returns 503; the bucket will not get a portal/ prefix until this is fixed.'
+      '[portal files] Object storage: NOT configured. Missing: ' +
+        (objectStorageMissing.length ? objectStorageMissing.join(', ') : '(unknown)') +
+        '. Set these on the **API** process (e.g. App Platform → api service → env), not the static site. Then redeploy the API.'
     )
   }
 }

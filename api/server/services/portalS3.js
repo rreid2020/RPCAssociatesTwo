@@ -4,13 +4,35 @@ import { randomUUID } from 'crypto'
 
 const TTL = 300
 
+function readFirstEnv (...keys) {
+  for (const k of keys) {
+    const v = process.env[k]
+    if (typeof v === 'string' && v.trim()) return v.trim()
+  }
+  return ''
+}
+
 function readSpacesEnv () {
   return {
-    endpoint: (process.env.S3_ENDPOINT || process.env.DO_SPACES_ENDPOINT || '').trim(),
-    bucket: (process.env.S3_BUCKET || process.env.DO_SPACES_BUCKET || '').trim(),
-    accessKey: (process.env.S3_ACCESS_KEY || process.env.DO_SPACES_KEY || '').trim(),
-    secretKey: (process.env.S3_SECRET_KEY || process.env.DO_SPACES_SECRET || '').trim(),
-    region: (process.env.S3_REGION || process.env.DO_SPACES_REGION || 'us-east-1').trim()
+    endpoint: readFirstEnv('S3_ENDPOINT', 'DO_SPACES_ENDPOINT', 'SPACES_ENDPOINT'),
+    bucket: readFirstEnv('S3_BUCKET', 'DO_SPACES_BUCKET', 'SPACES_BUCKET'),
+    accessKey: readFirstEnv(
+      'S3_ACCESS_KEY',
+      'DO_SPACES_KEY',
+      'SPACES_KEY',
+      'DO_SPACES_ACCESS_KEY',
+      'DO_SPACES_ACCESS_KEY_ID',
+      'AWS_ACCESS_KEY_ID'
+    ),
+    secretKey: readFirstEnv(
+      'S3_SECRET_KEY',
+      'DO_SPACES_SECRET',
+      'SPACES_SECRET',
+      'DO_SPACES_SECRET_KEY',
+      'DO_SPACES_SECRET_ACCESS_KEY',
+      'AWS_SECRET_ACCESS_KEY'
+    ),
+    region: readFirstEnv('S3_REGION', 'DO_SPACES_REGION', 'SPACES_REGION', 'AWS_REGION') || 'us-east-1'
   }
 }
 
@@ -21,10 +43,10 @@ function readSpacesEnv () {
 export function getObjectStorageConfigDiagnostics () {
   const e = readSpacesEnv()
   const missing = []
-  if (!e.endpoint) missing.push('DO_SPACES_ENDPOINT (or S3_ENDPOINT)')
-  if (!e.bucket) missing.push('DO_SPACES_BUCKET (or S3_BUCKET)')
-  if (!e.accessKey) missing.push('DO_SPACES_KEY (or S3_ACCESS_KEY)')
-  if (!e.secretKey) missing.push('DO_SPACES_SECRET (or S3_SECRET_KEY)')
+  if (!e.endpoint) missing.push('DO_SPACES_ENDPOINT (or S3_ENDPOINT/SPACES_ENDPOINT)')
+  if (!e.bucket) missing.push('DO_SPACES_BUCKET (or S3_BUCKET/SPACES_BUCKET)')
+  if (!e.accessKey) missing.push('DO_SPACES_KEY (or S3_ACCESS_KEY/SPACES_KEY/DO_SPACES_ACCESS_KEY_ID)')
+  if (!e.secretKey) missing.push('DO_SPACES_SECRET (or S3_SECRET_KEY/SPACES_SECRET/DO_SPACES_SECRET_ACCESS_KEY)')
   return {
     objectStorageReady: missing.length === 0,
     objectStorageMissing: missing
@@ -86,9 +108,10 @@ export async function deleteObject (key) {
 export function logPortalObjectStorageConfig () {
   const s3 = getS3()
   if (s3) {
+    const env = readSpacesEnv()
     const host = (() => {
       try {
-        return new URL(process.env.S3_ENDPOINT || process.env.DO_SPACES_ENDPOINT).host
+        return new URL(env.endpoint).host
       } catch {
         return 'configured'
       }

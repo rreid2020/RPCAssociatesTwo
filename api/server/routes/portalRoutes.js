@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { getClerkUser, isStaff } from '../middleware/portalAuth.js'
-import { buildPortalObjectKey, deleteObject, getObjectStorageConfigDiagnostics, presignGet, presignPut } from '../services/portalS3.js'
+import { buildPortalObjectKey, deleteObject, getObjectStorageConfigDiagnostics, presignGet, presignPut, putObjectBytes } from '../services/portalS3.js'
 
 const MAX_UPLOAD_BYTES = parseInt(process.env.PORTAL_MAX_UPLOAD_BYTES || String(100 * 1024 * 1024), 10)
 
@@ -377,6 +377,65 @@ export function createPortalRouter (pool) {
       })
     }
     res.json({ uploadUrl: signed.url, storageKey: key, fileId })
+  })
+
+  /**
+   * Fallback upload route: browser sends file bytes to API as base64 JSON, API writes to Spaces,
+   * then creates the DB row in one request. This avoids browser->Spaces CORS edge cases.
+   */
+  r.post('/v1/files/upload-via-api', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const { fileName, contentType, dataBase64, folderId } = req.body || {}
+    if (!fileName || !dataBase64) {
+      return res.status(400).json({ error: 'fileName and dataBase64 are required' })
+    }
+    let bytes
+    try {
+      bytes = Buffer.from(String(dataBase64), 'base64')
+    } catch {
+      return res.status(400).json({ error: 'Invalid base64 file data' })
+    }
+    if (!bytes || !bytes.length) {
+      return res.status(400).json({ error: 'No file data received' })
+    }
+    if (bytes.length > MAX_UPLOAD_BYTES) {
+      return res.status(400).json({ error: `File exceeds maximum size of ${MAX_UPLOAD_BYTES} bytes` })
+    }
+    const { key } = buildPortalObjectKey(session.userId, fileName)
+    try {
+      const uploaded = await putObjectBytes(key, contentType || 'application/octet-stream', bytes)
+      if (!uploaded) {
+        return res.status(503).json({ error: 'Storage not configured', code: 'STORAGE_NOT_CONFIGURED' })
+      }
+    } catch (e) {
+      console.error('POST /v1/files/upload-via-api (storage)', e)
+      return res.status(502).json({ error: 'Could not upload file to storage' })
+    }
+
+    const home = await ensureUserHomeFolder(pool, session.userId)
+    let folderFid = home.id
+    if (folderId && String(folderId) !== 'root' && String(folderId) !== String(home.id) && String(folderId).length) {
+      const { rows: fr } = await pool.query(
+        'SELECT id FROM taxgpt.portal_folders WHERE id = $1::uuid AND clerk_user_id = $2',
+        [String(folderId), session.userId]
+      )
+      if (!fr[0]) return res.status(400).json({ error: 'Invalid folder' })
+      folderFid = fr[0].id
+    }
+
+    const { rows } = await pool.query(
+      `INSERT INTO taxgpt.portal_client_files
+       (clerk_user_id, storage_key, file_name, mime, size_bytes, created_at, folder_id)
+       VALUES ($1, $2, $3, $4, $5, now(), $6) RETURNING *`,
+      [session.userId, key, fileName, contentType || null, bytes.length, folderFid]
+    )
+    await pool.query(
+      `INSERT INTO taxgpt.portal_activity (clerk_user_id, kind, title, created_at)
+       VALUES ($1, 'file', $2, now())`,
+      [session.userId, `Uploaded: ${fileName}`]
+    )
+    res.json({ file: rows[0], usedApiUploadFallback: true })
   })
 
   r.post('/v1/files/complete', async (req, res) => {

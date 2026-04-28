@@ -84,6 +84,23 @@ export async function presignPut (key, contentType) {
   return { url }
 }
 
+/**
+ * Server-side upload path (fallback): accepts file bytes from the API caller and writes directly
+ * to Spaces/S3, bypassing browser CORS/presigned PUT issues.
+ */
+export async function putObjectBytes (key, contentType, bytes) {
+  const s3 = getS3()
+  if (!s3) return null
+  const cmd = new PutObjectCommand({
+    Bucket: s3.bucket,
+    Key: key,
+    ContentType: contentType || 'application/octet-stream',
+    Body: bytes
+  })
+  await s3.client.send(cmd)
+  return { ok: true }
+}
+
 /** True when env has Spaces/S3 credentials; used by the API to tell the UI if uploads are possible. */
 export function isPortalObjectStorageConfigured () {
   return getS3() != null

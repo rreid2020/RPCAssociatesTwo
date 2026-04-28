@@ -135,6 +135,24 @@ const FileRepository: FC = () => {
   }, [load])
 
   const putOne = async (file: File, inFolder: 'root' | string): Promise<PortalFile> => {
+    const completeViaApiFallback = async (): Promise<PortalFile> => {
+      const bytes = new Uint8Array(await file.arrayBuffer())
+      let binary = ''
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+      const dataBase64 = btoa(binary)
+      const body: Record<string, unknown> = {
+        fileName: file.name,
+        contentType: file.type || 'application/octet-stream',
+        dataBase64
+      }
+      if (inFolder !== 'root') body.folderId = inFolder
+      const { file: record } = await portalFetch<{ file: PortalFile }>('/v1/files/upload-via-api', getToken, {
+        method: 'POST',
+        body: JSON.stringify(body)
+      })
+      return record
+    }
+
     if (import.meta.env.DEV) {
       console.info('[FileRepository] presign-put for', { name: file.name, size: file.size, type: file.type || '(empty—using octet-stream)' })
     }
@@ -149,7 +167,8 @@ const FileRepository: FC = () => {
       })
     } catch (e) {
       console.error('[FileRepository] /v1/files/presign-put failed', e)
-      throw e
+      // If presign fails, try API-side upload fallback so users can still complete uploads.
+      return await completeViaApiFallback()
     }
     if (import.meta.env.DEV) {
       console.info('[FileRepository] PUT to Spaces/S3 (browser → storage)…', pres.storageKey)
@@ -162,18 +181,13 @@ const FileRepository: FC = () => {
         headers: { 'Content-Type': file.type || 'application/octet-stream' }
       })
     } catch (e) {
-      const base =
-        e instanceof TypeError
-          ? 'The browser could not complete the direct upload to storage. Most often the DigitalOcean Space needs CORS: allow your site origin, methods GET+PUT+HEAD, headers Content-Type. See comments in api/server/.env.example.'
-          : (e instanceof Error ? e.message : 'Network error during upload to storage.')
       console.error('[FileRepository] fetch(PUT) to presigned URL failed', e)
-      throw new Error(base)
+      return await completeViaApiFallback()
     }
     if (!put.ok) {
       const detail = (await put.text().catch(() => '')).trim().slice(0, 400)
-      const msg = `Storage returned ${put.status} for the upload${detail ? `: ${detail}` : ''}.`
       console.error('[FileRepository] PUT to storage not OK', put.status, detail)
-      throw new Error(msg)
+      return await completeViaApiFallback()
     }
     if (import.meta.env.DEV) {
       console.info('[FileRepository] Telling API /v1/files/complete to save DB row…')

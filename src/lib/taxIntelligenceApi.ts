@@ -37,5 +37,28 @@ export type TaxReturnSummary = {
   title: string
   province_code: string
   taxpayer_name: string
+  taxpayer_first_name?: string | null
+  taxpayer_last_name?: string | null
+  taxpayer_sin?: string | null
+  taxpayer_date_of_birth?: string | null
+  taxpayer_profile?: {
+    maritalStatus?: string
+    spouseReturnMode?: string
+    mailingAddressLine1?: string
+    mailingCity?: string
+    mailingProvinceCode?: string
+    mailingPostalCode?: string
+    residenceProvinceDec31?: string
+    electionsCanadianCitizen?: boolean | null
+    electionsAuthorize?: boolean | null
+    foreignPropertyOver100k?: boolean | null
+    spouse?: {
+      fullName?: string
+      firstName?: string
+      lastName?: string
+      dateOfBirth?: string | null
+      fullSin?: string
+    }
+  }
   updated_at: string
 }

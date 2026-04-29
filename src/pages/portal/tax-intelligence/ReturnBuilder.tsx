@@ -22,8 +22,36 @@ type TaxReturnPayload = {
     setup_json?: Record<string, unknown>
     taxpayer_profile?: {
       maritalStatus?: string
+      spouseReturnMode?: string
+      email?: string
+      mailingAddressLine1?: string
+      mailingPoBox?: string
+      mailingRR?: string
+      mailingCity?: string
+      mailingProvinceCode?: string
+      mailingPostalCode?: string
+      residenceProvinceDec31?: string
+      residenceProvinceCurrent?: string
+      selfEmploymentProvinces?: string
+      languageCorrespondence?: 'en' | 'fr'
+      becameResidentDate?: string | null
+      ceasedResidentDate?: string | null
+      maritalStatusChangeDate?: string | null
+      deceasedDate?: string | null
+      electionsCanadianCitizen?: boolean | null
+      electionsAuthorize?: boolean | null
+      indianActExemptIncome?: boolean
+      foreignPropertyOver100k?: boolean | null
+      organDonorConsent?: boolean | null
+      spouseSelfEmployed?: boolean
+      spouseNetIncome23600?: number
+      spouseUccb11700?: number
+      spouseUccbRepayment21300?: number
       spouse?: {
         fullName?: string
+        firstName?: string
+        lastName?: string
+        dateOfBirth?: string | null
         fullSin?: string
         sinLast4?: string
         netIncome?: number
@@ -94,9 +122,37 @@ type TaxpayerProfileState = {
   lastName: string
   dateOfBirth: string
   sin: string
+  email: string
+  mailingAddressLine1: string
+  mailingPoBox: string
+  mailingRR: string
+  mailingCity: string
+  mailingProvinceCode: string
+  mailingPostalCode: string
+  residenceProvinceDec31: string
+  residenceProvinceCurrent: string
+  selfEmploymentProvinces: string
+  languageCorrespondence: 'en' | 'fr'
+  becameResidentDate: string
+  ceasedResidentDate: string
+  maritalStatusChangeDate: string
+  deceasedDate: string
+  electionsCanadianCitizen: '' | 'yes' | 'no'
+  electionsAuthorize: '' | 'yes' | 'no'
+  indianActExemptIncome: boolean
+  foreignPropertyOver100k: '' | 'yes' | 'no'
+  organDonorConsent: '' | 'yes' | 'no'
   maritalStatus: 'single' | 'married' | 'common_law' | 'separated' | 'divorced' | 'widowed'
+  spouseReturnMode: 'summary' | 'full'
+  spouseSelfEmployed: boolean
+  spouseNetIncome23600: number
+  spouseUccb11700: number
+  spouseUccbRepayment21300: number
   spouse: {
     fullName: string
+    firstName: string
+    lastName: string
+    dateOfBirth: string
     fullSin: string
     netIncome: number
   }
@@ -105,6 +161,8 @@ type TaxpayerProfileState = {
 
 const steps = ['Setup', 'Income', 'Deductions', 'Review', 'Optimization', 'Risk'] as const
 type Step = typeof steps[number]
+type CompletenessSeverity = 'required' | 'recommended'
+type CompletenessIssue = { field: string; message: string; severity: CompletenessSeverity }
 
 type SlipRow = {
   slipCode: string
@@ -127,6 +185,20 @@ function sanitizeSin (value: string): string {
   return String(value || '').replace(/\D/g, '').slice(0, 9)
 }
 
+function coerceNullableBoolean (value: unknown): boolean | null {
+  if (value == null || value === '') return null
+  if (typeof value === 'boolean') return value
+  const normalized = String(value).toLowerCase().trim()
+  if (normalized === 'yes' || normalized === 'true' || normalized === '1') return true
+  if (normalized === 'no' || normalized === 'false' || normalized === '0') return false
+  return null
+}
+
+function asYesNo (value: boolean | null): '' | 'yes' | 'no' {
+  if (value == null) return ''
+  return value ? 'yes' : 'no'
+}
+
 const T1_DEDUCTION_FIELDS = [
   { key: 'rrsp', label: 'RRSP deduction', lineRef: '20800', category: 'rrsp', isCredit: false },
   { key: 'fhsa_deduction', label: 'FHSA deduction', lineRef: '20805', category: 'fhsa_deduction', isCredit: false },
@@ -144,9 +216,37 @@ const DEFAULT_TAXPAYER_PROFILE: TaxpayerProfileState = {
   lastName: '',
   dateOfBirth: '',
   sin: '',
+  email: '',
+  mailingAddressLine1: '',
+  mailingPoBox: '',
+  mailingRR: '',
+  mailingCity: '',
+  mailingProvinceCode: '',
+  mailingPostalCode: '',
+  residenceProvinceDec31: '',
+  residenceProvinceCurrent: '',
+  selfEmploymentProvinces: '',
+  languageCorrespondence: 'en',
+  becameResidentDate: '',
+  ceasedResidentDate: '',
+  maritalStatusChangeDate: '',
+  deceasedDate: '',
+  electionsCanadianCitizen: '',
+  electionsAuthorize: '',
+  indianActExemptIncome: false,
+  foreignPropertyOver100k: '',
+  organDonorConsent: '',
   maritalStatus: 'single',
+  spouseReturnMode: 'summary',
+  spouseSelfEmployed: false,
+  spouseNetIncome23600: 0,
+  spouseUccb11700: 0,
+  spouseUccbRepayment21300: 0,
   spouse: {
     fullName: '',
+    firstName: '',
+    lastName: '',
+    dateOfBirth: '',
     fullSin: '',
     netIncome: 0
   },
@@ -173,6 +273,25 @@ const ReturnBuilder: FC = () => {
   const [documents, setDocuments] = useState<Array<{ id: string; file_name: string }>>([])
   const [selectedDocumentId, setSelectedDocumentId] = useState('')
   const [newSlipCode, setNewSlipCode] = useState('T4')
+  const [setupIssueFilter, setSetupIssueFilter] = useState<'all' | 'required'>('all')
+
+  const requestedStep = useMemo<Step | null>(() => {
+    const value = new URLSearchParams(location.search).get('step')
+    if (!value) return null
+    const normalized = value.toLowerCase().trim()
+    if (normalized === 'setup') return 'Setup'
+    if (normalized === 'income') return 'Income'
+    if (normalized === 'deductions') return 'Deductions'
+    if (normalized === 'review') return 'Review'
+    if (normalized === 'optimization') return 'Optimization'
+    if (normalized === 'risk') return 'Risk'
+    return null
+  }, [location.search])
+
+  const requestedSetupFocus = useMemo<'all' | 'required'>(() => {
+    const value = new URLSearchParams(location.search).get('setupFocus')
+    return String(value || '').toLowerCase() === 'required' ? 'required' : 'all'
+  }, [location.search])
 
   const createSlipRow = (slipCode: string): SlipRow => ({
     slipCode,
@@ -181,7 +300,67 @@ const ReturnBuilder: FC = () => {
     taxpayerRole: 'self',
     boxes: Object.fromEntries((SLIP_DEFINITIONS_BY_CODE[slipCode]?.boxes || []).map((b) => [b.code, 0]))
   })
-  const hasSpouseReturnMode = taxpayerProfile.maritalStatus === 'married' || taxpayerProfile.maritalStatus === 'common_law'
+  const hasSpouseReturnMode =
+    (taxpayerProfile.maritalStatus === 'married' || taxpayerProfile.maritalStatus === 'common_law') &&
+    taxpayerProfile.spouseReturnMode === 'full'
+  const setupCompletenessIssues = useMemo<CompletenessIssue[]>(() => {
+    const issues: CompletenessIssue[] = []
+    const married = taxpayerProfile.maritalStatus === 'married' || taxpayerProfile.maritalStatus === 'common_law'
+    const spouseMode = married ? taxpayerProfile.spouseReturnMode : 'summary'
+    const missing = (value: string) => !String(value || '').trim()
+
+    if (missing(taxpayerProfile.firstName)) issues.push({ field: 'firstName', message: 'Taxpayer first name is missing.', severity: 'required' })
+    if (missing(taxpayerProfile.lastName)) issues.push({ field: 'lastName', message: 'Taxpayer last name is missing.', severity: 'required' })
+    if (!sanitizeSin(taxpayerProfile.sin)) issues.push({ field: 'sin', message: 'Taxpayer SIN is missing or incomplete.', severity: 'required' })
+    if (missing(taxpayerProfile.dateOfBirth)) issues.push({ field: 'dateOfBirth', message: 'Taxpayer date of birth is missing.', severity: 'required' })
+    if (missing(taxpayerProfile.mailingAddressLine1)) issues.push({ field: 'mailingAddressLine1', message: 'Mailing address line is missing.', severity: 'required' })
+    if (missing(taxpayerProfile.mailingCity)) issues.push({ field: 'mailingCity', message: 'Mailing city is missing.', severity: 'required' })
+    if (missing(taxpayerProfile.mailingProvinceCode)) issues.push({ field: 'mailingProvinceCode', message: 'Mailing province/territory is missing.', severity: 'required' })
+    if (missing(taxpayerProfile.mailingPostalCode)) issues.push({ field: 'mailingPostalCode', message: 'Mailing postal code is missing.', severity: 'required' })
+    if (missing(taxpayerProfile.residenceProvinceDec31)) issues.push({ field: 'residenceProvinceDec31', message: 'Province/territory of residence on Dec 31 is missing.', severity: 'required' })
+    if (taxpayerProfile.electionsCanadianCitizen === '') issues.push({ field: 'electionsCanadianCitizen', message: 'Elections Canada citizenship question is unanswered.', severity: 'recommended' })
+    if (taxpayerProfile.electionsCanadianCitizen === 'yes' && taxpayerProfile.electionsAuthorize === '') {
+      issues.push({ field: 'electionsAuthorize', message: 'Elections Canada authorization question is unanswered.', severity: 'recommended' })
+    }
+    if (taxpayerProfile.foreignPropertyOver100k === '') issues.push({ field: 'foreignPropertyOver100k', message: 'Foreign property question is unanswered.', severity: 'recommended' })
+
+    if (married) {
+      if (spouseMode === 'full') {
+        if (missing(taxpayerProfile.spouse.firstName)) issues.push({ field: 'spouse.firstName', message: 'Spouse first name is missing for full spouse return mode.', severity: 'required' })
+        if (missing(taxpayerProfile.spouse.lastName)) issues.push({ field: 'spouse.lastName', message: 'Spouse last name is missing for full spouse return mode.', severity: 'required' })
+        if (missing(taxpayerProfile.spouse.dateOfBirth)) issues.push({ field: 'spouse.dateOfBirth', message: 'Spouse date of birth is missing for full spouse return mode.', severity: 'required' })
+        if (!sanitizeSin(taxpayerProfile.spouse.fullSin)) issues.push({ field: 'spouse.fullSin', message: 'Spouse SIN is missing or incomplete for full spouse return mode.', severity: 'required' })
+      } else if (missing(taxpayerProfile.spouse.fullName)) {
+        issues.push({ field: 'spouse.fullName', message: 'Spouse full name is missing for summary spouse mode.', severity: 'required' })
+      }
+      if (taxpayerProfile.spouseNetIncome23600 < 0) {
+        issues.push({ field: 'spouseNetIncome23600', message: 'Spouse net income (line 23600) cannot be negative.', severity: 'recommended' })
+      }
+    }
+    return issues
+  }, [taxpayerProfile])
+  const requiredSetupIssueCount = useMemo(
+    () => setupCompletenessIssues.filter((item) => item.severity === 'required').length,
+    [setupCompletenessIssues]
+  )
+  const recommendedSetupIssueCount = useMemo(
+    () => setupCompletenessIssues.filter((item) => item.severity === 'recommended').length,
+    [setupCompletenessIssues]
+  )
+  const visibleSetupCompletenessIssues = useMemo(
+    () => (setupIssueFilter === 'required'
+      ? setupCompletenessIssues.filter((item) => item.severity === 'required')
+      : setupCompletenessIssues),
+    [setupCompletenessIssues, setupIssueFilter]
+  )
+
+  useEffect(() => {
+    if (requestedStep) setActiveStep(requestedStep)
+  }, [requestedStep])
+
+  useEffect(() => {
+    setSetupIssueFilter(requestedSetupFocus)
+  }, [requestedSetupFocus])
 
   const load = async () => {
     if (!id) return
@@ -204,11 +383,39 @@ const ReturnBuilder: FC = () => {
         lastName: String(returnData.taxReturn.taxpayer_last_name || ''),
         dateOfBirth: String(returnData.taxReturn.taxpayer_date_of_birth || ''),
         sin: String(returnData.taxReturn.taxpayer_sin || ''),
+        email: String(dbProfile.email || setupProfile.email || ''),
+        mailingAddressLine1: String(dbProfile.mailingAddressLine1 || setupProfile.mailingAddressLine1 || ''),
+        mailingPoBox: String(dbProfile.mailingPoBox || setupProfile.mailingPoBox || ''),
+        mailingRR: String(dbProfile.mailingRR || setupProfile.mailingRR || ''),
+        mailingCity: String(dbProfile.mailingCity || setupProfile.mailingCity || ''),
+        mailingProvinceCode: String(dbProfile.mailingProvinceCode || setupProfile.mailingProvinceCode || ''),
+        mailingPostalCode: String(dbProfile.mailingPostalCode || setupProfile.mailingPostalCode || ''),
+        residenceProvinceDec31: String(dbProfile.residenceProvinceDec31 || setupProfile.residenceProvinceDec31 || ''),
+        residenceProvinceCurrent: String(dbProfile.residenceProvinceCurrent || setupProfile.residenceProvinceCurrent || ''),
+        selfEmploymentProvinces: String(dbProfile.selfEmploymentProvinces || setupProfile.selfEmploymentProvinces || ''),
+        languageCorrespondence: String(dbProfile.languageCorrespondence || setupProfile.languageCorrespondence || 'en') === 'fr' ? 'fr' : 'en',
+        becameResidentDate: String(dbProfile.becameResidentDate || setupProfile.becameResidentDate || ''),
+        ceasedResidentDate: String(dbProfile.ceasedResidentDate || setupProfile.ceasedResidentDate || ''),
+        maritalStatusChangeDate: String(dbProfile.maritalStatusChangeDate || setupProfile.maritalStatusChangeDate || ''),
+        deceasedDate: String(dbProfile.deceasedDate || setupProfile.deceasedDate || ''),
+        electionsCanadianCitizen: asYesNo(coerceNullableBoolean(dbProfile.electionsCanadianCitizen ?? setupProfile.electionsCanadianCitizen)),
+        electionsAuthorize: asYesNo(coerceNullableBoolean(dbProfile.electionsAuthorize ?? setupProfile.electionsAuthorize)),
+        indianActExemptIncome: Boolean(coerceNullableBoolean(dbProfile.indianActExemptIncome ?? setupProfile.indianActExemptIncome)),
+        foreignPropertyOver100k: asYesNo(coerceNullableBoolean(dbProfile.foreignPropertyOver100k ?? setupProfile.foreignPropertyOver100k)),
+        organDonorConsent: asYesNo(coerceNullableBoolean(dbProfile.organDonorConsent ?? setupProfile.organDonorConsent)),
         maritalStatus: (['single', 'married', 'common_law', 'separated', 'divorced', 'widowed'].includes(String(dbProfile.maritalStatus || setupProfile.maritalStatus))
           ? String(dbProfile.maritalStatus || setupProfile.maritalStatus)
           : 'single') as TaxpayerProfileState['maritalStatus'],
+        spouseReturnMode: String(dbProfile.spouseReturnMode || setupProfile.spouseReturnMode || 'summary') === 'full' ? 'full' : 'summary',
+        spouseSelfEmployed: Boolean(coerceNullableBoolean(dbProfile.spouseSelfEmployed ?? setupProfile.spouseSelfEmployed)),
+        spouseNetIncome23600: Number(dbProfile.spouseNetIncome23600 ?? setupProfile.spouseNetIncome23600 ?? spouseObj.netIncome ?? 0),
+        spouseUccb11700: Number(dbProfile.spouseUccb11700 ?? setupProfile.spouseUccb11700 ?? 0),
+        spouseUccbRepayment21300: Number(dbProfile.spouseUccbRepayment21300 ?? setupProfile.spouseUccbRepayment21300 ?? 0),
         spouse: {
           fullName: String(spouseObj.fullName || ''),
+          firstName: String(spouseObj.firstName || ''),
+          lastName: String(spouseObj.lastName || ''),
+          dateOfBirth: String(spouseObj.dateOfBirth || ''),
           fullSin: String(spouseObj.fullSin || ''),
           netIncome: Number(spouseObj.netIncome || 0)
         },
@@ -298,6 +505,13 @@ const ReturnBuilder: FC = () => {
   useEffect(() => {
     if (!hasSpouseReturnMode && returnRole === 'spouse') setReturnRole('self')
   }, [hasSpouseReturnMode, returnRole])
+
+  useEffect(() => {
+    const married = taxpayerProfile.maritalStatus === 'married' || taxpayerProfile.maritalStatus === 'common_law'
+    if (!married && taxpayerProfile.spouseReturnMode !== 'summary') {
+      setTaxpayerProfile((prev) => ({ ...prev, spouseReturnMode: 'summary' }))
+    }
+  }, [taxpayerProfile.maritalStatus, taxpayerProfile.spouseReturnMode])
 
   const addIncomeRow = (role: 'self' | 'spouse') => setIncomeRows((prev) => [...prev, { category: 'employment_income', description: '', amount: 0, taxpayerRole: role }])
   const addSlipRow = (role: 'self' | 'spouse') => setManualSlipRows((prev) => [...prev, { ...createSlipRow(newSlipCode), taxpayerRole: role }])
@@ -516,15 +730,57 @@ const ReturnBuilder: FC = () => {
     if (!data?.taxReturn?.id) return
     setSaving(true)
     setProfileSavedMsg(null)
+    setErr(null)
     try {
+      const married = taxpayerProfile.maritalStatus === 'married' || taxpayerProfile.maritalStatus === 'common_law'
+      const spouseMode = married ? taxpayerProfile.spouseReturnMode : 'summary'
+
       const fullName = `${taxpayerProfile.firstName} ${taxpayerProfile.lastName}`.trim() || data.taxReturn.taxpayer_name
       const normalizedProfile = {
         maritalStatus: taxpayerProfile.maritalStatus,
+        spouseReturnMode: spouseMode,
+        email: taxpayerProfile.email.trim(),
+        mailingAddressLine1: taxpayerProfile.mailingAddressLine1.trim(),
+        mailingPoBox: taxpayerProfile.mailingPoBox.trim(),
+        mailingRR: taxpayerProfile.mailingRR.trim(),
+        mailingCity: taxpayerProfile.mailingCity.trim(),
+        mailingProvinceCode: taxpayerProfile.mailingProvinceCode.trim(),
+        mailingPostalCode: taxpayerProfile.mailingPostalCode.trim(),
+        residenceProvinceDec31: taxpayerProfile.residenceProvinceDec31.trim(),
+        residenceProvinceCurrent: taxpayerProfile.residenceProvinceCurrent.trim(),
+        selfEmploymentProvinces: taxpayerProfile.selfEmploymentProvinces.trim(),
+        languageCorrespondence: taxpayerProfile.languageCorrespondence,
+        becameResidentDate: taxpayerProfile.becameResidentDate || null,
+        ceasedResidentDate: taxpayerProfile.ceasedResidentDate || null,
+        maritalStatusChangeDate: taxpayerProfile.maritalStatusChangeDate || null,
+        deceasedDate: taxpayerProfile.deceasedDate || null,
+        electionsCanadianCitizen: taxpayerProfile.electionsCanadianCitizen === ''
+          ? null
+          : taxpayerProfile.electionsCanadianCitizen === 'yes',
+        electionsAuthorize: taxpayerProfile.electionsAuthorize === ''
+          ? null
+          : taxpayerProfile.electionsAuthorize === 'yes',
+        indianActExemptIncome: Boolean(taxpayerProfile.indianActExemptIncome),
+        foreignPropertyOver100k: taxpayerProfile.foreignPropertyOver100k === ''
+          ? null
+          : taxpayerProfile.foreignPropertyOver100k === 'yes',
+        organDonorConsent: taxpayerProfile.organDonorConsent === ''
+          ? null
+          : taxpayerProfile.organDonorConsent === 'yes',
+        spouseSelfEmployed: Boolean(taxpayerProfile.spouseSelfEmployed),
+        spouseNetIncome23600: Number(taxpayerProfile.spouseNetIncome23600 || taxpayerProfile.spouse.netIncome || 0),
+        spouseUccb11700: Number(taxpayerProfile.spouseUccb11700 || 0),
+        spouseUccbRepayment21300: Number(taxpayerProfile.spouseUccbRepayment21300 || 0),
         spouse: {
           ...taxpayerProfile.spouse,
-          fullName: taxpayerProfile.spouse.fullName.trim(),
+          fullName: spouseMode === 'full'
+            ? `${taxpayerProfile.spouse.firstName} ${taxpayerProfile.spouse.lastName}`.trim()
+            : taxpayerProfile.spouse.fullName.trim(),
+          firstName: taxpayerProfile.spouse.firstName.trim(),
+          lastName: taxpayerProfile.spouse.lastName.trim(),
+          dateOfBirth: taxpayerProfile.spouse.dateOfBirth || null,
           fullSin: sanitizeSin(taxpayerProfile.spouse.fullSin),
-          netIncome: Number(taxpayerProfile.spouse.netIncome || 0)
+          netIncome: Number(taxpayerProfile.spouseNetIncome23600 || taxpayerProfile.spouse.netIncome || 0)
         },
         dependents: taxpayerProfile.dependents
           .filter((d) => d.fullName.trim().length > 0)
@@ -547,7 +803,11 @@ const ReturnBuilder: FC = () => {
         })
       })
       await load()
-      setProfileSavedMsg('Taxpayer profile saved.')
+      if (setupCompletenessIssues.length > 0) {
+        setProfileSavedMsg(`Taxpayer profile saved with ${setupCompletenessIssues.length} non-blocking completeness warning(s).`)
+      } else {
+        setProfileSavedMsg('Taxpayer profile saved.')
+      }
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not save taxpayer profile')
     } finally {
@@ -586,6 +846,8 @@ const ReturnBuilder: FC = () => {
                   }`}
                 >
                   {step}
+                  {step === 'Setup' && requiredSetupIssueCount > 0 ? ` (${requiredSetupIssueCount} required)` : ''}
+                  {step === 'Setup' && requiredSetupIssueCount === 0 && recommendedSetupIssueCount > 0 ? ` (${recommendedSetupIssueCount} review)` : ''}
                 </button>
               ))}
             </div>
@@ -620,10 +882,52 @@ const ReturnBuilder: FC = () => {
                 Return status: <strong className="text-text">{data?.taxReturn.status}</strong>. Complete taxpayer profile details for T1 Step 1 and family-related claims.
               </p>
               <p className="text-xs text-text-light">
-                Full spouse return inputs are entered in the Income and Deductions steps using the Taxpayer/Spouse selector.
+                If married/common-law, choose spouse mode below: Summary only or Complete full spouse return.
               </p>
               {profileSavedMsg && (
                 <p className="text-sm text-green-800 bg-green-50 border border-green-200 rounded-md px-3 py-2">{profileSavedMsg}</p>
+              )}
+              {setupCompletenessIssues.length > 0 && (
+                <div className="rounded-md border border-amber-300 bg-amber-50 p-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-medium text-amber-900">T1 Setup completeness checker</p>
+                    <span className="text-[11px] text-amber-900 border border-amber-300 bg-amber-100 rounded px-2 py-0.5">
+                      {requiredSetupIssueCount} required
+                    </span>
+                    <span className="text-[11px] text-amber-900 border border-amber-300 bg-amber-100 rounded px-2 py-0.5">
+                      {recommendedSetupIssueCount} recommended
+                    </span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      className={`px-2 py-1 text-[11px] rounded border ${setupIssueFilter === 'all' ? 'bg-amber-700 text-white border-amber-700' : 'bg-white text-amber-900 border-amber-300'}`}
+                      onClick={() => setSetupIssueFilter('all')}
+                    >
+                      Show all warnings
+                    </button>
+                    <button
+                      type="button"
+                      className={`px-2 py-1 text-[11px] rounded border ${setupIssueFilter === 'required' ? 'bg-amber-700 text-white border-amber-700' : 'bg-white text-amber-900 border-amber-300'}`}
+                      onClick={() => setSetupIssueFilter('required')}
+                    >
+                      Show required only
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs text-amber-800">
+                    These items are non-blocking. You can continue to Income, Deductions, and Review without clearing them.
+                  </p>
+                  <ul className="mt-2 space-y-1 text-xs text-amber-900">
+                    {visibleSetupCompletenessIssues.map((item, idx) => (
+                      <li key={`${item.field}-${idx}`}>
+                        [{item.severity === 'required' ? 'REQUIRED' : 'RECOMMENDED'}] {item.message}
+                      </li>
+                    ))}
+                    {visibleSetupCompletenessIssues.length === 0 && (
+                      <li>[REQUIRED] No required warnings at the moment.</li>
+                    )}
+                  </ul>
+                </div>
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <label className="text-xs text-text-light">
@@ -660,6 +964,14 @@ const ReturnBuilder: FC = () => {
                   />
                 </label>
                 <label className="text-xs text-text-light md:col-span-2">
+                  Email address
+                  <input
+                    className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                    value={taxpayerProfile.email}
+                    onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, email: e.target.value }))}
+                  />
+                </label>
+                <label className="text-xs text-text-light md:col-span-2">
                   Marital status
                   <select
                     className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
@@ -676,50 +988,347 @@ const ReturnBuilder: FC = () => {
                 </label>
               </div>
 
+              <div className="border border-border rounded-md p-3 bg-background/50 space-y-2">
+                <h3 className="text-sm font-semibold text-primary-dark">Mailing and residence information (T1 Step 1)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <label className="text-xs text-text-light md:col-span-2">
+                    Mailing address (apartment, number, street)
+                    <input
+                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                      value={taxpayerProfile.mailingAddressLine1}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, mailingAddressLine1: e.target.value }))}
+                    />
+                  </label>
+                  <label className="text-xs text-text-light">
+                    PO Box
+                    <input
+                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                      value={taxpayerProfile.mailingPoBox}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, mailingPoBox: e.target.value }))}
+                    />
+                  </label>
+                  <label className="text-xs text-text-light">
+                    RR
+                    <input
+                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                      value={taxpayerProfile.mailingRR}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, mailingRR: e.target.value }))}
+                    />
+                  </label>
+                  <label className="text-xs text-text-light">
+                    City
+                    <input
+                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                      value={taxpayerProfile.mailingCity}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, mailingCity: e.target.value }))}
+                    />
+                  </label>
+                  <label className="text-xs text-text-light">
+                    Province/Territory
+                    <input
+                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                      value={taxpayerProfile.mailingProvinceCode}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, mailingProvinceCode: e.target.value.toUpperCase().slice(0, 8) }))}
+                    />
+                  </label>
+                  <label className="text-xs text-text-light">
+                    Postal code
+                    <input
+                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                      value={taxpayerProfile.mailingPostalCode}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, mailingPostalCode: e.target.value.toUpperCase() }))}
+                    />
+                  </label>
+                  <label className="text-xs text-text-light">
+                    Province/territory of residence on Dec 31
+                    <input
+                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                      value={taxpayerProfile.residenceProvinceDec31}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, residenceProvinceDec31: e.target.value.toUpperCase().slice(0, 8) }))}
+                    />
+                  </label>
+                  <label className="text-xs text-text-light md:col-span-2">
+                    Current residence province/territory if different from mailing address
+                    <input
+                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                      value={taxpayerProfile.residenceProvinceCurrent}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, residenceProvinceCurrent: e.target.value.toUpperCase().slice(0, 8) }))}
+                    />
+                  </label>
+                  <label className="text-xs text-text-light md:col-span-2">
+                    Provinces/territories where you had business permanent establishments (if self-employed)
+                    <input
+                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                      value={taxpayerProfile.selfEmploymentProvinces}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, selfEmploymentProvinces: e.target.value }))}
+                    />
+                  </label>
+                  <label className="text-xs text-text-light">
+                    Language of correspondence
+                    <select
+                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                      value={taxpayerProfile.languageCorrespondence}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, languageCorrespondence: e.target.value === 'fr' ? 'fr' : 'en' }))}
+                    >
+                      <option value="en">English</option>
+                      <option value="fr">French</option>
+                    </select>
+                  </label>
+                  <label className="text-xs text-text-light">
+                    Date marital status changed (if changed this year)
+                    <input
+                      type="date"
+                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                      value={taxpayerProfile.maritalStatusChangeDate ? taxpayerProfile.maritalStatusChangeDate.slice(0, 10) : ''}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, maritalStatusChangeDate: e.target.value }))}
+                    />
+                  </label>
+                  <label className="text-xs text-text-light">
+                    Date of entry to Canada (if became resident this year)
+                    <input
+                      type="date"
+                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                      value={taxpayerProfile.becameResidentDate ? taxpayerProfile.becameResidentDate.slice(0, 10) : ''}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, becameResidentDate: e.target.value }))}
+                    />
+                  </label>
+                  <label className="text-xs text-text-light">
+                    Date of departure from Canada (if ceased residency this year)
+                    <input
+                      type="date"
+                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                      value={taxpayerProfile.ceasedResidentDate ? taxpayerProfile.ceasedResidentDate.slice(0, 10) : ''}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, ceasedResidentDate: e.target.value }))}
+                    />
+                  </label>
+                  <label className="text-xs text-text-light md:col-span-2">
+                    Date of death (if filing for a deceased person)
+                    <input
+                      type="date"
+                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                      value={taxpayerProfile.deceasedDate ? taxpayerProfile.deceasedDate.slice(0, 10) : ''}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, deceasedDate: e.target.value }))}
+                    />
+                  </label>
+                </div>
+              </div>
+
               {(taxpayerProfile.maritalStatus === 'married' || taxpayerProfile.maritalStatus === 'common_law') && (
                 <div className="border border-border rounded-md p-3 bg-background/50 space-y-2">
                   <h3 className="text-sm font-semibold text-primary-dark">Spouse or common-law partner</h3>
+                  <div className="text-xs text-text-light border border-border rounded-md p-2 bg-white">
+                    Choose spouse return mode:
+                    <div className="mt-2 flex items-center gap-2">
+                      <button
+                        type="button"
+                        className={`px-2 py-1 text-xs rounded border ${taxpayerProfile.spouseReturnMode === 'summary' ? 'bg-primary-dark text-white border-primary-dark' : 'bg-white text-text border-border'}`}
+                        onClick={() => setTaxpayerProfile((prev) => ({ ...prev, spouseReturnMode: 'summary' }))}
+                      >
+                        Summary only
+                      </button>
+                      <button
+                        type="button"
+                        className={`px-2 py-1 text-xs rounded border ${taxpayerProfile.spouseReturnMode === 'full' ? 'bg-primary-dark text-white border-primary-dark' : 'bg-white text-text border-border'}`}
+                        onClick={() => setTaxpayerProfile((prev) => ({ ...prev, spouseReturnMode: 'full' }))}
+                      >
+                        Complete full spouse return
+                      </button>
+                    </div>
+                  </div>
+
+                  {taxpayerProfile.spouseReturnMode === 'summary' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <label className="text-xs text-text-light">
+                        Full name (required)
+                        <input
+                          className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                          value={taxpayerProfile.spouse.fullName}
+                          onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, fullName: e.target.value } }))}
+                        />
+                      </label>
+                      <label className="text-xs text-text-light">
+                        SIN (9 digits)
+                        <input
+                          className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                          value={taxpayerProfile.spouse.fullSin}
+                          onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, fullSin: sanitizeSin(e.target.value) } }))}
+                        />
+                      </label>
+                      <label className="text-xs text-text-light">
+                        Net income (line 23600)
+                        <input
+                          type="number"
+                          className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                          value={Number(taxpayerProfile.spouseNetIncome23600 || 0)}
+                          onChange={(e) => setTaxpayerProfile((prev) => ({
+                            ...prev,
+                            spouseNetIncome23600: Number(e.target.value || 0),
+                            spouse: { ...prev.spouse, netIncome: Number(e.target.value || 0) }
+                          }))}
+                        />
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <label className="text-xs text-text-light">
+                          First name (required)
+                          <input
+                            className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                            value={taxpayerProfile.spouse.firstName}
+                            onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, firstName: e.target.value } }))}
+                          />
+                        </label>
+                        <label className="text-xs text-text-light">
+                          Last name (required)
+                          <input
+                            className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                            value={taxpayerProfile.spouse.lastName}
+                            onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, lastName: e.target.value } }))}
+                          />
+                        </label>
+                        <label className="text-xs text-text-light">
+                          Date of birth (required)
+                          <input
+                            type="date"
+                            className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                            value={taxpayerProfile.spouse.dateOfBirth ? taxpayerProfile.spouse.dateOfBirth.slice(0, 10) : ''}
+                            onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, dateOfBirth: e.target.value } }))}
+                          />
+                        </label>
+                        <label className="text-xs text-text-light">
+                          Net income (line 23600)
+                          <input
+                            type="number"
+                            className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                            value={Number(taxpayerProfile.spouseNetIncome23600 || 0)}
+                            onChange={(e) => setTaxpayerProfile((prev) => ({
+                              ...prev,
+                              spouseNetIncome23600: Number(e.target.value || 0),
+                              spouse: { ...prev.spouse, netIncome: Number(e.target.value || 0) }
+                            }))}
+                          />
+                        </label>
+                        <label className="text-xs text-text-light">
+                          SIN (9 digits) (required)
+                          <input
+                            className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                            value={taxpayerProfile.spouse.fullSin}
+                            onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, fullSin: sanitizeSin(e.target.value) } }))}
+                          />
+                        </label>
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          type="button"
+                          className="btn btn--secondary text-xs px-2 py-1"
+                          onClick={() => {
+                            setReturnRole('spouse')
+                            setActiveStep('Income')
+                          }}
+                        >
+                          Build spouse return now
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <label className="text-xs text-text-light">
-                      Full name
+                    <label className="text-xs text-text-light inline-flex items-center gap-2">
                       <input
-                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                        value={taxpayerProfile.spouse.fullName}
-                        onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, fullName: e.target.value } }))}
+                        type="checkbox"
+                        checked={taxpayerProfile.spouseSelfEmployed}
+                        onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouseSelfEmployed: e.target.checked }))}
                       />
+                      Spouse was self-employed in the tax year
                     </label>
                     <label className="text-xs text-text-light">
-                      SIN (9 digits)
-                      <input
-                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                        value={taxpayerProfile.spouse.fullSin}
-                        onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, fullSin: sanitizeSin(e.target.value) } }))}
-                      />
-                    </label>
-                    <label className="text-xs text-text-light">
-                      Net income
+                      UCCB amount from spouse line 11700
                       <input
                         type="number"
                         className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                        value={Number(taxpayerProfile.spouse.netIncome || 0)}
-                        onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, netIncome: Number(e.target.value || 0) } }))}
+                        value={Number(taxpayerProfile.spouseUccb11700 || 0)}
+                        onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouseUccb11700: Number(e.target.value || 0) }))}
+                      />
+                    </label>
+                    <label className="text-xs text-text-light">
+                      UCCB repayment from spouse line 21300
+                      <input
+                        type="number"
+                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                        value={Number(taxpayerProfile.spouseUccbRepayment21300 || 0)}
+                        onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouseUccbRepayment21300: Number(e.target.value || 0) }))}
                       />
                     </label>
                   </div>
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      type="button"
-                      className="btn btn--secondary text-xs px-2 py-1"
-                      onClick={() => {
-                        setReturnRole('spouse')
-                        setActiveStep('Income')
-                      }}
-                    >
-                      Build spouse return now
-                    </button>
+                  <div className="text-[11px] text-text-light">
+                    {taxpayerProfile.spouseReturnMode === 'summary'
+                      ? 'Summary mode stores spouse profile basics only.'
+                      : 'Full mode requires complete spouse profile and enables full spouse return entry in Income and Deductions.'}
                   </div>
                 </div>
               )}
+
+              <div className="border border-border rounded-md p-3 bg-background/50 space-y-3">
+                <h3 className="text-sm font-semibold text-primary-dark">T1 page 2 questions and elections</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <label className="text-xs text-text-light">
+                    Elections Canada - Are you a Canadian citizen?
+                    <select
+                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                      value={taxpayerProfile.electionsCanadianCitizen}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, electionsCanadianCitizen: e.target.value as TaxpayerProfileState['electionsCanadianCitizen'] }))}
+                    >
+                      <option value="">Select...</option>
+                      <option value="yes">Yes</option>
+                      <option value="no">No</option>
+                    </select>
+                  </label>
+                  <label className="text-xs text-text-light">
+                    Elections Canada authorization to share information with Elections Canada
+                    <select
+                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                      value={taxpayerProfile.electionsAuthorize}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, electionsAuthorize: e.target.value as TaxpayerProfileState['electionsAuthorize'] }))}
+                    >
+                      <option value="">Select...</option>
+                      <option value="yes">Yes</option>
+                      <option value="no">No</option>
+                    </select>
+                  </label>
+                  <label className="text-xs text-text-light inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={taxpayerProfile.indianActExemptIncome}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, indianActExemptIncome: e.target.checked }))}
+                    />
+                    Tick if you had income exempt under the Indian Act
+                  </label>
+                  <label className="text-xs text-text-light">
+                    Did you own/hold specified foreign property above CAD 100,000 at any point in the year?
+                    <select
+                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                      value={taxpayerProfile.foreignPropertyOver100k}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, foreignPropertyOver100k: e.target.value as TaxpayerProfileState['foreignPropertyOver100k'] }))}
+                    >
+                      <option value="">Select...</option>
+                      <option value="yes">Yes</option>
+                      <option value="no">No</option>
+                    </select>
+                  </label>
+                  <label className="text-xs text-text-light md:col-span-2">
+                    Ontario organ/tissue donor contact sharing consent
+                    <select
+                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                      value={taxpayerProfile.organDonorConsent}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, organDonorConsent: e.target.value as TaxpayerProfileState['organDonorConsent'] }))}
+                    >
+                      <option value="">Select...</option>
+                      <option value="yes">Yes</option>
+                      <option value="no">No</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
 
               <div className="border border-border rounded-md p-3 bg-background/50 space-y-2">
                 <div className="flex items-center justify-between">

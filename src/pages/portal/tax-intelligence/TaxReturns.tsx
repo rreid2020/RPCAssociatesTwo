@@ -6,6 +6,52 @@ import ClientPortalShell from '../../../components/ClientPortalShell'
 import { taxFetch, type TaxReturnSummary } from '../../../lib/taxIntelligenceApi'
 import { getTaxBasePath } from './path'
 
+type ReadinessIssueSeverity = 'required' | 'recommended'
+
+function sanitizeSin (value: string): string {
+  return String(value || '').replace(/\D/g, '').slice(0, 9)
+}
+
+function computeSetupReadiness (r: TaxReturnSummary): { required: number; recommended: number } {
+  const issues: Array<{ severity: ReadinessIssueSeverity }> = []
+  const profile = r.taxpayer_profile || {}
+  const spouse = profile.spouse || {}
+  const maritalStatus = String(profile.maritalStatus || 'single')
+  const spouseMode = String(profile.spouseReturnMode || 'summary') === 'full' ? 'full' : 'summary'
+  const married = maritalStatus === 'married' || maritalStatus === 'common_law'
+  const missing = (value: unknown) => !String(value || '').trim()
+
+  if (missing(r.taxpayer_first_name)) issues.push({ severity: 'required' })
+  if (missing(r.taxpayer_last_name)) issues.push({ severity: 'required' })
+  if (!sanitizeSin(String(r.taxpayer_sin || ''))) issues.push({ severity: 'required' })
+  if (missing(r.taxpayer_date_of_birth)) issues.push({ severity: 'required' })
+  if (missing(profile.mailingAddressLine1)) issues.push({ severity: 'required' })
+  if (missing(profile.mailingCity)) issues.push({ severity: 'required' })
+  if (missing(profile.mailingProvinceCode)) issues.push({ severity: 'required' })
+  if (missing(profile.mailingPostalCode)) issues.push({ severity: 'required' })
+  if (missing(profile.residenceProvinceDec31)) issues.push({ severity: 'required' })
+
+  if (profile.electionsCanadianCitizen == null) issues.push({ severity: 'recommended' })
+  if (profile.electionsCanadianCitizen === true && profile.electionsAuthorize == null) issues.push({ severity: 'recommended' })
+  if (profile.foreignPropertyOver100k == null) issues.push({ severity: 'recommended' })
+
+  if (married) {
+    if (spouseMode === 'full') {
+      if (missing(spouse.firstName)) issues.push({ severity: 'required' })
+      if (missing(spouse.lastName)) issues.push({ severity: 'required' })
+      if (missing(spouse.dateOfBirth)) issues.push({ severity: 'required' })
+      if (!sanitizeSin(String(spouse.fullSin || ''))) issues.push({ severity: 'required' })
+    } else if (missing(spouse.fullName)) {
+      issues.push({ severity: 'required' })
+    }
+  }
+
+  return {
+    required: issues.filter((it) => it.severity === 'required').length,
+    recommended: issues.filter((it) => it.severity === 'recommended').length
+  }
+}
+
 const TaxReturns: FC = () => {
   const { getToken } = useAuth()
   const location = useLocation()
@@ -149,6 +195,41 @@ const TaxReturns: FC = () => {
                       <p className="text-xs text-text-light">
                         {r.tax_year} · {r.status} · updated {new Date(r.updated_at).toLocaleString()}
                       </p>
+                      {(() => {
+                        const readiness = computeSetupReadiness(r)
+                        if (readiness.required === 0 && readiness.recommended === 0) {
+                          return (
+                            <Link
+                              to={`${basePath}/returns/${r.id}?step=Setup&setupFocus=all`}
+                              className="mt-1 inline-flex items-center text-[11px] text-green-800 border border-green-300 bg-green-50 rounded px-2 py-0.5 hover:bg-green-100"
+                            >
+                              Setup ready
+                            </Link>
+                          )
+                        }
+                        return (
+                          <div className="mt-1 flex flex-wrap items-center gap-1">
+                            {readiness.required > 0 && (
+                              <Link
+                                to={`${basePath}/returns/${r.id}?step=Setup&setupFocus=required`}
+                                className="inline-flex items-center text-[11px] text-amber-900 border border-amber-300 bg-amber-50 rounded px-2 py-0.5 hover:bg-amber-100"
+                                title="Open builder setup and show required missing items"
+                              >
+                                {readiness.required} required
+                              </Link>
+                            )}
+                            {readiness.recommended > 0 && (
+                              <Link
+                                to={`${basePath}/returns/${r.id}?step=Setup&setupFocus=all`}
+                                className="inline-flex items-center text-[11px] text-blue-900 border border-blue-300 bg-blue-50 rounded px-2 py-0.5 hover:bg-blue-100"
+                                title="Open builder setup and review all missing items"
+                              >
+                                {readiness.recommended} review
+                              </Link>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </div>
                     <div className="flex items-center gap-3">
                       <button

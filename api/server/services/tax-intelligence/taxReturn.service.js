@@ -4,6 +4,23 @@ function normalizeMaritalStatus (v) {
   return 'single'
 }
 
+function normalizeSpouseReturnMode (v) {
+  const value = String(v || '').toLowerCase().trim()
+  if (value === 'full') return 'full'
+  return 'summary'
+}
+
+function normalizeYesNo (v) {
+  if (v === true) return true
+  if (v === false) return false
+  const value = String(v || '').toLowerCase().trim()
+  if (value === 'yes') return true
+  if (value === 'no') return false
+  if (value === 'true' || value === '1') return true
+  if (value === 'false' || value === '0') return false
+  return null
+}
+
 function sanitizeSin (v) {
   return String(v || '').replace(/\D/g, '').slice(0, 9)
 }
@@ -15,8 +32,36 @@ function readLegacyProfileFromSetup (setupJson) {
   const dependents = Array.isArray(p.dependents) ? p.dependents : []
   return {
     maritalStatus: normalizeMaritalStatus(p.maritalStatus),
+    spouseReturnMode: normalizeSpouseReturnMode(p.spouseReturnMode),
+    email: String(p.email || '').trim(),
+    mailingAddressLine1: String(p.mailingAddressLine1 || '').trim(),
+    mailingPoBox: String(p.mailingPoBox || '').trim(),
+    mailingRR: String(p.mailingRR || '').trim(),
+    mailingCity: String(p.mailingCity || '').trim(),
+    mailingProvinceCode: String(p.mailingProvinceCode || '').trim(),
+    mailingPostalCode: String(p.mailingPostalCode || '').trim(),
+    residenceProvinceDec31: String(p.residenceProvinceDec31 || '').trim(),
+    residenceProvinceCurrent: String(p.residenceProvinceCurrent || '').trim(),
+    selfEmploymentProvinces: String(p.selfEmploymentProvinces || '').trim(),
+    languageCorrespondence: String(p.languageCorrespondence || 'en').toLowerCase() === 'fr' ? 'fr' : 'en',
+    becameResidentDate: p.becameResidentDate || null,
+    ceasedResidentDate: p.ceasedResidentDate || null,
+    maritalStatusChangeDate: p.maritalStatusChangeDate || null,
+    deceasedDate: p.deceasedDate || null,
+    electionsCanadianCitizen: normalizeYesNo(p.electionsCanadianCitizen),
+    electionsAuthorize: normalizeYesNo(p.electionsAuthorize),
+    indianActExemptIncome: Boolean(normalizeYesNo(p.indianActExemptIncome)),
+    foreignPropertyOver100k: normalizeYesNo(p.foreignPropertyOver100k),
+    organDonorConsent: normalizeYesNo(p.organDonorConsent),
+    spouseSelfEmployed: Boolean(p.spouseSelfEmployed),
+    spouseNetIncome23600: Number(p.spouseNetIncome23600 || 0),
+    spouseUccb11700: Number(p.spouseUccb11700 || 0),
+    spouseUccbRepayment21300: Number(p.spouseUccbRepayment21300 || 0),
     spouse: {
       fullName: String(spouse.fullName || '').trim(),
+      firstName: String(spouse.firstName || '').trim(),
+      lastName: String(spouse.lastName || '').trim(),
+      dateOfBirth: spouse.dateOfBirth || null,
       fullSin: sanitizeSin(spouse.fullSin || spouse.sin || ''),
       sinLast4: String(spouse.sinLast4 || '').trim().slice(-4),
       netIncome: Number(spouse.netIncome || 0)
@@ -33,13 +78,17 @@ function readLegacyProfileFromSetup (setupJson) {
 async function loadTaxpayerProfileFromTables (conn, clerkUserId, taxReturnId) {
   const [profileRes, spouseRes, dependentsRes] = await Promise.all([
     conn.query(
-      `SELECT marital_status
+      `SELECT marital_status, spouse_return_mode, email, mailing_address_line1, mailing_address_po_box, mailing_address_rr, mailing_city, mailing_province_code,
+              mailing_postal_code, residence_province_dec31, residence_province_current, self_employment_provinces, language_correspondence,
+              became_resident_date, ceased_resident_date, marital_status_change_date, deceased_date,
+              elections_canadian_citizen, elections_authorize, indian_act_exempt_income, foreign_property_over_100k, organ_donor_consent,
+              spouse_self_employed, spouse_net_income_23600, spouse_uccb_11700, spouse_uccb_repayment_21300
        FROM taxgpt.taxpayer_profiles
        WHERE clerk_user_id = $1 AND tax_return_id = $2::uuid`,
       [clerkUserId, taxReturnId]
     ),
     conn.query(
-      `SELECT full_name, full_sin, sin_last4, net_income
+      `SELECT full_name, first_name, last_name, date_of_birth, full_sin, sin_last4, net_income
        FROM taxgpt.taxpayer_spouses
        WHERE clerk_user_id = $1 AND tax_return_id = $2::uuid`,
       [clerkUserId, taxReturnId]
@@ -55,8 +104,36 @@ async function loadTaxpayerProfileFromTables (conn, clerkUserId, taxReturnId) {
 
   return {
     maritalStatus: normalizeMaritalStatus(profileRes.rows[0]?.marital_status),
+    spouseReturnMode: normalizeSpouseReturnMode(profileRes.rows[0]?.spouse_return_mode),
+    email: String(profileRes.rows[0]?.email || ''),
+    mailingAddressLine1: String(profileRes.rows[0]?.mailing_address_line1 || ''),
+    mailingPoBox: String(profileRes.rows[0]?.mailing_address_po_box || ''),
+    mailingRR: String(profileRes.rows[0]?.mailing_address_rr || ''),
+    mailingCity: String(profileRes.rows[0]?.mailing_city || ''),
+    mailingProvinceCode: String(profileRes.rows[0]?.mailing_province_code || ''),
+    mailingPostalCode: String(profileRes.rows[0]?.mailing_postal_code || ''),
+    residenceProvinceDec31: String(profileRes.rows[0]?.residence_province_dec31 || ''),
+    residenceProvinceCurrent: String(profileRes.rows[0]?.residence_province_current || ''),
+    selfEmploymentProvinces: String(profileRes.rows[0]?.self_employment_provinces || ''),
+    languageCorrespondence: String(profileRes.rows[0]?.language_correspondence || 'en'),
+    becameResidentDate: profileRes.rows[0]?.became_resident_date || null,
+    ceasedResidentDate: profileRes.rows[0]?.ceased_resident_date || null,
+    maritalStatusChangeDate: profileRes.rows[0]?.marital_status_change_date || null,
+    deceasedDate: profileRes.rows[0]?.deceased_date || null,
+    electionsCanadianCitizen: profileRes.rows[0]?.elections_canadian_citizen == null ? null : Boolean(profileRes.rows[0]?.elections_canadian_citizen),
+    electionsAuthorize: profileRes.rows[0]?.elections_authorize == null ? null : Boolean(profileRes.rows[0]?.elections_authorize),
+    indianActExemptIncome: Boolean(profileRes.rows[0]?.indian_act_exempt_income),
+    foreignPropertyOver100k: profileRes.rows[0]?.foreign_property_over_100k == null ? null : Boolean(profileRes.rows[0]?.foreign_property_over_100k),
+    organDonorConsent: profileRes.rows[0]?.organ_donor_consent == null ? null : Boolean(profileRes.rows[0]?.organ_donor_consent),
+    spouseSelfEmployed: Boolean(profileRes.rows[0]?.spouse_self_employed),
+    spouseNetIncome23600: Number(profileRes.rows[0]?.spouse_net_income_23600 || 0),
+    spouseUccb11700: Number(profileRes.rows[0]?.spouse_uccb_11700 || 0),
+    spouseUccbRepayment21300: Number(profileRes.rows[0]?.spouse_uccb_repayment_21300 || 0),
     spouse: {
       fullName: String(spouseRes.rows[0]?.full_name || ''),
+      firstName: String(spouseRes.rows[0]?.first_name || ''),
+      lastName: String(spouseRes.rows[0]?.last_name || ''),
+      dateOfBirth: spouseRes.rows[0]?.date_of_birth || null,
       fullSin: String(spouseRes.rows[0]?.full_sin || ''),
       sinLast4: String(spouseRes.rows[0]?.sin_last4 || ''),
       netIncome: Number(spouseRes.rows[0]?.net_income || 0)
@@ -75,31 +152,113 @@ async function upsertTaxpayerProfileTables (client, clerkUserId, taxReturnId, ta
   const spouse = profile.spouse && typeof profile.spouse === 'object' ? profile.spouse : {}
   const dependents = Array.isArray(profile.dependents) ? profile.dependents : []
   const maritalStatus = normalizeMaritalStatus(profile.maritalStatus)
+  const spouseReturnMode = normalizeSpouseReturnMode(profile.spouseReturnMode)
+  const toBoolOrNull = (v) => {
+    if (v == null || v === '') return null
+    const normalized = normalizeYesNo(v)
+    if (normalized == null) return null
+    return normalized
+  }
 
   await client.query(
     `INSERT INTO taxgpt.taxpayer_profiles
-     (clerk_user_id, tax_return_id, marital_status, updated_at)
-     VALUES ($1, $2::uuid, $3, now())
+     (clerk_user_id, tax_return_id, marital_status, spouse_return_mode, email, mailing_address_line1, mailing_address_po_box, mailing_address_rr,
+      mailing_city, mailing_province_code, mailing_postal_code, residence_province_dec31, residence_province_current, self_employment_provinces,
+      language_correspondence, became_resident_date, ceased_resident_date, marital_status_change_date, deceased_date,
+      elections_canadian_citizen, elections_authorize, indian_act_exempt_income, foreign_property_over_100k, organ_donor_consent,
+      spouse_self_employed, spouse_net_income_23600, spouse_uccb_11700, spouse_uccb_repayment_21300, updated_at)
+     VALUES ($1, $2::uuid, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, now())
      ON CONFLICT (tax_return_id)
      DO UPDATE SET marital_status = EXCLUDED.marital_status,
+                   spouse_return_mode = EXCLUDED.spouse_return_mode,
+                   email = EXCLUDED.email,
+                   mailing_address_line1 = EXCLUDED.mailing_address_line1,
+                   mailing_address_po_box = EXCLUDED.mailing_address_po_box,
+                   mailing_address_rr = EXCLUDED.mailing_address_rr,
+                   mailing_city = EXCLUDED.mailing_city,
+                   mailing_province_code = EXCLUDED.mailing_province_code,
+                   mailing_postal_code = EXCLUDED.mailing_postal_code,
+                   residence_province_dec31 = EXCLUDED.residence_province_dec31,
+                   residence_province_current = EXCLUDED.residence_province_current,
+                   self_employment_provinces = EXCLUDED.self_employment_provinces,
+                   language_correspondence = EXCLUDED.language_correspondence,
+                   became_resident_date = EXCLUDED.became_resident_date,
+                   ceased_resident_date = EXCLUDED.ceased_resident_date,
+                   marital_status_change_date = EXCLUDED.marital_status_change_date,
+                   deceased_date = EXCLUDED.deceased_date,
+                   elections_canadian_citizen = EXCLUDED.elections_canadian_citizen,
+                   elections_authorize = EXCLUDED.elections_authorize,
+                   indian_act_exempt_income = EXCLUDED.indian_act_exempt_income,
+                   foreign_property_over_100k = EXCLUDED.foreign_property_over_100k,
+                   organ_donor_consent = EXCLUDED.organ_donor_consent,
+                   spouse_self_employed = EXCLUDED.spouse_self_employed,
+                   spouse_net_income_23600 = EXCLUDED.spouse_net_income_23600,
+                   spouse_uccb_11700 = EXCLUDED.spouse_uccb_11700,
+                   spouse_uccb_repayment_21300 = EXCLUDED.spouse_uccb_repayment_21300,
                    updated_at = now()`,
-    [clerkUserId, taxReturnId, maritalStatus]
+    [
+      clerkUserId,
+      taxReturnId,
+      maritalStatus,
+      spouseReturnMode,
+      String(profile.email || '').trim() || null,
+      String(profile.mailingAddressLine1 || '').trim() || null,
+      String(profile.mailingPoBox || '').trim() || null,
+      String(profile.mailingRR || '').trim() || null,
+      String(profile.mailingCity || '').trim() || null,
+      String(profile.mailingProvinceCode || '').trim() || null,
+      String(profile.mailingPostalCode || '').trim() || null,
+      String(profile.residenceProvinceDec31 || '').trim() || null,
+      String(profile.residenceProvinceCurrent || '').trim() || null,
+      String(profile.selfEmploymentProvinces || '').trim() || null,
+      String(profile.languageCorrespondence || 'en').toLowerCase() === 'fr' ? 'fr' : 'en',
+      profile.becameResidentDate || null,
+      profile.ceasedResidentDate || null,
+      profile.maritalStatusChangeDate || null,
+      profile.deceasedDate || null,
+      toBoolOrNull(profile.electionsCanadianCitizen),
+      toBoolOrNull(profile.electionsAuthorize),
+      Boolean(profile.indianActExemptIncome),
+      toBoolOrNull(profile.foreignPropertyOver100k),
+      toBoolOrNull(profile.organDonorConsent),
+      Boolean(profile.spouseSelfEmployed),
+      Number(profile.spouseNetIncome23600 || 0),
+      Number(profile.spouseUccb11700 || 0),
+      Number(profile.spouseUccbRepayment21300 || 0)
+    ]
   )
 
-  const spouseName = String(spouse.fullName || '').trim()
+  const spouseFirstName = String(spouse.firstName || '').trim()
+  const spouseLastName = String(spouse.lastName || '').trim()
+  const spouseName = spouseReturnMode === 'full'
+    ? `${spouseFirstName} ${spouseLastName}`.trim()
+    : String(spouse.fullName || '').trim()
   if (spouseName) {
     const spouseSin = sanitizeSin(spouse.fullSin || spouse.sin || '')
     await client.query(
       `INSERT INTO taxgpt.taxpayer_spouses
-       (clerk_user_id, tax_return_id, full_name, full_sin, sin_last4, net_income, updated_at)
-       VALUES ($1, $2::uuid, $3, $4, $5, $6, now())
+       (clerk_user_id, tax_return_id, full_name, first_name, last_name, date_of_birth, full_sin, sin_last4, net_income, updated_at)
+       VALUES ($1, $2::uuid, $3, $4, $5, $6, $7, $8, $9, now())
        ON CONFLICT (tax_return_id)
        DO UPDATE SET full_name = EXCLUDED.full_name,
+                     first_name = EXCLUDED.first_name,
+                     last_name = EXCLUDED.last_name,
+                     date_of_birth = EXCLUDED.date_of_birth,
                      full_sin = EXCLUDED.full_sin,
                      sin_last4 = EXCLUDED.sin_last4,
                      net_income = EXCLUDED.net_income,
                      updated_at = now()`,
-      [clerkUserId, taxReturnId, spouseName, spouseSin || null, (spouseSin ? spouseSin.slice(-4) : null), Number(spouse.netIncome || 0)]
+      [
+        clerkUserId,
+        taxReturnId,
+        spouseName,
+        spouseFirstName || null,
+        spouseLastName || null,
+        spouse.dateOfBirth || null,
+        spouseSin || null,
+        (spouseSin ? spouseSin.slice(-4) : null),
+        Number(spouse.netIncome || 0)
+      ]
     )
   } else {
     await client.query(
@@ -137,14 +296,57 @@ async function upsertTaxpayerProfileTables (client, clerkUserId, taxReturnId, ta
 
 export async function listTaxReturns (pool, clerkUserId) {
   const { rows } = await pool.query(
-    `SELECT tr.*, tp.full_name AS taxpayer_name
+    `SELECT tr.*,
+            tp.full_name AS taxpayer_name,
+            tp.first_name AS taxpayer_first_name,
+            tp.last_name AS taxpayer_last_name,
+            tp.sin AS taxpayer_sin,
+            tp.date_of_birth AS taxpayer_date_of_birth,
+            pr.marital_status,
+            pr.spouse_return_mode,
+            pr.mailing_address_line1,
+            pr.mailing_city,
+            pr.mailing_province_code,
+            pr.mailing_postal_code,
+            pr.residence_province_dec31,
+            pr.elections_canadian_citizen,
+            pr.elections_authorize,
+            pr.foreign_property_over_100k,
+            sp.full_name AS spouse_full_name,
+            sp.first_name AS spouse_first_name,
+            sp.last_name AS spouse_last_name,
+            sp.full_sin AS spouse_full_sin,
+            sp.date_of_birth AS spouse_date_of_birth
      FROM taxgpt.tax_returns tr
      INNER JOIN taxgpt.taxpayers tp ON tp.id = tr.taxpayer_id
+     LEFT JOIN taxgpt.taxpayer_profiles pr ON pr.tax_return_id = tr.id AND pr.clerk_user_id = tr.clerk_user_id
+     LEFT JOIN taxgpt.taxpayer_spouses sp ON sp.tax_return_id = tr.id AND sp.clerk_user_id = tr.clerk_user_id
      WHERE tr.clerk_user_id = $1
      ORDER BY tr.tax_year DESC, tr.updated_at DESC`,
     [clerkUserId]
   )
-  return rows
+  return rows.map((row) => ({
+    ...row,
+    taxpayer_profile: {
+      maritalStatus: normalizeMaritalStatus(row.marital_status),
+      spouseReturnMode: normalizeSpouseReturnMode(row.spouse_return_mode),
+      mailingAddressLine1: row.mailing_address_line1 || '',
+      mailingCity: row.mailing_city || '',
+      mailingProvinceCode: row.mailing_province_code || '',
+      mailingPostalCode: row.mailing_postal_code || '',
+      residenceProvinceDec31: row.residence_province_dec31 || '',
+      electionsCanadianCitizen: row.elections_canadian_citizen,
+      electionsAuthorize: row.elections_authorize,
+      foreignPropertyOver100k: row.foreign_property_over_100k,
+      spouse: {
+        fullName: row.spouse_full_name || '',
+        firstName: row.spouse_first_name || '',
+        lastName: row.spouse_last_name || '',
+        dateOfBirth: row.spouse_date_of_birth || null,
+        fullSin: row.spouse_full_sin || ''
+      }
+    }
+  }))
 }
 
 export async function createTaxReturn (pool, clerkUserId, payload) {

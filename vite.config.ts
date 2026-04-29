@@ -7,6 +7,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // Ensure built asset URLs are root-absolute (/assets/...) so routes like /portal/*
+  // never try to load CSS/JS from /portal/index-*.css.
+  base: '/',
   plugins: [react()],
   resolve: {
     alias: {

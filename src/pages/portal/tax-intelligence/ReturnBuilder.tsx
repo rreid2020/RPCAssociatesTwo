@@ -167,8 +167,10 @@ const ReturnBuilder: FC = () => {
   const [taxpayerProfile, setTaxpayerProfile] = useState<TaxpayerProfileState>(DEFAULT_TAXPAYER_PROFILE)
   const [incomeRows, setIncomeRows] = useState<Array<{ category: string; description: string; amount: number; taxpayerRole: 'self' | 'spouse' }>>([])
   const [manualSlipRows, setManualSlipRows] = useState<SlipRow[]>([])
-  const [deductionRows, setDeductionRows] = useState<Array<{ category: string; description: string; amount: number; isCredit: boolean }>>([])
-  const [deductionFormValues, setDeductionFormValues] = useState<Record<string, number>>({})
+  const [deductionRows, setDeductionRows] = useState<Array<{ category: string; description: string; amount: number; isCredit: boolean; taxpayerRole: 'self' | 'spouse' }>>([])
+  const [deductionFormValues, setDeductionFormValues] = useState<Record<string, { self: number; spouse: number }>>({})
+  const [incomeEntryRole, setIncomeEntryRole] = useState<'self' | 'spouse'>('self')
+  const [deductionEntryRole, setDeductionEntryRole] = useState<'self' | 'spouse'>('self')
   const [documents, setDocuments] = useState<Array<{ id: string; file_name: string }>>([])
   const [selectedDocumentId, setSelectedDocumentId] = useState('')
   const [newSlipCode, setNewSlipCode] = useState('T4')
@@ -261,13 +263,21 @@ const ReturnBuilder: FC = () => {
             category: r.category,
             description: r.description || '',
             amount: Number(r.amount || 0),
-            isCredit: Boolean(r.is_credit)
+            isCredit: Boolean(r.is_credit),
+            taxpayerRole: String((r.metadata || {}).taxpayerRole || 'self') === 'spouse' ? 'spouse' : 'self'
           }))
       )
-      const nextFormValues: Record<string, number> = {}
+      const nextFormValues: Record<string, { self: number; spouse: number }> = {}
       for (const field of T1_DEDUCTION_FIELDS) {
         const matching = (returnData.deductions || []).filter((d) => d.category === field.category)
-        nextFormValues[field.key] = matching.reduce((sum, d) => sum + Number(d.amount || 0), 0)
+        nextFormValues[field.key] = {
+          self: matching
+            .filter((d) => String((d.metadata || {}).taxpayerRole || 'self') !== 'spouse')
+            .reduce((sum, d) => sum + Number(d.amount || 0), 0),
+          spouse: matching
+            .filter((d) => String((d.metadata || {}).taxpayerRole || 'self') === 'spouse')
+            .reduce((sum, d) => sum + Number(d.amount || 0), 0)
+        }
       }
       setDeductionFormValues(nextFormValues)
       setDocuments(docs.documents || [])
@@ -285,9 +295,9 @@ const ReturnBuilder: FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
-  const addIncomeRow = () => setIncomeRows((prev) => [...prev, { category: 'employment_income', description: '', amount: 0, taxpayerRole: 'self' }])
-  const addSlipRow = () => setManualSlipRows((prev) => [...prev, createSlipRow(newSlipCode)])
-  const addDeductionRow = () => setDeductionRows((prev) => [...prev, { category: 'rrsp', description: '', amount: 0, isCredit: false }])
+  const addIncomeRow = (role: 'self' | 'spouse') => setIncomeRows((prev) => [...prev, { category: 'employment_income', description: '', amount: 0, taxpayerRole: role }])
+  const addSlipRow = (role: 'self' | 'spouse') => setManualSlipRows((prev) => [...prev, { ...createSlipRow(newSlipCode), taxpayerRole: role }])
+  const addDeductionRow = (role: 'self' | 'spouse') => setDeductionRows((prev) => [...prev, { category: 'rrsp', description: '', amount: 0, isCredit: false, taxpayerRole: role }])
   const lineMappingRows = useMemo<LineMappingRow[]>(() => {
     const rows: LineMappingRow[] = []
     for (const entry of data?.incomeEntries || []) {
@@ -401,13 +411,13 @@ const ReturnBuilder: FC = () => {
     setSaving(true)
     try {
       const structuredEntries = T1_DEDUCTION_FIELDS
-        .map((field) => ({
+        .flatMap((field) => (['self', 'spouse'] as const).map((role) => ({
           category: field.category,
-          description: `Line ${field.lineRef}: ${field.label}`,
-          amount: Number(deductionFormValues[field.key] || 0),
+          description: `Line ${field.lineRef}: ${field.label} (${role === 'self' ? 'Taxpayer' : 'Spouse'})`,
+          amount: Number(deductionFormValues[field.key]?.[role] || 0),
           isCredit: field.isCredit,
-          metadata: { lineRef: field.lineRef, source: 't1_deduction_form' }
-        }))
+          metadata: { lineRef: field.lineRef, source: 't1_deduction_form', taxpayerRole: role }
+        })))
         .filter((row) => Number.isFinite(row.amount) && row.amount > 0)
 
       await taxFetch(`/tax-returns/${id}/deductions`, getToken, {
@@ -420,7 +430,10 @@ const ReturnBuilder: FC = () => {
                 category: r.category,
                 description: r.description,
                 amount: Number(r.amount || 0),
-                isCredit: r.isCredit
+                isCredit: r.isCredit,
+                metadata: {
+                  taxpayerRole: r.taxpayerRole || 'self'
+                }
               }))
               .filter((r) => Number.isFinite(r.amount) && r.amount > 0)
           ]
@@ -582,6 +595,9 @@ const ReturnBuilder: FC = () => {
               <h2 className="text-lg font-semibold text-primary-dark">Setup</h2>
               <p className="text-sm text-text-light">
                 Return status: <strong className="text-text">{data?.taxReturn.status}</strong>. Complete taxpayer profile details for T1 Step 1 and family-related claims.
+              </p>
+              <p className="text-xs text-text-light">
+                Full spouse return inputs are entered in the Income and Deductions steps using the Taxpayer/Spouse selector.
               </p>
               {profileSavedMsg && (
                 <p className="text-sm text-green-800 bg-green-50 border border-green-200 rounded-md px-3 py-2">{profileSavedMsg}</p>
@@ -749,6 +765,23 @@ const ReturnBuilder: FC = () => {
           {!loading && activeStep === 'Income' && (
             <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
               <h2 className="text-lg font-semibold text-primary-dark">Income</h2>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-text-light">Building return for:</span>
+                <button
+                  type="button"
+                  className={`px-2 py-1 text-xs rounded border ${incomeEntryRole === 'self' ? 'bg-primary-dark text-white border-primary-dark' : 'bg-white text-text border-border'}`}
+                  onClick={() => setIncomeEntryRole('self')}
+                >
+                  Taxpayer
+                </button>
+                <button
+                  type="button"
+                  className={`px-2 py-1 text-xs rounded border ${incomeEntryRole === 'spouse' ? 'bg-primary-dark text-white border-primary-dark' : 'bg-white text-text border-border'}`}
+                  onClick={() => setIncomeEntryRole('spouse')}
+                >
+                  Spouse
+                </button>
+              </div>
               <div className="flex flex-col md:flex-row gap-2">
                 <select
                   className="border border-border rounded-md px-3 py-2 text-sm flex-1"
@@ -779,11 +812,12 @@ const ReturnBuilder: FC = () => {
                       <option key={def.code} value={def.code}>{def.code} - {def.name}</option>
                     ))}
                   </select>
-                  <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={addSlipRow}>
+                  <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={() => addSlipRow(incomeEntryRole)}>
                     Add slip
                   </button>
                 </div>
                 {manualSlipRows.map((row, idx) => {
+                  if (row.taxpayerRole !== incomeEntryRole) return null
                   const def = SLIP_DEFINITIONS_BY_CODE[row.slipCode]
                   if (!def) return null
                   return (
@@ -847,6 +881,7 @@ const ReturnBuilder: FC = () => {
               </div>
               <div className="space-y-2">
                 {incomeRows.map((row, idx) => (
+                  row.taxpayerRole !== incomeEntryRole ? null : (
                   <div key={`income-${idx}`} className="grid grid-cols-1 md:grid-cols-4 gap-2">
                     <input className="border border-border rounded-md px-3 py-2 text-sm" value={row.category} onChange={(e) => {
                       const next = [...incomeRows]; next[idx].category = e.target.value; setIncomeRows(next)
@@ -864,10 +899,13 @@ const ReturnBuilder: FC = () => {
                       <option value="spouse">Spouse</option>
                     </select>
                   </div>
+                  )
                 ))}
               </div>
               <div className="flex gap-2">
-                <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={addIncomeRow}>Add row</button>
+                <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={() => addIncomeRow(incomeEntryRole)}>
+                  Add {incomeEntryRole === 'self' ? 'taxpayer' : 'spouse'} row
+                </button>
                 <button type="button" className="btn btn--primary text-sm px-3 py-2" onClick={() => { void saveIncome() }} disabled={saving}>Save income</button>
               </div>
             </section>
@@ -876,6 +914,23 @@ const ReturnBuilder: FC = () => {
           {!loading && activeStep === 'Deductions' && (
             <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
               <h2 className="text-lg font-semibold text-primary-dark">Deductions</h2>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-text-light">Building deductions for:</span>
+                <button
+                  type="button"
+                  className={`px-2 py-1 text-xs rounded border ${deductionEntryRole === 'self' ? 'bg-primary-dark text-white border-primary-dark' : 'bg-white text-text border-border'}`}
+                  onClick={() => setDeductionEntryRole('self')}
+                >
+                  Taxpayer
+                </button>
+                <button
+                  type="button"
+                  className={`px-2 py-1 text-xs rounded border ${deductionEntryRole === 'spouse' ? 'bg-primary-dark text-white border-primary-dark' : 'bg-white text-text border-border'}`}
+                  onClick={() => setDeductionEntryRole('spouse')}
+                >
+                  Spouse
+                </button>
+              </div>
               <div className="border border-border rounded-md p-3 bg-background/50 space-y-3">
                 <div>
                   <h3 className="text-sm font-semibold text-primary-dark">T1 deduction and credit inputs</h3>
@@ -889,10 +944,17 @@ const ReturnBuilder: FC = () => {
                       <input
                         type="number"
                         className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                        value={Number(deductionFormValues[field.key] || 0)}
+                        value={Number(deductionFormValues[field.key]?.[deductionEntryRole] || 0)}
                         onChange={(e) => {
                           const n = Number(e.target.value)
-                          setDeductionFormValues((prev) => ({ ...prev, [field.key]: Number.isFinite(n) ? n : 0 }))
+                          setDeductionFormValues((prev) => ({
+                            ...prev,
+                            [field.key]: {
+                              self: Number(prev[field.key]?.self || 0),
+                              spouse: Number(prev[field.key]?.spouse || 0),
+                              [deductionEntryRole]: Number.isFinite(n) ? n : 0
+                            }
+                          }))
                         }}
                       />
                     </label>
@@ -902,6 +964,7 @@ const ReturnBuilder: FC = () => {
               <h3 className="text-sm font-semibold text-primary-dark">Additional custom deductions/credits</h3>
               <div className="space-y-2">
                 {deductionRows.map((row, idx) => (
+                  row.taxpayerRole !== deductionEntryRole ? null : (
                   <div key={`deduction-${idx}`} className="grid grid-cols-1 md:grid-cols-4 gap-2">
                     <input className="border border-border rounded-md px-3 py-2 text-sm" value={row.category} onChange={(e) => {
                       const next = [...deductionRows]; next[idx].category = e.target.value; setDeductionRows(next)
@@ -919,10 +982,13 @@ const ReturnBuilder: FC = () => {
                       Credit
                     </label>
                   </div>
+                  )
                 ))}
               </div>
               <div className="flex gap-2">
-                <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={addDeductionRow}>Add row</button>
+                <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={() => addDeductionRow(deductionEntryRole)}>
+                  Add {deductionEntryRole === 'self' ? 'taxpayer' : 'spouse'} row
+                </button>
                 <button type="button" className="btn btn--primary text-sm px-3 py-2" onClick={() => { void saveDeductions() }} disabled={saving}>Save deductions</button>
               </div>
             </section>

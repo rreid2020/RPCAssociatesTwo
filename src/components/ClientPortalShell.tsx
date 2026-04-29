@@ -33,7 +33,7 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
     return false
   }
 
-  const navigation: NavItem[] = [
+  const primaryNavigation: NavItem[] = [
     {
       to: '/portal/dashboard',
       label: 'Dashboard',
@@ -45,22 +45,16 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
     },
     {
       to: '/portal/taxgpt',
-      label: 'TaxGPT',
+      label: 'Tax Intelligence',
       icon: (
         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3l2.5 5 5.5 2.5-5.5 2.5L12 18l-2.5-5-5.5-2.5 5.5-2.5L12 3z" />
         </svg>
       ),
     },
-    {
-      to: '/portal/files',
-      label: 'File Repository',
-      icon: (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
-        </svg>
-      ),
-    },
+  ]
+
+  const accountingWorkspaceNavigation: NavItem[] = [
     {
       to: '/portal/working-papers',
       label: 'Working Papers',
@@ -84,6 +78,18 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
       ),
     },
     {
+      to: '/portal/files',
+      label: 'Documents',
+      icon: (
+        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+        </svg>
+      ),
+    },
+  ]
+
+  const secondaryNavigation: NavItem[] = [
+    {
       to: '/portal/subscription',
       label: 'Subscription',
       icon: (
@@ -99,6 +105,39 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
       return location.pathname === '/portal/dashboard'
     }
     return location.pathname.startsWith(path)
+  }
+
+  const renderNavItem = (item: NavItem, opts?: { nested?: boolean }) => {
+    const active = isActive(item.to)
+    const locked = isLocked(item)
+    const nested = opts?.nested === true
+    return (
+      <Link
+        key={item.to}
+        to={item.to}
+        onClick={() => setSidebarOpen(false)}
+        className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors ${
+          nested ? 'ml-6 px-3 py-1.5' : 'px-3 py-2'
+        } ${
+          active
+            ? 'bg-primary-dark text-white'
+            : 'text-text hover:bg-background hover:text-primary-dark'
+        } ${locked ? 'opacity-60 cursor-not-allowed' : ''}`}
+        onClickCapture={(e) => {
+          if (locked) {
+            e.preventDefault()
+          }
+        }}
+      >
+        <span className={active ? 'text-white' : 'text-text-light'}>{item.icon}</span>
+        <span className="flex-1">{item.label}</span>
+        {locked && item.lockedLabel && (
+          <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">
+            {item.lockedLabel}
+          </span>
+        )}
+      </Link>
+    )
   }
 
   return (
@@ -133,35 +172,23 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
 
           {/* Navigation */}
           <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-            {navigation.map((item) => {
-              const active = isActive(item.to)
-              const locked = isLocked(item)
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    active
-                      ? 'bg-primary-dark text-white'
-                      : 'text-text hover:bg-background hover:text-primary-dark'
-                  } ${locked ? 'opacity-60 cursor-not-allowed' : ''}`}
-                  onClickCapture={(e) => {
-                    if (locked) {
-                      e.preventDefault()
-                    }
-                  }}
-                >
-                  <span className={active ? 'text-white' : 'text-text-light'}>{item.icon}</span>
-                  <span className="flex-1">{item.label}</span>
-                  {locked && item.lockedLabel && (
-                    <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">
-                      {item.lockedLabel}
-                    </span>
-                  )}
-                </Link>
-              )
-            })}
+            {primaryNavigation.map((item) => renderNavItem(item))}
+            <div className="pt-2">
+              <div className="flex items-center gap-3 px-3 py-2 text-sm font-semibold text-primary-dark">
+                <span className="text-text-light" aria-hidden>
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+                  </svg>
+                </span>
+                <span>Accounting Workspace</span>
+              </div>
+              <div className="space-y-1">
+                {accountingWorkspaceNavigation.map((item) => renderNavItem(item, { nested: true }))}
+              </div>
+            </div>
+            <div className="pt-1">
+              {secondaryNavigation.map((item) => renderNavItem(item))}
+            </div>
           </nav>
 
           {/* Footer */}

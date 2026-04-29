@@ -100,12 +100,14 @@ const STATEMENTS = [
   first_name TEXT,
   last_name TEXT,
   full_name TEXT NOT NULL,
+  sin TEXT,
   sin_last4 TEXT,
   date_of_birth DATE,
   created_at TIMESTAMP NOT NULL DEFAULT now(),
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 )`,
   'CREATE INDEX IF NOT EXISTS taxpayers_clerk_idx ON taxgpt.taxpayers(clerk_user_id)',
+  'ALTER TABLE taxgpt.taxpayers ADD COLUMN IF NOT EXISTS sin TEXT',
 
   `CREATE TABLE IF NOT EXISTS taxgpt.tax_returns (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -139,6 +141,7 @@ const STATEMENTS = [
   clerk_user_id TEXT NOT NULL,
   tax_return_id UUID NOT NULL REFERENCES taxgpt.tax_returns(id) ON DELETE CASCADE,
   full_name TEXT,
+  full_sin TEXT,
   sin_last4 TEXT,
   net_income NUMERIC(14,2) NOT NULL DEFAULT 0,
   created_at TIMESTAMP NOT NULL DEFAULT now(),
@@ -146,6 +149,7 @@ const STATEMENTS = [
 )`,
   'CREATE UNIQUE INDEX IF NOT EXISTS taxpayer_spouses_return_ux ON taxgpt.taxpayer_spouses(tax_return_id)',
   'CREATE INDEX IF NOT EXISTS taxpayer_spouses_clerk_idx ON taxgpt.taxpayer_spouses(clerk_user_id)',
+  'ALTER TABLE taxgpt.taxpayer_spouses ADD COLUMN IF NOT EXISTS full_sin TEXT',
 
   `CREATE TABLE IF NOT EXISTS taxgpt.taxpayer_dependents (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

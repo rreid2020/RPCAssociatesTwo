@@ -24,7 +24,34 @@ type ReturnDetailPayload = {
     is_credit: boolean
     metadata?: Record<string, unknown>
   }>
-  calculation?: Record<string, number>
+  calculation?: {
+    net_income?: number
+    taxable_income?: number
+    total_payable?: number
+    taxes_withheld?: number
+    refund_or_balance?: number
+    assumptions?: {
+      comparative?: {
+        self?: {
+          netIncome?: number
+          taxableIncome?: number
+          estimatedTaxBeforeCredits?: number
+        }
+        spouse?: {
+          netIncome?: number
+          taxableIncome?: number
+          estimatedTaxBeforeCredits?: number
+        }
+      }
+      optimization?: {
+        pensionSplit?: {
+          splitSourceRole?: string
+          recommendedSplit?: number
+          estimatedTaxSavingsBeforeCredits?: number
+        } | null
+      }
+    }
+  }
 }
 
 type LineTotal = {
@@ -239,6 +266,39 @@ const FormsSchedules: FC = () => {
                   </div>
                 </div>
               </section>
+
+              {detail.calculation?.assumptions?.comparative && (
+                <section className="bg-white p-4 border border-border rounded-lg shadow-sm">
+                  <h3 className="text-base font-semibold text-primary-dark mb-2">Comparative summary (taxpayer vs spouse)</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                    <div className="border border-border rounded-md p-3">
+                      <p className="font-semibold">Taxpayer</p>
+                      <p className="text-text-light">Net income: ${Number(detail.calculation.assumptions.comparative.self?.netIncome || 0).toFixed(2)}</p>
+                      <p className="text-text-light">Taxable income: ${Number(detail.calculation.assumptions.comparative.self?.taxableIncome || 0).toFixed(2)}</p>
+                      <p className="text-text-light">Est. tax (before credits): ${Number(detail.calculation.assumptions.comparative.self?.estimatedTaxBeforeCredits || 0).toFixed(2)}</p>
+                    </div>
+                    <div className="border border-border rounded-md p-3">
+                      <p className="font-semibold">Spouse</p>
+                      <p className="text-text-light">Net income: ${Number(detail.calculation.assumptions.comparative.spouse?.netIncome || 0).toFixed(2)}</p>
+                      <p className="text-text-light">Taxable income: ${Number(detail.calculation.assumptions.comparative.spouse?.taxableIncome || 0).toFixed(2)}</p>
+                      <p className="text-text-light">Est. tax (before credits): ${Number(detail.calculation.assumptions.comparative.spouse?.estimatedTaxBeforeCredits || 0).toFixed(2)}</p>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {detail.calculation?.assumptions?.optimization?.pensionSplit && (
+                <section className="bg-white p-4 border border-border rounded-lg shadow-sm">
+                  <h3 className="text-base font-semibold text-primary-dark mb-2">Optimization scenario: pension splitting</h3>
+                  <p className="text-sm text-text-light">
+                    Recommended split from {String(detail.calculation.assumptions.optimization.pensionSplit.splitSourceRole || 'taxpayer')}:
+                    {' '}${Number(detail.calculation.assumptions.optimization.pensionSplit.recommendedSplit || 0).toFixed(2)}
+                  </p>
+                  <p className="text-sm text-text-light">
+                    Estimated tax savings (before credits): ${Number(detail.calculation.assumptions.optimization.pensionSplit.estimatedTaxSavingsBeforeCredits || 0).toFixed(2)}
+                  </p>
+                </section>
+              )}
 
               <section className="bg-white p-4 border border-border rounded-lg shadow-sm">
                 <h3 className="text-base font-semibold text-primary-dark mb-2">Step 2 - Total income line details</h3>

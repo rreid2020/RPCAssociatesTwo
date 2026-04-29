@@ -12,6 +12,7 @@ const TaxReturns: FC = () => {
   const basePath = useMemo(() => getTaxBasePath(location.pathname), [location.pathname])
   const [returns, setReturns] = useState<TaxReturnSummary[]>([])
   const [taxpayerName, setTaxpayerName] = useState('')
+  const [taxpayerSin, setTaxpayerSin] = useState('')
   const [taxYear, setTaxYear] = useState(new Date().getFullYear())
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -48,10 +49,12 @@ const TaxReturns: FC = () => {
         method: 'POST',
         body: JSON.stringify({
           taxpayerName: taxpayerName.trim(),
+          sin: String(taxpayerSin || '').replace(/\D/g, '').slice(0, 9),
           taxYear
         })
       })
       setTaxpayerName('')
+      setTaxpayerSin('')
       await load()
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not create tax return')
@@ -99,6 +102,13 @@ const TaxReturns: FC = () => {
                 placeholder="Taxpayer full name"
                 value={taxpayerName}
                 onChange={(e) => setTaxpayerName(e.target.value)}
+                disabled={saving}
+              />
+              <input
+                className="border border-border rounded-md px-3 py-2 text-sm w-full md:w-48"
+                placeholder="SIN (9 digits)"
+                value={taxpayerSin}
+                onChange={(e) => setTaxpayerSin(e.target.value.replace(/\D/g, '').slice(0, 9))}
                 disabled={saving}
               />
               <input

@@ -14,6 +14,7 @@ type TaxReturnPayload = {
     taxpayer_name: string
     taxpayer_first_name?: string | null
     taxpayer_last_name?: string | null
+    taxpayer_sin?: string | null
     taxpayer_sin_last4?: string | null
     taxpayer_date_of_birth?: string | null
     status: string
@@ -23,6 +24,7 @@ type TaxReturnPayload = {
       maritalStatus?: string
       spouse?: {
         fullName?: string
+        fullSin?: string
         sinLast4?: string
         netIncome?: number
       }
@@ -54,6 +56,29 @@ type TaxReturnPayload = {
     taxable_income: number
     total_payable: number
     refund_or_balance: number
+    assumptions?: {
+      comparative?: {
+        self?: {
+          netIncome?: number
+          taxableIncome?: number
+          estimatedTaxBeforeCredits?: number
+          taxesWithheld?: number
+        }
+        spouse?: {
+          netIncome?: number
+          taxableIncome?: number
+          estimatedTaxBeforeCredits?: number
+          taxesWithheld?: number
+        }
+      }
+      optimization?: {
+        pensionSplit?: {
+          splitSourceRole?: string
+          recommendedSplit?: number
+          estimatedTaxSavingsBeforeCredits?: number
+        } | null
+      }
+    }
   }
 }
 
@@ -68,11 +93,11 @@ type TaxpayerProfileState = {
   firstName: string
   lastName: string
   dateOfBirth: string
-  sinLast4: string
+  sin: string
   maritalStatus: 'single' | 'married' | 'common_law' | 'separated' | 'divorced' | 'widowed'
   spouse: {
     fullName: string
-    sinLast4: string
+    fullSin: string
     netIncome: number
   }
   dependents: DependentProfile[]
@@ -85,6 +110,7 @@ type SlipRow = {
   slipCode: string
   payerName: string
   taxYear: number
+  taxpayerRole: 'self' | 'spouse'
   boxes: Record<string, number>
 }
 
@@ -95,6 +121,10 @@ type LineMappingRow = {
   amount: number
   status: 'OK' | 'REVIEW'
   reason: string
+}
+
+function sanitizeSin (value: string): string {
+  return String(value || '').replace(/\D/g, '').slice(0, 9)
 }
 
 const T1_DEDUCTION_FIELDS = [
@@ -113,11 +143,11 @@ const DEFAULT_TAXPAYER_PROFILE: TaxpayerProfileState = {
   firstName: '',
   lastName: '',
   dateOfBirth: '',
-  sinLast4: '',
+  sin: '',
   maritalStatus: 'single',
   spouse: {
     fullName: '',
-    sinLast4: '',
+    fullSin: '',
     netIncome: 0
   },
   dependents: []
@@ -135,7 +165,7 @@ const ReturnBuilder: FC = () => {
   const [err, setErr] = useState<string | null>(null)
   const [profileSavedMsg, setProfileSavedMsg] = useState<string | null>(null)
   const [taxpayerProfile, setTaxpayerProfile] = useState<TaxpayerProfileState>(DEFAULT_TAXPAYER_PROFILE)
-  const [incomeRows, setIncomeRows] = useState<Array<{ category: string; description: string; amount: number }>>([])
+  const [incomeRows, setIncomeRows] = useState<Array<{ category: string; description: string; amount: number; taxpayerRole: 'self' | 'spouse' }>>([])
   const [manualSlipRows, setManualSlipRows] = useState<SlipRow[]>([])
   const [deductionRows, setDeductionRows] = useState<Array<{ category: string; description: string; amount: number; isCredit: boolean }>>([])
   const [deductionFormValues, setDeductionFormValues] = useState<Record<string, number>>({})
@@ -147,6 +177,7 @@ const ReturnBuilder: FC = () => {
     slipCode,
     payerName: '',
     taxYear: data?.taxReturn?.tax_year || new Date().getFullYear(),
+    taxpayerRole: 'self',
     boxes: Object.fromEntries((SLIP_DEFINITIONS_BY_CODE[slipCode]?.boxes || []).map((b) => [b.code, 0]))
   })
 
@@ -170,13 +201,13 @@ const ReturnBuilder: FC = () => {
         firstName: String(returnData.taxReturn.taxpayer_first_name || ''),
         lastName: String(returnData.taxReturn.taxpayer_last_name || ''),
         dateOfBirth: String(returnData.taxReturn.taxpayer_date_of_birth || ''),
-        sinLast4: String(returnData.taxReturn.taxpayer_sin_last4 || ''),
+        sin: String(returnData.taxReturn.taxpayer_sin || ''),
         maritalStatus: (['single', 'married', 'common_law', 'separated', 'divorced', 'widowed'].includes(String(dbProfile.maritalStatus || setupProfile.maritalStatus))
           ? String(dbProfile.maritalStatus || setupProfile.maritalStatus)
           : 'single') as TaxpayerProfileState['maritalStatus'],
         spouse: {
           fullName: String(spouseObj.fullName || ''),
-          sinLast4: String(spouseObj.sinLast4 || ''),
+          fullSin: String(spouseObj.fullSin || ''),
           netIncome: Number(spouseObj.netIncome || 0)
         },
         dependents: dependentsRaw.map((d) => {
@@ -198,7 +229,8 @@ const ReturnBuilder: FC = () => {
       setIncomeRows(nonSlipEntries.map((r) => ({
         category: r.category,
         description: r.description || '',
-        amount: Number(r.amount || 0)
+        amount: Number(r.amount || 0),
+        taxpayerRole: String((r.metadata || {}).taxpayerRole || 'self') === 'spouse' ? 'spouse' : 'self'
       })))
       const grouped = new Map<string, SlipRow>()
       for (const entry of manualSlipEntries) {
@@ -212,6 +244,7 @@ const ReturnBuilder: FC = () => {
             slipCode: slipType,
             payerName: String(meta.payerName || ''),
             taxYear: Number(meta.taxYear || returnData.taxReturn.tax_year || new Date().getFullYear()),
+            taxpayerRole: String(meta.taxpayerRole || 'self') === 'spouse' ? 'spouse' : 'self',
             boxes: Object.fromEntries((SLIP_DEFINITIONS_BY_CODE[slipType]?.boxes || []).map((b) => [b.code, 0]))
           })
         }
@@ -252,7 +285,7 @@ const ReturnBuilder: FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
-  const addIncomeRow = () => setIncomeRows((prev) => [...prev, { category: 'employment_income', description: '', amount: 0 }])
+  const addIncomeRow = () => setIncomeRows((prev) => [...prev, { category: 'employment_income', description: '', amount: 0, taxpayerRole: 'self' }])
   const addSlipRow = () => setManualSlipRows((prev) => [...prev, createSlipRow(newSlipCode)])
   const addDeductionRow = () => setDeductionRows((prev) => [...prev, { category: 'rrsp', description: '', amount: 0, isCredit: false }])
   const lineMappingRows = useMemo<LineMappingRow[]>(() => {
@@ -312,7 +345,10 @@ const ReturnBuilder: FC = () => {
         description: r.description,
         amount: Number(r.amount || 0),
         sourceType: 'manual',
-        isManual: true
+        isManual: true,
+        metadata: {
+          taxpayerRole: r.taxpayerRole || 'self'
+        }
       }))
       const slipEntries = manualSlipRows.flatMap((slip) => {
         const def = SLIP_DEFINITIONS_BY_CODE[slip.slipCode]
@@ -333,6 +369,7 @@ const ReturnBuilder: FC = () => {
                 slipType: def.code,
                 payerName: slip.payerName || null,
                 taxYear: Number(slip.taxYear || (data?.taxReturn?.tax_year || new Date().getFullYear())),
+                taxpayerRole: slip.taxpayerRole || 'self',
                 boxCode: boxDef.code,
                 boxValue,
                 lineRef: target.lineRef || null,
@@ -469,7 +506,7 @@ const ReturnBuilder: FC = () => {
         spouse: {
           ...taxpayerProfile.spouse,
           fullName: taxpayerProfile.spouse.fullName.trim(),
-          sinLast4: taxpayerProfile.spouse.sinLast4.trim().slice(-4),
+          fullSin: sanitizeSin(taxpayerProfile.spouse.fullSin),
           netIncome: Number(taxpayerProfile.spouse.netIncome || 0)
         },
         dependents: taxpayerProfile.dependents
@@ -487,7 +524,7 @@ const ReturnBuilder: FC = () => {
           taxpayerName: fullName,
           firstName: taxpayerProfile.firstName.trim() || null,
           lastName: taxpayerProfile.lastName.trim() || null,
-          sinLast4: taxpayerProfile.sinLast4.trim().slice(-4) || null,
+          sin: sanitizeSin(taxpayerProfile.sin) || null,
           dateOfBirth: taxpayerProfile.dateOfBirth || null,
           taxpayerProfile: normalizedProfile
         })
@@ -576,12 +613,11 @@ const ReturnBuilder: FC = () => {
                   />
                 </label>
                 <label className="text-xs text-text-light">
-                  SIN (last 4)
+                  SIN (9 digits)
                   <input
-                    maxLength={4}
                     className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                    value={taxpayerProfile.sinLast4}
-                    onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, sinLast4: e.target.value.replace(/\D/g, '').slice(-4) }))}
+                    value={taxpayerProfile.sin}
+                    onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, sin: sanitizeSin(e.target.value) }))}
                   />
                 </label>
                 <label className="text-xs text-text-light md:col-span-2">
@@ -614,12 +650,11 @@ const ReturnBuilder: FC = () => {
                       />
                     </label>
                     <label className="text-xs text-text-light">
-                      SIN (last 4)
+                      SIN (9 digits)
                       <input
-                        maxLength={4}
                         className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                        value={taxpayerProfile.spouse.sinLast4}
-                        onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, sinLast4: e.target.value.replace(/\D/g, '').slice(-4) } }))}
+                        value={taxpayerProfile.spouse.fullSin}
+                        onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, fullSin: sanitizeSin(e.target.value) } }))}
                       />
                     </label>
                     <label className="text-xs text-text-light">
@@ -753,7 +788,7 @@ const ReturnBuilder: FC = () => {
                   if (!def) return null
                   return (
                   <div key={`t4-${idx}`} className="border border-border rounded-md p-3 bg-white space-y-2">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                       <input
                         className="border border-border rounded-md px-3 py-2 text-sm"
                         placeholder={def.payerLabel}
@@ -775,6 +810,18 @@ const ReturnBuilder: FC = () => {
                           setManualSlipRows(next)
                         }}
                       />
+                      <select
+                        className="border border-border rounded-md px-3 py-2 text-sm"
+                        value={row.taxpayerRole}
+                        onChange={(e) => {
+                          const next = [...manualSlipRows]
+                          next[idx].taxpayerRole = e.target.value === 'spouse' ? 'spouse' : 'self'
+                          setManualSlipRows(next)
+                        }}
+                      >
+                        <option value="self">Taxpayer</option>
+                        <option value="spouse">Spouse</option>
+                      </select>
                     </div>
                     <p className="text-xs text-text-light font-medium">{def.code} - {def.name}</p>
                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-2">
@@ -800,7 +847,7 @@ const ReturnBuilder: FC = () => {
               </div>
               <div className="space-y-2">
                 {incomeRows.map((row, idx) => (
-                  <div key={`income-${idx}`} className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <div key={`income-${idx}`} className="grid grid-cols-1 md:grid-cols-4 gap-2">
                     <input className="border border-border rounded-md px-3 py-2 text-sm" value={row.category} onChange={(e) => {
                       const next = [...incomeRows]; next[idx].category = e.target.value; setIncomeRows(next)
                     }} />
@@ -810,6 +857,12 @@ const ReturnBuilder: FC = () => {
                     <input type="number" className="border border-border rounded-md px-3 py-2 text-sm" value={row.amount} onChange={(e) => {
                       const next = [...incomeRows]; next[idx].amount = Number(e.target.value); setIncomeRows(next)
                     }} />
+                    <select className="border border-border rounded-md px-3 py-2 text-sm" value={row.taxpayerRole} onChange={(e) => {
+                      const next = [...incomeRows]; next[idx].taxpayerRole = e.target.value === 'spouse' ? 'spouse' : 'self'; setIncomeRows(next)
+                    }}>
+                      <option value="self">Taxpayer</option>
+                      <option value="spouse">Spouse</option>
+                    </select>
                   </div>
                 ))}
               </div>
@@ -934,6 +987,37 @@ const ReturnBuilder: FC = () => {
                   <p>Taxable income: ${Number(data.calculation.taxable_income || 0).toFixed(2)}</p>
                   <p>Total payable: ${Number(data.calculation.total_payable || 0).toFixed(2)}</p>
                   <p>Refund / balance: ${Number(data.calculation.refund_or_balance || 0).toFixed(2)}</p>
+                </div>
+              )}
+              {data?.calculation?.assumptions?.comparative && (
+                <div className="mt-4 border border-border rounded-md p-3 bg-background/50">
+                  <h3 className="text-sm font-semibold text-primary-dark mb-2">Taxpayer vs spouse comparative</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-text">
+                    <div className="border border-border rounded-md p-2 bg-white">
+                      <p className="font-semibold">Taxpayer</p>
+                      <p>Net income: ${Number(data.calculation.assumptions.comparative.self?.netIncome || 0).toFixed(2)}</p>
+                      <p>Taxable income: ${Number(data.calculation.assumptions.comparative.self?.taxableIncome || 0).toFixed(2)}</p>
+                      <p>Est. tax (before credits): ${Number(data.calculation.assumptions.comparative.self?.estimatedTaxBeforeCredits || 0).toFixed(2)}</p>
+                    </div>
+                    <div className="border border-border rounded-md p-2 bg-white">
+                      <p className="font-semibold">Spouse</p>
+                      <p>Net income: ${Number(data.calculation.assumptions.comparative.spouse?.netIncome || 0).toFixed(2)}</p>
+                      <p>Taxable income: ${Number(data.calculation.assumptions.comparative.spouse?.taxableIncome || 0).toFixed(2)}</p>
+                      <p>Est. tax (before credits): ${Number(data.calculation.assumptions.comparative.spouse?.estimatedTaxBeforeCredits || 0).toFixed(2)}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {data?.calculation?.assumptions?.optimization?.pensionSplit && (
+                <div className="mt-3 border border-border rounded-md p-3 bg-background/50 text-xs text-text">
+                  <h3 className="text-sm font-semibold text-primary-dark mb-1">Optimization: pension splitting</h3>
+                  <p>
+                    Recommended split from {String(data.calculation.assumptions.optimization.pensionSplit.splitSourceRole || 'taxpayer')}:
+                    {' '}${Number(data.calculation.assumptions.optimization.pensionSplit.recommendedSplit || 0).toFixed(2)}
+                  </p>
+                  <p>
+                    Estimated tax savings (before credits): ${Number(data.calculation.assumptions.optimization.pensionSplit.estimatedTaxSavingsBeforeCredits || 0).toFixed(2)}
+                  </p>
                 </div>
               )}
             </section>

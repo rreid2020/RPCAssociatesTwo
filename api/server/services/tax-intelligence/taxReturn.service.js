@@ -4,6 +4,10 @@ function normalizeMaritalStatus (v) {
   return 'single'
 }
 
+function sanitizeSin (v) {
+  return String(v || '').replace(/\D/g, '').slice(0, 9)
+}
+
 function readLegacyProfileFromSetup (setupJson) {
   const setup = setupJson && typeof setupJson === 'object' ? setupJson : {}
   const p = setup.taxpayerProfile && typeof setup.taxpayerProfile === 'object' ? setup.taxpayerProfile : {}
@@ -13,6 +17,7 @@ function readLegacyProfileFromSetup (setupJson) {
     maritalStatus: normalizeMaritalStatus(p.maritalStatus),
     spouse: {
       fullName: String(spouse.fullName || '').trim(),
+      fullSin: sanitizeSin(spouse.fullSin || spouse.sin || ''),
       sinLast4: String(spouse.sinLast4 || '').trim().slice(-4),
       netIncome: Number(spouse.netIncome || 0)
     },
@@ -34,7 +39,7 @@ async function loadTaxpayerProfileFromTables (conn, clerkUserId, taxReturnId) {
       [clerkUserId, taxReturnId]
     ),
     conn.query(
-      `SELECT full_name, sin_last4, net_income
+      `SELECT full_name, full_sin, sin_last4, net_income
        FROM taxgpt.taxpayer_spouses
        WHERE clerk_user_id = $1 AND tax_return_id = $2::uuid`,
       [clerkUserId, taxReturnId]
@@ -52,6 +57,7 @@ async function loadTaxpayerProfileFromTables (conn, clerkUserId, taxReturnId) {
     maritalStatus: normalizeMaritalStatus(profileRes.rows[0]?.marital_status),
     spouse: {
       fullName: String(spouseRes.rows[0]?.full_name || ''),
+      fullSin: String(spouseRes.rows[0]?.full_sin || ''),
       sinLast4: String(spouseRes.rows[0]?.sin_last4 || ''),
       netIncome: Number(spouseRes.rows[0]?.net_income || 0)
     },
@@ -82,16 +88,18 @@ async function upsertTaxpayerProfileTables (client, clerkUserId, taxReturnId, ta
 
   const spouseName = String(spouse.fullName || '').trim()
   if (spouseName) {
+    const spouseSin = sanitizeSin(spouse.fullSin || spouse.sin || '')
     await client.query(
       `INSERT INTO taxgpt.taxpayer_spouses
-       (clerk_user_id, tax_return_id, full_name, sin_last4, net_income, updated_at)
-       VALUES ($1, $2::uuid, $3, $4, $5, now())
+       (clerk_user_id, tax_return_id, full_name, full_sin, sin_last4, net_income, updated_at)
+       VALUES ($1, $2::uuid, $3, $4, $5, $6, now())
        ON CONFLICT (tax_return_id)
        DO UPDATE SET full_name = EXCLUDED.full_name,
+                     full_sin = EXCLUDED.full_sin,
                      sin_last4 = EXCLUDED.sin_last4,
                      net_income = EXCLUDED.net_income,
                      updated_at = now()`,
-      [clerkUserId, taxReturnId, spouseName, String(spouse.sinLast4 || '').trim().slice(-4) || null, Number(spouse.netIncome || 0)]
+      [clerkUserId, taxReturnId, spouseName, spouseSin || null, (spouseSin ? spouseSin.slice(-4) : null), Number(spouse.netIncome || 0)]
     )
   } else {
     await client.query(
@@ -148,6 +156,7 @@ export async function createTaxReturn (pool, clerkUserId, payload) {
   if (!fullName) throw new Error('taxpayerName is required')
   const firstName = String(payload.firstName || '').trim()
   const lastName = String(payload.lastName || '').trim()
+  const taxpayerSin = sanitizeSin(payload.sin || '')
   const setup = payload.setup && typeof payload.setup === 'object' ? { ...payload.setup } : {}
   if (Object.prototype.hasOwnProperty.call(setup, 'taxpayerProfile')) delete setup.taxpayerProfile
 
@@ -156,15 +165,16 @@ export async function createTaxReturn (pool, clerkUserId, payload) {
     await client.query('BEGIN')
     const { rows: taxpayerRows } = await client.query(
       `INSERT INTO taxgpt.taxpayers
-       (clerk_user_id, full_name, first_name, last_name, sin_last4, date_of_birth, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, now())
+       (clerk_user_id, full_name, first_name, last_name, sin, sin_last4, date_of_birth, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, now())
        RETURNING *`,
       [
         clerkUserId,
         fullName,
         firstName || null,
         lastName || null,
-        payload.sinLast4 || null,
+        taxpayerSin || null,
+        taxpayerSin ? taxpayerSin.slice(-4) : null,
         payload.dateOfBirth || null
       ]
     )
@@ -204,6 +214,7 @@ export async function getTaxReturnById (pool, clerkUserId, taxReturnId) {
             tp.full_name AS taxpayer_name,
             tp.first_name AS taxpayer_first_name,
             tp.last_name AS taxpayer_last_name,
+            tp.sin AS taxpayer_sin,
             tp.sin_last4 AS taxpayer_sin_last4,
             tp.date_of_birth AS taxpayer_date_of_birth
      FROM taxgpt.tax_returns tr
@@ -235,7 +246,8 @@ export async function updateTaxReturn (pool, clerkUserId, taxReturnId, payload) 
     const nextFullName = String(payload.taxpayerName || current.taxpayer_name || '').trim()
     const nextFirstName = payload.firstName != null ? String(payload.firstName || '').trim() : (current.taxpayer_first_name || null)
     const nextLastName = payload.lastName != null ? String(payload.lastName || '').trim() : (current.taxpayer_last_name || null)
-    const nextSinLast4 = payload.sinLast4 != null ? String(payload.sinLast4 || '').trim() : (current.taxpayer_sin_last4 || null)
+    const nextSin = payload.sin != null ? sanitizeSin(payload.sin) : sanitizeSin(current.taxpayer_sin || '')
+    const nextSinLast4 = nextSin ? nextSin.slice(-4) : (current.taxpayer_sin_last4 || null)
     const nextDateOfBirth = payload.dateOfBirth != null ? payload.dateOfBirth : (current.taxpayer_date_of_birth || null)
     const legacyProfile = readLegacyProfileFromSetup(current.setup_json)
     const currentProfileFromTables = current.taxpayer_profile && typeof current.taxpayer_profile === 'object'
@@ -250,14 +262,16 @@ export async function updateTaxReturn (pool, clerkUserId, taxReturnId, payload) 
        SET full_name = $1,
            first_name = $2,
            last_name = $3,
-           sin_last4 = $4,
-           date_of_birth = $5,
+           sin = $4,
+           sin_last4 = $5,
+           date_of_birth = $6,
            updated_at = now()
-       WHERE id = $6::uuid AND clerk_user_id = $7`,
+       WHERE id = $7::uuid AND clerk_user_id = $8`,
       [
         nextFullName || current.taxpayer_name,
         nextFirstName || null,
         nextLastName || null,
+        nextSin || null,
         nextSinLast4 || null,
         nextDateOfBirth || null,
         current.taxpayer_id,

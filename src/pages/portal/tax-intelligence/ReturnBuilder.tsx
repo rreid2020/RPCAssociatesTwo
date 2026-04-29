@@ -22,7 +22,14 @@ type TaxReturnPayload = {
     source_type?: string
     metadata?: Record<string, unknown>
   }>
-  deductions: Array<{ id: string; category: string; description: string | null; amount: number; is_credit: boolean }>
+  deductions: Array<{
+    id: string
+    category: string
+    description: string | null
+    amount: number
+    is_credit: boolean
+    metadata?: Record<string, unknown>
+  }>
   calculation?: {
     taxable_income: number
     total_payable: number
@@ -45,7 +52,21 @@ type LineMappingRow = {
   mappedTo: string
   category: string
   amount: number
+  status: 'OK' | 'REVIEW'
+  reason: string
 }
+
+const T1_DEDUCTION_FIELDS = [
+  { key: 'rrsp', label: 'RRSP deduction', lineRef: '20800', category: 'rrsp', isCredit: false },
+  { key: 'fhsa_deduction', label: 'FHSA deduction', lineRef: '20805', category: 'fhsa_deduction', isCredit: false },
+  { key: 'union_dues', label: 'Annual union/professional dues', lineRef: '21200', category: 'union_dues', isCredit: false },
+  { key: 'child_care_expenses', label: 'Child care expenses', lineRef: '21400', category: 'child_care_expenses', isCredit: false },
+  { key: 'moving_expenses', label: 'Moving expenses', lineRef: '21900', category: 'moving_expenses', isCredit: false },
+  { key: 'cpp2_contributions', label: 'CPP enhanced contributions deduction', lineRef: '22215', category: 'cpp2_contributions', isCredit: false },
+  { key: 'tuition_amount', label: 'Tuition amount', lineRef: '32300', category: 'tuition_amount', isCredit: true },
+  { key: 'medical_expenses', label: 'Medical expenses (self/family)', lineRef: '33099', category: 'medical_expenses', isCredit: true },
+  { key: 'donations', label: 'Donations and gifts', lineRef: '34900', category: 'donations', isCredit: true }
+] as const
 
 const ReturnBuilder: FC = () => {
   const { id = '' } = useParams()
@@ -60,6 +81,7 @@ const ReturnBuilder: FC = () => {
   const [incomeRows, setIncomeRows] = useState<Array<{ category: string; description: string; amount: number }>>([])
   const [manualSlipRows, setManualSlipRows] = useState<SlipRow[]>([])
   const [deductionRows, setDeductionRows] = useState<Array<{ category: string; description: string; amount: number; isCredit: boolean }>>([])
+  const [deductionFormValues, setDeductionFormValues] = useState<Record<string, number>>({})
   const [documents, setDocuments] = useState<Array<{ id: string; file_name: string }>>([])
   const [selectedDocumentId, setSelectedDocumentId] = useState('')
   const [newSlipCode, setNewSlipCode] = useState('T4')
@@ -111,12 +133,23 @@ const ReturnBuilder: FC = () => {
         if (boxCode) row.boxes[boxCode] = Number.isFinite(boxValue) ? boxValue : 0
       }
       setManualSlipRows(Array.from(grouped.values()))
-      setDeductionRows((returnData.deductions || []).map((r) => ({
-        category: r.category,
-        description: r.description || '',
-        amount: Number(r.amount || 0),
-        isCredit: Boolean(r.is_credit)
-      })))
+      const structuredCategories: Set<string> = new Set(T1_DEDUCTION_FIELDS.map((f) => f.category))
+      setDeductionRows(
+        (returnData.deductions || [])
+          .filter((r) => !structuredCategories.has(r.category))
+          .map((r) => ({
+            category: r.category,
+            description: r.description || '',
+            amount: Number(r.amount || 0),
+            isCredit: Boolean(r.is_credit)
+          }))
+      )
+      const nextFormValues: Record<string, number> = {}
+      for (const field of T1_DEDUCTION_FIELDS) {
+        const matching = (returnData.deductions || []).filter((d) => d.category === field.category)
+        nextFormValues[field.key] = matching.reduce((sum, d) => sum + Number(d.amount || 0), 0)
+      }
+      setDeductionFormValues(nextFormValues)
       setDocuments(docs.documents || [])
       setErr(null)
     } catch (e) {
@@ -143,11 +176,41 @@ const ReturnBuilder: FC = () => {
       const lineRef = String(meta.lineRef || '')
       const scheduleRef = String(meta.scheduleRef || '')
       if (!slipType || !lineRef) continue
+      const def = SLIP_DEFINITIONS_BY_CODE[slipType]
+      const boxDef = def?.boxes.find((b) => b.code === boxCode)
+      const expectedCategories = (boxDef?.targets || []).map((t) => t.category)
+      const expectedLineRefs = (boxDef?.targets || []).map((t) => String(t.lineRef || '')).filter(Boolean)
+      const expectedScheduleRefs = (boxDef?.targets || []).map((t) => String(t.scheduleRef || ''))
+
+      let status: 'OK' | 'REVIEW' = 'OK'
+      let reason = 'Mapping matches configured CRA slip box target.'
+      if (!def) {
+        status = 'REVIEW'
+        reason = 'Unknown slip type. Confirm mapping manually.'
+      } else if (!boxDef) {
+        status = 'REVIEW'
+        reason = 'Box is not registered for this slip type.'
+      } else if (expectedCategories.length > 0 && !expectedCategories.includes(entry.category)) {
+        status = 'REVIEW'
+        reason = `Category mismatch. Expected one of: ${expectedCategories.join(', ')}.`
+      } else if (expectedLineRefs.length > 0 && !expectedLineRefs.includes(lineRef)) {
+        status = 'REVIEW'
+        reason = `Line mismatch. Expected one of: ${expectedLineRefs.map((x) => `Line ${x}`).join(', ')}.`
+      } else if (scheduleRef && expectedScheduleRefs.length > 0 && !expectedScheduleRefs.includes(scheduleRef)) {
+        status = 'REVIEW'
+        reason = `Schedule mismatch. Expected one of: ${expectedScheduleRefs.filter(Boolean).join(', ')}.`
+      } else if (Number(entry.amount || 0) <= 0) {
+        status = 'REVIEW'
+        reason = 'Amount should be greater than zero.'
+      }
+
       rows.push({
         source: boxCode ? `${slipType} box ${boxCode}` : slipType,
         mappedTo: scheduleRef ? `Line ${lineRef} (${scheduleRef})` : `Line ${lineRef}`,
         category: entry.category,
-        amount: Number(entry.amount || 0)
+        amount: Number(entry.amount || 0),
+        status,
+        reason
       })
     }
     return rows
@@ -212,15 +275,30 @@ const ReturnBuilder: FC = () => {
   const saveDeductions = async () => {
     setSaving(true)
     try {
+      const structuredEntries = T1_DEDUCTION_FIELDS
+        .map((field) => ({
+          category: field.category,
+          description: `Line ${field.lineRef}: ${field.label}`,
+          amount: Number(deductionFormValues[field.key] || 0),
+          isCredit: field.isCredit,
+          metadata: { lineRef: field.lineRef, source: 't1_deduction_form' }
+        }))
+        .filter((row) => Number.isFinite(row.amount) && row.amount > 0)
+
       await taxFetch(`/tax-returns/${id}/deductions`, getToken, {
         method: 'PUT',
         body: JSON.stringify({
-          entries: deductionRows.map((r) => ({
-            category: r.category,
-            description: r.description,
-            amount: Number(r.amount || 0),
-            isCredit: r.isCredit
-          }))
+          entries: [
+            ...structuredEntries,
+            ...deductionRows
+              .map((r) => ({
+                category: r.category,
+                description: r.description,
+                amount: Number(r.amount || 0),
+                isCredit: r.isCredit
+              }))
+              .filter((r) => Number.isFinite(r.amount) && r.amount > 0)
+          ]
         })
       })
       await load()
@@ -438,6 +516,30 @@ const ReturnBuilder: FC = () => {
           {!loading && activeStep === 'Deductions' && (
             <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
               <h2 className="text-lg font-semibold text-primary-dark">Deductions</h2>
+              <div className="border border-border rounded-md p-3 bg-background/50 space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-primary-dark">T1 deduction and credit inputs</h3>
+                  <p className="text-xs text-text-light mt-1">Enter common deduction/credit lines from T1 General Step 3 and Step 5.</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {T1_DEDUCTION_FIELDS.map((field) => (
+                    <label key={field.key} className="text-xs text-text-light border border-border rounded-md p-2 bg-white">
+                      <span className="font-medium text-text block">Line {field.lineRef} - {field.label}</span>
+                      <span className="block text-[11px] mt-0.5">{field.isCredit ? 'Non-refundable credit input' : 'Net income deduction input'}</span>
+                      <input
+                        type="number"
+                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                        value={Number(deductionFormValues[field.key] || 0)}
+                        onChange={(e) => {
+                          const n = Number(e.target.value)
+                          setDeductionFormValues((prev) => ({ ...prev, [field.key]: Number.isFinite(n) ? n : 0 }))
+                        }}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <h3 className="text-sm font-semibold text-primary-dark">Additional custom deductions/credits</h3>
               <div className="space-y-2">
                 {deductionRows.map((row, idx) => (
                   <div key={`deduction-${idx}`} className="grid grid-cols-1 md:grid-cols-4 gap-2">
@@ -485,6 +587,7 @@ const ReturnBuilder: FC = () => {
                           <th className="text-left px-3 py-2 font-semibold text-primary-dark">Source</th>
                           <th className="text-left px-3 py-2 font-semibold text-primary-dark">Mapped To</th>
                           <th className="text-left px-3 py-2 font-semibold text-primary-dark">Category</th>
+                          <th className="text-left px-3 py-2 font-semibold text-primary-dark">Validation</th>
                           <th className="text-right px-3 py-2 font-semibold text-primary-dark">Amount</th>
                         </tr>
                       </thead>
@@ -494,12 +597,29 @@ const ReturnBuilder: FC = () => {
                             <td className="px-3 py-2 text-text">{row.source}</td>
                             <td className="px-3 py-2 text-text">{row.mappedTo}</td>
                             <td className="px-3 py-2 text-text">{row.category}</td>
+                            <td className="px-3 py-2">
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                  row.status === 'OK'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-amber-100 text-amber-800'
+                                }`}
+                                title={row.reason}
+                              >
+                                {row.status}
+                              </span>
+                            </td>
                             <td className="px-3 py-2 text-right text-text">${row.amount.toFixed(2)}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
+                )}
+                {lineMappingRows.some((r) => r.status === 'REVIEW') && (
+                  <p className="text-xs text-amber-700 mt-2">
+                    One or more mappings need review. Hover over the `REVIEW` badge to see the reason.
+                  </p>
                 )}
               </div>
               {data?.calculation && (

@@ -7,6 +7,14 @@ function parseMoney (text, labelRegex) {
 
 function detectSlipType (text = '') {
   const t = String(text).toUpperCase()
+  if (/\bT5018\b/.test(t)) return 'T5018'
+  if (/\bT5013\b/.test(t)) return 'T5013'
+  if (/\bT5007\b/.test(t)) return 'T5007'
+  if (/\bT4PS\b/.test(t)) return 'T4PS'
+  if (/\bT4A\b/.test(t)) return 'T4A'
+  if (/\bT4E\b/.test(t)) return 'T4E'
+  if (/\bT4RSP\b/.test(t)) return 'T4RSP'
+  if (/\bT4RIF\b/.test(t)) return 'T4RIF'
   if (/\bT4\b/.test(t)) return 'T4'
   if (/\bT5\b/.test(t)) return 'T5'
   if (/\bT3\b/.test(t)) return 'T3'
@@ -35,6 +43,54 @@ function buildSchema (slipType, text) {
       trust_income: parseMoney(text, /trust[_\s-]*income[:\s$]*([0-9,.\-]+)/i),
       capital_gains: parseMoney(text, /capital[_\s-]*gains?[:\s$]*([0-9,.\-]+)/i),
       other_income: parseMoney(text, /other[_\s-]*income[:\s$]*([0-9,.\-]+)/i)
+    }
+  }
+  if (slipType === 'T4A') {
+    return {
+      pension_income: parseMoney(text, /pension(?:\s+or\s+superannuation)?[:\s$]*([0-9,.\-]+)/i),
+      fees_for_services: parseMoney(text, /fees?\s+for\s+services[:\s$]*([0-9,.\-]+)/i),
+      income_tax_deducted: parseMoney(text, /income[_\s-]*tax[_\s-]*deducted[:\s$]*([0-9,.\-]+)/i)
+    }
+  }
+  if (slipType === 'T4E') {
+    return {
+      total_benefits_paid: parseMoney(text, /total[_\s-]*benefits[_\s-]*paid[:\s$]*([0-9,.\-]+)/i),
+      income_tax_deducted: parseMoney(text, /income[_\s-]*tax[_\s-]*deducted[:\s$]*([0-9,.\-]+)/i)
+    }
+  }
+  if (slipType === 'T4RSP') {
+    return {
+      rrsp_income: parseMoney(text, /rrsp[_\s-]*income[:\s$]*([0-9,.\-]+)/i),
+      income_tax_deducted: parseMoney(text, /income[_\s-]*tax[_\s-]*deducted[:\s$]*([0-9,.\-]+)/i)
+    }
+  }
+  if (slipType === 'T4RIF') {
+    return {
+      taxable_amount: parseMoney(text, /taxable[_\s-]*amount[:\s$]*([0-9,.\-]+)/i),
+      income_tax_deducted: parseMoney(text, /income[_\s-]*tax[_\s-]*deducted[:\s$]*([0-9,.\-]+)/i)
+    }
+  }
+  if (slipType === 'T5007') {
+    return {
+      social_assistance_payments: parseMoney(text, /social[_\s-]*assistance(?:[_\s-]*payments?)?[:\s$]*([0-9,.\-]+)/i),
+      workers_compensation_benefits: parseMoney(text, /workers?[_\s-]*compensation(?:[_\s-]*benefits?)?[:\s$]*([0-9,.\-]+)/i)
+    }
+  }
+  if (slipType === 'T5013') {
+    return {
+      business_income: parseMoney(text, /business[_\s-]*income[:\s$]*([0-9,.\-]+)/i),
+      capital_gains: parseMoney(text, /capital[_\s-]*gains?[:\s$]*([0-9,.\-]+)/i)
+    }
+  }
+  if (slipType === 'T5018') {
+    return {
+      contract_payments: parseMoney(text, /contract[_\s-]*payments?[:\s$]*([0-9,.\-]+)/i)
+    }
+  }
+  if (slipType === 'T4PS') {
+    return {
+      amount_allocated_by_trustee: parseMoney(text, /amount[_\s-]*allocated[_\s-]*by[_\s-]*trustee[:\s$]*([0-9,.\-]+)/i),
+      amount_paid_out_of_plan: parseMoney(text, /amount[_\s-]*paid[_\s-]*out[_\s-]*of[_\s-]*plan[:\s$]*([0-9,.\-]+)/i)
     }
   }
   return {}

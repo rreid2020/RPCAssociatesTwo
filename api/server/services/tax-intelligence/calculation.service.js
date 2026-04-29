@@ -54,7 +54,11 @@ export async function calculateReturnTotals (pool, clerkUserId, taxReturnId) {
     )
   ])
 
-  const grossIncome = incomeRows.rows.reduce((sum, r) => sum + Number(r.amount || 0), 0)
+  const grossIncome = incomeRows.rows.reduce((sum, r) => {
+    const isWithholding = r?.metadata?.asWithholding === true || String(r?.category || '') === 'tax_withheld'
+    if (isWithholding) return sum
+    return sum + Number(r.amount || 0)
+  }, 0)
   const totalDeductions = deductionRows.rows
     .filter((r) => !r.is_credit)
     .reduce((sum, r) => sum + Number(r.amount || 0), 0)
@@ -62,7 +66,8 @@ export async function calculateReturnTotals (pool, clerkUserId, taxReturnId) {
     .filter((r) => r.is_credit)
     .reduce((sum, r) => sum + Number(r.amount || 0), 0)
   const taxesWithheld = incomeRows.rows.reduce((sum, r) => {
-    const withheld = Number(r?.metadata?.incomeTaxDeducted || 0)
+    const isWithholding = r?.metadata?.asWithholding === true || String(r?.category || '') === 'tax_withheld'
+    const withheld = Number(r?.metadata?.incomeTaxDeducted || (isWithholding ? r.amount : 0) || 0)
     return sum + (Number.isFinite(withheld) ? withheld : 0)
   }, 0)
 

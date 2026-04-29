@@ -18,6 +18,7 @@ import {
 import { createScenario, listScenarios } from '../services/tax-intelligence/scenario.service.js'
 import { listAuditFlags, runAuditRules } from '../services/tax-intelligence/audit.service.js'
 import { getAdvisorySummary } from '../services/tax-intelligence/aiAdvisory.service.js'
+import { mapExtractedSlipToEntries, upsertDocumentMappedEntries } from '../services/tax-intelligence/slipMapping.service.js'
 
 function parseUuid (v) {
   return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
@@ -234,10 +235,19 @@ export function createTaxIntelligenceRouter (pool) {
           confidence: structured.confidence
         }
       })
+      const mappedEntries = mapExtractedSlipToEntries(structured.slipType, structured.extracted, {
+        documentId,
+        extractionId: extraction?.id || null,
+        slipType: structured.slipType
+      })
+      if (taxReturnId) {
+        await upsertDocumentMappedEntries(pool, session.userId, taxReturnId, documentId, mappedEntries)
+      }
       res.json({
         extraction,
         reviewRequired: structured.reviewRequired,
-        confidence: structured.confidence
+        confidence: structured.confidence,
+        mappedEntries
       })
     } catch (e) {
       console.error('POST /documents/extract', e)

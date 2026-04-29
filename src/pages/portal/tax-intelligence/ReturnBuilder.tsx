@@ -5,6 +5,7 @@ import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
 import { taxFetch } from '../../../lib/taxIntelligenceApi'
 import { getTaxBasePath } from './path'
+import { SLIP_DEFINITIONS, SLIP_DEFINITIONS_BY_CODE } from '../../../lib/taxSlips/definitions'
 
 type TaxReturnPayload = {
   taxReturn: {
@@ -13,7 +14,14 @@ type TaxReturnPayload = {
     taxpayer_name: string
     status: string
   }
-  incomeEntries: Array<{ id: string; category: string; description: string | null; amount: number }>
+  incomeEntries: Array<{
+    id: string
+    category: string
+    description: string | null
+    amount: number
+    source_type?: string
+    metadata?: Record<string, unknown>
+  }>
   deductions: Array<{ id: string; category: string; description: string | null; amount: number; is_credit: boolean }>
   calculation?: {
     taxable_income: number
@@ -24,6 +32,20 @@ type TaxReturnPayload = {
 
 const steps = ['Setup', 'Income', 'Deductions', 'Review', 'Optimization', 'Risk'] as const
 type Step = typeof steps[number]
+
+type SlipRow = {
+  slipCode: string
+  payerName: string
+  taxYear: number
+  boxes: Record<string, number>
+}
+
+type LineMappingRow = {
+  source: string
+  mappedTo: string
+  category: string
+  amount: number
+}
 
 const ReturnBuilder: FC = () => {
   const { id = '' } = useParams()
@@ -36,9 +58,18 @@ const ReturnBuilder: FC = () => {
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [incomeRows, setIncomeRows] = useState<Array<{ category: string; description: string; amount: number }>>([])
+  const [manualSlipRows, setManualSlipRows] = useState<SlipRow[]>([])
   const [deductionRows, setDeductionRows] = useState<Array<{ category: string; description: string; amount: number; isCredit: boolean }>>([])
   const [documents, setDocuments] = useState<Array<{ id: string; file_name: string }>>([])
   const [selectedDocumentId, setSelectedDocumentId] = useState('')
+  const [newSlipCode, setNewSlipCode] = useState('T4')
+
+  const createSlipRow = (slipCode: string): SlipRow => ({
+    slipCode,
+    payerName: '',
+    taxYear: data?.taxReturn?.tax_year || new Date().getFullYear(),
+    boxes: Object.fromEntries((SLIP_DEFINITIONS_BY_CODE[slipCode]?.boxes || []).map((b) => [b.code, 0]))
+  })
 
   const load = async () => {
     if (!id) return
@@ -49,11 +80,37 @@ const ReturnBuilder: FC = () => {
         taxFetch<{ documents: Array<{ id: string; file_name: string }> }>('/documents/for-tax', getToken)
       ])
       setData(returnData)
-      setIncomeRows((returnData.incomeEntries || []).map((r) => ({
+      const manualSlipEntries = (returnData.incomeEntries || []).filter(
+        (r) => r.source_type === 'manual_slip' || r.source_type === 'manual_t4' || String(r?.metadata?.slipType || '').length > 0
+      )
+      const nonSlipEntries = (returnData.incomeEntries || []).filter(
+        (r) => !(r.source_type === 'manual_slip' || r.source_type === 'manual_t4' || String(r?.metadata?.slipType || '').length > 0)
+      )
+      setIncomeRows(nonSlipEntries.map((r) => ({
         category: r.category,
         description: r.description || '',
         amount: Number(r.amount || 0)
       })))
+      const grouped = new Map<string, SlipRow>()
+      for (const entry of manualSlipEntries) {
+        const meta = (entry.metadata || {}) as Record<string, unknown>
+        const slipType = String(meta.slipType || 'T4')
+        const manualSlipId = String(meta.manualSlipId || `${slipType}-${entry.id}`)
+        const boxCode = String(meta.boxCode || '')
+        const boxValue = Number(meta.boxValue || 0)
+        if (!grouped.has(manualSlipId)) {
+          grouped.set(manualSlipId, {
+            slipCode: slipType,
+            payerName: String(meta.payerName || ''),
+            taxYear: Number(meta.taxYear || returnData.taxReturn.tax_year || new Date().getFullYear()),
+            boxes: Object.fromEntries((SLIP_DEFINITIONS_BY_CODE[slipType]?.boxes || []).map((b) => [b.code, 0]))
+          })
+        }
+        const row = grouped.get(manualSlipId)
+        if (!row) continue
+        if (boxCode) row.boxes[boxCode] = Number.isFinite(boxValue) ? boxValue : 0
+      }
+      setManualSlipRows(Array.from(grouped.values()))
       setDeductionRows((returnData.deductions || []).map((r) => ({
         category: r.category,
         description: r.description || '',
@@ -75,21 +132,73 @@ const ReturnBuilder: FC = () => {
   }, [id])
 
   const addIncomeRow = () => setIncomeRows((prev) => [...prev, { category: 'employment_income', description: '', amount: 0 }])
+  const addSlipRow = () => setManualSlipRows((prev) => [...prev, createSlipRow(newSlipCode)])
   const addDeductionRow = () => setDeductionRows((prev) => [...prev, { category: 'rrsp', description: '', amount: 0, isCredit: false }])
+  const lineMappingRows = useMemo<LineMappingRow[]>(() => {
+    const rows: LineMappingRow[] = []
+    for (const entry of data?.incomeEntries || []) {
+      const meta = (entry.metadata || {}) as Record<string, unknown>
+      const slipType = String(meta.slipType || '')
+      const boxCode = String(meta.boxCode || '')
+      const lineRef = String(meta.lineRef || '')
+      const scheduleRef = String(meta.scheduleRef || '')
+      if (!slipType || !lineRef) continue
+      rows.push({
+        source: boxCode ? `${slipType} box ${boxCode}` : slipType,
+        mappedTo: scheduleRef ? `Line ${lineRef} (${scheduleRef})` : `Line ${lineRef}`,
+        category: entry.category,
+        amount: Number(entry.amount || 0)
+      })
+    }
+    return rows
+  }, [data?.incomeEntries])
 
   const saveIncome = async () => {
     setSaving(true)
     try {
+      const manualEntries = incomeRows.map((r) => ({
+        category: r.category,
+        description: r.description,
+        amount: Number(r.amount || 0),
+        sourceType: 'manual',
+        isManual: true
+      }))
+      const slipEntries = manualSlipRows.flatMap((slip) => {
+        const def = SLIP_DEFINITIONS_BY_CODE[slip.slipCode]
+        if (!def) return []
+        const manualSlipId = crypto.randomUUID()
+        const entries: Array<Record<string, unknown>> = []
+        for (const boxDef of def.boxes) {
+          const boxValue = Number(slip.boxes[boxDef.code] || 0)
+          if (!Number.isFinite(boxValue) || boxValue === 0) continue
+          for (const target of boxDef.targets) {
+            entries.push({
+              category: target.category,
+              description: `${def.code} box ${boxDef.code}: ${target.description}`,
+              amount: boxValue,
+              sourceType: 'manual_slip',
+              isManual: true,
+              metadata: {
+                slipType: def.code,
+                payerName: slip.payerName || null,
+                taxYear: Number(slip.taxYear || (data?.taxReturn?.tax_year || new Date().getFullYear())),
+                boxCode: boxDef.code,
+                boxValue,
+                lineRef: target.lineRef || null,
+                scheduleRef: target.scheduleRef || null,
+                asWithholding: Boolean(target.asWithholding),
+                incomeTaxDeducted: target.asWithholding ? boxValue : 0,
+                manualSlipId
+              }
+            })
+          }
+        }
+        return entries
+      })
       await taxFetch(`/tax-returns/${id}/income`, getToken, {
         method: 'PUT',
         body: JSON.stringify({
-          entries: incomeRows.map((r) => ({
-            category: r.category,
-            description: r.description,
-            amount: Number(r.amount || 0),
-            sourceType: 'manual',
-            isManual: true
-          }))
+          entries: [...manualEntries, ...slipEntries]
         })
       })
       await load()
@@ -233,6 +342,77 @@ const ReturnBuilder: FC = () => {
                   Import selected document
                 </button>
               </div>
+              <div className="border border-border rounded-md p-3 bg-background/50 space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-primary-dark">Manual CRA slip entry (box format)</h3>
+                  <p className="text-xs text-text-light mt-1">
+                    Select a slip type, then enter box values exactly as shown on the CRA slip.
+                  </p>
+                </div>
+                <div className="flex flex-col md:flex-row gap-2">
+                  <select
+                    className="border border-border rounded-md px-3 py-2 text-sm flex-1"
+                    value={newSlipCode}
+                    onChange={(e) => setNewSlipCode(e.target.value)}
+                  >
+                    {SLIP_DEFINITIONS.map((def) => (
+                      <option key={def.code} value={def.code}>{def.code} - {def.name}</option>
+                    ))}
+                  </select>
+                  <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={addSlipRow}>
+                    Add slip
+                  </button>
+                </div>
+                {manualSlipRows.map((row, idx) => {
+                  const def = SLIP_DEFINITIONS_BY_CODE[row.slipCode]
+                  if (!def) return null
+                  return (
+                  <div key={`t4-${idx}`} className="border border-border rounded-md p-3 bg-white space-y-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <input
+                        className="border border-border rounded-md px-3 py-2 text-sm"
+                        placeholder={def.payerLabel}
+                        value={row.payerName}
+                        onChange={(e) => {
+                          const next = [...manualSlipRows]
+                          next[idx].payerName = e.target.value
+                          setManualSlipRows(next)
+                        }}
+                      />
+                      <input
+                        type="number"
+                        className="border border-border rounded-md px-3 py-2 text-sm"
+                        placeholder="Tax year"
+                        value={row.taxYear}
+                        onChange={(e) => {
+                          const next = [...manualSlipRows]
+                          next[idx].taxYear = Number(e.target.value)
+                          setManualSlipRows(next)
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs text-text-light font-medium">{def.code} - {def.name}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                      {def.boxes.map((box) => (
+                        <label key={`${row.slipCode}-${idx}-${box.code}`} className="text-xs text-text-light">
+                          Box {box.code} {box.label}
+                          <input
+                            type="number"
+                            className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                            value={Number(row.boxes[box.code] || 0)}
+                            onChange={(e) => {
+                              const next = [...manualSlipRows]
+                              next[idx].boxes = { ...next[idx].boxes, [box.code]: Number(e.target.value) }
+                              setManualSlipRows(next)
+                            }}
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  )
+                })}
+              </div>
               <div className="space-y-2">
                 {incomeRows.map((row, idx) => (
                   <div key={`income-${idx}`} className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -292,6 +472,36 @@ const ReturnBuilder: FC = () => {
               <button type="button" className="btn btn--primary text-sm px-3 py-2" onClick={() => { void runCalculation() }} disabled={saving}>
                 Run deterministic calculation
               </button>
+              <div className="mt-4">
+                <h3 className="text-sm font-semibold text-primary-dark">Slip line mapping trace</h3>
+                <p className="text-xs text-text-light mt-1">Shows how slip boxes are mapped into T1 lines/schedules.</p>
+                {lineMappingRows.length === 0 ? (
+                  <p className="text-xs text-text-light mt-2">No slip mappings available yet. Add manual slips or import extracted slips.</p>
+                ) : (
+                  <div className="overflow-x-auto mt-2 border border-border rounded-md">
+                    <table className="min-w-full text-xs">
+                      <thead className="bg-background/70">
+                        <tr>
+                          <th className="text-left px-3 py-2 font-semibold text-primary-dark">Source</th>
+                          <th className="text-left px-3 py-2 font-semibold text-primary-dark">Mapped To</th>
+                          <th className="text-left px-3 py-2 font-semibold text-primary-dark">Category</th>
+                          <th className="text-right px-3 py-2 font-semibold text-primary-dark">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lineMappingRows.map((row, idx) => (
+                          <tr key={`${row.source}-${row.mappedTo}-${idx}`} className="border-t border-border">
+                            <td className="px-3 py-2 text-text">{row.source}</td>
+                            <td className="px-3 py-2 text-text">{row.mappedTo}</td>
+                            <td className="px-3 py-2 text-text">{row.category}</td>
+                            <td className="px-3 py-2 text-right text-text">${row.amount.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
               {data?.calculation && (
                 <div className="mt-3 text-sm text-text space-y-1">
                   <p>Taxable income: ${Number(data.calculation.taxable_income || 0).toFixed(2)}</p>

@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { getClerkUser } from '../middleware/portalAuth.js'
-import { createTaxReturn, getTaxReturnById, listTaxReturns, updateTaxReturn } from '../services/tax-intelligence/taxReturn.service.js'
+import { createTaxReturn, deleteTaxReturn, getTaxReturnById, listTaxReturns, updateTaxReturn } from '../services/tax-intelligence/taxReturn.service.js'
 import { listDeductions, listIncomeEntries, upsertDeductions, upsertIncomeEntries } from '../services/tax-intelligence/income.service.js'
 import { calculateReturnTotals, getSavedCalculation } from '../services/tax-intelligence/calculation.service.js'
 import {
@@ -83,6 +83,21 @@ export function createTaxIntelligenceRouter (pool) {
     } catch (e) {
       console.error('PATCH /tax-returns/:id', e)
       res.status(500).json({ error: 'Could not update tax return' })
+    }
+  })
+
+  r.delete('/tax-returns/:id', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const id = parseUuid(req.params.id)
+    if (!id) return res.status(400).json({ error: 'Invalid id' })
+    try {
+      const deleted = await deleteTaxReturn(pool, session.userId, id)
+      if (!deleted) return res.status(404).json({ error: 'Not found' })
+      res.status(204).end()
+    } catch (e) {
+      console.error('DELETE /tax-returns/:id', e)
+      res.status(500).json({ error: 'Could not delete tax return' })
     }
   })
 

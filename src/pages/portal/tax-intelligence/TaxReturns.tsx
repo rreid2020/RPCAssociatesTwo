@@ -15,6 +15,7 @@ const TaxReturns: FC = () => {
   const [taxYear, setTaxYear] = useState(new Date().getFullYear())
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
   const load = async () => {
@@ -56,6 +57,21 @@ const TaxReturns: FC = () => {
       setErr(e instanceof Error ? e.message : 'Could not create tax return')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const onDelete = async (returnId: string, taxpayer: string, year: number) => {
+    const confirmed = window.confirm(`Delete ${taxpayer} ${year} return?\n\nThis will permanently remove the return and all related tax data.`)
+    if (!confirmed) return
+    setDeletingId(returnId)
+    setErr(null)
+    try {
+      await taxFetch(`/tax-returns/${returnId}`, getToken, { method: 'DELETE' })
+      await load()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not delete tax return')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -124,12 +140,22 @@ const TaxReturns: FC = () => {
                         {r.tax_year} · {r.status} · updated {new Date(r.updated_at).toLocaleString()}
                       </p>
                     </div>
-                    <Link
-                      to={`${basePath}/returns/${r.id}`}
-                      className="text-sm font-medium text-accent hover:underline"
-                    >
-                      Open builder
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        className="text-sm font-medium text-red-700 hover:underline disabled:opacity-50"
+                        disabled={deletingId === r.id}
+                        onClick={() => { void onDelete(r.id, r.taxpayer_name, r.tax_year) }}
+                      >
+                        {deletingId === r.id ? 'Deleting…' : 'Delete'}
+                      </button>
+                      <Link
+                        to={`${basePath}/returns/${r.id}`}
+                        className="text-sm font-medium text-accent hover:underline"
+                      >
+                        Open builder
+                      </Link>
+                    </div>
                   </li>
                 ))}
               </ul>

@@ -12,7 +12,27 @@ type TaxReturnPayload = {
     id: string
     tax_year: number
     taxpayer_name: string
+    taxpayer_first_name?: string | null
+    taxpayer_last_name?: string | null
+    taxpayer_sin_last4?: string | null
+    taxpayer_date_of_birth?: string | null
     status: string
+    province_code?: string
+    setup_json?: Record<string, unknown>
+    taxpayer_profile?: {
+      maritalStatus?: string
+      spouse?: {
+        fullName?: string
+        sinLast4?: string
+        netIncome?: number
+      }
+      dependents?: Array<{
+        fullName?: string
+        relationship?: string
+        dateOfBirth?: string | null
+        disability?: boolean
+      }>
+    }
   }
   incomeEntries: Array<{
     id: string
@@ -35,6 +55,27 @@ type TaxReturnPayload = {
     total_payable: number
     refund_or_balance: number
   }
+}
+
+type DependentProfile = {
+  fullName: string
+  relationship: string
+  dateOfBirth: string
+  disability: boolean
+}
+
+type TaxpayerProfileState = {
+  firstName: string
+  lastName: string
+  dateOfBirth: string
+  sinLast4: string
+  maritalStatus: 'single' | 'married' | 'common_law' | 'separated' | 'divorced' | 'widowed'
+  spouse: {
+    fullName: string
+    sinLast4: string
+    netIncome: number
+  }
+  dependents: DependentProfile[]
 }
 
 const steps = ['Setup', 'Income', 'Deductions', 'Review', 'Optimization', 'Risk'] as const
@@ -68,6 +109,20 @@ const T1_DEDUCTION_FIELDS = [
   { key: 'donations', label: 'Donations and gifts', lineRef: '34900', category: 'donations', isCredit: true }
 ] as const
 
+const DEFAULT_TAXPAYER_PROFILE: TaxpayerProfileState = {
+  firstName: '',
+  lastName: '',
+  dateOfBirth: '',
+  sinLast4: '',
+  maritalStatus: 'single',
+  spouse: {
+    fullName: '',
+    sinLast4: '',
+    netIncome: 0
+  },
+  dependents: []
+}
+
 const ReturnBuilder: FC = () => {
   const { id = '' } = useParams()
   const { getToken } = useAuth()
@@ -78,6 +133,8 @@ const ReturnBuilder: FC = () => {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [profileSavedMsg, setProfileSavedMsg] = useState<string | null>(null)
+  const [taxpayerProfile, setTaxpayerProfile] = useState<TaxpayerProfileState>(DEFAULT_TAXPAYER_PROFILE)
   const [incomeRows, setIncomeRows] = useState<Array<{ category: string; description: string; amount: number }>>([])
   const [manualSlipRows, setManualSlipRows] = useState<SlipRow[]>([])
   const [deductionRows, setDeductionRows] = useState<Array<{ category: string; description: string; amount: number; isCredit: boolean }>>([])
@@ -102,6 +159,36 @@ const ReturnBuilder: FC = () => {
         taxFetch<{ documents: Array<{ id: string; file_name: string }> }>('/documents/for-tax', getToken)
       ])
       setData(returnData)
+      const setupJson = (returnData.taxReturn.setup_json || {}) as Record<string, unknown>
+      const setupProfile = (setupJson.taxpayerProfile || {}) as Record<string, unknown>
+      const dbProfile = (returnData.taxReturn.taxpayer_profile || {}) as Record<string, unknown>
+      const spouseObj = (dbProfile.spouse as Record<string, unknown> | undefined) || (setupProfile.spouse as Record<string, unknown> | undefined) || {}
+      const dependentsRaw = Array.isArray(dbProfile.dependents)
+        ? dbProfile.dependents
+        : (Array.isArray(setupProfile.dependents) ? setupProfile.dependents : [])
+      setTaxpayerProfile({
+        firstName: String(returnData.taxReturn.taxpayer_first_name || ''),
+        lastName: String(returnData.taxReturn.taxpayer_last_name || ''),
+        dateOfBirth: String(returnData.taxReturn.taxpayer_date_of_birth || ''),
+        sinLast4: String(returnData.taxReturn.taxpayer_sin_last4 || ''),
+        maritalStatus: (['single', 'married', 'common_law', 'separated', 'divorced', 'widowed'].includes(String(dbProfile.maritalStatus || setupProfile.maritalStatus))
+          ? String(dbProfile.maritalStatus || setupProfile.maritalStatus)
+          : 'single') as TaxpayerProfileState['maritalStatus'],
+        spouse: {
+          fullName: String(spouseObj.fullName || ''),
+          sinLast4: String(spouseObj.sinLast4 || ''),
+          netIncome: Number(spouseObj.netIncome || 0)
+        },
+        dependents: dependentsRaw.map((d) => {
+          const dep = d as Record<string, unknown>
+          return {
+            fullName: String(dep.fullName || ''),
+            relationship: String(dep.relationship || ''),
+            dateOfBirth: String(dep.dateOfBirth || ''),
+            disability: Boolean(dep.disability)
+          }
+        })
+      })
       const manualSlipEntries = (returnData.incomeEntries || []).filter(
         (r) => r.source_type === 'manual_slip' || r.source_type === 'manual_t4' || String(r?.metadata?.slipType || '').length > 0
       )
@@ -151,6 +238,7 @@ const ReturnBuilder: FC = () => {
       }
       setDeductionFormValues(nextFormValues)
       setDocuments(docs.documents || [])
+      setProfileSavedMsg(null)
       setErr(null)
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not load return builder')
@@ -356,6 +444,63 @@ const ReturnBuilder: FC = () => {
     }
   }
 
+  const addDependent = () => {
+    setTaxpayerProfile((prev) => ({
+      ...prev,
+      dependents: [...prev.dependents, { fullName: '', relationship: '', dateOfBirth: '', disability: false }]
+    }))
+  }
+
+  const removeDependent = (idx: number) => {
+    setTaxpayerProfile((prev) => ({
+      ...prev,
+      dependents: prev.dependents.filter((_, i) => i !== idx)
+    }))
+  }
+
+  const saveTaxpayerProfile = async () => {
+    if (!data?.taxReturn?.id) return
+    setSaving(true)
+    setProfileSavedMsg(null)
+    try {
+      const fullName = `${taxpayerProfile.firstName} ${taxpayerProfile.lastName}`.trim() || data.taxReturn.taxpayer_name
+      const normalizedProfile = {
+        maritalStatus: taxpayerProfile.maritalStatus,
+        spouse: {
+          ...taxpayerProfile.spouse,
+          fullName: taxpayerProfile.spouse.fullName.trim(),
+          sinLast4: taxpayerProfile.spouse.sinLast4.trim().slice(-4),
+          netIncome: Number(taxpayerProfile.spouse.netIncome || 0)
+        },
+        dependents: taxpayerProfile.dependents
+          .filter((d) => d.fullName.trim().length > 0)
+          .map((d) => ({
+            fullName: d.fullName.trim(),
+            relationship: d.relationship.trim(),
+            dateOfBirth: d.dateOfBirth || null,
+            disability: Boolean(d.disability)
+          }))
+      }
+      await taxFetch(`/tax-returns/${id}`, getToken, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          taxpayerName: fullName,
+          firstName: taxpayerProfile.firstName.trim() || null,
+          lastName: taxpayerProfile.lastName.trim() || null,
+          sinLast4: taxpayerProfile.sinLast4.trim().slice(-4) || null,
+          dateOfBirth: taxpayerProfile.dateOfBirth || null,
+          taxpayerProfile: normalizedProfile
+        })
+      })
+      await load()
+      setProfileSavedMsg('Taxpayer profile saved.')
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not save taxpayer profile')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <>
       <SEO
@@ -396,11 +541,173 @@ const ReturnBuilder: FC = () => {
           {loading && <p className="text-sm text-text-light">Loading return data…</p>}
 
           {!loading && activeStep === 'Setup' && (
-            <section className="bg-white p-4 rounded-lg border border-border shadow-sm">
-              <h2 className="text-lg font-semibold text-primary-dark mb-2">Setup</h2>
+            <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
+              <h2 className="text-lg font-semibold text-primary-dark">Setup</h2>
               <p className="text-sm text-text-light">
-                Return status: <strong className="text-text">{data?.taxReturn.status}</strong>. Continue to Income and Deductions to populate line items.
+                Return status: <strong className="text-text">{data?.taxReturn.status}</strong>. Complete taxpayer profile details for T1 Step 1 and family-related claims.
               </p>
+              {profileSavedMsg && (
+                <p className="text-sm text-green-800 bg-green-50 border border-green-200 rounded-md px-3 py-2">{profileSavedMsg}</p>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <label className="text-xs text-text-light">
+                  First name
+                  <input
+                    className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                    value={taxpayerProfile.firstName}
+                    onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, firstName: e.target.value }))}
+                  />
+                </label>
+                <label className="text-xs text-text-light">
+                  Last name
+                  <input
+                    className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                    value={taxpayerProfile.lastName}
+                    onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, lastName: e.target.value }))}
+                  />
+                </label>
+                <label className="text-xs text-text-light">
+                  Date of birth
+                  <input
+                    type="date"
+                    className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                    value={taxpayerProfile.dateOfBirth ? taxpayerProfile.dateOfBirth.slice(0, 10) : ''}
+                    onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, dateOfBirth: e.target.value }))}
+                  />
+                </label>
+                <label className="text-xs text-text-light">
+                  SIN (last 4)
+                  <input
+                    maxLength={4}
+                    className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                    value={taxpayerProfile.sinLast4}
+                    onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, sinLast4: e.target.value.replace(/\D/g, '').slice(-4) }))}
+                  />
+                </label>
+                <label className="text-xs text-text-light md:col-span-2">
+                  Marital status
+                  <select
+                    className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                    value={taxpayerProfile.maritalStatus}
+                    onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, maritalStatus: e.target.value as TaxpayerProfileState['maritalStatus'] }))}
+                  >
+                    <option value="single">Single</option>
+                    <option value="married">Married</option>
+                    <option value="common_law">Common-law</option>
+                    <option value="separated">Separated</option>
+                    <option value="divorced">Divorced</option>
+                    <option value="widowed">Widowed</option>
+                  </select>
+                </label>
+              </div>
+
+              {(taxpayerProfile.maritalStatus === 'married' || taxpayerProfile.maritalStatus === 'common_law') && (
+                <div className="border border-border rounded-md p-3 bg-background/50 space-y-2">
+                  <h3 className="text-sm font-semibold text-primary-dark">Spouse or common-law partner</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <label className="text-xs text-text-light">
+                      Full name
+                      <input
+                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                        value={taxpayerProfile.spouse.fullName}
+                        onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, fullName: e.target.value } }))}
+                      />
+                    </label>
+                    <label className="text-xs text-text-light">
+                      SIN (last 4)
+                      <input
+                        maxLength={4}
+                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                        value={taxpayerProfile.spouse.sinLast4}
+                        onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, sinLast4: e.target.value.replace(/\D/g, '').slice(-4) } }))}
+                      />
+                    </label>
+                    <label className="text-xs text-text-light">
+                      Net income
+                      <input
+                        type="number"
+                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                        value={Number(taxpayerProfile.spouse.netIncome || 0)}
+                        onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, netIncome: Number(e.target.value || 0) } }))}
+                      />
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              <div className="border border-border rounded-md p-3 bg-background/50 space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-primary-dark">Dependants</h3>
+                  <button type="button" className="btn btn--secondary text-xs px-2 py-1" onClick={addDependent}>Add dependant</button>
+                </div>
+                {taxpayerProfile.dependents.length === 0 && (
+                  <p className="text-xs text-text-light">No dependants added.</p>
+                )}
+                {taxpayerProfile.dependents.map((dep, idx) => (
+                  <div key={`dep-${idx}`} className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end border border-border rounded-md p-2 bg-white">
+                    <label className="text-xs text-text-light">
+                      Full name
+                      <input
+                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                        value={dep.fullName}
+                        onChange={(e) => setTaxpayerProfile((prev) => {
+                          const next = [...prev.dependents]
+                          next[idx] = { ...next[idx], fullName: e.target.value }
+                          return { ...prev, dependents: next }
+                        })}
+                      />
+                    </label>
+                    <label className="text-xs text-text-light">
+                      Relationship
+                      <input
+                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                        value={dep.relationship}
+                        onChange={(e) => setTaxpayerProfile((prev) => {
+                          const next = [...prev.dependents]
+                          next[idx] = { ...next[idx], relationship: e.target.value }
+                          return { ...prev, dependents: next }
+                        })}
+                      />
+                    </label>
+                    <label className="text-xs text-text-light">
+                      Date of birth
+                      <input
+                        type="date"
+                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                        value={dep.dateOfBirth ? dep.dateOfBirth.slice(0, 10) : ''}
+                        onChange={(e) => setTaxpayerProfile((prev) => {
+                          const next = [...prev.dependents]
+                          next[idx] = { ...next[idx], dateOfBirth: e.target.value }
+                          return { ...prev, dependents: next }
+                        })}
+                      />
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-text-light inline-flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={dep.disability}
+                          onChange={(e) => setTaxpayerProfile((prev) => {
+                            const next = [...prev.dependents]
+                            next[idx] = { ...next[idx], disability: e.target.checked }
+                            return { ...prev, dependents: next }
+                          })}
+                        />
+                        Disability
+                      </label>
+                      <button type="button" className="text-xs text-red-700 hover:underline" onClick={() => removeDependent(idx)}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-2">
+                <button type="button" className="btn btn--primary text-sm px-3 py-2" onClick={() => { void saveTaxpayerProfile() }} disabled={saving}>
+                  Save taxpayer profile
+                </button>
+              </div>
             </section>
           )}
 

@@ -123,6 +123,45 @@ const STATEMENTS = [
   'CREATE INDEX IF NOT EXISTS tax_returns_clerk_year_idx ON taxgpt.tax_returns(clerk_user_id, tax_year)',
   'CREATE INDEX IF NOT EXISTS tax_returns_taxpayer_idx ON taxgpt.tax_returns(taxpayer_id)',
 
+  `CREATE TABLE IF NOT EXISTS taxgpt.taxpayer_profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clerk_user_id TEXT NOT NULL,
+  tax_return_id UUID NOT NULL REFERENCES taxgpt.tax_returns(id) ON DELETE CASCADE,
+  marital_status VARCHAR(32) NOT NULL DEFAULT 'single',
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+)`,
+  'CREATE UNIQUE INDEX IF NOT EXISTS taxpayer_profiles_return_ux ON taxgpt.taxpayer_profiles(tax_return_id)',
+  'CREATE INDEX IF NOT EXISTS taxpayer_profiles_clerk_idx ON taxgpt.taxpayer_profiles(clerk_user_id)',
+
+  `CREATE TABLE IF NOT EXISTS taxgpt.taxpayer_spouses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clerk_user_id TEXT NOT NULL,
+  tax_return_id UUID NOT NULL REFERENCES taxgpt.tax_returns(id) ON DELETE CASCADE,
+  full_name TEXT,
+  sin_last4 TEXT,
+  net_income NUMERIC(14,2) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+)`,
+  'CREATE UNIQUE INDEX IF NOT EXISTS taxpayer_spouses_return_ux ON taxgpt.taxpayer_spouses(tax_return_id)',
+  'CREATE INDEX IF NOT EXISTS taxpayer_spouses_clerk_idx ON taxgpt.taxpayer_spouses(clerk_user_id)',
+
+  `CREATE TABLE IF NOT EXISTS taxgpt.taxpayer_dependents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clerk_user_id TEXT NOT NULL,
+  tax_return_id UUID NOT NULL REFERENCES taxgpt.tax_returns(id) ON DELETE CASCADE,
+  full_name TEXT NOT NULL,
+  relationship TEXT,
+  date_of_birth DATE,
+  has_disability BOOLEAN NOT NULL DEFAULT false,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+)`,
+  'CREATE INDEX IF NOT EXISTS taxpayer_dependents_return_idx ON taxgpt.taxpayer_dependents(tax_return_id, sort_order)',
+  'CREATE INDEX IF NOT EXISTS taxpayer_dependents_clerk_idx ON taxgpt.taxpayer_dependents(clerk_user_id)',
+
   `CREATE TABLE IF NOT EXISTS taxgpt.income_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   clerk_user_id TEXT NOT NULL,

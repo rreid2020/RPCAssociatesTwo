@@ -45,7 +45,10 @@ app.use(
   })
 )
 
-app.use(express.json())
+// Portal upload fallback (`/api/portal/v1/files/upload-via-api`) sends base64 JSON payloads.
+// Raise parser limits above Express default (100kb), tunable via env.
+const jsonLimitMb = Math.max(1, parseInt(process.env.API_JSON_LIMIT_MB || '150', 10) || 150)
+app.use(express.json({ limit: `${jsonLimitMb}mb` }))
 app.use(express.urlencoded({ extended: true }))
 
 // Health check (moved to /api/health for consistency)

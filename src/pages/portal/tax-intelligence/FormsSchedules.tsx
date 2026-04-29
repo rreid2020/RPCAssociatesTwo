@@ -12,6 +12,9 @@ type ReturnDetailPayload = {
     taxpayer_name: string
     tax_year: number
     status: string
+    taxpayer_profile?: {
+      maritalStatus?: string
+    }
   }
   incomeEntries: Array<{
     category: string
@@ -36,11 +39,13 @@ type ReturnDetailPayload = {
           netIncome?: number
           taxableIncome?: number
           estimatedTaxBeforeCredits?: number
+          taxesWithheld?: number
         }
         spouse?: {
           netIncome?: number
           taxableIncome?: number
           estimatedTaxBeforeCredits?: number
+          taxesWithheld?: number
         }
       }
       optimization?: {
@@ -102,6 +107,7 @@ const FormsSchedules: FC = () => {
   const [loading, setLoading] = useState(true)
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [summaryRole, setSummaryRole] = useState<'household' | 'self' | 'spouse'>('household')
 
   const loadReturns = async () => {
     setLoading(true)
@@ -149,6 +155,8 @@ const FormsSchedules: FC = () => {
     const map = new Map<string, LineTotal>()
     for (const row of detail?.incomeEntries || []) {
       const meta = (row.metadata || {}) as Record<string, unknown>
+      const role = String(meta.taxpayerRole || 'self') === 'spouse' ? 'spouse' : 'self'
+      if (summaryRole !== 'household' && role !== summaryRole) continue
       const lineRef = String(meta.lineRef || INCOME_CATEGORY_TO_LINE[row.category]?.lineRef || '')
       if (!lineRef) continue
       const fallbackLabel = INCOME_CATEGORY_TO_LINE[row.category]?.label || row.category
@@ -162,12 +170,14 @@ const FormsSchedules: FC = () => {
       })
     }
     return Array.from(map.values()).sort((a, b) => Number(a.lineRef) - Number(b.lineRef))
-  }, [detail?.incomeEntries])
+  }, [detail?.incomeEntries, summaryRole])
 
   const deductionLineTotals = useMemo<LineTotal[]>(() => {
     const map = new Map<string, LineTotal>()
     for (const row of detail?.deductions || []) {
       const meta = (row.metadata || {}) as Record<string, unknown>
+      const role = String(meta.taxpayerRole || 'self') === 'spouse' ? 'spouse' : 'self'
+      if (summaryRole !== 'household' && role !== summaryRole) continue
       const lineRef = String(meta.lineRef || DEDUCTION_CATEGORY_TO_LINE[row.category]?.lineRef || '')
       if (!lineRef) continue
       const fallbackLabel = DEDUCTION_CATEGORY_TO_LINE[row.category]?.label || row.category
@@ -181,24 +191,34 @@ const FormsSchedules: FC = () => {
       })
     }
     return Array.from(map.values()).sort((a, b) => Number(a.lineRef) - Number(b.lineRef))
-  }, [detail?.deductions])
+  }, [detail?.deductions, summaryRole])
 
   const t1Summary = useMemo(() => {
     const calc = detail?.calculation || {}
     const totalIncome = round2((detail?.incomeEntries || []).reduce((sum, r) => {
       const meta = (r.metadata || {}) as Record<string, unknown>
+      const role = String(meta.taxpayerRole || 'self') === 'spouse' ? 'spouse' : 'self'
+      if (summaryRole !== 'household' && role !== summaryRole) return sum
       const isWithheld = Boolean(meta.asWithholding) || r.category === 'tax_withheld'
       if (isWithheld) return sum
       return sum + Number(r.amount || 0)
     }, 0))
     const totalDeductions = round2((detail?.deductions || [])
-      .filter((d) => !d.is_credit)
+      .filter((d) => {
+        if (d.is_credit) return false
+        const role = String((d.metadata || {}).taxpayerRole || 'self') === 'spouse' ? 'spouse' : 'self'
+        return summaryRole === 'household' ? true : role === summaryRole
+      })
       .reduce((sum, d) => sum + Number(d.amount || 0), 0))
-    const line23600 = Number(calc.net_income ?? totalIncome - totalDeductions)
-    const line26000 = Number(calc.taxable_income ?? line23600)
-    const line43500 = Number(calc.total_payable ?? 0)
-    const line43700 = Number(calc.taxes_withheld ?? 0)
-    const line484Or485 = Number(calc.refund_or_balance ?? 0)
+    const comparative = calc.assumptions?.comparative
+    const roleCalc = summaryRole === 'self'
+      ? comparative?.self
+      : (summaryRole === 'spouse' ? comparative?.spouse : undefined)
+    const line23600 = Number(roleCalc?.netIncome ?? calc.net_income ?? totalIncome - totalDeductions)
+    const line26000 = Number(roleCalc?.taxableIncome ?? calc.taxable_income ?? line23600)
+    const line43500 = Number(roleCalc?.estimatedTaxBeforeCredits ?? calc.total_payable ?? 0)
+    const line43700 = Number(roleCalc?.taxesWithheld ?? calc.taxes_withheld ?? 0)
+    const line484Or485 = Number(line43700 - line43500)
     return {
       line15000: totalIncome,
       line23600: round2(line23600),
@@ -208,7 +228,7 @@ const FormsSchedules: FC = () => {
       line484Or485: round2(Math.abs(line484Or485)),
       isRefund: line484Or485 >= 0
     }
-  }, [detail])
+  }, [detail, summaryRole])
 
   return (
     <>
@@ -243,6 +263,12 @@ const FormsSchedules: FC = () => {
                 <option key={r.id} value={r.id}>{r.taxpayer_name} - {r.tax_year} ({r.status})</option>
               ))}
             </select>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-text-light">Summary view:</span>
+              <button type="button" className={`px-2 py-1 text-xs rounded border ${summaryRole === 'household' ? 'bg-primary-dark text-white border-primary-dark' : 'bg-white text-text border-border'}`} onClick={() => setSummaryRole('household')}>Household</button>
+              <button type="button" className={`px-2 py-1 text-xs rounded border ${summaryRole === 'self' ? 'bg-primary-dark text-white border-primary-dark' : 'bg-white text-text border-border'}`} onClick={() => setSummaryRole('self')}>Taxpayer</button>
+              <button type="button" className={`px-2 py-1 text-xs rounded border ${summaryRole === 'spouse' ? 'bg-primary-dark text-white border-primary-dark' : 'bg-white text-text border-border'}`} onClick={() => setSummaryRole('spouse')}>Spouse</button>
+            </div>
           </section>
 
           {loadingDetail && <p className="text-sm text-text-light">Loading T1 summary…</p>}

@@ -212,9 +212,9 @@ const FileRepository: FC = () => {
   }
 
   const onUpload: ChangeEventHandler<HTMLInputElement> = async (ev) => {
-    const list = ev.target.files
+    const list = ev.target.files ? Array.from(ev.target.files) : []
     ev.target.value = ''
-    if (!list?.length) return
+    if (!list.length) return
     if (!objectStorageReady) {
       setErr('File storage is not configured on the server yet (no DigitalOcean Spaces / S3 keys). The API must have DO_SPACES_* set. See api/server/.env.example.')
       return

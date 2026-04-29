@@ -33,6 +33,13 @@ import Integrations from './pages/portal/Integrations'
 import Subscription from './pages/portal/Subscription'
 import SignIn from './pages/portal/SignIn'
 import SignUp from './pages/portal/SignUp'
+import TaxReturns from './pages/portal/tax-intelligence/TaxReturns'
+import ReturnBuilder from './pages/portal/tax-intelligence/ReturnBuilder'
+import DocumentProcessing from './pages/portal/tax-intelligence/DocumentProcessing'
+import Optimization from './pages/portal/tax-intelligence/Optimization'
+import Scenarios from './pages/portal/tax-intelligence/Scenarios'
+import AuditRisk from './pages/portal/tax-intelligence/AuditRisk'
+import FormsSchedules from './pages/portal/tax-intelligence/FormsSchedules'
 
 const App: FC = () => {
   return (
@@ -150,6 +157,184 @@ const App: FC = () => {
                 <SignedIn>
                   <Subscription />
                 </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/app/tax-intelligence"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <Navigate to="/app/tax-intelligence/returns" replace />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/app/tax-intelligence/returns"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <TaxReturns />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/app/tax-intelligence/returns/:id"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <ReturnBuilder />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/app/tax-intelligence/documents"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <DocumentProcessing />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/app/tax-intelligence/optimization"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <Optimization />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/app/tax-intelligence/scenarios"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <Scenarios />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/app/tax-intelligence/risk"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <AuditRisk />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/app/tax-intelligence/forms-schedules"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <FormsSchedules />
+                </SignedIn>
+              </>
+            }
+          />
+
+          {/* Compatibility aliases under /portal/tax-intelligence */}
+          <Route
+            path="/portal/tax-intelligence"
+            element={
+              <>
+                <SignedOut><Navigate to="/portal/sign-in" replace /></SignedOut>
+                <SignedIn><Navigate to="/app/tax-intelligence/returns" replace /></SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/tax-intelligence/returns"
+            element={
+              <>
+                <SignedOut><Navigate to="/portal/sign-in" replace /></SignedOut>
+                <SignedIn><Navigate to="/app/tax-intelligence/returns" replace /></SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/tax-intelligence/returns/:id"
+            element={
+              <>
+                <SignedOut><Navigate to="/portal/sign-in" replace /></SignedOut>
+                <SignedIn><ReturnBuilder /></SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/tax-intelligence/documents"
+            element={
+              <>
+                <SignedOut><Navigate to="/portal/sign-in" replace /></SignedOut>
+                <SignedIn><Navigate to="/app/tax-intelligence/documents" replace /></SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/tax-intelligence/optimization"
+            element={
+              <>
+                <SignedOut><Navigate to="/portal/sign-in" replace /></SignedOut>
+                <SignedIn><Navigate to="/app/tax-intelligence/optimization" replace /></SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/tax-intelligence/scenarios"
+            element={
+              <>
+                <SignedOut><Navigate to="/portal/sign-in" replace /></SignedOut>
+                <SignedIn><Navigate to="/app/tax-intelligence/scenarios" replace /></SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/tax-intelligence/risk"
+            element={
+              <>
+                <SignedOut><Navigate to="/portal/sign-in" replace /></SignedOut>
+                <SignedIn><Navigate to="/app/tax-intelligence/risk" replace /></SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/tax-intelligence/forms-schedules"
+            element={
+              <>
+                <SignedOut><Navigate to="/portal/sign-in" replace /></SignedOut>
+                <SignedIn><Navigate to="/app/tax-intelligence/forms-schedules" replace /></SignedIn>
               </>
             }
           />

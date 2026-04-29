@@ -11,6 +11,7 @@ import { createLeadsTable, createContactsTable } from './db/migrations.js'
 import { ensurePortalSchema } from './db/ensurePortalSchema.js'
 import { logPortalObjectStorageConfig } from './services/portalS3.js'
 import { createPortalRouter } from './routes/portalRoutes.js'
+import { createTaxIntelligenceRouter } from './routes/taxIntelligenceRoutes.js'
 import { getNotificationInbox } from './config/mail.js'
 import { escapeHtml, singleLine } from './utils/html.js'
 
@@ -249,6 +250,8 @@ app.post('/api/contact', async (req, res) => {
 
 // Client Portal API (Clerk JWT; data in taxgpt.*)
 app.use('/api/portal', createPortalRouter(pool))
+app.use('/api', createTaxIntelligenceRouter(pool))
+app.use('/api/portal/tax-intelligence', createTaxIntelligenceRouter(pool))
 
 // Initialize database tables
 async function initializeDatabase() {
@@ -312,7 +315,16 @@ app.use('/api', (req, res, next) => {
     error: 'API endpoint not found',
     method: req.method,
     path: req.path,
-    availableEndpoints: ['/api/health', '/api/leads', '/api/contact', '/api/portal/v1/...']
+    availableEndpoints: [
+      '/api/health',
+      '/api/leads',
+      '/api/contact',
+      '/api/portal/v1/...',
+      '/api/tax-returns/...',
+      '/api/documents/extract',
+      '/api/scenarios/...',
+      '/api/audit/...'
+    ]
   })
 })
 

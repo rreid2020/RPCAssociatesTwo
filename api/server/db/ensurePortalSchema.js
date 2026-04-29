@@ -92,7 +92,160 @@ const STATEMENTS = [
   created_at TIMESTAMP NOT NULL DEFAULT now(),
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 )`,
-  'CREATE INDEX IF NOT EXISTS portal_integrations_clerk_idx ON taxgpt.portal_integrations(clerk_user_id)'
+  'CREATE INDEX IF NOT EXISTS portal_integrations_clerk_idx ON taxgpt.portal_integrations(clerk_user_id)',
+
+  `CREATE TABLE IF NOT EXISTS taxgpt.taxpayers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clerk_user_id TEXT NOT NULL,
+  first_name TEXT,
+  last_name TEXT,
+  full_name TEXT NOT NULL,
+  sin_last4 TEXT,
+  date_of_birth DATE,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+)`,
+  'CREATE INDEX IF NOT EXISTS taxpayers_clerk_idx ON taxgpt.taxpayers(clerk_user_id)',
+
+  `CREATE TABLE IF NOT EXISTS taxgpt.tax_returns (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clerk_user_id TEXT NOT NULL,
+  taxpayer_id UUID NOT NULL REFERENCES taxgpt.taxpayers(id) ON DELETE CASCADE,
+  tax_year INTEGER NOT NULL,
+  status VARCHAR(32) NOT NULL DEFAULT 'draft',
+  title TEXT,
+  province_code VARCHAR(4) NOT NULL DEFAULT 'ON',
+  setup_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+  review_notes TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+)`,
+  'CREATE INDEX IF NOT EXISTS tax_returns_clerk_year_idx ON taxgpt.tax_returns(clerk_user_id, tax_year)',
+  'CREATE INDEX IF NOT EXISTS tax_returns_taxpayer_idx ON taxgpt.tax_returns(taxpayer_id)',
+
+  `CREATE TABLE IF NOT EXISTS taxgpt.income_entries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clerk_user_id TEXT NOT NULL,
+  tax_return_id UUID NOT NULL REFERENCES taxgpt.tax_returns(id) ON DELETE CASCADE,
+  source_type VARCHAR(32) NOT NULL,
+  source_ref_id UUID,
+  category VARCHAR(32) NOT NULL,
+  description TEXT,
+  amount NUMERIC(14,2) NOT NULL DEFAULT 0,
+  currency CHAR(3) NOT NULL DEFAULT 'CAD',
+  is_manual BOOLEAN NOT NULL DEFAULT true,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+)`,
+  'CREATE INDEX IF NOT EXISTS income_entries_return_idx ON taxgpt.income_entries(tax_return_id)',
+  'CREATE INDEX IF NOT EXISTS income_entries_clerk_idx ON taxgpt.income_entries(clerk_user_id)',
+
+  `CREATE TABLE IF NOT EXISTS taxgpt.deductions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clerk_user_id TEXT NOT NULL,
+  tax_return_id UUID NOT NULL REFERENCES taxgpt.tax_returns(id) ON DELETE CASCADE,
+  category VARCHAR(64) NOT NULL,
+  description TEXT,
+  amount NUMERIC(14,2) NOT NULL DEFAULT 0,
+  is_credit BOOLEAN NOT NULL DEFAULT false,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+)`,
+  'CREATE INDEX IF NOT EXISTS deductions_return_idx ON taxgpt.deductions(tax_return_id)',
+  'CREATE INDEX IF NOT EXISTS deductions_clerk_idx ON taxgpt.deductions(clerk_user_id)',
+
+  `CREATE TABLE IF NOT EXISTS taxgpt.tax_calculations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clerk_user_id TEXT NOT NULL,
+  tax_return_id UUID NOT NULL REFERENCES taxgpt.tax_returns(id) ON DELETE CASCADE,
+  net_income NUMERIC(14,2) NOT NULL DEFAULT 0,
+  taxable_income NUMERIC(14,2) NOT NULL DEFAULT 0,
+  federal_tax NUMERIC(14,2) NOT NULL DEFAULT 0,
+  provincial_tax NUMERIC(14,2) NOT NULL DEFAULT 0,
+  total_credits NUMERIC(14,2) NOT NULL DEFAULT 0,
+  total_payable NUMERIC(14,2) NOT NULL DEFAULT 0,
+  taxes_withheld NUMERIC(14,2) NOT NULL DEFAULT 0,
+  refund_or_balance NUMERIC(14,2) NOT NULL DEFAULT 0,
+  currency CHAR(3) NOT NULL DEFAULT 'CAD',
+  engine_version VARCHAR(32) NOT NULL DEFAULT 'v1',
+  assumptions JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+)`,
+  'CREATE UNIQUE INDEX IF NOT EXISTS tax_calculations_return_ux ON taxgpt.tax_calculations(tax_return_id)',
+  'CREATE INDEX IF NOT EXISTS tax_calculations_clerk_idx ON taxgpt.tax_calculations(clerk_user_id)',
+
+  `CREATE TABLE IF NOT EXISTS taxgpt.audit_flags (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clerk_user_id TEXT NOT NULL,
+  tax_return_id UUID NOT NULL REFERENCES taxgpt.tax_returns(id) ON DELETE CASCADE,
+  rule_code VARCHAR(64) NOT NULL,
+  severity VARCHAR(16) NOT NULL,
+  title TEXT NOT NULL,
+  detail TEXT,
+  status VARCHAR(32) NOT NULL DEFAULT 'open',
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+)`,
+  'CREATE INDEX IF NOT EXISTS audit_flags_return_idx ON taxgpt.audit_flags(tax_return_id)',
+  'CREATE INDEX IF NOT EXISTS audit_flags_clerk_idx ON taxgpt.audit_flags(clerk_user_id)',
+
+  `CREATE TABLE IF NOT EXISTS taxgpt.documents_tax_metadata (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clerk_user_id TEXT NOT NULL,
+  document_id UUID NOT NULL REFERENCES taxgpt.portal_client_files(id) ON DELETE CASCADE,
+  tax_return_id UUID REFERENCES taxgpt.tax_returns(id) ON DELETE SET NULL,
+  tax_year INTEGER,
+  document_type VARCHAR(32),
+  taxpayer_name TEXT,
+  suggested_match BOOLEAN NOT NULL DEFAULT false,
+  suggestion_status VARCHAR(32) NOT NULL DEFAULT 'pending',
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+)`,
+  'CREATE UNIQUE INDEX IF NOT EXISTS documents_tax_metadata_doc_ux ON taxgpt.documents_tax_metadata(document_id)',
+  'CREATE INDEX IF NOT EXISTS documents_tax_metadata_return_idx ON taxgpt.documents_tax_metadata(tax_return_id)',
+  'CREATE INDEX IF NOT EXISTS documents_tax_metadata_clerk_idx ON taxgpt.documents_tax_metadata(clerk_user_id)',
+
+  `CREATE TABLE IF NOT EXISTS taxgpt.document_extractions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clerk_user_id TEXT NOT NULL,
+  document_id UUID NOT NULL REFERENCES taxgpt.portal_client_files(id) ON DELETE CASCADE,
+  tax_return_id UUID REFERENCES taxgpt.tax_returns(id) ON DELETE SET NULL,
+  extraction_status VARCHAR(32) NOT NULL DEFAULT 'pending',
+  extraction_type VARCHAR(16) NOT NULL DEFAULT 'OCR',
+  confidence_score NUMERIC(5,4) NOT NULL DEFAULT 0,
+  review_required BOOLEAN NOT NULL DEFAULT false,
+  ocr_text TEXT,
+  extracted_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+  parser_version VARCHAR(32) NOT NULL DEFAULT 'v1',
+  reviewed_by_user BOOLEAN NOT NULL DEFAULT false,
+  reviewed_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+)`,
+  'CREATE INDEX IF NOT EXISTS document_extractions_doc_idx ON taxgpt.document_extractions(document_id)',
+  'CREATE INDEX IF NOT EXISTS document_extractions_return_idx ON taxgpt.document_extractions(tax_return_id)',
+  'CREATE INDEX IF NOT EXISTS document_extractions_clerk_idx ON taxgpt.document_extractions(clerk_user_id)',
+
+  `CREATE TABLE IF NOT EXISTS taxgpt.optimization_scenarios (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clerk_user_id TEXT NOT NULL,
+  tax_return_id UUID NOT NULL REFERENCES taxgpt.tax_returns(id) ON DELETE CASCADE,
+  base_calculation_id UUID REFERENCES taxgpt.tax_calculations(id) ON DELETE SET NULL,
+  name TEXT NOT NULL,
+  scenario_type VARCHAR(32) NOT NULL DEFAULT 'manual',
+  input_overrides JSONB NOT NULL DEFAULT '{}'::jsonb,
+  comparison_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+)`,
+  'CREATE INDEX IF NOT EXISTS optimization_scenarios_return_idx ON taxgpt.optimization_scenarios(tax_return_id)',
+  'CREATE INDEX IF NOT EXISTS optimization_scenarios_clerk_idx ON taxgpt.optimization_scenarios(clerk_user_id)'
 ]
 
 export async function ensurePortalSchema (pool) {

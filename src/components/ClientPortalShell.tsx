@@ -8,6 +8,8 @@ interface NavItem {
   to: string
   label: string
   icon: JSX.Element
+  /** Non-clickable item used for future placeholders. */
+  disabled?: boolean
   /** Gated: link disabled when the user does not have this feature. */
   featureKey?: 'workingPapers' | 'integrations'
   /** Shown on top of a locked item (e.g. Premium) */
@@ -27,6 +29,7 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
   const integrations = useFeatureAccess('integrations')
 
   const isLocked = (item: NavItem) => {
+    if (item.disabled) return true
     if (!item.featureKey) return false
     if (item.featureKey === 'workingPapers') return !workingPapers
     if (item.featureKey === 'integrations') return !integrations
@@ -43,12 +46,78 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
         </svg>
       ),
     },
+  ]
+
+  const taxIntelligenceNavigation: NavItem[] = [
     {
       to: '/portal/taxgpt',
-      label: 'Tax Intelligence',
+      label: 'Tax GPT',
       icon: (
         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3l2.5 5 5.5 2.5-5.5 2.5L12 18l-2.5-5-5.5-2.5 5.5-2.5L12 3z" />
+        </svg>
+      ),
+    },
+    {
+      to: '/app/tax-intelligence/returns',
+      label: 'Tax Returns',
+      icon: (
+        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      ),
+    },
+    {
+      to: '/app/tax-intelligence/returns',
+      label: 'Return Builder',
+      icon: (
+        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        </svg>
+      ),
+    },
+    {
+      to: '/app/tax-intelligence/documents',
+      label: 'Document Processing',
+      icon: (
+        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0l-4 4m4-4l4 4m6 8v4m0 0l4-4m-4 4l-4-4" />
+        </svg>
+      ),
+    },
+    {
+      to: '/app/tax-intelligence/optimization',
+      label: 'Optimization',
+      icon: (
+        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 1.343-3 3v6l3-2 3 2v-6c0-1.657-1.343-3-3-3zm0 0V5m-7 6h2m10 0h2" />
+        </svg>
+      ),
+    },
+    {
+      to: '/app/tax-intelligence/scenarios',
+      label: 'Scenarios',
+      icon: (
+        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+        </svg>
+      ),
+    },
+    {
+      to: '/app/tax-intelligence/risk',
+      label: 'Audit & Risk',
+      icon: (
+        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+      ),
+    },
+    {
+      to: '/app/tax-intelligence/forms-schedules',
+      label: 'Forms & Schedules',
+      icon: (
+        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
       ),
     },
@@ -77,6 +146,9 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
         </svg>
       ),
     },
+  ]
+
+  const documentsAndSubscriptionNavigation: NavItem[] = [
     {
       to: '/portal/files',
       label: 'Documents',
@@ -86,9 +158,6 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
         </svg>
       ),
     },
-  ]
-
-  const secondaryNavigation: NavItem[] = [
     {
       to: '/portal/subscription',
       label: 'Subscription',
@@ -107,22 +176,22 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
     return location.pathname.startsWith(path)
   }
 
-  const renderNavItem = (item: NavItem, opts?: { nested?: boolean }) => {
+  const renderNavItem = (item: NavItem, opts?: { nestedLevel?: 0 | 1 | 2 }) => {
     const active = isActive(item.to)
     const locked = isLocked(item)
-    const nested = opts?.nested === true
+    const nestedLevel = opts?.nestedLevel ?? 0
     return (
       <Link
         key={item.to}
         to={item.to}
         onClick={() => setSidebarOpen(false)}
         className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors ${
-          nested ? 'ml-6 px-3 py-1.5' : 'px-3 py-2'
+          nestedLevel === 0 ? 'px-3 py-2' : nestedLevel === 1 ? 'ml-6 px-3 py-1.5' : 'ml-10 px-3 py-1.5'
         } ${
           active
             ? 'bg-primary-dark text-white'
             : 'text-text hover:bg-background hover:text-primary-dark'
-        } ${locked ? 'opacity-60 cursor-not-allowed' : ''}`}
+        } ${locked ? 'opacity-60 cursor-not-allowed' : ''} ${item.disabled ? 'pointer-events-none' : ''}`}
         onClickCapture={(e) => {
           if (locked) {
             e.preventDefault()
@@ -177,17 +246,38 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
               <div className="flex items-center gap-3 px-3 py-2 text-sm font-semibold text-primary-dark">
                 <span className="text-text-light" aria-hidden>
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3l2.5 5 5.5 2.5-5.5 2.5L12 18l-2.5-5-5.5-2.5 5.5-2.5L12 3z" />
+                  </svg>
+                </span>
+                <span>Financial Intelligence</span>
+              </div>
+              <div className="flex items-center gap-3 px-3 py-2 text-sm font-semibold text-primary-dark ml-6">
+                <span className="text-text-light" aria-hidden>
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3l2.5 5 5.5 2.5-5.5 2.5L12 18l-2.5-5-5.5-2.5 5.5-2.5L12 3z" />
+                  </svg>
+                </span>
+                <span>Tax Intelligence</span>
+              </div>
+              <div className="space-y-1">
+                {taxIntelligenceNavigation.map((item) => renderNavItem(item, { nestedLevel: 2 }))}
+              </div>
+            </div>
+            <div className="pt-2">
+              <div className="flex items-center gap-3 px-3 py-2 text-sm font-semibold text-primary-dark">
+                <span className="text-text-light" aria-hidden>
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
                   </svg>
                 </span>
                 <span>Accounting Workspace</span>
               </div>
               <div className="space-y-1">
-                {accountingWorkspaceNavigation.map((item) => renderNavItem(item, { nested: true }))}
+                {accountingWorkspaceNavigation.map((item) => renderNavItem(item, { nestedLevel: 1 }))}
               </div>
             </div>
             <div className="pt-1">
-              {secondaryNavigation.map((item) => renderNavItem(item))}
+              {documentsAndSubscriptionNavigation.map((item) => renderNavItem(item))}
             </div>
           </nav>
 

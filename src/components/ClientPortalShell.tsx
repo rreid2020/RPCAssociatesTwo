@@ -1,4 +1,4 @@
-import { FC, ReactNode, useState } from 'react'
+import { FC, ReactNode, useCallback, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useUser, useClerk } from '@clerk/clerk-react'
 import { useFeatureAccess } from '../lib/subscriptions/hooks'
@@ -25,6 +25,12 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
   const location = useLocation()
   const { user } = useUser()
   const { signOut } = useClerk()
+  const handleSignOut = useCallback(() => {
+    const ts = Date.now()
+    const redirectUrl = `${window.location.origin}/portal/sign-in?fresh=${ts}`
+    void signOut({ redirectUrl })
+  }, [signOut])
+
   const workingPapers = useFeatureAccess('workingPapers')
   const integrations = useFeatureAccess('integrations')
 
@@ -285,7 +291,7 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
           <div className="px-4 py-4 border-t border-border space-y-1">
             <button
               type="button"
-              onClick={() => { void signOut({ redirectUrl: '/portal/sign-in' }) }}
+              onClick={handleSignOut}
               className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-primary-dark hover:bg-background rounded-md transition-colors text-left"
             >
               <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
@@ -349,7 +355,7 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => { void signOut({ redirectUrl: '/portal/sign-in' }) }}
+                  onClick={handleSignOut}
                   className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-border bg-white px-3 py-2 text-sm font-medium text-primary-dark hover:bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
                   aria-label="Sign out of the client portal"
                 >

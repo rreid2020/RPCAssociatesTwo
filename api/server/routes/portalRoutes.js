@@ -108,17 +108,17 @@ export function createPortalRouter (pool) {
     const in90 = new Date(now)
     in90.setDate(in90.getDate() + 90)
     try {
-      const [openC] = await pool.query(
+      const openC = await pool.query(
         `SELECT count(*)::int AS c FROM taxgpt.portal_open_items
          WHERE clerk_user_id = $1 AND status = 'open'`,
         [userId]
       )
-      const [dlC] = await pool.query(
+      const dlC = await pool.query(
         `SELECT count(*)::int AS c FROM taxgpt.portal_deadlines
          WHERE clerk_user_id = $1 AND due_at >= $2 AND due_at <= $3`,
         [userId, now, in90]
       )
-      const [projC] = await pool.query(
+      const projC = await pool.query(
         'SELECT count(*)::int AS c FROM taxgpt.portal_checklists WHERE clerk_user_id = $1',
         [userId]
       )

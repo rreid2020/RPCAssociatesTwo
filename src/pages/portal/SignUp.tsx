@@ -1,11 +1,12 @@
 import { FC, useState } from 'react'
-import { useSignUp, useClerk } from '@clerk/clerk-react'
+import { useSignUp, useSignIn, useClerk } from '@clerk/clerk-react'
 import { useNavigate, Link } from 'react-router-dom'
 import SEO from '../../components/SEO'
 import AxiomWordmark from '../../components/AxiomWordmark'
 
 const SignUp: FC = () => {
   const { signUp, isLoaded } = useSignUp()
+  const { signIn, isLoaded: signInLoaded } = useSignIn()
   const { setActive } = useClerk()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -14,6 +15,7 @@ const SignUp: FC = () => {
   const [lastName, setLastName] = useState('')
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [verifying, setVerifying] = useState(false)
 
@@ -21,8 +23,42 @@ const SignUp: FC = () => {
     navigate('/portal/dashboard')
   }
 
+  const normalizeCode = (value: string) => value.replace(/\D/g, '').slice(0, 6)
+
+  const getClerkErrorMessage = (err: unknown, fallback: string) => {
+    const e = err as { errors?: Array<{ code?: string; message?: string }> }
+    const first = e?.errors?.[0]
+    const code = String(first?.code || '')
+    if (code === 'form_code_incorrect') return 'That verification code is incorrect. Check the latest email and try again.'
+    if (code === 'verification_expired') return 'That verification code has expired. Click Resend code to get a fresh one.'
+    if (code === 'too_many_requests') return 'Too many attempts. Please wait a moment and try again.'
+    return first?.message || fallback
+  }
+
+  const activateSession = async (sessionId: string) => {
+    await setActive({ session: sessionId })
+    goDashboard()
+  }
+
+  const recoverIfVerificationAlreadyComplete = async () => {
+    if (!signUp) return false
+    try {
+      await signUp.reload()
+      if (signUp.status === 'complete' && signUp.createdSessionId) {
+        await setActive({ session: signUp.createdSessionId, navigate: goDashboard })
+        return true
+      }
+      if (signUp.status === 'complete') {
+        setNotice('Your email is already verified. Please sign in to continue.')
+        navigate('/portal/sign-in')
+        return true
+      }
+    } catch {}
+    return false
+  }
+
   const handleOAuthSignUp = async (strategy: 'oauth_github' | 'oauth_google') => {
-    if (!isLoaded) {
+    if (!isLoaded || !signUp) {
       setError('Authentication system is not ready. Please try again.')
       return
     }
@@ -46,45 +82,78 @@ const SignUp: FC = () => {
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isLoaded) return
+    if (!isLoaded || !signUp) return
+    const normalizedCode = normalizeCode(code)
+    if (normalizedCode.length !== 6) {
+      setError('Enter the 6-digit verification code from your email.')
+      return
+    }
     setError('')
+    setNotice('')
     setIsLoading(true)
     try {
-      const res = await signUp.attemptEmailAddressVerification({ code })
-      if (res.status === 'complete' && res.createdSessionId) {
-        await setActive({ session: res.createdSessionId, navigate: goDashboard })
+      const res = await signUp.attemptEmailAddressVerification({ code: normalizedCode })
+      const verifiedSessionId = res.createdSessionId || signUp.createdSessionId
+      if (res.status === 'complete' && verifiedSessionId) {
+        await activateSession(verifiedSessionId)
         return
       }
-      setError('Could not complete verification. Request a new code and try again.')
+      if (res.status === 'complete' && !res.createdSessionId) {
+        // Real fix: Clerk can verify code but not attach a session in some states.
+        // Fall back to a first-party sign-in with the just-created credentials.
+        if (signInLoaded && signIn && email && password) {
+          const signInResult = await signIn.create({
+            identifier: email,
+            password
+          })
+          if (signInResult.status === 'complete' && signInResult.createdSessionId) {
+            await activateSession(signInResult.createdSessionId)
+            return
+          }
+        }
+        setNotice('Email verified. Please sign in to continue.')
+        navigate('/portal/sign-in')
+        return
+      }
+      const requiredFields = Array.isArray((res as { requiredFields?: string[] }).requiredFields)
+        ? (res as { requiredFields?: string[] }).requiredFields || []
+        : []
+      const suffix = requiredFields.length > 0 ? ` Missing fields: ${requiredFields.join(', ')}` : ''
+      setError(`Verification is not complete yet (status: ${res.status}).${suffix}`)
     } catch (err: unknown) {
-      const e = err as { errors?: { message: string }[] }
-      setError(e.errors?.[0]?.message || 'Invalid or expired code.')
+      console.error('Sign-up verification failed:', err)
+      const recovered = await recoverIfVerificationAlreadyComplete()
+      if (recovered) return
+      setError(getClerkErrorMessage(err, 'Invalid or expired code.'))
     } finally {
       setIsLoading(false)
     }
   }
 
   const resendCode = async () => {
-    if (!isLoaded) return
+    if (!isLoaded || !signUp) return
     setError('')
+    setNotice('')
     try {
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' })
+      setCode('')
+      setNotice('A new verification code has been sent to your email.')
     } catch (err: unknown) {
-      const e = err as { errors?: { message: string }[] }
-      setError(e.errors?.[0]?.message || 'Could not resend code.')
+      setError(getClerkErrorMessage(err, 'Could not resend code.'))
     }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setNotice('')
 
     if (!email || !password || !firstName || !lastName) {
       setError('Please fill in all required fields')
       return
     }
 
-    if (!isLoaded) {
+    if (!isLoaded || !signUp) {
       setError('Authentication system is not ready. Please try again.')
       return
     }
@@ -100,7 +169,7 @@ const SignUp: FC = () => {
       })
 
       if (result.status === 'complete' && result.createdSessionId) {
-        await setActive({ session: result.createdSessionId, navigate: goDashboard })
+        await activateSession(result.createdSessionId)
         return
       }
 
@@ -108,8 +177,7 @@ const SignUp: FC = () => {
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' })
       setVerifying(true)
     } catch (err: unknown) {
-      const e = err as { errors?: { message: string }[] }
-      setError(e.errors?.[0]?.message || 'Failed to create account. Please try again.')
+      setError(getClerkErrorMessage(err, 'Failed to create account. Please try again.'))
     } finally {
       setIsLoading(false)
     }
@@ -134,6 +202,11 @@ const SignUp: FC = () => {
             {error && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700" role="alert">
                 {error}
+              </div>
+            )}
+            {notice && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-800" role="status">
+                {notice}
               </div>
             )}
 
@@ -161,13 +234,13 @@ const SignUp: FC = () => {
                     inputMode="numeric"
                     autoComplete="one-time-code"
                     value={code}
-                    onChange={(e) => { setCode(e.target.value) }}
+                    onChange={(e) => { setCode(normalizeCode(e.target.value)) }}
                     className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
                 </div>
                 <button
                   type="submit"
-                  disabled={isLoading || !isLoaded}
+                  disabled={isLoading || !isLoaded || normalizeCode(code).length !== 6}
                   className="w-full btn btn--primary"
                 >
                   {isLoading ? 'Verifying...' : 'Verify and continue'}

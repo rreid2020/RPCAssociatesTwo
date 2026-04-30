@@ -927,7 +927,23 @@ const ReturnBuilder: FC = () => {
           taxpayerProfile: normalizedProfile
         })
       })
-      await load()
+      // Keep the just-entered setup values in the UI after save. This avoids
+      // a disruptive full reload from temporarily incomplete backend snapshots.
+      setData((prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          taxReturn: {
+            ...prev.taxReturn,
+            taxpayer_name: fullName,
+            taxpayer_first_name: taxpayerProfile.firstName.trim() || null,
+            taxpayer_last_name: taxpayerProfile.lastName.trim() || null,
+            taxpayer_sin: sanitizeSin(taxpayerProfile.sin) || null,
+            taxpayer_date_of_birth: taxpayerProfile.dateOfBirth || null,
+            taxpayer_profile: normalizedProfile
+          }
+        }
+      })
       if (setupCompletenessIssues.length > 0) {
         setProfileSavedMsg(`Taxpayer profile saved with ${setupCompletenessIssues.length} non-blocking completeness warning(s).`)
       } else {

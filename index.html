@@ -52,7 +52,19 @@
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      window.__loadAxiomAppFallback = function () {
+        const el = document.createElement('script')
+        el.type = 'module'
+        el.src = '/assets/main.js'
+        document.head.appendChild(el)
+      }
+    </script>
+    <script
+      type="module"
+      src="/src/main.tsx"
+      onerror="window.__loadAxiomAppFallback && window.__loadAxiomAppFallback()"
+    ></script>
   </body>
 </html>
 

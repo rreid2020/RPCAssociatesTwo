@@ -33,5 +33,14 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Keep a stable entry filename so auth-route refresh fallback can
+        // recover even if a stale HTML shell is served by an upstream cache.
+        entryFileNames: 'assets/main.js',
+      },
+    },
+  },
 })
 

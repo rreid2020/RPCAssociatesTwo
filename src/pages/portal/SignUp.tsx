@@ -39,7 +39,7 @@ const SignUp: FC = () => {
     const base = String(value || '')
       .split('@')[0]
       .toLowerCase()
-      .replace(/[^a-z0-9_.-]/g, '')
+      .replace(/[^a-z0-9_-]/g, '')
       .slice(0, 24)
     if (base.length >= 3) return base
     return `user${Date.now().toString().slice(-6)}`
@@ -235,7 +235,7 @@ const SignUp: FC = () => {
       <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <AxiomWordmark size="lg" centered className="mb-4" />
+            <AxiomWordmark size="lg" centered blendOnBackground className="mb-4" />
             <h1 className="text-3xl font-bold text-primary-dark mb-2">Create Account</h1>
             <p className="text-text-light">Get started with the client portal</p>
           </div>

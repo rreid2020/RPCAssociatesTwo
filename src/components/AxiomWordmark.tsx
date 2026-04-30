@@ -27,6 +27,8 @@ export type AxiomWordmarkProps = {
   size?: Size
   /** Lockup centered (e.g. sign-in page). */
   centered?: boolean
+  /** Blend out baked white image backgrounds on tinted surfaces. */
+  blendOnBackground?: boolean
   /** e.g. “Client Portal” under the mark + logotype. */
   line3?: string
   className?: string
@@ -38,6 +40,7 @@ export type AxiomWordmarkProps = {
 const AxiomWordmark: FC<AxiomWordmarkProps> = ({
   size = 'md',
   centered = false,
+  blendOnBackground = false,
   line3,
   className = '',
 }) => {
@@ -58,7 +61,7 @@ const AxiomWordmark: FC<AxiomWordmarkProps> = ({
           alt=""
           width={64}
           height={64}
-          className={`${s.mark} object-contain object-center flex-shrink-0 select-none`}
+          className={`${s.mark} object-contain object-center flex-shrink-0 select-none ${blendOnBackground ? 'mix-blend-multiply' : ''}`}
           aria-hidden
         />
         <img
@@ -66,7 +69,7 @@ const AxiomWordmark: FC<AxiomWordmarkProps> = ({
           alt="Axiom Financial & Technology"
           width={200}
           height={80}
-          className={`${s.logotype} object-contain object-left flex-shrink-0 min-w-0`}
+          className={`${s.logotype} object-contain object-left flex-shrink-0 min-w-0 ${blendOnBackground ? 'mix-blend-multiply' : ''}`}
         />
       </div>
       {line3 ? (

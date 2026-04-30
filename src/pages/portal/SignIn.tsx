@@ -129,7 +129,7 @@ const SignIn: FC = () => {
       <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <AxiomWordmark size="lg" centered className="mb-4" />
+            <AxiomWordmark size="lg" centered blendOnBackground className="mb-4" />
             <h1 className="text-3xl font-bold text-primary-dark mb-2">Sign In</h1>
             <p className="text-text-light">Access your client portal</p>
           </div>

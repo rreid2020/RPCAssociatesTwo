@@ -1,11 +1,12 @@
-import { FC, useState } from 'react'
-import { useSignUp, useClerk } from '@clerk/clerk-react'
+import { FC, useEffect, useState } from 'react'
+import { useSignUp, useClerk, useAuth } from '@clerk/clerk-react'
 import { useNavigate, Link } from 'react-router-dom'
 import SEO from '../../components/SEO'
 import AxiomWordmark from '../../components/AxiomWordmark'
 
 const SignUp: FC = () => {
   const { signUp, isLoaded } = useSignUp()
+  const { isSignedIn, isLoaded: isAuthLoaded } = useAuth()
   const { setActive } = useClerk()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -17,6 +18,12 @@ const SignUp: FC = () => {
   const [notice, setNotice] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [verifying, setVerifying] = useState(false)
+
+  useEffect(() => {
+    if (isAuthLoaded && isSignedIn) {
+      navigate('/portal/dashboard')
+    }
+  }, [isAuthLoaded, isSignedIn, navigate])
 
   const goDashboard = () => {
     navigate('/portal/dashboard')

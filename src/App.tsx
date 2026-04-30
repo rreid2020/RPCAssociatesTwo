@@ -56,29 +56,11 @@ const App: FC = () => {
           {/* Portal authentication routes - public */}
           <Route
             path="/portal/sign-in"
-            element={
-              <>
-                <SignedOut>
-                  <SignIn />
-                </SignedOut>
-                <SignedIn>
-                  <Navigate to="/portal/dashboard" replace />
-                </SignedIn>
-              </>
-            }
+            element={<SignIn />}
           />
           <Route
             path="/portal/sign-up"
-            element={
-              <>
-                <SignedOut>
-                  <SignUp />
-                </SignedOut>
-                <SignedIn>
-                  <Navigate to="/portal/dashboard" replace />
-                </SignedIn>
-              </>
-            }
+            element={<SignUp />}
           />
           
           {/* Portal routes - protected, no header/footer (handled by ClientPortalShell) */}

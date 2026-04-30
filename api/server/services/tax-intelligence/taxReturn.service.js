@@ -327,6 +327,10 @@ export async function listTaxReturns (pool, clerkUserId) {
   )
   return rows.map((row) => ({
     ...row,
+    workspace_role: row.workspace_role || row.setup_json?.workflow?.workspaceRole || 'primary',
+    parent_tax_return_id: row.parent_tax_return_id || row.setup_json?.workflow?.parentTaxReturnId || null,
+    related_person_name: row.related_person_name || row.setup_json?.workflow?.relatedPersonName || null,
+    interview_stage: row.interview_stage || row.setup_json?.workflow?.interviewStage || null,
     taxpayer_profile: {
       maritalStatus: normalizeMaritalStatus(row.marital_status),
       spouseReturnMode: normalizeSpouseReturnMode(row.spouse_return_mode),
@@ -399,25 +403,71 @@ async function createReturnWorkspace (client, clerkUserId, payload) {
   )
   const taxpayer = taxpayerRows[0]
 
-  const { rows: returnRows } = await client.query(
-    `INSERT INTO taxgpt.tax_returns
-     (clerk_user_id, taxpayer_id, tax_year, status, workspace_role, parent_tax_return_id, related_person_name, interview_stage, title, province_code, setup_json, review_notes, updated_at)
-     VALUES ($1, $2, $3, 'draft', $4, $5, $6, $7, $8, $9, $10::jsonb, $11, now())
-     RETURNING *`,
-    [
-      clerkUserId,
-      taxpayer.id,
-      payload.taxYear,
-      String(payload.workspaceRole || 'primary'),
-      payload.parentTaxReturnId || null,
-      payload.relatedPersonName || null,
-      payload.interviewStage || 'setup',
-      payload.title || `${payload.taxYear} T1 Return`,
-      payload.provinceCode || 'ON',
-      JSON.stringify(setup),
-      payload.reviewNotes || null
-    ]
+  const { rows: columnRows } = await client.query(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_schema = 'taxgpt' AND table_name = 'tax_returns'`
   )
+  const availableColumns = new Set(columnRows.map((r) => String(r.column_name || '').toLowerCase()))
+  const hasWorkflowColumns = (
+    availableColumns.has('workspace_role') &&
+    availableColumns.has('parent_tax_return_id') &&
+    availableColumns.has('related_person_name') &&
+    availableColumns.has('interview_stage')
+  )
+
+  let effectiveSetup = setup
+  if (!hasWorkflowColumns) {
+    effectiveSetup = {
+      ...setup,
+      workflow: {
+        ...(setup?.workflow && typeof setup.workflow === 'object' ? setup.workflow : {}),
+        workspaceRole: String(payload.workspaceRole || 'primary'),
+        parentTaxReturnId: payload.parentTaxReturnId || null,
+        relatedPersonName: payload.relatedPersonName || null,
+        interviewStage: payload.interviewStage || 'setup'
+      }
+    }
+  }
+
+  let returnRows
+  if (hasWorkflowColumns) {
+    ({ rows: returnRows } = await client.query(
+      `INSERT INTO taxgpt.tax_returns
+       (clerk_user_id, taxpayer_id, tax_year, status, workspace_role, parent_tax_return_id, related_person_name, interview_stage, title, province_code, setup_json, review_notes, updated_at)
+       VALUES ($1, $2, $3, 'draft', $4, $5, $6, $7, $8, $9, $10::jsonb, $11, now())
+       RETURNING *`,
+      [
+        clerkUserId,
+        taxpayer.id,
+        payload.taxYear,
+        String(payload.workspaceRole || 'primary'),
+        payload.parentTaxReturnId || null,
+        payload.relatedPersonName || null,
+        payload.interviewStage || 'setup',
+        payload.title || `${payload.taxYear} T1 Return`,
+        payload.provinceCode || 'ON',
+        JSON.stringify(effectiveSetup),
+        payload.reviewNotes || null
+      ]
+    ))
+  } else {
+    ({ rows: returnRows } = await client.query(
+      `INSERT INTO taxgpt.tax_returns
+       (clerk_user_id, taxpayer_id, tax_year, status, title, province_code, setup_json, review_notes, updated_at)
+       VALUES ($1, $2, $3, 'draft', $4, $5, $6::jsonb, $7, now())
+       RETURNING *`,
+      [
+        clerkUserId,
+        taxpayer.id,
+        payload.taxYear,
+        payload.title || `${payload.taxYear} T1 Return`,
+        payload.provinceCode || 'ON',
+        JSON.stringify(effectiveSetup),
+        payload.reviewNotes || null
+      ]
+    ))
+  }
   return { taxpayer, taxReturn: returnRows[0] }
 }
 

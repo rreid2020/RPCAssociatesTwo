@@ -23,7 +23,12 @@ export async function taxFetch<T> (
       const parsed = JSON.parse(text)
       throw new Error(parsed.error || res.statusText)
     } catch {
-      throw new Error(res.statusText || 'Request failed')
+      const raw = text.trim()
+      if (raw) {
+        const compact = raw.replace(/\s+/g, ' ').slice(0, 220)
+        throw new Error(compact)
+      }
+      throw new Error(`${res.status} ${res.statusText}`.trim() || 'Request failed')
     }
   }
   if (!text.trim()) return undefined as T

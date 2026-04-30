@@ -1,12 +1,11 @@
 import { FC, useState } from 'react'
-import { useSignUp, useSignIn, useClerk } from '@clerk/clerk-react'
+import { useSignUp, useClerk } from '@clerk/clerk-react'
 import { useNavigate, Link } from 'react-router-dom'
 import SEO from '../../components/SEO'
 import AxiomWordmark from '../../components/AxiomWordmark'
 
 const SignUp: FC = () => {
   const { signUp, isLoaded } = useSignUp()
-  const { signIn, isLoaded: signInLoaded } = useSignIn()
   const { setActive } = useClerk()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -36,44 +35,14 @@ const SignUp: FC = () => {
   }
 
   const buildUsernameCandidate = (value: string) => {
-    const base = String(value || '')
+    const rawBase = String(value || '')
       .split('@')[0]
       .toLowerCase()
       .replace(/[^a-z0-9_-]/g, '')
-      .slice(0, 24)
-    if (base.length >= 3) return base
-    return `user${Date.now().toString().slice(-6)}`
-  }
-
-  const getRequiredFields = (resource: unknown): string[] => {
-    const obj = resource as { requiredFields?: string[] }
-    return Array.isArray(obj?.requiredFields) ? obj.requiredFields : []
-  }
-
-  const hydrateSignUpIfMissingRequirements = async () => {
-    if (!signUp) return
-    await signUp.reload()
-    const requiredBefore = getRequiredFields(signUp)
-    if (!requiredBefore.length) return
-    if (!email || !password || !firstName || !lastName) return
-
-    const payload: {
-      emailAddress: string
-      password: string
-      firstName: string
-      lastName: string
-      username?: string
-    } = {
-      emailAddress: email,
-      password,
-      firstName,
-      lastName
-    }
-
-    if (requiredBefore.includes('username')) {
-      payload.username = buildUsernameCandidate(email)
-    }
-    await signUp.create(payload)
+      .slice(0, 18)
+    const base = rawBase.length >= 3 ? rawBase : 'user'
+    const suffix = Date.now().toString(36).slice(-5)
+    return `${base}_${suffix}`.slice(0, 24)
   }
 
   const activateSession = async (sessionId: string) => {
@@ -133,7 +102,6 @@ const SignUp: FC = () => {
     setNotice('')
     setIsLoading(true)
     try {
-      await hydrateSignUpIfMissingRequirements()
       const res = await signUp.attemptEmailAddressVerification({ code: normalizedCode })
       const verifiedSessionId = res.createdSessionId || signUp.createdSessionId
       if (res.status === 'complete' && verifiedSessionId) {
@@ -141,18 +109,6 @@ const SignUp: FC = () => {
         return
       }
       if (res.status === 'complete' && !res.createdSessionId) {
-        // Real fix: Clerk can verify code but not attach a session in some states.
-        // Fall back to a first-party sign-in with the just-created credentials.
-        if (signInLoaded && signIn && email && password) {
-          const signInResult = await signIn.create({
-            identifier: email,
-            password
-          })
-          if (signInResult.status === 'complete' && signInResult.createdSessionId) {
-            await activateSession(signInResult.createdSessionId)
-            return
-          }
-        }
         setNotice('Email verified. Please sign in to continue.')
         navigate('/portal/sign-in')
         return
@@ -207,7 +163,8 @@ const SignUp: FC = () => {
         emailAddress: email,
         password,
         firstName,
-        lastName
+        lastName,
+        username: buildUsernameCandidate(email)
       })
 
       if (result.status === 'complete' && result.createdSessionId) {

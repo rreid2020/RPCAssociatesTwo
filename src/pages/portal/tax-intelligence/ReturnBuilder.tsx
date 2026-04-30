@@ -1,5 +1,5 @@
 import { FC, useEffect, useMemo, useState } from 'react'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
@@ -133,6 +133,10 @@ type TaxpayerProfileState = {
   residenceProvinceCurrent: string
   selfEmploymentProvinces: string
   languageCorrespondence: 'en' | 'fr'
+  maritalStatusChangedInYear: boolean
+  becameResidentInYear: boolean
+  ceasedResidentInYear: boolean
+  filingForDeceased: boolean
   becameResidentDate: string
   ceasedResidentDate: string
   maritalStatusChangeDate: string
@@ -145,6 +149,7 @@ type TaxpayerProfileState = {
   maritalStatus: 'single' | 'married' | 'common_law' | 'separated' | 'divorced' | 'widowed'
   spouseReturnMode: 'summary' | 'full'
   spouseSelfEmployed: boolean
+  spouseHasUccbAdjustments: boolean
   spouseNetIncome23600: number
   spouseUccb11700: number
   spouseUccbRepayment21300: number
@@ -163,6 +168,7 @@ const steps = ['Setup', 'Income', 'Deductions', 'Review', 'Optimization', 'Risk'
 type Step = typeof steps[number]
 type CompletenessSeverity = 'required' | 'recommended'
 type CompletenessIssue = { field: string; message: string; severity: CompletenessSeverity }
+type SetupSectionKey = 'identity' | 'mailing' | 'spouse' | 'elections' | 'dependents'
 
 type SlipRow = {
   slipCode: string
@@ -227,6 +233,10 @@ const DEFAULT_TAXPAYER_PROFILE: TaxpayerProfileState = {
   residenceProvinceCurrent: '',
   selfEmploymentProvinces: '',
   languageCorrespondence: 'en',
+  maritalStatusChangedInYear: false,
+  becameResidentInYear: false,
+  ceasedResidentInYear: false,
+  filingForDeceased: false,
   becameResidentDate: '',
   ceasedResidentDate: '',
   maritalStatusChangeDate: '',
@@ -239,6 +249,7 @@ const DEFAULT_TAXPAYER_PROFILE: TaxpayerProfileState = {
   maritalStatus: 'single',
   spouseReturnMode: 'summary',
   spouseSelfEmployed: false,
+  spouseHasUccbAdjustments: false,
   spouseNetIncome23600: 0,
   spouseUccb11700: 0,
   spouseUccbRepayment21300: 0,
@@ -253,10 +264,43 @@ const DEFAULT_TAXPAYER_PROFILE: TaxpayerProfileState = {
   dependents: []
 }
 
+const YesNoToggle: FC<{
+  value: boolean | null
+  onChange: (value: boolean | null) => void
+  allowUnset?: boolean
+}> = ({ value, onChange, allowUnset = false }) => (
+  <div className="mt-1 inline-flex items-center gap-1 rounded-md border border-border bg-white p-1">
+    <button
+      type="button"
+      className={`px-2 py-1 text-xs rounded ${value === true ? 'bg-primary-dark text-white' : 'text-text'}`}
+      onClick={() => onChange(true)}
+    >
+      Yes
+    </button>
+    <button
+      type="button"
+      className={`px-2 py-1 text-xs rounded ${value === false ? 'bg-primary-dark text-white' : 'text-text'}`}
+      onClick={() => onChange(false)}
+    >
+      No
+    </button>
+    {allowUnset && (
+      <button
+        type="button"
+        className={`px-2 py-1 text-xs rounded ${value == null ? 'bg-primary-dark text-white' : 'text-text'}`}
+        onClick={() => onChange(null)}
+      >
+        Unset
+      </button>
+    )}
+  </div>
+)
+
 const ReturnBuilder: FC = () => {
   const { id = '' } = useParams()
   const { getToken } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const basePath = useMemo(() => getTaxBasePath(location.pathname), [location.pathname])
   const [activeStep, setActiveStep] = useState<Step>('Setup')
   const [data, setData] = useState<TaxReturnPayload | null>(null)
@@ -274,6 +318,15 @@ const ReturnBuilder: FC = () => {
   const [selectedDocumentId, setSelectedDocumentId] = useState('')
   const [newSlipCode, setNewSlipCode] = useState('T4')
   const [setupIssueFilter, setSetupIssueFilter] = useState<'all' | 'required'>('all')
+  const [showAllSetupIssues, setShowAllSetupIssues] = useState(false)
+  const [creatingDependentIdx, setCreatingDependentIdx] = useState<number | null>(null)
+  const [setupSectionOpen, setSetupSectionOpen] = useState<Record<SetupSectionKey, boolean>>({
+    identity: true,
+    mailing: false,
+    spouse: true,
+    elections: false,
+    dependents: true
+  })
 
   const requestedStep = useMemo<Step | null>(() => {
     const value = new URLSearchParams(location.search).get('step')
@@ -318,6 +371,18 @@ const ReturnBuilder: FC = () => {
     if (missing(taxpayerProfile.mailingProvinceCode)) issues.push({ field: 'mailingProvinceCode', message: 'Mailing province/territory is missing.', severity: 'required' })
     if (missing(taxpayerProfile.mailingPostalCode)) issues.push({ field: 'mailingPostalCode', message: 'Mailing postal code is missing.', severity: 'required' })
     if (missing(taxpayerProfile.residenceProvinceDec31)) issues.push({ field: 'residenceProvinceDec31', message: 'Province/territory of residence on Dec 31 is missing.', severity: 'required' })
+    if (taxpayerProfile.maritalStatusChangedInYear && missing(taxpayerProfile.maritalStatusChangeDate)) {
+      issues.push({ field: 'maritalStatusChangeDate', message: 'Marital status changed is marked Yes, but change date is missing.', severity: 'required' })
+    }
+    if (taxpayerProfile.becameResidentInYear && missing(taxpayerProfile.becameResidentDate)) {
+      issues.push({ field: 'becameResidentDate', message: 'Became-resident question is marked Yes, but date of entry is missing.', severity: 'required' })
+    }
+    if (taxpayerProfile.ceasedResidentInYear && missing(taxpayerProfile.ceasedResidentDate)) {
+      issues.push({ field: 'ceasedResidentDate', message: 'Ceased-residency question is marked Yes, but date of departure is missing.', severity: 'required' })
+    }
+    if (taxpayerProfile.filingForDeceased && missing(taxpayerProfile.deceasedDate)) {
+      issues.push({ field: 'deceasedDate', message: 'Deceased filing is marked Yes, but date of death is missing.', severity: 'required' })
+    }
     if (taxpayerProfile.electionsCanadianCitizen === '') issues.push({ field: 'electionsCanadianCitizen', message: 'Elections Canada citizenship question is unanswered.', severity: 'recommended' })
     if (taxpayerProfile.electionsCanadianCitizen === 'yes' && taxpayerProfile.electionsAuthorize === '') {
       issues.push({ field: 'electionsAuthorize', message: 'Elections Canada authorization question is unanswered.', severity: 'recommended' })
@@ -336,6 +401,9 @@ const ReturnBuilder: FC = () => {
       if (taxpayerProfile.spouseNetIncome23600 < 0) {
         issues.push({ field: 'spouseNetIncome23600', message: 'Spouse net income (line 23600) cannot be negative.', severity: 'recommended' })
       }
+      if (taxpayerProfile.spouseHasUccbAdjustments && Number(taxpayerProfile.spouseUccb11700 || 0) === 0 && Number(taxpayerProfile.spouseUccbRepayment21300 || 0) === 0) {
+        issues.push({ field: 'spouseUccb', message: 'UCCB adjustments is marked Yes, but line 11700 and 21300 amounts are both zero.', severity: 'required' })
+      }
     }
     return issues
   }, [taxpayerProfile])
@@ -353,6 +421,12 @@ const ReturnBuilder: FC = () => {
       : setupCompletenessIssues),
     [setupCompletenessIssues, setupIssueFilter]
   )
+  const displayedSetupIssues = useMemo(
+    () => (showAllSetupIssues ? visibleSetupCompletenessIssues : visibleSetupCompletenessIssues.slice(0, 8)),
+    [showAllSetupIssues, visibleSetupCompletenessIssues]
+  )
+
+  const hiddenSetupIssueCount = Math.max(0, visibleSetupCompletenessIssues.length - displayedSetupIssues.length)
 
   useEffect(() => {
     if (requestedStep) setActiveStep(requestedStep)
@@ -361,6 +435,10 @@ const ReturnBuilder: FC = () => {
   useEffect(() => {
     setSetupIssueFilter(requestedSetupFocus)
   }, [requestedSetupFocus])
+
+  useEffect(() => {
+    setShowAllSetupIssues(false)
+  }, [setupIssueFilter, visibleSetupCompletenessIssues.length])
 
   const load = async () => {
     if (!id) return
@@ -394,6 +472,10 @@ const ReturnBuilder: FC = () => {
         residenceProvinceCurrent: String(dbProfile.residenceProvinceCurrent || setupProfile.residenceProvinceCurrent || ''),
         selfEmploymentProvinces: String(dbProfile.selfEmploymentProvinces || setupProfile.selfEmploymentProvinces || ''),
         languageCorrespondence: String(dbProfile.languageCorrespondence || setupProfile.languageCorrespondence || 'en') === 'fr' ? 'fr' : 'en',
+        maritalStatusChangedInYear: Boolean(coerceNullableBoolean(dbProfile.maritalStatusChangedInYear ?? setupProfile.maritalStatusChangedInYear)) || String(dbProfile.maritalStatusChangeDate || setupProfile.maritalStatusChangeDate || '').length > 0,
+        becameResidentInYear: Boolean(coerceNullableBoolean(dbProfile.becameResidentInYear ?? setupProfile.becameResidentInYear)) || String(dbProfile.becameResidentDate || setupProfile.becameResidentDate || '').length > 0,
+        ceasedResidentInYear: Boolean(coerceNullableBoolean(dbProfile.ceasedResidentInYear ?? setupProfile.ceasedResidentInYear)) || String(dbProfile.ceasedResidentDate || setupProfile.ceasedResidentDate || '').length > 0,
+        filingForDeceased: Boolean(coerceNullableBoolean(dbProfile.filingForDeceased ?? setupProfile.filingForDeceased)) || String(dbProfile.deceasedDate || setupProfile.deceasedDate || '').length > 0,
         becameResidentDate: String(dbProfile.becameResidentDate || setupProfile.becameResidentDate || ''),
         ceasedResidentDate: String(dbProfile.ceasedResidentDate || setupProfile.ceasedResidentDate || ''),
         maritalStatusChangeDate: String(dbProfile.maritalStatusChangeDate || setupProfile.maritalStatusChangeDate || ''),
@@ -408,6 +490,9 @@ const ReturnBuilder: FC = () => {
           : 'single') as TaxpayerProfileState['maritalStatus'],
         spouseReturnMode: String(dbProfile.spouseReturnMode || setupProfile.spouseReturnMode || 'summary') === 'full' ? 'full' : 'summary',
         spouseSelfEmployed: Boolean(coerceNullableBoolean(dbProfile.spouseSelfEmployed ?? setupProfile.spouseSelfEmployed)),
+        spouseHasUccbAdjustments: Boolean(coerceNullableBoolean((dbProfile as Record<string, unknown>).spouseHasUccbAdjustments ?? setupProfile.spouseHasUccbAdjustments)) ||
+          Number(dbProfile.spouseUccb11700 ?? setupProfile.spouseUccb11700 ?? 0) !== 0 ||
+          Number(dbProfile.spouseUccbRepayment21300 ?? setupProfile.spouseUccbRepayment21300 ?? 0) !== 0,
         spouseNetIncome23600: Number(dbProfile.spouseNetIncome23600 ?? setupProfile.spouseNetIncome23600 ?? spouseObj.netIncome ?? 0),
         spouseUccb11700: Number(dbProfile.spouseUccb11700 ?? setupProfile.spouseUccb11700 ?? 0),
         spouseUccbRepayment21300: Number(dbProfile.spouseUccbRepayment21300 ?? setupProfile.spouseUccbRepayment21300 ?? 0),
@@ -726,6 +811,41 @@ const ReturnBuilder: FC = () => {
     }))
   }
 
+  const toggleSetupSection = (key: SetupSectionKey) => {
+    setSetupSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  const createDependentReturn = async (dep: DependentProfile, idx: number) => {
+    const dependentName = dep.fullName.trim()
+    if (!dependentName) {
+      setErr('Enter the dependant full name before creating a return workspace.')
+      return
+    }
+    setErr(null)
+    setCreatingDependentIdx(idx)
+    try {
+      const created = await taxFetch<{ taxReturn: { id: string } }>('/tax-returns', getToken, {
+        method: 'POST',
+        body: JSON.stringify({
+          taxpayerName: dependentName,
+          taxYear: data?.taxReturn?.tax_year || new Date().getFullYear(),
+          setup: {
+            sourceReturnId: data?.taxReturn?.id || null,
+            sourceRole: 'dependent',
+            relationship: dep.relationship || null
+          }
+        })
+      })
+      const createdId = created?.taxReturn?.id
+      if (!createdId) throw new Error('Dependent return was created but no return id was received.')
+      navigate(`${basePath}/returns/${createdId}?step=Setup&setupFocus=all`)
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not create dependant return workspace')
+    } finally {
+      setCreatingDependentIdx(null)
+    }
+  }
+
   const saveTaxpayerProfile = async () => {
     if (!data?.taxReturn?.id) return
     setSaving(true)
@@ -750,10 +870,14 @@ const ReturnBuilder: FC = () => {
         residenceProvinceCurrent: taxpayerProfile.residenceProvinceCurrent.trim(),
         selfEmploymentProvinces: taxpayerProfile.selfEmploymentProvinces.trim(),
         languageCorrespondence: taxpayerProfile.languageCorrespondence,
-        becameResidentDate: taxpayerProfile.becameResidentDate || null,
-        ceasedResidentDate: taxpayerProfile.ceasedResidentDate || null,
-        maritalStatusChangeDate: taxpayerProfile.maritalStatusChangeDate || null,
-        deceasedDate: taxpayerProfile.deceasedDate || null,
+        maritalStatusChangedInYear: Boolean(taxpayerProfile.maritalStatusChangedInYear),
+        becameResidentInYear: Boolean(taxpayerProfile.becameResidentInYear),
+        ceasedResidentInYear: Boolean(taxpayerProfile.ceasedResidentInYear),
+        filingForDeceased: Boolean(taxpayerProfile.filingForDeceased),
+        becameResidentDate: taxpayerProfile.becameResidentInYear ? (taxpayerProfile.becameResidentDate || null) : null,
+        ceasedResidentDate: taxpayerProfile.ceasedResidentInYear ? (taxpayerProfile.ceasedResidentDate || null) : null,
+        maritalStatusChangeDate: taxpayerProfile.maritalStatusChangedInYear ? (taxpayerProfile.maritalStatusChangeDate || null) : null,
+        deceasedDate: taxpayerProfile.filingForDeceased ? (taxpayerProfile.deceasedDate || null) : null,
         electionsCanadianCitizen: taxpayerProfile.electionsCanadianCitizen === ''
           ? null
           : taxpayerProfile.electionsCanadianCitizen === 'yes',
@@ -768,9 +892,10 @@ const ReturnBuilder: FC = () => {
           ? null
           : taxpayerProfile.organDonorConsent === 'yes',
         spouseSelfEmployed: Boolean(taxpayerProfile.spouseSelfEmployed),
+        spouseHasUccbAdjustments: Boolean(taxpayerProfile.spouseHasUccbAdjustments),
         spouseNetIncome23600: Number(taxpayerProfile.spouseNetIncome23600 || taxpayerProfile.spouse.netIncome || 0),
-        spouseUccb11700: Number(taxpayerProfile.spouseUccb11700 || 0),
-        spouseUccbRepayment21300: Number(taxpayerProfile.spouseUccbRepayment21300 || 0),
+        spouseUccb11700: taxpayerProfile.spouseHasUccbAdjustments ? Number(taxpayerProfile.spouseUccb11700 || 0) : 0,
+        spouseUccbRepayment21300: taxpayerProfile.spouseHasUccbAdjustments ? Number(taxpayerProfile.spouseUccbRepayment21300 || 0) : 0,
         spouse: {
           ...taxpayerProfile.spouse,
           fullName: spouseMode === 'full'
@@ -918,18 +1043,46 @@ const ReturnBuilder: FC = () => {
                     These items are non-blocking. You can continue to Income, Deductions, and Review without clearing them.
                   </p>
                   <ul className="mt-2 space-y-1 text-xs text-amber-900">
-                    {visibleSetupCompletenessIssues.map((item, idx) => (
+                    {displayedSetupIssues.map((item, idx) => (
                       <li key={`${item.field}-${idx}`}>
                         [{item.severity === 'required' ? 'REQUIRED' : 'RECOMMENDED'}] {item.message}
                       </li>
                     ))}
-                    {visibleSetupCompletenessIssues.length === 0 && (
+                    {displayedSetupIssues.length === 0 && (
                       <li>[REQUIRED] No required warnings at the moment.</li>
                     )}
                   </ul>
+                  {hiddenSetupIssueCount > 0 && (
+                    <button
+                      type="button"
+                      className="mt-2 text-xs text-amber-900 underline"
+                      onClick={() => setShowAllSetupIssues(true)}
+                    >
+                      Show {hiddenSetupIssueCount} more warning(s)
+                    </button>
+                  )}
+                  {showAllSetupIssues && visibleSetupCompletenessIssues.length > 8 && (
+                    <button
+                      type="button"
+                      className="mt-2 ml-3 text-xs text-amber-900 underline"
+                      onClick={() => setShowAllSetupIssues(false)}
+                    >
+                      Show fewer
+                    </button>
+                  )}
                 </div>
               )}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div className="border border-border rounded-md p-3 bg-background/50 space-y-2">
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between text-left"
+                  onClick={() => toggleSetupSection('identity')}
+                >
+                  <h3 className="text-sm font-semibold text-primary-dark">Identification</h3>
+                  <span className="text-xs text-text-light">{setupSectionOpen.identity ? 'Hide' : 'Show'}</span>
+                </button>
+                {setupSectionOpen.identity && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <label className="text-xs text-text-light">
                   First name
                   <input
@@ -986,11 +1139,21 @@ const ReturnBuilder: FC = () => {
                     <option value="widowed">Widowed</option>
                   </select>
                 </label>
+                  </div>
+                )}
               </div>
 
               <div className="border border-border rounded-md p-3 bg-background/50 space-y-2">
-                <h3 className="text-sm font-semibold text-primary-dark">Mailing and residence information (T1 Step 1)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between text-left"
+                  onClick={() => toggleSetupSection('mailing')}
+                >
+                  <h3 className="text-sm font-semibold text-primary-dark">Mailing and residence information (T1 Step 1)</h3>
+                  <span className="text-xs text-text-light">{setupSectionOpen.mailing ? 'Hide' : 'Show'}</span>
+                </button>
+                {setupSectionOpen.mailing && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <label className="text-xs text-text-light md:col-span-2">
                     Mailing address (apartment, number, street)
                     <input
@@ -1075,47 +1238,109 @@ const ReturnBuilder: FC = () => {
                     </select>
                   </label>
                   <label className="text-xs text-text-light">
-                    Date marital status changed (if changed this year)
-                    <input
-                      type="date"
-                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                      value={taxpayerProfile.maritalStatusChangeDate ? taxpayerProfile.maritalStatusChangeDate.slice(0, 10) : ''}
-                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, maritalStatusChangeDate: e.target.value }))}
+                    Did marital status change during the year?
+                    <YesNoToggle
+                      value={taxpayerProfile.maritalStatusChangedInYear}
+                      onChange={(value) => setTaxpayerProfile((prev) => ({
+                        ...prev,
+                        maritalStatusChangedInYear: Boolean(value),
+                        maritalStatusChangeDate: value ? prev.maritalStatusChangeDate : ''
+                      }))}
                     />
                   </label>
                   <label className="text-xs text-text-light">
-                    Date of entry to Canada (if became resident this year)
-                    <input
-                      type="date"
-                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                      value={taxpayerProfile.becameResidentDate ? taxpayerProfile.becameResidentDate.slice(0, 10) : ''}
-                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, becameResidentDate: e.target.value }))}
+                    Became a resident of Canada this year?
+                    <YesNoToggle
+                      value={taxpayerProfile.becameResidentInYear}
+                      onChange={(value) => setTaxpayerProfile((prev) => ({
+                        ...prev,
+                        becameResidentInYear: Boolean(value),
+                        becameResidentDate: value ? prev.becameResidentDate : ''
+                      }))}
                     />
                   </label>
                   <label className="text-xs text-text-light">
-                    Date of departure from Canada (if ceased residency this year)
-                    <input
-                      type="date"
-                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                      value={taxpayerProfile.ceasedResidentDate ? taxpayerProfile.ceasedResidentDate.slice(0, 10) : ''}
-                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, ceasedResidentDate: e.target.value }))}
+                    Ceased residency in Canada this year?
+                    <YesNoToggle
+                      value={taxpayerProfile.ceasedResidentInYear}
+                      onChange={(value) => setTaxpayerProfile((prev) => ({
+                        ...prev,
+                        ceasedResidentInYear: Boolean(value),
+                        ceasedResidentDate: value ? prev.ceasedResidentDate : ''
+                      }))}
                     />
                   </label>
-                  <label className="text-xs text-text-light md:col-span-2">
-                    Date of death (if filing for a deceased person)
-                    <input
-                      type="date"
-                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                      value={taxpayerProfile.deceasedDate ? taxpayerProfile.deceasedDate.slice(0, 10) : ''}
-                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, deceasedDate: e.target.value }))}
+                  <label className="text-xs text-text-light">
+                    Filing for a deceased person?
+                    <YesNoToggle
+                      value={taxpayerProfile.filingForDeceased}
+                      onChange={(value) => setTaxpayerProfile((prev) => ({
+                        ...prev,
+                        filingForDeceased: Boolean(value),
+                        deceasedDate: value ? prev.deceasedDate : ''
+                      }))}
                     />
                   </label>
-                </div>
+                  {taxpayerProfile.maritalStatusChangedInYear && (
+                    <label className="text-xs text-text-light">
+                      Date marital status changed (required when Yes)
+                      <input
+                        type="date"
+                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                        value={taxpayerProfile.maritalStatusChangeDate ? taxpayerProfile.maritalStatusChangeDate.slice(0, 10) : ''}
+                        onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, maritalStatusChangeDate: e.target.value }))}
+                      />
+                    </label>
+                  )}
+                  {taxpayerProfile.becameResidentInYear && (
+                    <label className="text-xs text-text-light">
+                      Date of entry to Canada (required when Yes)
+                      <input
+                        type="date"
+                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                        value={taxpayerProfile.becameResidentDate ? taxpayerProfile.becameResidentDate.slice(0, 10) : ''}
+                        onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, becameResidentDate: e.target.value }))}
+                      />
+                    </label>
+                  )}
+                  {taxpayerProfile.ceasedResidentInYear && (
+                    <label className="text-xs text-text-light">
+                      Date of departure from Canada (required when Yes)
+                      <input
+                        type="date"
+                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                        value={taxpayerProfile.ceasedResidentDate ? taxpayerProfile.ceasedResidentDate.slice(0, 10) : ''}
+                        onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, ceasedResidentDate: e.target.value }))}
+                      />
+                    </label>
+                  )}
+                  {taxpayerProfile.filingForDeceased && (
+                    <label className="text-xs text-text-light md:col-span-2">
+                      Date of death (required when Yes)
+                      <input
+                        type="date"
+                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                        value={taxpayerProfile.deceasedDate ? taxpayerProfile.deceasedDate.slice(0, 10) : ''}
+                        onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, deceasedDate: e.target.value }))}
+                      />
+                    </label>
+                  )}
+                  </div>
+                )}
               </div>
 
               {(taxpayerProfile.maritalStatus === 'married' || taxpayerProfile.maritalStatus === 'common_law') && (
                 <div className="border border-border rounded-md p-3 bg-background/50 space-y-2">
-                  <h3 className="text-sm font-semibold text-primary-dark">Spouse or common-law partner</h3>
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between text-left"
+                    onClick={() => toggleSetupSection('spouse')}
+                  >
+                    <h3 className="text-sm font-semibold text-primary-dark">Spouse or common-law partner</h3>
+                    <span className="text-xs text-text-light">{setupSectionOpen.spouse ? 'Hide' : 'Show'}</span>
+                  </button>
+                  {setupSectionOpen.spouse && (
+                    <>
                   <div className="text-xs text-text-light border border-border rounded-md p-2 bg-white">
                     Choose spouse return mode:
                     <div className="mt-2 flex items-center gap-2">
@@ -1241,60 +1466,84 @@ const ReturnBuilder: FC = () => {
                       />
                       Spouse was self-employed in the tax year
                     </label>
-                    <label className="text-xs text-text-light">
-                      UCCB amount from spouse line 11700
-                      <input
-                        type="number"
-                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                        value={Number(taxpayerProfile.spouseUccb11700 || 0)}
-                        onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouseUccb11700: Number(e.target.value || 0) }))}
+                    <label className="text-xs text-text-light md:col-span-2">
+                      Does spouse have UCCB adjustments (line 11700 or 21300)?
+                      <YesNoToggle
+                        value={taxpayerProfile.spouseHasUccbAdjustments}
+                        onChange={(value) => setTaxpayerProfile((prev) => ({
+                          ...prev,
+                          spouseHasUccbAdjustments: Boolean(value),
+                          spouseUccb11700: value ? prev.spouseUccb11700 : 0,
+                          spouseUccbRepayment21300: value ? prev.spouseUccbRepayment21300 : 0
+                        }))}
                       />
                     </label>
-                    <label className="text-xs text-text-light">
-                      UCCB repayment from spouse line 21300
-                      <input
-                        type="number"
-                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                        value={Number(taxpayerProfile.spouseUccbRepayment21300 || 0)}
-                        onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouseUccbRepayment21300: Number(e.target.value || 0) }))}
-                      />
-                    </label>
+                    {taxpayerProfile.spouseHasUccbAdjustments && (
+                      <>
+                        <label className="text-xs text-text-light">
+                          UCCB amount from spouse line 11700 (required when Yes)
+                          <input
+                            type="number"
+                            className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                            value={Number(taxpayerProfile.spouseUccb11700 || 0)}
+                            onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouseUccb11700: Number(e.target.value || 0) }))}
+                          />
+                        </label>
+                        <label className="text-xs text-text-light">
+                          UCCB repayment from spouse line 21300 (required when Yes)
+                          <input
+                            type="number"
+                            className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                            value={Number(taxpayerProfile.spouseUccbRepayment21300 || 0)}
+                            onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouseUccbRepayment21300: Number(e.target.value || 0) }))}
+                          />
+                        </label>
+                      </>
+                    )}
                   </div>
                   <div className="text-[11px] text-text-light">
                     {taxpayerProfile.spouseReturnMode === 'summary'
                       ? 'Summary mode stores spouse profile basics only.'
                       : 'Full mode requires complete spouse profile and enables full spouse return entry in Income and Deductions.'}
                   </div>
+                    </>
+                  )}
                 </div>
               )}
 
               <div className="border border-border rounded-md p-3 bg-background/50 space-y-3">
-                <h3 className="text-sm font-semibold text-primary-dark">T1 page 2 questions and elections</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between text-left"
+                  onClick={() => toggleSetupSection('elections')}
+                >
+                  <h3 className="text-sm font-semibold text-primary-dark">T1 page 2 questions and elections</h3>
+                  <span className="text-xs text-text-light">{setupSectionOpen.elections ? 'Hide' : 'Show'}</span>
+                </button>
+                {setupSectionOpen.elections && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <label className="text-xs text-text-light">
                     Elections Canada - Are you a Canadian citizen?
-                    <select
-                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                      value={taxpayerProfile.electionsCanadianCitizen}
-                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, electionsCanadianCitizen: e.target.value as TaxpayerProfileState['electionsCanadianCitizen'] }))}
-                    >
-                      <option value="">Select...</option>
-                      <option value="yes">Yes</option>
-                      <option value="no">No</option>
-                    </select>
+                    <YesNoToggle
+                      value={taxpayerProfile.electionsCanadianCitizen === '' ? null : taxpayerProfile.electionsCanadianCitizen === 'yes'}
+                      allowUnset
+                      onChange={(value) => setTaxpayerProfile((prev) => ({
+                        ...prev,
+                        electionsCanadianCitizen: value == null ? '' : (value ? 'yes' : 'no'),
+                        electionsAuthorize: value === true ? prev.electionsAuthorize : ''
+                      }))}
+                    />
                   </label>
-                  <label className="text-xs text-text-light">
+                  {taxpayerProfile.electionsCanadianCitizen === 'yes' && (
+                    <label className="text-xs text-text-light">
                     Elections Canada authorization to share information with Elections Canada
-                    <select
-                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                      value={taxpayerProfile.electionsAuthorize}
-                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, electionsAuthorize: e.target.value as TaxpayerProfileState['electionsAuthorize'] }))}
-                    >
-                      <option value="">Select...</option>
-                      <option value="yes">Yes</option>
-                      <option value="no">No</option>
-                    </select>
-                  </label>
+                      <YesNoToggle
+                        value={taxpayerProfile.electionsAuthorize === '' ? null : taxpayerProfile.electionsAuthorize === 'yes'}
+                        allowUnset
+                        onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, electionsAuthorize: value == null ? '' : (value ? 'yes' : 'no') }))}
+                      />
+                    </label>
+                  )}
                   <label className="text-xs text-text-light inline-flex items-center gap-2">
                     <input
                       type="checkbox"
@@ -1305,36 +1554,41 @@ const ReturnBuilder: FC = () => {
                   </label>
                   <label className="text-xs text-text-light">
                     Did you own/hold specified foreign property above CAD 100,000 at any point in the year?
-                    <select
-                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                      value={taxpayerProfile.foreignPropertyOver100k}
-                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, foreignPropertyOver100k: e.target.value as TaxpayerProfileState['foreignPropertyOver100k'] }))}
-                    >
-                      <option value="">Select...</option>
-                      <option value="yes">Yes</option>
-                      <option value="no">No</option>
-                    </select>
+                    <YesNoToggle
+                      value={taxpayerProfile.foreignPropertyOver100k === '' ? null : taxpayerProfile.foreignPropertyOver100k === 'yes'}
+                      allowUnset
+                      onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, foreignPropertyOver100k: value == null ? '' : (value ? 'yes' : 'no') }))}
+                    />
                   </label>
                   <label className="text-xs text-text-light md:col-span-2">
                     Ontario organ/tissue donor contact sharing consent
-                    <select
-                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                      value={taxpayerProfile.organDonorConsent}
-                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, organDonorConsent: e.target.value as TaxpayerProfileState['organDonorConsent'] }))}
-                    >
-                      <option value="">Select...</option>
-                      <option value="yes">Yes</option>
-                      <option value="no">No</option>
-                    </select>
+                    <YesNoToggle
+                      value={taxpayerProfile.organDonorConsent === '' ? null : taxpayerProfile.organDonorConsent === 'yes'}
+                      allowUnset
+                      onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, organDonorConsent: value == null ? '' : (value ? 'yes' : 'no') }))}
+                    />
                   </label>
-                </div>
+                  </div>
+                )}
               </div>
 
               <div className="border border-border rounded-md p-3 bg-background/50 space-y-2">
                 <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    className="flex items-center justify-between text-left w-full"
+                    onClick={() => toggleSetupSection('dependents')}
+                  >
                   <h3 className="text-sm font-semibold text-primary-dark">Dependants</h3>
+                    <span className="text-xs text-text-light">{setupSectionOpen.dependents ? 'Hide' : 'Show'}</span>
+                  </button>
                   <button type="button" className="btn btn--secondary text-xs px-2 py-1" onClick={addDependent}>Add dependant</button>
                 </div>
+                {setupSectionOpen.dependents && (
+                  <>
+                <p className="text-xs text-text-light">
+                  Each dependant can have their own full return workspace so the same T1 profile questions can be completed separately.
+                </p>
                 {taxpayerProfile.dependents.length === 0 && (
                   <p className="text-xs text-text-light">No dependants added.</p>
                 )}
@@ -1393,9 +1647,19 @@ const ReturnBuilder: FC = () => {
                       <button type="button" className="text-xs text-red-700 hover:underline" onClick={() => removeDependent(idx)}>
                         Remove
                       </button>
+                      <button
+                        type="button"
+                        className="text-xs text-accent hover:underline disabled:opacity-50"
+                        disabled={creatingDependentIdx === idx}
+                        onClick={() => { void createDependentReturn(dep, idx) }}
+                      >
+                        {creatingDependentIdx === idx ? 'Creating return...' : 'Create return workspace'}
+                      </button>
                     </div>
                   </div>
                 ))}
+                  </>
+                )}
               </div>
 
               <div className="flex gap-2">

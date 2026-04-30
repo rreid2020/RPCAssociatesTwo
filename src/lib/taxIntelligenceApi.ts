@@ -34,6 +34,10 @@ export type TaxReturnSummary = {
   id: string
   tax_year: number
   status: string
+  workspace_role?: 'primary' | 'spouse' | 'dependent' | string
+  parent_tax_return_id?: string | null
+  related_person_name?: string | null
+  interview_stage?: string | null
   title: string
   province_code: string
   taxpayer_name: string

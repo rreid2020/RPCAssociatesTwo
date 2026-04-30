@@ -35,6 +35,47 @@ const SignUp: FC = () => {
     return first?.message || fallback
   }
 
+  const buildUsernameCandidate = (value: string) => {
+    const base = String(value || '')
+      .split('@')[0]
+      .toLowerCase()
+      .replace(/[^a-z0-9_.-]/g, '')
+      .slice(0, 24)
+    if (base.length >= 3) return base
+    return `user${Date.now().toString().slice(-6)}`
+  }
+
+  const getRequiredFields = (resource: unknown): string[] => {
+    const obj = resource as { requiredFields?: string[] }
+    return Array.isArray(obj?.requiredFields) ? obj.requiredFields : []
+  }
+
+  const hydrateSignUpIfMissingRequirements = async () => {
+    if (!signUp) return
+    await signUp.reload()
+    const requiredBefore = getRequiredFields(signUp)
+    if (!requiredBefore.length) return
+    if (!email || !password || !firstName || !lastName) return
+
+    const payload: {
+      emailAddress: string
+      password: string
+      firstName: string
+      lastName: string
+      username?: string
+    } = {
+      emailAddress: email,
+      password,
+      firstName,
+      lastName
+    }
+
+    if (requiredBefore.includes('username')) {
+      payload.username = buildUsernameCandidate(email)
+    }
+    await signUp.create(payload)
+  }
+
   const activateSession = async (sessionId: string) => {
     await setActive({ session: sessionId })
     goDashboard()
@@ -92,6 +133,7 @@ const SignUp: FC = () => {
     setNotice('')
     setIsLoading(true)
     try {
+      await hydrateSignUpIfMissingRequirements()
       const res = await signUp.attemptEmailAddressVerification({ code: normalizedCode })
       const verifiedSessionId = res.createdSessionId || signUp.createdSessionId
       if (res.status === 'complete' && verifiedSessionId) {

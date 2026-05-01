@@ -24,6 +24,8 @@ type DependentDraft = {
   createWorkspace: boolean
 }
 
+type YesNo = '' | 'yes' | 'no'
+
 function computeSetupReadiness (r: TaxReturnSummary): { required: number; recommended: number } {
   const issues: Array<{ severity: ReadinessIssueSeverity }> = []
   const profile = r.taxpayer_profile || {}
@@ -85,7 +87,21 @@ const TaxReturns: FC = () => {
   const [mainSin, setMainSin] = useState('')
   const [mainDateOfBirth, setMainDateOfBirth] = useState('')
   const [mainEmail, setMainEmail] = useState('')
+  const [mailingAddressLine1, setMailingAddressLine1] = useState('')
+  const [mailingCity, setMailingCity] = useState('')
+  const [mailingPostalCode, setMailingPostalCode] = useState('')
   const [mainProvinceCode, setMainProvinceCode] = useState('ON')
+  const [languageCorrespondence, setLanguageCorrespondence] = useState<'en' | 'fr'>('en')
+  const [firstTimeFiler, setFirstTimeFiler] = useState<YesNo>('')
+  const [soldPrincipalResidence, setSoldPrincipalResidence] = useState<YesNo>('')
+  const [treatyExemptForeignService, setTreatyExemptForeignService] = useState<YesNo>('')
+  const [electionsCanadianCitizen, setElectionsCanadianCitizen] = useState<YesNo>('')
+  const [electionsAuthorize, setElectionsAuthorize] = useState<YesNo>('')
+  const [foreignPropertyOver100k, setForeignPropertyOver100k] = useState<YesNo>('')
+  const [organDonorConsent, setOrganDonorConsent] = useState<YesNo>('')
+  const [craEmailNotificationsConsent, setCraEmailNotificationsConsent] = useState<YesNo>('')
+  const [craEmailConfirmed, setCraEmailConfirmed] = useState<YesNo>('')
+  const [craHasForeignMailingAddress, setCraHasForeignMailingAddress] = useState<YesNo>('')
   const [spouseApplicable, setSpouseApplicable] = useState(false)
   const [maritalStatus, setMaritalStatus] = useState<MaritalStatus>('single')
   const [spouseReturnMode, setSpouseReturnMode] = useState<SpouseMode>('summary')
@@ -120,6 +136,11 @@ const TaxReturns: FC = () => {
   }, [])
 
   const isMarried = spouseApplicable && (maritalStatus === 'married' || maritalStatus === 'common_law')
+  const toBoolOrNull = (value: YesNo): boolean | null => {
+    if (value === 'yes') return true
+    if (value === 'no') return false
+    return null
+  }
 
   const resetInterview = () => {
     setStep(1)
@@ -129,7 +150,21 @@ const TaxReturns: FC = () => {
     setMainSin('')
     setMainDateOfBirth('')
     setMainEmail('')
+    setMailingAddressLine1('')
+    setMailingCity('')
+    setMailingPostalCode('')
     setMainProvinceCode('ON')
+    setLanguageCorrespondence('en')
+    setFirstTimeFiler('')
+    setSoldPrincipalResidence('')
+    setTreatyExemptForeignService('')
+    setElectionsCanadianCitizen('')
+    setElectionsAuthorize('')
+    setForeignPropertyOver100k('')
+    setOrganDonorConsent('')
+    setCraEmailNotificationsConsent('')
+    setCraEmailConfirmed('')
+    setCraHasForeignMailingAddress('')
     setSpouseApplicable(false)
     setMaritalStatus('single')
     setSpouseReturnMode('summary')
@@ -168,6 +203,10 @@ const TaxReturns: FC = () => {
       if (!mainFirstName.trim()) return 'Main taxpayer first name is required.'
       if (!mainLastName.trim()) return 'Main taxpayer last name is required.'
       if (!taxYear || taxYear < 2000 || taxYear > 2100) return 'Tax year must be between 2000 and 2100.'
+      if (!mailingAddressLine1.trim()) return 'Mailing address line 1 is required.'
+      if (!mailingCity.trim()) return 'Mailing city is required.'
+      if (!mainProvinceCode.trim()) return 'Province on Dec 31 is required.'
+      if (!mailingPostalCode.trim()) return 'Mailing postal code is required.'
       return null
     }
     if (step === 2) {
@@ -181,6 +220,17 @@ const TaxReturns: FC = () => {
       }
       const missingDependentName = dependents.some((d) => !d.fullName.trim())
       if (missingDependentName) return 'Each dependent needs a full name.'
+      if (firstTimeFiler === '') return 'Answer the first-time filer CRA question.'
+      if (soldPrincipalResidence === '') return 'Answer the principal residence sale CRA question.'
+      if (treatyExemptForeignService === '') return 'Answer the treaty-exempt foreign service CRA question.'
+      if (electionsCanadianCitizen === '') return 'Answer the Elections Canada citizenship question.'
+      if (electionsCanadianCitizen === 'yes' && electionsAuthorize === '') return 'Answer the Elections Canada authorization question.'
+      if (foreignPropertyOver100k === '') return 'Answer the foreign property CRA question.'
+      if (organDonorConsent === '') return 'Answer the organ and tissue donor consent question.'
+      if (craEmailNotificationsConsent === '') return 'Answer the CRA email notification consent question.'
+      if (craEmailNotificationsConsent === 'yes' && !mainEmail.trim()) return 'Email address is required when CRA email notifications are enabled.'
+      if (craEmailConfirmed === '') return 'Answer the CRA email confirmation question.'
+      if (craHasForeignMailingAddress === '') return 'Answer the CRA foreign mailing address question.'
       return null
     }
     return null
@@ -230,7 +280,12 @@ const TaxReturns: FC = () => {
               dateOfBirth: mainDateOfBirth || null,
               email: mainEmail.trim(),
               provinceCode: mainProvinceCode || 'ON',
-              residenceProvinceDec31: mainProvinceCode || 'ON'
+              residenceProvinceDec31: mainProvinceCode || 'ON',
+              mailingAddressLine1: mailingAddressLine1.trim(),
+              mailingCity: mailingCity.trim(),
+              mailingProvinceCode: mainProvinceCode || 'ON',
+              mailingPostalCode: mailingPostalCode.trim(),
+              languageCorrespondence
             },
             household: {
               maritalStatus,
@@ -257,9 +312,16 @@ const TaxReturns: FC = () => {
               ceasedResidentDate: null,
               maritalStatusChangeDate: null,
               deceasedDate: null,
-              electionsCanadianCitizen: null,
-              electionsAuthorize: null,
-              foreignPropertyOver100k: null
+              electionsCanadianCitizen: toBoolOrNull(electionsCanadianCitizen),
+              electionsAuthorize: electionsCanadianCitizen === 'yes' ? toBoolOrNull(electionsAuthorize) : null,
+              firstTimeFiler: toBoolOrNull(firstTimeFiler),
+              soldPrincipalResidence: toBoolOrNull(soldPrincipalResidence),
+              treatyExemptForeignService: toBoolOrNull(treatyExemptForeignService),
+              foreignPropertyOver100k: toBoolOrNull(foreignPropertyOver100k),
+              organDonorConsent: toBoolOrNull(organDonorConsent),
+              craEmailNotificationsConsent: toBoolOrNull(craEmailNotificationsConsent),
+              craEmailConfirmed: toBoolOrNull(craEmailConfirmed),
+              craHasForeignMailingAddress: toBoolOrNull(craHasForeignMailingAddress)
             }
           }
         })
@@ -349,12 +411,18 @@ const TaxReturns: FC = () => {
                 </div>
                 <p className="text-sm font-medium text-primary-dark">Question 3: Contact email (optional)</p>
                 <input className="border border-border rounded-md px-3 py-2 text-sm w-full" type="email" placeholder="Email (optional)" value={mainEmail} onChange={(e) => setMainEmail(e.target.value)} disabled={saving} />
+                <p className="text-sm font-medium text-primary-dark">Question 4: What is the main taxpayer mailing address?</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <input className="border border-border rounded-md px-3 py-2 text-sm md:col-span-2" placeholder="Mailing address line 1" value={mailingAddressLine1} onChange={(e) => setMailingAddressLine1(e.target.value)} disabled={saving} />
+                  <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Mailing city" value={mailingCity} onChange={(e) => setMailingCity(e.target.value)} disabled={saving} />
+                  <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Mailing postal code" value={mailingPostalCode} onChange={(e) => setMailingPostalCode(e.target.value.toUpperCase())} disabled={saving} />
+                </div>
               </div>
             )}
 
             {step === 2 && (
               <div className="space-y-4">
-                <p className="text-sm font-medium text-primary-dark">Question 4: Is there a spouse/common-law partner to include in household workflow?</p>
+                <p className="text-sm font-medium text-primary-dark">Question 5: Is there a spouse/common-law partner to include in household workflow?</p>
                 <div className="inline-flex items-center gap-1 rounded-md border border-border bg-white p-1">
                   <button type="button" className={`px-3 py-1 text-xs rounded ${spouseApplicable ? 'bg-primary-dark text-white' : 'text-text'}`} onClick={() => { setSpouseApplicable(true); if (maritalStatus === 'single') setMaritalStatus('married') }} disabled={saving}>Yes</button>
                   <button type="button" className={`px-3 py-1 text-xs rounded ${!spouseApplicable ? 'bg-primary-dark text-white' : 'text-text'}`} onClick={() => { setSpouseApplicable(false); setMaritalStatus('single') }} disabled={saving}>No</button>
@@ -376,14 +444,14 @@ const TaxReturns: FC = () => {
 
                 {isMarried && spouseReturnMode === 'summary' && (
                   <>
-                    <p className="text-sm font-medium text-primary-dark">Question 5: Spouse summary details</p>
+                    <p className="text-sm font-medium text-primary-dark">Question 6: Spouse summary details</p>
                   <input className="border border-border rounded-md px-3 py-2 text-sm w-full" placeholder="Spouse full name" value={spouseFullName} onChange={(e) => setSpouseFullName(e.target.value)} disabled={saving} />
                   </>
                 )}
 
                 {isMarried && spouseReturnMode === 'full' && (
                   <>
-                  <p className="text-sm font-medium text-primary-dark">Question 5: Spouse full return profile</p>
+                  <p className="text-sm font-medium text-primary-dark">Question 6: Spouse full return profile</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Spouse first name" value={spouseFirstName} onChange={(e) => setSpouseFirstName(e.target.value)} disabled={saving} />
                     <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Spouse last name" value={spouseLastName} onChange={(e) => setSpouseLastName(e.target.value)} disabled={saving} />
@@ -395,7 +463,7 @@ const TaxReturns: FC = () => {
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-primary-dark">Question 6: Any dependents to include?</h3>
+                    <h3 className="text-sm font-semibold text-primary-dark">Question 7: Any dependents to include?</h3>
                     <button type="button" className="text-sm text-accent hover:underline" onClick={addDependent} disabled={saving}>Add dependent</button>
                   </div>
                   {dependents.length === 0 && (
@@ -414,6 +482,80 @@ const TaxReturns: FC = () => {
                     </div>
                   ))}
                 </div>
+                <div className="space-y-2 border border-border rounded-md p-3 bg-background/40">
+                  <h3 className="text-sm font-semibold text-primary-dark">Question 8: CRA setup questions for main taxpayer</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <label className="text-xs text-text-light">
+                      Language of correspondence
+                      <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={languageCorrespondence} onChange={(e) => setLanguageCorrespondence(e.target.value === 'fr' ? 'fr' : 'en')} disabled={saving}>
+                        <option value="en">English</option>
+                        <option value="fr">French</option>
+                      </select>
+                    </label>
+                    <label className="text-xs text-text-light">
+                      First time filing with CRA?
+                      <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={firstTimeFiler} onChange={(e) => setFirstTimeFiler(e.target.value as YesNo)} disabled={saving}>
+                        <option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option>
+                      </select>
+                    </label>
+                    <label className="text-xs text-text-light">
+                      Sold principal residence this year?
+                      <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={soldPrincipalResidence} onChange={(e) => setSoldPrincipalResidence(e.target.value as YesNo)} disabled={saving}>
+                        <option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option>
+                      </select>
+                    </label>
+                    <label className="text-xs text-text-light">
+                      Treaty-exempt foreign service/diplomatic status?
+                      <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={treatyExemptForeignService} onChange={(e) => setTreatyExemptForeignService(e.target.value as YesNo)} disabled={saving}>
+                        <option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option>
+                      </select>
+                    </label>
+                    <label className="text-xs text-text-light">
+                      Elections Canada: Canadian citizen?
+                      <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={electionsCanadianCitizen} onChange={(e) => { setElectionsCanadianCitizen(e.target.value as YesNo); if (e.target.value !== 'yes') setElectionsAuthorize('') }} disabled={saving}>
+                        <option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option>
+                      </select>
+                    </label>
+                    {electionsCanadianCitizen === 'yes' && (
+                      <label className="text-xs text-text-light">
+                        Elections Canada: authorize sharing?
+                        <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={electionsAuthorize} onChange={(e) => setElectionsAuthorize(e.target.value as YesNo)} disabled={saving}>
+                          <option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option>
+                        </select>
+                      </label>
+                    )}
+                    <label className="text-xs text-text-light">
+                      Foreign property over CAD 100,000?
+                      <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={foreignPropertyOver100k} onChange={(e) => setForeignPropertyOver100k(e.target.value as YesNo)} disabled={saving}>
+                        <option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option>
+                      </select>
+                    </label>
+                    <label className="text-xs text-text-light">
+                      Organ/tissue donor consent?
+                      <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={organDonorConsent} onChange={(e) => setOrganDonorConsent(e.target.value as YesNo)} disabled={saving}>
+                        <option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option>
+                      </select>
+                    </label>
+                    <label className="text-xs text-text-light">
+                      CRA email notifications consent?
+                      <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={craEmailNotificationsConsent} onChange={(e) => setCraEmailNotificationsConsent(e.target.value as YesNo)} disabled={saving}>
+                        <option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option>
+                      </select>
+                    </label>
+                    <label className="text-xs text-text-light">
+                      CRA email address confirmed?
+                      <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={craEmailConfirmed} onChange={(e) => setCraEmailConfirmed(e.target.value as YesNo)} disabled={saving}>
+                        <option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option>
+                      </select>
+                    </label>
+                    <label className="text-xs text-text-light md:col-span-2">
+                      Foreign mailing address on file with CRA?
+                      <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={craHasForeignMailingAddress} onChange={(e) => setCraHasForeignMailingAddress(e.target.value as YesNo)} disabled={saving}>
+                        <option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -423,7 +565,7 @@ const TaxReturns: FC = () => {
                 <p><span className="font-semibold">Main taxpayer:</span> {mainFirstName.trim()} {mainLastName.trim()} · {taxYear}</p>
                 <p><span className="font-semibold">Spouse workflow:</span> {isMarried ? `${maritalStatus} · ${spouseReturnMode}` : 'No spouse workspace'}</p>
                 <p><span className="font-semibold">Dependents:</span> {dependents.length} total · {dependents.filter((d) => d.createWorkspace).length} workspace(s) requested</p>
-                <p className="text-xs text-text-light">You can edit CRA-specific setup questions inside each workspace after creation.</p>
+                <p className="text-xs text-text-light">Address and CRA setup answers are captured in this interview before workspaces are created.</p>
               </div>
             )}
 

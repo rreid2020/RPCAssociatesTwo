@@ -164,8 +164,7 @@ type TaxpayerProfileState = {
   dependents: DependentProfile[]
 }
 
-const steps = ['Setup', 'Income', 'Deductions', 'Review', 'Optimization', 'Risk'] as const
-type Step = typeof steps[number]
+type Step = 'Setup' | 'Income' | 'Deductions' | 'Review' | 'Optimization' | 'Risk'
 type CompletenessSeverity = 'required' | 'recommended'
 type CompletenessIssue = { field: string; message: string; severity: CompletenessSeverity }
 type SetupSectionKey = 'identity' | 'mailing' | 'spouse' | 'elections' | 'dependents'
@@ -231,6 +230,23 @@ const INTERVIEW_FLOW = [
   { id: 'return', label: 'Tax Return' },
   { id: 'netfile', label: 'NETFILE' }
 ] as const
+type WorkflowStageId = typeof INTERVIEW_FLOW[number]['id']
+
+const WORKFLOW_STAGE_TO_STEP: Record<WorkflowStageId, Step> = {
+  start: 'Setup',
+  interview: 'Income',
+  review: 'Review',
+  return: 'Optimization',
+  netfile: 'Risk'
+}
+
+function stepToWorkflowStage (step: Step): WorkflowStageId {
+  if (step === 'Setup') return 'start'
+  if (step === 'Income' || step === 'Deductions') return 'interview'
+  if (step === 'Review') return 'review'
+  if (step === 'Optimization') return 'return'
+  return 'netfile'
+}
 
 const DEFAULT_TAXPAYER_PROFILE: TaxpayerProfileState = {
   firstName: '',
@@ -400,6 +416,7 @@ const ReturnBuilder: FC = () => {
     { id: 'review', label: 'Review & diagnostics', step: 'Review' },
     { id: 'risk', label: 'Risk checks', step: 'Risk' }
   ]), [])
+  const activeWorkflowStage = useMemo(() => stepToWorkflowStage(activeStep), [activeStep])
   const setupCompletenessIssues = useMemo<CompletenessIssue[]>(() => {
     const issues: CompletenessIssue[] = []
     const married = taxpayerProfile.maritalStatus === 'married' || taxpayerProfile.maritalStatus === 'common_law'
@@ -1038,38 +1055,26 @@ const ReturnBuilder: FC = () => {
           <div className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
               {INTERVIEW_FLOW.map((node, idx) => {
-                const activeIdx = steps.indexOf(activeStep)
-                const highlight = idx <= Math.min(3, Math.max(0, activeIdx))
+                const isActive = activeWorkflowStage === node.id
                 return (
-                  <div
+                  <button
                     key={node.id}
-                    className={`px-3 py-2 rounded-md border text-xs font-medium ${highlight ? 'bg-primary-dark text-white border-primary-dark' : 'bg-background text-text border-border'}`}
+                    type="button"
+                    onClick={() => setActiveStep(WORKFLOW_STAGE_TO_STEP[node.id])}
+                    className={`px-3 py-2 rounded-md border text-xs font-medium text-left ${isActive ? 'bg-primary-dark text-white border-primary-dark' : 'bg-background text-text border-border hover:bg-white'}`}
                   >
                     <span className="mr-1 opacity-80">{idx + 1}</span>
                     {node.label}
-                  </div>
+                    {node.id === 'start' && requiredSetupIssueCount > 0 ? ` (${requiredSetupIssueCount} required)` : ''}
+                    {node.id === 'start' && requiredSetupIssueCount === 0 && recommendedSetupIssueCount > 0 ? ` (${recommendedSetupIssueCount} review)` : ''}
+                  </button>
                 )
               })}
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
-              {steps.map((step) => (
-                <button
-                  key={step}
-                  type="button"
-                  onClick={() => setActiveStep(step)}
-                  className={`px-2 py-2 text-xs rounded-md border ${
-                    activeStep === step ? 'bg-primary-dark text-white border-primary-dark' : 'bg-background text-text border-border'
-                  }`}
-                >
-                  {step}
-                  {step === 'Setup' && requiredSetupIssueCount > 0 ? ` (${requiredSetupIssueCount} required)` : ''}
-                  {step === 'Setup' && requiredSetupIssueCount === 0 && recommendedSetupIssueCount > 0 ? ` (${recommendedSetupIssueCount} review)` : ''}
-                </button>
-              ))}
-            </div>
             <div className="border-t border-border pt-3 space-y-2">
               <p className="text-xs text-text-light">Household workspaces</p>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="rounded-md border border-border bg-background/40 p-2">
+                <div role="tablist" aria-label="Household workspaces" className="flex flex-wrap items-end gap-2 border-b border-border px-1">
                 {workspaceTabs.map((w) => {
                   const current = w.id === id
                   const label = String(w.workspace_role || 'primary') === 'primary'
@@ -1079,15 +1084,18 @@ const ReturnBuilder: FC = () => {
                     <button
                       key={w.id}
                       type="button"
+                      role="tab"
+                      aria-selected={current}
                       onClick={() => navigate(`${basePath}/returns/${w.id}`)}
-                      className={`px-2 py-1 text-xs rounded border ${current ? 'bg-primary-dark text-white border-primary-dark' : 'bg-white text-text border-border'}`}
+                      className={`px-3 py-1.5 text-xs rounded-t-md border border-b-0 ${current ? 'bg-white text-primary-dark border-primary-dark font-semibold' : 'bg-background text-text border-border hover:bg-white'}`}
                     >
                       {label}
                     </button>
                   )
                 })}
+                </div>
                 {workspaceTabs.length === 0 && (
-                  <span className="text-xs text-text-light">This return has no linked household workspaces yet.</span>
+                  <span className="text-xs text-text-light block px-1">This return has no linked household workspaces yet.</span>
                 )}
               </div>
               <p className="text-[11px] text-text-light">

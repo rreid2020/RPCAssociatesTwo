@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
-import { taxFetch } from '../../../lib/taxIntelligenceApi'
+import { taxFetch, type TaxReturnSummary } from '../../../lib/taxIntelligenceApi'
 import { getTaxBasePath } from './path'
 import { SLIP_DEFINITIONS, SLIP_DEFINITIONS_BY_CODE } from '../../../lib/taxSlips/definitions'
 
@@ -170,6 +170,13 @@ type CompletenessSeverity = 'required' | 'recommended'
 type CompletenessIssue = { field: string; message: string; severity: CompletenessSeverity }
 type SetupSectionKey = 'identity' | 'mailing' | 'spouse' | 'elections' | 'dependents'
 
+type InterviewMenuItem = {
+  id: string
+  label: string
+  step: Step
+  setupSection?: SetupSectionKey
+}
+
 type SlipRow = {
   slipCode: string
   payerName: string
@@ -215,6 +222,14 @@ const T1_DEDUCTION_FIELDS = [
   { key: 'tuition_amount', label: 'Tuition amount', lineRef: '32300', category: 'tuition_amount', isCredit: true },
   { key: 'medical_expenses', label: 'Medical expenses (self/family)', lineRef: '33099', category: 'medical_expenses', isCredit: true },
   { key: 'donations', label: 'Donations and gifts', lineRef: '34900', category: 'donations', isCredit: true }
+] as const
+
+const INTERVIEW_FLOW = [
+  { id: 'start', label: 'Start' },
+  { id: 'interview', label: 'Interview' },
+  { id: 'review', label: 'Review' },
+  { id: 'return', label: 'Tax Return' },
+  { id: 'netfile', label: 'NETFILE' }
 ] as const
 
 const DEFAULT_TAXPAYER_PROFILE: TaxpayerProfileState = {
@@ -304,6 +319,7 @@ const ReturnBuilder: FC = () => {
   const basePath = useMemo(() => getTaxBasePath(location.pathname), [location.pathname])
   const [activeStep, setActiveStep] = useState<Step>('Setup')
   const [data, setData] = useState<TaxReturnPayload | null>(null)
+  const [allReturns, setAllReturns] = useState<TaxReturnSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -356,6 +372,34 @@ const ReturnBuilder: FC = () => {
   const hasSpouseReturnMode =
     (taxpayerProfile.maritalStatus === 'married' || taxpayerProfile.maritalStatus === 'common_law') &&
     taxpayerProfile.spouseReturnMode === 'full'
+  const currentWorkspaceRole = String((data?.taxReturn as { workspace_role?: string } | undefined)?.workspace_role || 'primary')
+  const householdRootId = useMemo(() => {
+    const tr = data?.taxReturn as { id?: string; parent_tax_return_id?: string | null } | undefined
+    if (!tr?.id) return ''
+    return tr.parent_tax_return_id || tr.id
+  }, [data?.taxReturn])
+  const workspaceTabs = useMemo(() => {
+    if (!householdRootId) return []
+    const direct = allReturns.filter((r) => (r.parent_tax_return_id || r.id) === householdRootId || r.id === householdRootId)
+    const dedup = new Map<string, TaxReturnSummary>()
+    direct.forEach((r) => dedup.set(r.id, r))
+    return Array.from(dedup.values()).sort((a, b) => {
+      const aPrimary = String(a.workspace_role || 'primary') === 'primary' ? 0 : 1
+      const bPrimary = String(b.workspace_role || 'primary') === 'primary' ? 0 : 1
+      if (aPrimary !== bPrimary) return aPrimary - bPrimary
+      return String(a.taxpayer_name || '').localeCompare(String(b.taxpayer_name || ''))
+    })
+  }, [allReturns, householdRootId])
+  const interviewMenuItems = useMemo<InterviewMenuItem[]>(() => ([
+    { id: 'setup-identity', label: 'Interview setup', step: 'Setup', setupSection: 'identity' },
+    { id: 'setup-cra', label: 'CRA questions', step: 'Setup', setupSection: 'elections' },
+    { id: 'setup-spouse', label: 'Spouse setup', step: 'Setup', setupSection: 'spouse' },
+    { id: 'setup-dependents', label: 'Dependent setup', step: 'Setup', setupSection: 'dependents' },
+    { id: 'income-slips', label: 'Income & CRA slips', step: 'Income' },
+    { id: 'deductions', label: 'Deductions & credits', step: 'Deductions' },
+    { id: 'review', label: 'Review & diagnostics', step: 'Review' },
+    { id: 'risk', label: 'Risk checks', step: 'Risk' }
+  ]), [])
   const setupCompletenessIssues = useMemo<CompletenessIssue[]>(() => {
     const issues: CompletenessIssue[] = []
     const married = taxpayerProfile.maritalStatus === 'married' || taxpayerProfile.maritalStatus === 'common_law'
@@ -444,11 +488,13 @@ const ReturnBuilder: FC = () => {
     if (!id) return
     setLoading(true)
     try {
-      const [returnData, docs] = await Promise.all([
+      const [returnData, docs, listData] = await Promise.all([
         taxFetch<TaxReturnPayload>(`/tax-returns/${id}`, getToken),
-        taxFetch<{ documents: Array<{ id: string; file_name: string }> }>('/documents/for-tax', getToken)
+        taxFetch<{ documents: Array<{ id: string; file_name: string }> }>('/documents/for-tax', getToken),
+        taxFetch<{ returns: TaxReturnSummary[] }>('/tax-returns', getToken)
       ])
       setData(returnData)
+      setAllReturns(listData.returns || [])
       const setupJson = (returnData.taxReturn.setup_json || {}) as Record<string, unknown>
       const setupProfile = (setupJson.taxpayerProfile || {}) as Record<string, unknown>
       const dbProfile = (returnData.taxReturn.taxpayer_profile || {}) as Record<string, unknown>
@@ -815,6 +861,20 @@ const ReturnBuilder: FC = () => {
     setSetupSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
+  const jumpToMenuItem = (item: InterviewMenuItem) => {
+    setActiveStep(item.step)
+    if (item.setupSection) {
+      setSetupSectionOpen((prev) => ({ ...prev, [item.setupSection as SetupSectionKey]: true }))
+      window.setTimeout(() => {
+        document.getElementById(`rb-${item.setupSection}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 40)
+      return
+    }
+    window.setTimeout(() => {
+      document.getElementById(`rb-${item.id.replace(/^setup-/, '')}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 40)
+  }
+
   const createDependentReturn = async (dep: DependentProfile, idx: number) => {
     const dependentName = dep.fullName.trim()
     if (!dependentName) {
@@ -975,7 +1035,22 @@ const ReturnBuilder: FC = () => {
             <Link to={`${basePath}/returns`} className="text-sm text-accent font-medium hover:underline">Back to returns</Link>
           </div>
 
-          <div className="bg-white p-3 rounded-lg border border-border shadow-sm">
+          <div className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+              {INTERVIEW_FLOW.map((node, idx) => {
+                const activeIdx = steps.indexOf(activeStep)
+                const highlight = idx <= Math.min(3, Math.max(0, activeIdx))
+                return (
+                  <div
+                    key={node.id}
+                    className={`px-3 py-2 rounded-md border text-xs font-medium ${highlight ? 'bg-primary-dark text-white border-primary-dark' : 'bg-background text-text border-border'}`}
+                  >
+                    <span className="mr-1 opacity-80">{idx + 1}</span>
+                    {node.label}
+                  </div>
+                )
+              })}
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
               {steps.map((step) => (
                 <button
@@ -992,7 +1067,34 @@ const ReturnBuilder: FC = () => {
                 </button>
               ))}
             </div>
-            <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
+            <div className="border-t border-border pt-3 space-y-2">
+              <p className="text-xs text-text-light">Household workspaces</p>
+              <div className="flex flex-wrap items-center gap-2">
+                {workspaceTabs.map((w) => {
+                  const current = w.id === id
+                  const label = String(w.workspace_role || 'primary') === 'primary'
+                    ? `${w.taxpayer_name}`
+                    : `${w.taxpayer_name} (${String(w.workspace_role || '').toLowerCase()})`
+                  return (
+                    <button
+                      key={w.id}
+                      type="button"
+                      onClick={() => navigate(`${basePath}/returns/${w.id}`)}
+                      className={`px-2 py-1 text-xs rounded border ${current ? 'bg-primary-dark text-white border-primary-dark' : 'bg-white text-text border-border'}`}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+                {workspaceTabs.length === 0 && (
+                  <span className="text-xs text-text-light">This return has no linked household workspaces yet.</span>
+                )}
+              </div>
+              <p className="text-[11px] text-text-light">
+                Current workspace role: <span className="font-semibold text-text">{currentWorkspaceRole}</span>
+              </p>
+            </div>
+            <div className="flex items-center gap-2 border-t border-border pt-3">
               <span className="text-xs text-text-light">Return workspace:</span>
               <button
                 type="button"
@@ -1013,8 +1115,31 @@ const ReturnBuilder: FC = () => {
             </div>
           </div>
 
-          {err && <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md p-3">{err}</p>}
-          {loading && <p className="text-sm text-text-light">Loading return data…</p>}
+          <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-4">
+            <aside className="bg-white p-3 rounded-lg border border-border shadow-sm h-fit lg:sticky lg:top-20">
+              <p className="text-xs font-semibold text-primary-dark mb-2">Interview and forms</p>
+              <div className="space-y-1">
+                {interviewMenuItems.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => jumpToMenuItem(item)}
+                    className={`w-full text-left px-2 py-1.5 text-xs rounded-md border ${
+                      activeStep === item.step ? 'bg-primary-dark text-white border-primary-dark' : 'bg-white text-text border-border hover:bg-background'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-text-light mt-3">
+                Move through setup, slips, deductions, review and risk just like an interview workflow.
+              </p>
+            </aside>
+
+            <div className="space-y-4">
+              {err && <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md p-3">{err}</p>}
+              {loading && <p className="text-sm text-text-light">Loading return data…</p>}
 
           {!loading && activeStep === 'Setup' && (
             <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
@@ -1088,7 +1213,7 @@ const ReturnBuilder: FC = () => {
                   )}
                 </div>
               )}
-              <div className="border border-border rounded-md p-3 bg-background/50 space-y-2">
+              <div id="rb-identity" className="border border-border rounded-md p-3 bg-background/50 space-y-2">
                 <button
                   type="button"
                   className="w-full flex items-center justify-between text-left"
@@ -1159,7 +1284,7 @@ const ReturnBuilder: FC = () => {
                 )}
               </div>
 
-              <div className="border border-border rounded-md p-3 bg-background/50 space-y-2">
+              <div id="rb-mailing" className="border border-border rounded-md p-3 bg-background/50 space-y-2">
                 <button
                   type="button"
                   className="w-full flex items-center justify-between text-left"
@@ -1346,7 +1471,7 @@ const ReturnBuilder: FC = () => {
               </div>
 
               {(taxpayerProfile.maritalStatus === 'married' || taxpayerProfile.maritalStatus === 'common_law') && (
-                <div className="border border-border rounded-md p-3 bg-background/50 space-y-2">
+                <div id="rb-spouse" className="border border-border rounded-md p-3 bg-background/50 space-y-2">
                   <button
                     type="button"
                     className="w-full flex items-center justify-between text-left"
@@ -1527,7 +1652,7 @@ const ReturnBuilder: FC = () => {
                 </div>
               )}
 
-              <div className="border border-border rounded-md p-3 bg-background/50 space-y-3">
+              <div id="rb-elections" className="border border-border rounded-md p-3 bg-background/50 space-y-3">
                 <button
                   type="button"
                   className="w-full flex items-center justify-between text-left"
@@ -1588,7 +1713,7 @@ const ReturnBuilder: FC = () => {
                 )}
               </div>
 
-              <div className="border border-border rounded-md p-3 bg-background/50 space-y-2">
+              <div id="rb-dependents" className="border border-border rounded-md p-3 bg-background/50 space-y-2">
                 <div className="flex items-center justify-between">
                   <button
                     type="button"
@@ -1720,7 +1845,7 @@ const ReturnBuilder: FC = () => {
                   Import selected document
                 </button>
               </div>
-              <div className="border border-border rounded-md p-3 bg-background/50 space-y-3">
+              <div id="rb-income-slips" className="border border-border rounded-md p-3 bg-background/50 space-y-3">
                 <div>
                   <h3 className="text-sm font-semibold text-primary-dark">Manual CRA slip entry (box format)</h3>
                   <p className="text-xs text-text-light mt-1">
@@ -1842,7 +1967,7 @@ const ReturnBuilder: FC = () => {
               <div className="text-xs text-text-light">
                 Editing deductions for: <span className="font-semibold text-text">{returnRole === 'self' ? 'Taxpayer' : 'Spouse'}</span>
               </div>
-              <div className="border border-border rounded-md p-3 bg-background/50 space-y-3">
+              <div id="rb-deductions" className="border border-border rounded-md p-3 bg-background/50 space-y-3">
                 <div>
                   <h3 className="text-sm font-semibold text-primary-dark">T1 deduction and credit inputs</h3>
                   <p className="text-xs text-text-light mt-1">Enter common deduction/credit lines from T1 General Step 3 and Step 5.</p>
@@ -1952,7 +2077,7 @@ const ReturnBuilder: FC = () => {
                   </div>
                 </div>
               )}
-              <div className="mt-4">
+              <div id="rb-review" className="mt-4">
                 <h3 className="text-sm font-semibold text-primary-dark">Slip line mapping trace</h3>
                 <p className="text-xs text-text-light mt-1">Shows how slip boxes are mapped into T1 lines/schedules.</p>
                 {lineMappingRows.length === 0 ? (
@@ -2050,7 +2175,7 @@ const ReturnBuilder: FC = () => {
           )}
 
           {!loading && activeStep === 'Risk' && (
-            <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-2">
+            <section id="rb-risk" className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-2">
               <h2 className="text-lg font-semibold text-primary-dark">Risk</h2>
               <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={() => { void runAudit() }} disabled={saving}>
                 Run audit risk checks
@@ -2058,6 +2183,8 @@ const ReturnBuilder: FC = () => {
               <Link className="text-sm text-accent font-medium hover:underline block" to={`${basePath}/risk`}>Open Audit & Risk panel</Link>
             </section>
           )}
+            </div>
+          </div>
         </div>
       </ClientPortalShell>
     </>

@@ -388,11 +388,17 @@ const ReturnBuilder: FC = () => {
   const hasSpouseReturnMode =
     (taxpayerProfile.maritalStatus === 'married' || taxpayerProfile.maritalStatus === 'common_law') &&
     taxpayerProfile.spouseReturnMode === 'full'
-  const currentWorkspaceRole = String((data?.taxReturn as { workspace_role?: string } | undefined)?.workspace_role || 'primary')
   const householdRootId = useMemo(() => {
-    const tr = data?.taxReturn as { id?: string; parent_tax_return_id?: string | null } | undefined
+    const tr = data?.taxReturn as {
+      id?: string
+      parent_tax_return_id?: string | null
+      setup_json?: Record<string, unknown>
+    } | undefined
     if (!tr?.id) return ''
-    return tr.parent_tax_return_id || tr.id
+    const setupWorkflow = tr.setup_json && typeof tr.setup_json === 'object'
+      ? (tr.setup_json.workflow as { parentTaxReturnId?: string | null } | undefined)
+      : undefined
+    return tr.parent_tax_return_id || setupWorkflow?.parentTaxReturnId || tr.id
   }, [data?.taxReturn])
   const workspaceTabs = useMemo(() => {
     if (!householdRootId) return []
@@ -1098,28 +1104,6 @@ const ReturnBuilder: FC = () => {
                   <span className="text-xs text-text-light block px-1">This return has no linked household workspaces yet.</span>
                 )}
               </div>
-              <p className="text-[11px] text-text-light">
-                Current workspace role: <span className="font-semibold text-text">{currentWorkspaceRole}</span>
-              </p>
-            </div>
-            <div className="flex items-center gap-2 border-t border-border pt-3">
-              <span className="text-xs text-text-light">Return workspace:</span>
-              <button
-                type="button"
-                className={`px-2 py-1 text-xs rounded border ${returnRole === 'self' ? 'bg-primary-dark text-white border-primary-dark' : 'bg-white text-text border-border'}`}
-                onClick={() => setReturnRole('self')}
-              >
-                Taxpayer full return
-              </button>
-              <button
-                type="button"
-                className={`px-2 py-1 text-xs rounded border ${returnRole === 'spouse' ? 'bg-primary-dark text-white border-primary-dark' : 'bg-white text-text border-border'} ${!hasSpouseReturnMode ? 'opacity-50 cursor-not-allowed' : ''}`}
-                onClick={() => hasSpouseReturnMode && setReturnRole('spouse')}
-                disabled={!hasSpouseReturnMode}
-                title={!hasSpouseReturnMode ? 'Set marital status to Married/Common-law and save profile to enable spouse full return mode.' : undefined}
-              >
-                Spouse full return
-              </button>
             </div>
           </div>
 

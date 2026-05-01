@@ -12,8 +12,8 @@ function sanitizeSin (value: string): string {
   return String(value || '').replace(/\D/g, '').slice(0, 9)
 }
 
-type InterviewStep = 1 | 2 | 3 | 4
-type MaritalStatus = 'single' | 'married' | 'common_law' | 'separated' | 'divorced' | 'widowed'
+type InterviewStep = 1 | 2 | 3
+type MaritalStatus = 'single' | 'married' | 'common_law'
 type SpouseMode = 'summary' | 'full'
 type DependentDraft = {
   id: string
@@ -77,6 +77,7 @@ const TaxReturns: FC = () => {
   const [mainDateOfBirth, setMainDateOfBirth] = useState('')
   const [mainEmail, setMainEmail] = useState('')
   const [mainProvinceCode, setMainProvinceCode] = useState('ON')
+  const [spouseApplicable, setSpouseApplicable] = useState(false)
   const [maritalStatus, setMaritalStatus] = useState<MaritalStatus>('single')
   const [spouseReturnMode, setSpouseReturnMode] = useState<SpouseMode>('summary')
   const [spouseFullName, setSpouseFullName] = useState('')
@@ -85,17 +86,6 @@ const TaxReturns: FC = () => {
   const [spouseDateOfBirth, setSpouseDateOfBirth] = useState('')
   const [spouseSin, setSpouseSin] = useState('')
   const [dependents, setDependents] = useState<DependentDraft[]>([])
-  const [becameResidentInYear, setBecameResidentInYear] = useState(false)
-  const [becameResidentDate, setBecameResidentDate] = useState('')
-  const [ceasedResidentInYear, setCeasedResidentInYear] = useState(false)
-  const [ceasedResidentDate, setCeasedResidentDate] = useState('')
-  const [maritalStatusChangedInYear, setMaritalStatusChangedInYear] = useState(false)
-  const [maritalStatusChangeDate, setMaritalStatusChangeDate] = useState('')
-  const [deceasedInYear, setDeceasedInYear] = useState(false)
-  const [deceasedDate, setDeceasedDate] = useState('')
-  const [electionsCanadianCitizen, setElectionsCanadianCitizen] = useState<boolean | null>(null)
-  const [electionsAuthorize, setElectionsAuthorize] = useState<boolean | null>(null)
-  const [foreignPropertyOver100k, setForeignPropertyOver100k] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -120,7 +110,7 @@ const TaxReturns: FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const isMarried = maritalStatus === 'married' || maritalStatus === 'common_law'
+  const isMarried = spouseApplicable && (maritalStatus === 'married' || maritalStatus === 'common_law')
 
   const resetInterview = () => {
     setStep(1)
@@ -131,6 +121,7 @@ const TaxReturns: FC = () => {
     setMainDateOfBirth('')
     setMainEmail('')
     setMainProvinceCode('ON')
+    setSpouseApplicable(false)
     setMaritalStatus('single')
     setSpouseReturnMode('summary')
     setSpouseFullName('')
@@ -139,17 +130,6 @@ const TaxReturns: FC = () => {
     setSpouseDateOfBirth('')
     setSpouseSin('')
     setDependents([])
-    setBecameResidentInYear(false)
-    setBecameResidentDate('')
-    setCeasedResidentInYear(false)
-    setCeasedResidentDate('')
-    setMaritalStatusChangedInYear(false)
-    setMaritalStatusChangeDate('')
-    setDeceasedInYear(false)
-    setDeceasedDate('')
-    setElectionsCanadianCitizen(null)
-    setElectionsAuthorize(null)
-    setForeignPropertyOver100k(null)
   }
 
   const addDependent = () => {
@@ -194,13 +174,6 @@ const TaxReturns: FC = () => {
       if (missingDependentName) return 'Each dependent needs a full name.'
       return null
     }
-    if (step === 3) {
-      if (becameResidentInYear && !becameResidentDate) return 'Became resident date is required.'
-      if (ceasedResidentInYear && !ceasedResidentDate) return 'Ceased resident date is required.'
-      if (maritalStatusChangedInYear && !maritalStatusChangeDate) return 'Marital status change date is required.'
-      if (deceasedInYear && !deceasedDate) return 'Date of death is required.'
-      return null
-    }
     return null
   }
 
@@ -211,7 +184,7 @@ const TaxReturns: FC = () => {
       return
     }
     setErr(null)
-    setStep((prev) => Math.min(4, (prev + 1) as InterviewStep) as InterviewStep)
+    setStep((prev) => Math.min(3, (prev + 1) as InterviewStep) as InterviewStep)
   }
 
   const onBack = () => {
@@ -271,13 +244,13 @@ const TaxReturns: FC = () => {
               createWorkspace: d.createWorkspace
             })),
             cra: {
-              becameResidentDate: becameResidentInYear ? becameResidentDate : null,
-              ceasedResidentDate: ceasedResidentInYear ? ceasedResidentDate : null,
-              maritalStatusChangeDate: maritalStatusChangedInYear ? maritalStatusChangeDate : null,
-              deceasedDate: deceasedInYear ? deceasedDate : null,
-              electionsCanadianCitizen,
-              electionsAuthorize,
-              foreignPropertyOver100k
+              becameResidentDate: null,
+              ceasedResidentDate: null,
+              maritalStatusChangeDate: null,
+              deceasedDate: null,
+              electionsCanadianCitizen: null,
+              electionsAuthorize: null,
+              foreignPropertyOver100k: null
             }
           }
         })
@@ -349,55 +322,71 @@ const TaxReturns: FC = () => {
 
           <section className="bg-white p-4 rounded-lg border border-border shadow-sm">
             <h2 className="text-lg font-semibold text-primary-dark mb-1">Create return interview</h2>
-            <p className="text-xs text-text-light mb-4">Step {step} of 4 — interview-driven setup for household workspaces.</p>
+            <p className="text-xs text-text-light mb-4">Step {step} of 3 — answer a few questions to build the household workspace.</p>
 
             {step === 1 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Main taxpayer first name" value={mainFirstName} onChange={(e) => setMainFirstName(e.target.value)} disabled={saving} />
-                <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Main taxpayer last name" value={mainLastName} onChange={(e) => setMainLastName(e.target.value)} disabled={saving} />
-                <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="SIN (9 digits)" value={mainSin} onChange={(e) => setMainSin(e.target.value.replace(/\D/g, '').slice(0, 9))} disabled={saving} />
-                <input className="border border-border rounded-md px-3 py-2 text-sm" type="date" value={mainDateOfBirth} onChange={(e) => setMainDateOfBirth(e.target.value)} disabled={saving} />
-                <input className="border border-border rounded-md px-3 py-2 text-sm" type="email" placeholder="Email (optional)" value={mainEmail} onChange={(e) => setMainEmail(e.target.value)} disabled={saving} />
-                <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Province on Dec 31 (e.g. ON)" value={mainProvinceCode} onChange={(e) => setMainProvinceCode(e.target.value.toUpperCase().slice(0, 4))} disabled={saving} />
-                <input className="border border-border rounded-md px-3 py-2 text-sm md:col-span-2" type="number" min={2000} max={2100} value={taxYear} onChange={(e) => setTaxYear(Number(e.target.value))} disabled={saving} />
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-primary-dark">Question 1: Who is the main taxpayer for this household return?</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Main taxpayer first name" value={mainFirstName} onChange={(e) => setMainFirstName(e.target.value)} disabled={saving} />
+                  <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Main taxpayer last name" value={mainLastName} onChange={(e) => setMainLastName(e.target.value)} disabled={saving} />
+                  <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="SIN (9 digits)" value={mainSin} onChange={(e) => setMainSin(e.target.value.replace(/\D/g, '').slice(0, 9))} disabled={saving} />
+                  <input className="border border-border rounded-md px-3 py-2 text-sm" type="date" value={mainDateOfBirth} onChange={(e) => setMainDateOfBirth(e.target.value)} disabled={saving} />
+                </div>
+                <p className="text-sm font-medium text-primary-dark">Question 2: What tax year and province are we preparing for?</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Province on Dec 31 (e.g. ON)" value={mainProvinceCode} onChange={(e) => setMainProvinceCode(e.target.value.toUpperCase().slice(0, 4))} disabled={saving} />
+                  <input className="border border-border rounded-md px-3 py-2 text-sm" type="number" min={2000} max={2100} value={taxYear} onChange={(e) => setTaxYear(Number(e.target.value))} disabled={saving} />
+                </div>
+                <p className="text-sm font-medium text-primary-dark">Question 3: Contact email (optional)</p>
+                <input className="border border-border rounded-md px-3 py-2 text-sm w-full" type="email" placeholder="Email (optional)" value={mainEmail} onChange={(e) => setMainEmail(e.target.value)} disabled={saving} />
               </div>
             )}
 
             {step === 2 && (
               <div className="space-y-4">
+                <p className="text-sm font-medium text-primary-dark">Question 4: Is there a spouse/common-law partner to include in household workflow?</p>
+                <div className="inline-flex items-center gap-1 rounded-md border border-border bg-white p-1">
+                  <button type="button" className={`px-3 py-1 text-xs rounded ${spouseApplicable ? 'bg-primary-dark text-white' : 'text-text'}`} onClick={() => { setSpouseApplicable(true); if (maritalStatus === 'single') setMaritalStatus('married') }} disabled={saving}>Yes</button>
+                  <button type="button" className={`px-3 py-1 text-xs rounded ${!spouseApplicable ? 'bg-primary-dark text-white' : 'text-text'}`} onClick={() => { setSpouseApplicable(false); setMaritalStatus('single') }} disabled={saving}>No</button>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <select className="border border-border rounded-md px-3 py-2 text-sm" value={maritalStatus} onChange={(e) => setMaritalStatus(e.target.value as MaritalStatus)} disabled={saving}>
-                    <option value="single">Single</option>
-                    <option value="married">Married</option>
-                    <option value="common_law">Common-law</option>
-                    <option value="separated">Separated</option>
-                    <option value="divorced">Divorced</option>
-                    <option value="widowed">Widowed</option>
-                  </select>
                   {isMarried && (
                     <select className="border border-border rounded-md px-3 py-2 text-sm" value={spouseReturnMode} onChange={(e) => setSpouseReturnMode(e.target.value as SpouseMode)} disabled={saving}>
                       <option value="summary">Spouse summary only</option>
                       <option value="full">Create full spouse return workspace</option>
                     </select>
                   )}
+                  {isMarried && (
+                    <select className="border border-border rounded-md px-3 py-2 text-sm" value={maritalStatus} onChange={(e) => setMaritalStatus(e.target.value as MaritalStatus)} disabled={saving}>
+                      <option value="married">Married</option>
+                      <option value="common_law">Common-law</option>
+                    </select>
+                  )}
                 </div>
 
                 {isMarried && spouseReturnMode === 'summary' && (
+                  <>
+                    <p className="text-sm font-medium text-primary-dark">Question 5: Spouse summary details</p>
                   <input className="border border-border rounded-md px-3 py-2 text-sm w-full" placeholder="Spouse full name" value={spouseFullName} onChange={(e) => setSpouseFullName(e.target.value)} disabled={saving} />
+                  </>
                 )}
 
                 {isMarried && spouseReturnMode === 'full' && (
+                  <>
+                  <p className="text-sm font-medium text-primary-dark">Question 5: Spouse full return profile</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Spouse first name" value={spouseFirstName} onChange={(e) => setSpouseFirstName(e.target.value)} disabled={saving} />
                     <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Spouse last name" value={spouseLastName} onChange={(e) => setSpouseLastName(e.target.value)} disabled={saving} />
                     <input className="border border-border rounded-md px-3 py-2 text-sm" type="date" value={spouseDateOfBirth} onChange={(e) => setSpouseDateOfBirth(e.target.value)} disabled={saving} />
                     <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Spouse SIN (9 digits)" value={spouseSin} onChange={(e) => setSpouseSin(e.target.value.replace(/\D/g, '').slice(0, 9))} disabled={saving} />
                   </div>
+                  </>
                 )}
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-primary-dark">Dependents</h3>
+                    <h3 className="text-sm font-semibold text-primary-dark">Question 6: Any dependents to include?</h3>
                     <button type="button" className="text-sm text-accent hover:underline" onClick={addDependent} disabled={saving}>Add dependent</button>
                   </div>
                   {dependents.length === 0 && (
@@ -420,41 +409,24 @@ const TaxReturns: FC = () => {
             )}
 
             {step === 3 && (
-              <div className="space-y-3 text-sm">
-                <label className="flex items-center gap-2"><input type="checkbox" checked={becameResidentInYear} onChange={(e) => setBecameResidentInYear(e.target.checked)} disabled={saving} /> Became a resident of Canada during the year</label>
-                {becameResidentInYear && <input className="border border-border rounded-md px-3 py-2 text-sm w-full md:w-64" type="date" value={becameResidentDate} onChange={(e) => setBecameResidentDate(e.target.value)} disabled={saving} />}
-                <label className="flex items-center gap-2"><input type="checkbox" checked={ceasedResidentInYear} onChange={(e) => setCeasedResidentInYear(e.target.checked)} disabled={saving} /> Ceased to be a resident of Canada during the year</label>
-                {ceasedResidentInYear && <input className="border border-border rounded-md px-3 py-2 text-sm w-full md:w-64" type="date" value={ceasedResidentDate} onChange={(e) => setCeasedResidentDate(e.target.value)} disabled={saving} />}
-                <label className="flex items-center gap-2"><input type="checkbox" checked={maritalStatusChangedInYear} onChange={(e) => setMaritalStatusChangedInYear(e.target.checked)} disabled={saving} /> Marital status changed during the year</label>
-                {maritalStatusChangedInYear && <input className="border border-border rounded-md px-3 py-2 text-sm w-full md:w-64" type="date" value={maritalStatusChangeDate} onChange={(e) => setMaritalStatusChangeDate(e.target.value)} disabled={saving} />}
-                <label className="flex items-center gap-2"><input type="checkbox" checked={deceasedInYear} onChange={(e) => setDeceasedInYear(e.target.checked)} disabled={saving} /> Taxpayer is filing for a deceased individual</label>
-                {deceasedInYear && <input className="border border-border rounded-md px-3 py-2 text-sm w-full md:w-64" type="date" value={deceasedDate} onChange={(e) => setDeceasedDate(e.target.value)} disabled={saving} />}
-                <div className="pt-2 grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <label className="flex flex-col gap-1">Canadian citizen?<select className="border border-border rounded-md px-3 py-2" value={electionsCanadianCitizen == null ? '' : electionsCanadianCitizen ? 'yes' : 'no'} onChange={(e) => setElectionsCanadianCitizen(e.target.value ? e.target.value === 'yes' : null)} disabled={saving}><option value="">Select</option><option value="yes">Yes</option><option value="no">No</option></select></label>
-                  <label className="flex flex-col gap-1">Authorize CRA to share data?<select className="border border-border rounded-md px-3 py-2" value={electionsAuthorize == null ? '' : electionsAuthorize ? 'yes' : 'no'} onChange={(e) => setElectionsAuthorize(e.target.value ? e.target.value === 'yes' : null)} disabled={saving}><option value="">Select</option><option value="yes">Yes</option><option value="no">No</option></select></label>
-                  <label className="flex flex-col gap-1">Foreign property over $100k?<select className="border border-border rounded-md px-3 py-2" value={foreignPropertyOver100k == null ? '' : foreignPropertyOver100k ? 'yes' : 'no'} onChange={(e) => setForeignPropertyOver100k(e.target.value ? e.target.value === 'yes' : null)} disabled={saving}><option value="">Select</option><option value="yes">Yes</option><option value="no">No</option></select></label>
-                </div>
-              </div>
-            )}
-
-            {step === 4 && (
               <div className="text-sm text-text space-y-2">
+                <p className="font-medium text-primary-dark">Review household workspace setup</p>
                 <p><span className="font-semibold">Main taxpayer:</span> {mainFirstName.trim()} {mainLastName.trim()} · {taxYear}</p>
-                <p><span className="font-semibold">Household:</span> {maritalStatus}{isMarried ? ` · spouse mode: ${spouseReturnMode}` : ''}</p>
+                <p><span className="font-semibold">Spouse workflow:</span> {isMarried ? `${maritalStatus} · ${spouseReturnMode}` : 'No spouse workspace'}</p>
                 <p><span className="font-semibold">Dependents:</span> {dependents.length} total · {dependents.filter((d) => d.createWorkspace).length} workspace(s) requested</p>
-                <p className="text-xs text-text-light">Creating this interview will generate the primary return and any linked spouse/dependent workspaces selected above.</p>
+                <p className="text-xs text-text-light">You can edit CRA-specific setup questions inside each workspace after creation.</p>
               </div>
             )}
 
             <div className="mt-4 flex items-center justify-between gap-2">
               <button type="button" className="text-sm text-text-light hover:text-primary-dark disabled:opacity-50" onClick={onBack} disabled={saving || step === 1}>Back</button>
               <div className="flex items-center gap-2">
-                {step < 4 && (
+                {step < 3 && (
                   <button type="button" className="btn btn--primary text-sm px-4 py-2" disabled={saving} onClick={onNext}>
                     Continue
                   </button>
                 )}
-                {step === 4 && (
+                {step === 3 && (
                   <button type="button" className="btn btn--primary text-sm px-4 py-2" disabled={saving} onClick={() => { void onCreate() }}>
                     {saving ? 'Creating…' : 'Create household workspaces'}
                   </button>

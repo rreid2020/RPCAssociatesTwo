@@ -375,9 +375,9 @@ const ReturnBuilder: FC = () => {
   const [creatingDependentIdx, setCreatingDependentIdx] = useState<number | null>(null)
   const [setupSectionOpen, setSetupSectionOpen] = useState<Record<SetupSectionKey, boolean>>({
     identity: true,
-    mailing: false,
+    mailing: true,
     spouse: true,
-    elections: false,
+    elections: true,
     dependents: true
   })
 
@@ -538,6 +538,48 @@ const ReturnBuilder: FC = () => {
   useEffect(() => {
     setShowAllSetupIssues(false)
   }, [setupIssueFilter, visibleSetupCompletenessIssues.length])
+
+  useEffect(() => {
+    if (activeStep !== 'Setup') return
+    const requiredIssues = setupCompletenessIssues.filter((item) => item.severity === 'required')
+    if (requiredIssues.length === 0) return
+    const nextOpen = {
+      identity: requiredIssues.some((item) => (
+        ['firstName', 'lastName', 'sin', 'dateOfBirth'].includes(item.field)
+      )),
+      mailing: requiredIssues.some((item) => (
+        item.field.startsWith('mailing') ||
+        item.field.startsWith('residence') ||
+        item.field === 'email'
+      )),
+      spouse: requiredIssues.some((item) => (
+        item.field.startsWith('spouse') || item.field === 'spouseUccb'
+      )),
+      elections: requiredIssues.some((item) => (
+        [
+          'languageCorrespondence',
+          'firstTimeFiler',
+          'soldPrincipalResidence',
+          'treatyExemptForeignService',
+          'electionsCanadianCitizen',
+          'electionsAuthorize',
+          'foreignPropertyOver100k',
+          'organDonorConsent',
+          'craEmailNotificationsConsent',
+          'craEmailConfirmed',
+          'craHasForeignMailingAddress'
+        ].includes(item.field)
+      )),
+      dependents: requiredIssues.some((item) => item.field.startsWith('dependents'))
+    }
+    setSetupSectionOpen((prev) => ({
+      identity: prev.identity || nextOpen.identity,
+      mailing: prev.mailing || nextOpen.mailing,
+      spouse: prev.spouse || nextOpen.spouse,
+      elections: prev.elections || nextOpen.elections,
+      dependents: prev.dependents || nextOpen.dependents
+    }))
+  }, [activeStep, setupCompletenessIssues])
 
   const load = async () => {
     if (!id) return
@@ -925,6 +967,40 @@ const ReturnBuilder: FC = () => {
     setSetupSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
+  const sectionForIssueField = (field: string): SetupSectionKey => {
+    if (field.startsWith('mailing') || field.startsWith('residence') || field === 'email') return 'mailing'
+    if (
+      field.startsWith('spouse') ||
+      field === 'spouseUccb'
+    ) return 'spouse'
+    if (
+      [
+        'languageCorrespondence',
+        'firstTimeFiler',
+        'soldPrincipalResidence',
+        'treatyExemptForeignService',
+        'electionsCanadianCitizen',
+        'electionsAuthorize',
+        'foreignPropertyOver100k',
+        'organDonorConsent',
+        'craEmailNotificationsConsent',
+        'craEmailConfirmed',
+        'craHasForeignMailingAddress'
+      ].includes(field)
+    ) return 'elections'
+    if (field.startsWith('dependents')) return 'dependents'
+    return 'identity'
+  }
+
+  const openSetupIssueField = (field: string) => {
+    const section = sectionForIssueField(field)
+    setActiveStep('Setup')
+    setSetupSectionOpen((prev) => ({ ...prev, [section]: true }))
+    window.setTimeout(() => {
+      document.getElementById(`rb-${section}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 40)
+  }
+
   const jumpToMenuItem = (item: InterviewMenuItem) => {
     setActiveStep(item.step)
     if (item.setupSection) {
@@ -1202,6 +1278,9 @@ const ReturnBuilder: FC = () => {
               <p className="text-xs text-text-light">
                 If married/common-law, choose spouse mode below: Summary only or Complete full spouse return.
               </p>
+              <p className="text-xs text-text-light">
+                Complete this setup for each taxpayer tab (primary, spouse, dependant) before entering tax data.
+              </p>
               {profileSavedMsg && (
                 <p className="text-sm text-green-800 bg-green-50 border border-green-200 rounded-md px-3 py-2">{profileSavedMsg}</p>
               )}
@@ -1238,7 +1317,14 @@ const ReturnBuilder: FC = () => {
                   <ul className="mt-2 space-y-1 text-xs text-amber-900">
                     {displayedSetupIssues.map((item, idx) => (
                       <li key={`${item.field}-${idx}`}>
-                        [{item.severity === 'required' ? 'REQUIRED' : 'RECOMMENDED'}] {item.message}
+                        <button
+                          type="button"
+                          className="text-left hover:underline"
+                          onClick={() => openSetupIssueField(item.field)}
+                          title="Open the setup section for this issue"
+                        >
+                          [{item.severity === 'required' ? 'REQUIRED' : 'RECOMMENDED'}] {item.message}
+                        </button>
                       </li>
                     ))}
                     {displayedSetupIssues.length === 0 && (

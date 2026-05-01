@@ -53,14 +53,23 @@ export type TaxReturnSummary = {
   taxpayer_profile?: {
     maritalStatus?: string
     spouseReturnMode?: string
+    email?: string
     mailingAddressLine1?: string
     mailingCity?: string
     mailingProvinceCode?: string
     mailingPostalCode?: string
     residenceProvinceDec31?: string
+    languageCorrespondence?: 'en' | 'fr' | string
     electionsCanadianCitizen?: boolean | null
     electionsAuthorize?: boolean | null
+    firstTimeFiler?: boolean | null
+    soldPrincipalResidence?: boolean | null
+    treatyExemptForeignService?: boolean | null
     foreignPropertyOver100k?: boolean | null
+    organDonorConsent?: boolean | null
+    craEmailNotificationsConsent?: boolean | null
+    craEmailConfirmed?: boolean | null
+    craHasForeignMailingAddress?: boolean | null
     spouse?: {
       fullName?: string
       firstName?: string

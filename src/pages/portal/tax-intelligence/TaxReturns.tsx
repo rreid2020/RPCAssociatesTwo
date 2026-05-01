@@ -43,9 +43,18 @@ function computeSetupReadiness (r: TaxReturnSummary): { required: number; recomm
   if (missing(profile.mailingPostalCode)) issues.push({ severity: 'required' })
   if (missing(profile.residenceProvinceDec31)) issues.push({ severity: 'required' })
 
-  if (profile.electionsCanadianCitizen == null) issues.push({ severity: 'recommended' })
-  if (profile.electionsCanadianCitizen === true && profile.electionsAuthorize == null) issues.push({ severity: 'recommended' })
-  if (profile.foreignPropertyOver100k == null) issues.push({ severity: 'recommended' })
+  if (missing(profile.languageCorrespondence)) issues.push({ severity: 'required' })
+  if (profile.firstTimeFiler == null) issues.push({ severity: 'required' })
+  if (profile.soldPrincipalResidence == null) issues.push({ severity: 'required' })
+  if (profile.treatyExemptForeignService == null) issues.push({ severity: 'required' })
+  if (profile.electionsCanadianCitizen == null) issues.push({ severity: 'required' })
+  if (profile.electionsCanadianCitizen === true && profile.electionsAuthorize == null) issues.push({ severity: 'required' })
+  if (profile.foreignPropertyOver100k == null) issues.push({ severity: 'required' })
+  if (profile.organDonorConsent == null) issues.push({ severity: 'required' })
+  if (profile.craEmailNotificationsConsent == null) issues.push({ severity: 'required' })
+  if (profile.craEmailNotificationsConsent === true && missing(profile.email)) issues.push({ severity: 'required' })
+  if (profile.craEmailConfirmed == null) issues.push({ severity: 'required' })
+  if (profile.craHasForeignMailingAddress == null) issues.push({ severity: 'required' })
 
   if (married) {
     if (spouseMode === 'full') {

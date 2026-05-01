@@ -110,6 +110,24 @@ const TaxReturns: FC = () => {
   const [spouseLastName, setSpouseLastName] = useState('')
   const [spouseDateOfBirth, setSpouseDateOfBirth] = useState('')
   const [spouseSin, setSpouseSin] = useState('')
+  const [spouseEmail, setSpouseEmail] = useState('')
+  const [spouseSameAddress, setSpouseSameAddress] = useState(true)
+  const [spouseMailingAddressLine1, setSpouseMailingAddressLine1] = useState('')
+  const [spouseMailingCity, setSpouseMailingCity] = useState('')
+  const [spouseMailingProvinceCode, setSpouseMailingProvinceCode] = useState('ON')
+  const [spouseMailingPostalCode, setSpouseMailingPostalCode] = useState('')
+  const [spouseLanguageCorrespondence, setSpouseLanguageCorrespondence] = useState<'en' | 'fr'>('en')
+  const [spouseCraSameAsMain, setSpouseCraSameAsMain] = useState(true)
+  const [spouseFirstTimeFiler, setSpouseFirstTimeFiler] = useState<YesNo>('')
+  const [spouseSoldPrincipalResidence, setSpouseSoldPrincipalResidence] = useState<YesNo>('')
+  const [spouseTreatyExemptForeignService, setSpouseTreatyExemptForeignService] = useState<YesNo>('')
+  const [spouseElectionsCanadianCitizen, setSpouseElectionsCanadianCitizen] = useState<YesNo>('')
+  const [spouseElectionsAuthorize, setSpouseElectionsAuthorize] = useState<YesNo>('')
+  const [spouseForeignPropertyOver100k, setSpouseForeignPropertyOver100k] = useState<YesNo>('')
+  const [spouseOrganDonorConsent, setSpouseOrganDonorConsent] = useState<YesNo>('')
+  const [spouseCraEmailNotificationsConsent, setSpouseCraEmailNotificationsConsent] = useState<YesNo>('')
+  const [spouseCraEmailConfirmed, setSpouseCraEmailConfirmed] = useState<YesNo>('')
+  const [spouseCraHasForeignMailingAddress, setSpouseCraHasForeignMailingAddress] = useState<YesNo>('')
   const [dependents, setDependents] = useState<DependentDraft[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -173,6 +191,24 @@ const TaxReturns: FC = () => {
     setSpouseLastName('')
     setSpouseDateOfBirth('')
     setSpouseSin('')
+    setSpouseEmail('')
+    setSpouseSameAddress(true)
+    setSpouseMailingAddressLine1('')
+    setSpouseMailingCity('')
+    setSpouseMailingProvinceCode('ON')
+    setSpouseMailingPostalCode('')
+    setSpouseLanguageCorrespondence('en')
+    setSpouseCraSameAsMain(true)
+    setSpouseFirstTimeFiler('')
+    setSpouseSoldPrincipalResidence('')
+    setSpouseTreatyExemptForeignService('')
+    setSpouseElectionsCanadianCitizen('')
+    setSpouseElectionsAuthorize('')
+    setSpouseForeignPropertyOver100k('')
+    setSpouseOrganDonorConsent('')
+    setSpouseCraEmailNotificationsConsent('')
+    setSpouseCraEmailConfirmed('')
+    setSpouseCraHasForeignMailingAddress('')
     setDependents([])
   }
 
@@ -216,6 +252,25 @@ const TaxReturns: FC = () => {
         }
         if (spouseReturnMode === 'full') {
           if (!spouseFirstName.trim() || !spouseLastName.trim()) return 'Spouse first and last name are required for full return mode.'
+          if (!spouseSameAddress) {
+            if (!spouseMailingAddressLine1.trim()) return 'Spouse mailing address line 1 is required when spouse resides elsewhere.'
+            if (!spouseMailingCity.trim()) return 'Spouse mailing city is required when spouse resides elsewhere.'
+            if (!spouseMailingProvinceCode.trim()) return 'Spouse mailing province is required when spouse resides elsewhere.'
+            if (!spouseMailingPostalCode.trim()) return 'Spouse mailing postal code is required when spouse resides elsewhere.'
+          }
+          if (!spouseCraSameAsMain) {
+            if (spouseFirstTimeFiler === '') return 'Answer spouse first-time filer CRA question.'
+            if (spouseSoldPrincipalResidence === '') return 'Answer spouse principal residence sale CRA question.'
+            if (spouseTreatyExemptForeignService === '') return 'Answer spouse treaty-exempt foreign service CRA question.'
+            if (spouseElectionsCanadianCitizen === '') return 'Answer spouse Elections Canada citizenship question.'
+            if (spouseElectionsCanadianCitizen === 'yes' && spouseElectionsAuthorize === '') return 'Answer spouse Elections Canada authorization question.'
+            if (spouseForeignPropertyOver100k === '') return 'Answer spouse foreign property CRA question.'
+            if (spouseOrganDonorConsent === '') return 'Answer spouse organ and tissue donor consent question.'
+            if (spouseCraEmailNotificationsConsent === '') return 'Answer spouse CRA email notification consent question.'
+            if (spouseCraEmailNotificationsConsent === 'yes' && !spouseEmail.trim()) return 'Spouse email is required when spouse CRA email notifications are enabled.'
+            if (spouseCraEmailConfirmed === '') return 'Answer spouse CRA email confirmation question.'
+            if (spouseCraHasForeignMailingAddress === '') return 'Answer spouse CRA foreign mailing address question.'
+          }
         }
       }
       const missingDependentName = dependents.some((d) => !d.fullName.trim())
@@ -297,7 +352,29 @@ const TaxReturns: FC = () => {
                   firstName: spouseFirstName.trim(),
                   lastName: spouseLastName.trim(),
                   dateOfBirth: spouseDateOfBirth || null,
-                  fullSin: sanitizeSin(spouseSin)
+                  fullSin: sanitizeSin(spouseSin),
+                  sameAddress: spouseSameAddress,
+                  email: spouseEmail.trim(),
+                  mailingAddressLine1: spouseMailingAddressLine1.trim(),
+                  mailingCity: spouseMailingCity.trim(),
+                  mailingProvinceCode: spouseMailingProvinceCode || mainProvinceCode || 'ON',
+                  mailingPostalCode: spouseMailingPostalCode.trim(),
+                  languageCorrespondence: spouseLanguageCorrespondence,
+                  craSameAsMain: spouseCraSameAsMain,
+                  cra: spouseCraSameAsMain
+                    ? null
+                    : {
+                        electionsCanadianCitizen: toBoolOrNull(spouseElectionsCanadianCitizen),
+                        electionsAuthorize: spouseElectionsCanadianCitizen === 'yes' ? toBoolOrNull(spouseElectionsAuthorize) : null,
+                        firstTimeFiler: toBoolOrNull(spouseFirstTimeFiler),
+                        soldPrincipalResidence: toBoolOrNull(spouseSoldPrincipalResidence),
+                        treatyExemptForeignService: toBoolOrNull(spouseTreatyExemptForeignService),
+                        foreignPropertyOver100k: toBoolOrNull(spouseForeignPropertyOver100k),
+                        organDonorConsent: toBoolOrNull(spouseOrganDonorConsent),
+                        craEmailNotificationsConsent: toBoolOrNull(spouseCraEmailNotificationsConsent),
+                        craEmailConfirmed: toBoolOrNull(spouseCraEmailConfirmed),
+                        craHasForeignMailingAddress: toBoolOrNull(spouseCraHasForeignMailingAddress)
+                      }
                 }
               : {},
             dependents: dependents.map((d) => ({
@@ -457,6 +534,69 @@ const TaxReturns: FC = () => {
                     <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Spouse last name" value={spouseLastName} onChange={(e) => setSpouseLastName(e.target.value)} disabled={saving} />
                     <input className="border border-border rounded-md px-3 py-2 text-sm" type="date" value={spouseDateOfBirth} onChange={(e) => setSpouseDateOfBirth(e.target.value)} disabled={saving} />
                     <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Spouse SIN (9 digits)" value={spouseSin} onChange={(e) => setSpouseSin(e.target.value.replace(/\D/g, '').slice(0, 9))} disabled={saving} />
+                    <input className="border border-border rounded-md px-3 py-2 text-sm md:col-span-2" type="email" placeholder="Spouse email (for CRA notifications)" value={spouseEmail} onChange={(e) => setSpouseEmail(e.target.value)} disabled={saving} />
+                  </div>
+                  <div className="space-y-2 border border-border rounded-md p-3 bg-background/40 mt-3">
+                    <p className="text-sm font-semibold text-primary-dark">Question 7: Does spouse live at the same mailing address as main taxpayer?</p>
+                    <div className="inline-flex items-center gap-1 rounded-md border border-border bg-white p-1">
+                      <button type="button" className={`px-3 py-1 text-xs rounded ${spouseSameAddress ? 'bg-primary-dark text-white' : 'text-text'}`} onClick={() => setSpouseSameAddress(true)} disabled={saving}>Yes</button>
+                      <button type="button" className={`px-3 py-1 text-xs rounded ${!spouseSameAddress ? 'bg-primary-dark text-white' : 'text-text'}`} onClick={() => setSpouseSameAddress(false)} disabled={saving}>No</button>
+                    </div>
+                    {!spouseSameAddress && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <input className="border border-border rounded-md px-3 py-2 text-sm md:col-span-2" placeholder="Spouse mailing address line 1" value={spouseMailingAddressLine1} onChange={(e) => setSpouseMailingAddressLine1(e.target.value)} disabled={saving} />
+                        <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Spouse mailing city" value={spouseMailingCity} onChange={(e) => setSpouseMailingCity(e.target.value)} disabled={saving} />
+                        <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Spouse mailing postal code" value={spouseMailingPostalCode} onChange={(e) => setSpouseMailingPostalCode(e.target.value.toUpperCase())} disabled={saving} />
+                        <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Spouse mailing province" value={spouseMailingProvinceCode} onChange={(e) => setSpouseMailingProvinceCode(e.target.value.toUpperCase().slice(0, 4))} disabled={saving} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2 border border-border rounded-md p-3 bg-background/40 mt-3">
+                    <p className="text-sm font-semibold text-primary-dark">Question 8: Spouse CRA questions</p>
+                    <p className="text-xs text-text-light">Do you want to use the same CRA answers as the main taxpayer?</p>
+                    <div className="inline-flex items-center gap-1 rounded-md border border-border bg-white p-1">
+                      <button type="button" className={`px-3 py-1 text-xs rounded ${spouseCraSameAsMain ? 'bg-primary-dark text-white' : 'text-text'}`} onClick={() => setSpouseCraSameAsMain(true)} disabled={saving}>Yes</button>
+                      <button type="button" className={`px-3 py-1 text-xs rounded ${!spouseCraSameAsMain ? 'bg-primary-dark text-white' : 'text-text'}`} onClick={() => setSpouseCraSameAsMain(false)} disabled={saving}>No</button>
+                    </div>
+                    {!spouseCraSameAsMain && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <label className="text-xs text-text-light">Language of correspondence
+                          <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={spouseLanguageCorrespondence} onChange={(e) => setSpouseLanguageCorrespondence(e.target.value === 'fr' ? 'fr' : 'en')} disabled={saving}><option value="en">English</option><option value="fr">French</option></select>
+                        </label>
+                        <label className="text-xs text-text-light">First time filing with CRA?
+                          <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={spouseFirstTimeFiler} onChange={(e) => setSpouseFirstTimeFiler(e.target.value as YesNo)} disabled={saving}><option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option></select>
+                        </label>
+                        <label className="text-xs text-text-light">Sold principal residence?
+                          <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={spouseSoldPrincipalResidence} onChange={(e) => setSpouseSoldPrincipalResidence(e.target.value as YesNo)} disabled={saving}><option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option></select>
+                        </label>
+                        <label className="text-xs text-text-light">Treaty-exempt foreign service?
+                          <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={spouseTreatyExemptForeignService} onChange={(e) => setSpouseTreatyExemptForeignService(e.target.value as YesNo)} disabled={saving}><option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option></select>
+                        </label>
+                        <label className="text-xs text-text-light">Elections Canada: Canadian citizen?
+                          <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={spouseElectionsCanadianCitizen} onChange={(e) => { setSpouseElectionsCanadianCitizen(e.target.value as YesNo); if (e.target.value !== 'yes') setSpouseElectionsAuthorize('') }} disabled={saving}><option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option></select>
+                        </label>
+                        {spouseElectionsCanadianCitizen === 'yes' && (
+                          <label className="text-xs text-text-light">Elections Canada: authorize sharing?
+                            <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={spouseElectionsAuthorize} onChange={(e) => setSpouseElectionsAuthorize(e.target.value as YesNo)} disabled={saving}><option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option></select>
+                          </label>
+                        )}
+                        <label className="text-xs text-text-light">Foreign property over CAD 100,000?
+                          <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={spouseForeignPropertyOver100k} onChange={(e) => setSpouseForeignPropertyOver100k(e.target.value as YesNo)} disabled={saving}><option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option></select>
+                        </label>
+                        <label className="text-xs text-text-light">Organ/tissue donor consent?
+                          <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={spouseOrganDonorConsent} onChange={(e) => setSpouseOrganDonorConsent(e.target.value as YesNo)} disabled={saving}><option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option></select>
+                        </label>
+                        <label className="text-xs text-text-light">CRA email notifications consent?
+                          <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={spouseCraEmailNotificationsConsent} onChange={(e) => setSpouseCraEmailNotificationsConsent(e.target.value as YesNo)} disabled={saving}><option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option></select>
+                        </label>
+                        <label className="text-xs text-text-light">CRA email confirmed?
+                          <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={spouseCraEmailConfirmed} onChange={(e) => setSpouseCraEmailConfirmed(e.target.value as YesNo)} disabled={saving}><option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option></select>
+                        </label>
+                        <label className="text-xs text-text-light md:col-span-2">Foreign mailing address on file with CRA?
+                          <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={spouseCraHasForeignMailingAddress} onChange={(e) => setSpouseCraHasForeignMailingAddress(e.target.value as YesNo)} disabled={saving}><option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option></select>
+                        </label>
+                      </div>
+                    )}
                   </div>
                   </>
                 )}

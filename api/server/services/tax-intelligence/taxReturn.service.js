@@ -572,6 +572,7 @@ export async function createTaxReturn (pool, clerkUserId, payload) {
       const household = interview.household && typeof interview.household === 'object' ? interview.household : {}
       const spouse = interview.spouse && typeof interview.spouse === 'object' ? interview.spouse : {}
       const cra = interview.cra && typeof interview.cra === 'object' ? interview.cra : {}
+      const spouseCra = spouse.cra && typeof spouse.cra === 'object' ? spouse.cra : {}
       const dependentItems = Array.isArray(interview.dependents) ? interview.dependents : []
 
       const mainFullName = String(main.fullName || payload.taxpayerName || '').trim()
@@ -594,6 +595,8 @@ export async function createTaxReturn (pool, clerkUserId, payload) {
       const spouseFullName = spouseReturnMode === 'full'
         ? `${spouseFirstName} ${spouseLastName}`.trim()
         : spouseSummaryName
+      const spouseSameAddress = parseBoolean(spouse.sameAddress, true)
+      const spouseCraSameAsMain = parseBoolean(spouse.craSameAsMain, true)
 
       const normalizedDependents = dependentItems
         .map((d) => ({
@@ -693,7 +696,28 @@ export async function createTaxReturn (pool, clerkUserId, payload) {
         await upsertTaxpayerProfileTables(client, clerkUserId, spouseWorkspace.taxReturn.id, {
           maritalStatus,
           spouseReturnMode: 'summary',
-          spouseSameAddress: true,
+          spouseSameAddress,
+          email: String(spouse.email || '').trim(),
+          mailingAddressLine1: String(spouseSameAddress ? (main.mailingAddressLine1 || '') : (spouse.mailingAddressLine1 || '')).trim(),
+          mailingCity: String(spouseSameAddress ? (main.mailingCity || '') : (spouse.mailingCity || '')).trim(),
+          mailingProvinceCode: String(spouseSameAddress ? (main.mailingProvinceCode || main.provinceCode || payload.provinceCode || 'ON') : (spouse.mailingProvinceCode || main.provinceCode || payload.provinceCode || 'ON')).trim(),
+          mailingPostalCode: String(spouseSameAddress ? (main.mailingPostalCode || '') : (spouse.mailingPostalCode || '')).trim(),
+          residenceProvinceDec31: String(spouseSameAddress ? (main.residenceProvinceDec31 || main.provinceCode || payload.provinceCode || 'ON') : (spouse.mailingProvinceCode || main.provinceCode || payload.provinceCode || 'ON')).trim(),
+          languageCorrespondence: String(
+            spouseCraSameAsMain
+              ? (main.languageCorrespondence || 'en')
+              : (spouse.languageCorrespondence || spouseCra.languageCorrespondence || main.languageCorrespondence || 'en')
+          ).toLowerCase() === 'fr' ? 'fr' : 'en',
+          electionsCanadianCitizen: normalizeYesNo(spouseCraSameAsMain ? cra.electionsCanadianCitizen : spouseCra.electionsCanadianCitizen),
+          electionsAuthorize: normalizeYesNo(spouseCraSameAsMain ? cra.electionsAuthorize : spouseCra.electionsAuthorize),
+          firstTimeFiler: normalizeYesNo(spouseCraSameAsMain ? cra.firstTimeFiler : spouseCra.firstTimeFiler),
+          soldPrincipalResidence: normalizeYesNo(spouseCraSameAsMain ? cra.soldPrincipalResidence : spouseCra.soldPrincipalResidence),
+          treatyExemptForeignService: normalizeYesNo(spouseCraSameAsMain ? cra.treatyExemptForeignService : spouseCra.treatyExemptForeignService),
+          foreignPropertyOver100k: normalizeYesNo(spouseCraSameAsMain ? cra.foreignPropertyOver100k : spouseCra.foreignPropertyOver100k),
+          organDonorConsent: normalizeYesNo(spouseCraSameAsMain ? cra.organDonorConsent : spouseCra.organDonorConsent),
+          craEmailNotificationsConsent: normalizeYesNo(spouseCraSameAsMain ? cra.craEmailNotificationsConsent : spouseCra.craEmailNotificationsConsent),
+          craEmailConfirmed: normalizeYesNo(spouseCraSameAsMain ? cra.craEmailConfirmed : spouseCra.craEmailConfirmed),
+          craHasForeignMailingAddress: normalizeYesNo(spouseCraSameAsMain ? cra.craHasForeignMailingAddress : spouseCra.craHasForeignMailingAddress),
           spouse: {
             fullName: mainFullName,
             firstName: mainFirstName,
@@ -736,6 +760,23 @@ export async function createTaxReturn (pool, clerkUserId, payload) {
         await upsertTaxpayerProfileTables(client, clerkUserId, dependentWorkspace.taxReturn.id, {
           maritalStatus: 'single',
           spouseReturnMode: 'summary',
+          email: '',
+          mailingAddressLine1: String(main.mailingAddressLine1 || '').trim(),
+          mailingCity: String(main.mailingCity || '').trim(),
+          mailingProvinceCode: String(main.mailingProvinceCode || main.provinceCode || payload.provinceCode || 'ON').trim(),
+          mailingPostalCode: String(main.mailingPostalCode || '').trim(),
+          residenceProvinceDec31: String(main.residenceProvinceDec31 || main.provinceCode || payload.provinceCode || 'ON').trim(),
+          languageCorrespondence: String(main.languageCorrespondence || 'en').toLowerCase() === 'fr' ? 'fr' : 'en',
+          electionsCanadianCitizen: normalizeYesNo(cra.electionsCanadianCitizen),
+          electionsAuthorize: normalizeYesNo(cra.electionsAuthorize),
+          firstTimeFiler: normalizeYesNo(cra.firstTimeFiler),
+          soldPrincipalResidence: normalizeYesNo(cra.soldPrincipalResidence),
+          treatyExemptForeignService: normalizeYesNo(cra.treatyExemptForeignService),
+          foreignPropertyOver100k: normalizeYesNo(cra.foreignPropertyOver100k),
+          organDonorConsent: normalizeYesNo(cra.organDonorConsent),
+          craEmailNotificationsConsent: normalizeYesNo(cra.craEmailNotificationsConsent),
+          craEmailConfirmed: normalizeYesNo(cra.craEmailConfirmed),
+          craHasForeignMailingAddress: normalizeYesNo(cra.craHasForeignMailingAddress),
           dependents: []
         })
         createdLinkedWorkspaces.push({

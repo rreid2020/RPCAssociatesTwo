@@ -25,6 +25,21 @@ function sanitizeSin (v) {
   return String(v || '').replace(/\D/g, '').slice(0, 9)
 }
 
+async function getColumnSet (conn, tableName) {
+  const { rows } = await conn.query(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_schema = 'taxgpt' AND table_name = $1`,
+    [tableName]
+  )
+  return new Set(rows.map((r) => String(r.column_name || '').toLowerCase()))
+}
+
+function selectExpr (availableColumns, name, castType = 'text') {
+  if (availableColumns.has(name)) return `pr.${name}`
+  return `NULL::${castType} AS ${name}`
+}
+
 function readLegacyProfileFromSetup (setupJson) {
   const setup = setupJson && typeof setupJson === 'object' ? setupJson : {}
   const p = setup.taxpayerProfile && typeof setup.taxpayerProfile === 'object' ? setup.taxpayerProfile : {}
@@ -83,15 +98,48 @@ function readLegacyProfileFromSetup (setupJson) {
 }
 
 async function loadTaxpayerProfileFromTables (conn, clerkUserId, taxReturnId) {
+  const profileColumns = await getColumnSet(conn, 'taxpayer_profiles')
+  const profileSelect = [
+    'pr.marital_status',
+    'pr.spouse_return_mode',
+    'pr.email',
+    'pr.mailing_address_line1',
+    'pr.mailing_address_po_box',
+    'pr.mailing_address_rr',
+    'pr.mailing_city',
+    'pr.mailing_province_code',
+    'pr.mailing_postal_code',
+    'pr.residence_province_dec31',
+    'pr.residence_province_current',
+    'pr.self_employment_provinces',
+    'pr.language_correspondence',
+    'pr.became_resident_date',
+    'pr.ceased_resident_date',
+    'pr.marital_status_change_date',
+    'pr.deceased_date',
+    'pr.elections_canadian_citizen',
+    'pr.elections_authorize',
+    selectExpr(profileColumns, 'first_time_filer', 'boolean'),
+    selectExpr(profileColumns, 'sold_principal_residence', 'boolean'),
+    selectExpr(profileColumns, 'treaty_exempt_foreign_service', 'boolean'),
+    'pr.indian_act_exempt_income',
+    'pr.foreign_property_over_100k',
+    'pr.organ_donor_consent',
+    selectExpr(profileColumns, 'cra_email_notifications_consent', 'boolean'),
+    selectExpr(profileColumns, 'cra_email_confirmed', 'boolean'),
+    selectExpr(profileColumns, 'cra_has_foreign_mailing_address', 'boolean'),
+    selectExpr(profileColumns, 'spouse_same_address', 'boolean'),
+    'pr.spouse_self_employed',
+    'pr.spouse_net_income_23600',
+    'pr.spouse_uccb_11700',
+    'pr.spouse_uccb_repayment_21300'
+  ].join(',\n              ')
+
   const [profileRes, spouseRes, dependentsRes] = await Promise.all([
     conn.query(
-      `SELECT marital_status, spouse_return_mode, email, mailing_address_line1, mailing_address_po_box, mailing_address_rr, mailing_city, mailing_province_code,
-              mailing_postal_code, residence_province_dec31, residence_province_current, self_employment_provinces, language_correspondence,
-              became_resident_date, ceased_resident_date, marital_status_change_date, deceased_date,
-              elections_canadian_citizen, elections_authorize, first_time_filer, sold_principal_residence, treaty_exempt_foreign_service,
-              indian_act_exempt_income, foreign_property_over_100k, organ_donor_consent, cra_email_notifications_consent, cra_email_confirmed, cra_has_foreign_mailing_address,
-              spouse_same_address, spouse_self_employed, spouse_net_income_23600, spouse_uccb_11700, spouse_uccb_repayment_21300
+      `SELECT ${profileSelect}
        FROM taxgpt.taxpayer_profiles
+       pr
        WHERE clerk_user_id = $1 AND tax_return_id = $2::uuid`,
       [clerkUserId, taxReturnId]
     ),
@@ -175,87 +223,55 @@ async function upsertTaxpayerProfileTables (client, clerkUserId, taxReturnId, ta
     return normalized
   }
 
+  const profileColumns = await getColumnSet(client, 'taxpayer_profiles')
+  const columnBindings = [
+    ['marital_status', maritalStatus],
+    ['spouse_return_mode', spouseReturnMode],
+    ['email', String(profile.email || '').trim() || null],
+    ['mailing_address_line1', String(profile.mailingAddressLine1 || '').trim() || null],
+    ['mailing_address_po_box', String(profile.mailingPoBox || '').trim() || null],
+    ['mailing_address_rr', String(profile.mailingRR || '').trim() || null],
+    ['mailing_city', String(profile.mailingCity || '').trim() || null],
+    ['mailing_province_code', String(profile.mailingProvinceCode || '').trim() || null],
+    ['mailing_postal_code', String(profile.mailingPostalCode || '').trim() || null],
+    ['residence_province_dec31', String(profile.residenceProvinceDec31 || '').trim() || null],
+    ['residence_province_current', String(profile.residenceProvinceCurrent || '').trim() || null],
+    ['self_employment_provinces', String(profile.selfEmploymentProvinces || '').trim() || null],
+    ['language_correspondence', String(profile.languageCorrespondence || 'en').toLowerCase() === 'fr' ? 'fr' : 'en'],
+    ['became_resident_date', profile.becameResidentDate || null],
+    ['ceased_resident_date', profile.ceasedResidentDate || null],
+    ['marital_status_change_date', profile.maritalStatusChangeDate || null],
+    ['deceased_date', profile.deceasedDate || null],
+    ['elections_canadian_citizen', toBoolOrNull(profile.electionsCanadianCitizen)],
+    ['elections_authorize', toBoolOrNull(profile.electionsAuthorize)],
+    ['first_time_filer', toBoolOrNull(profile.firstTimeFiler)],
+    ['sold_principal_residence', toBoolOrNull(profile.soldPrincipalResidence)],
+    ['treaty_exempt_foreign_service', toBoolOrNull(profile.treatyExemptForeignService)],
+    ['indian_act_exempt_income', Boolean(profile.indianActExemptIncome)],
+    ['foreign_property_over_100k', toBoolOrNull(profile.foreignPropertyOver100k)],
+    ['organ_donor_consent', toBoolOrNull(profile.organDonorConsent)],
+    ['cra_email_notifications_consent', toBoolOrNull(profile.craEmailNotificationsConsent)],
+    ['cra_email_confirmed', toBoolOrNull(profile.craEmailConfirmed)],
+    ['cra_has_foreign_mailing_address', toBoolOrNull(profile.craHasForeignMailingAddress)],
+    ['spouse_same_address', profile.spouseSameAddress == null ? true : Boolean(profile.spouseSameAddress)],
+    ['spouse_self_employed', Boolean(profile.spouseSelfEmployed)],
+    ['spouse_net_income_23600', Number(profile.spouseNetIncome23600 || 0)],
+    ['spouse_uccb_11700', Number(profile.spouseUccb11700 || 0)],
+    ['spouse_uccb_repayment_21300', Number(profile.spouseUccbRepayment21300 || 0)]
+  ].filter(([columnName]) => profileColumns.has(String(columnName)))
+
+  const insertColumns = ['clerk_user_id', 'tax_return_id', ...columnBindings.map(([columnName]) => String(columnName))]
+  const insertValues = [clerkUserId, taxReturnId, ...columnBindings.map(([, value]) => value)]
+  const placeholders = insertColumns.map((_, idx) => `$${idx + 1}`)
+  const updates = columnBindings.map(([columnName]) => `${String(columnName)} = EXCLUDED.${String(columnName)}`)
+
   await client.query(
     `INSERT INTO taxgpt.taxpayer_profiles
-     (clerk_user_id, tax_return_id, marital_status, spouse_return_mode, email, mailing_address_line1, mailing_address_po_box, mailing_address_rr,
-      mailing_city, mailing_province_code, mailing_postal_code, residence_province_dec31, residence_province_current, self_employment_provinces,
-      language_correspondence, became_resident_date, ceased_resident_date, marital_status_change_date, deceased_date,
-      elections_canadian_citizen, elections_authorize, first_time_filer, sold_principal_residence, treaty_exempt_foreign_service,
-      indian_act_exempt_income, foreign_property_over_100k, organ_donor_consent, cra_email_notifications_consent, cra_email_confirmed, cra_has_foreign_mailing_address,
-      spouse_same_address, spouse_self_employed, spouse_net_income_23600, spouse_uccb_11700, spouse_uccb_repayment_21300, updated_at)
-     VALUES ($1, $2::uuid, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, now())
+     (${insertColumns.join(', ')}, updated_at)
+     VALUES (${placeholders.join(', ')}, now())
      ON CONFLICT (tax_return_id)
-     DO UPDATE SET marital_status = EXCLUDED.marital_status,
-                   spouse_return_mode = EXCLUDED.spouse_return_mode,
-                   email = EXCLUDED.email,
-                   mailing_address_line1 = EXCLUDED.mailing_address_line1,
-                   mailing_address_po_box = EXCLUDED.mailing_address_po_box,
-                   mailing_address_rr = EXCLUDED.mailing_address_rr,
-                   mailing_city = EXCLUDED.mailing_city,
-                   mailing_province_code = EXCLUDED.mailing_province_code,
-                   mailing_postal_code = EXCLUDED.mailing_postal_code,
-                   residence_province_dec31 = EXCLUDED.residence_province_dec31,
-                   residence_province_current = EXCLUDED.residence_province_current,
-                   self_employment_provinces = EXCLUDED.self_employment_provinces,
-                   language_correspondence = EXCLUDED.language_correspondence,
-                   became_resident_date = EXCLUDED.became_resident_date,
-                   ceased_resident_date = EXCLUDED.ceased_resident_date,
-                   marital_status_change_date = EXCLUDED.marital_status_change_date,
-                   deceased_date = EXCLUDED.deceased_date,
-                   elections_canadian_citizen = EXCLUDED.elections_canadian_citizen,
-                   elections_authorize = EXCLUDED.elections_authorize,
-                   first_time_filer = EXCLUDED.first_time_filer,
-                   sold_principal_residence = EXCLUDED.sold_principal_residence,
-                   treaty_exempt_foreign_service = EXCLUDED.treaty_exempt_foreign_service,
-                   indian_act_exempt_income = EXCLUDED.indian_act_exempt_income,
-                   foreign_property_over_100k = EXCLUDED.foreign_property_over_100k,
-                   organ_donor_consent = EXCLUDED.organ_donor_consent,
-                   cra_email_notifications_consent = EXCLUDED.cra_email_notifications_consent,
-                   cra_email_confirmed = EXCLUDED.cra_email_confirmed,
-                   cra_has_foreign_mailing_address = EXCLUDED.cra_has_foreign_mailing_address,
-                   spouse_same_address = EXCLUDED.spouse_same_address,
-                   spouse_self_employed = EXCLUDED.spouse_self_employed,
-                   spouse_net_income_23600 = EXCLUDED.spouse_net_income_23600,
-                   spouse_uccb_11700 = EXCLUDED.spouse_uccb_11700,
-                   spouse_uccb_repayment_21300 = EXCLUDED.spouse_uccb_repayment_21300,
-                   updated_at = now()`,
-    [
-      clerkUserId,
-      taxReturnId,
-      maritalStatus,
-      spouseReturnMode,
-      String(profile.email || '').trim() || null,
-      String(profile.mailingAddressLine1 || '').trim() || null,
-      String(profile.mailingPoBox || '').trim() || null,
-      String(profile.mailingRR || '').trim() || null,
-      String(profile.mailingCity || '').trim() || null,
-      String(profile.mailingProvinceCode || '').trim() || null,
-      String(profile.mailingPostalCode || '').trim() || null,
-      String(profile.residenceProvinceDec31 || '').trim() || null,
-      String(profile.residenceProvinceCurrent || '').trim() || null,
-      String(profile.selfEmploymentProvinces || '').trim() || null,
-      String(profile.languageCorrespondence || 'en').toLowerCase() === 'fr' ? 'fr' : 'en',
-      profile.becameResidentDate || null,
-      profile.ceasedResidentDate || null,
-      profile.maritalStatusChangeDate || null,
-      profile.deceasedDate || null,
-      toBoolOrNull(profile.electionsCanadianCitizen),
-      toBoolOrNull(profile.electionsAuthorize),
-      toBoolOrNull(profile.firstTimeFiler),
-      toBoolOrNull(profile.soldPrincipalResidence),
-      toBoolOrNull(profile.treatyExemptForeignService),
-      Boolean(profile.indianActExemptIncome),
-      toBoolOrNull(profile.foreignPropertyOver100k),
-      toBoolOrNull(profile.organDonorConsent),
-      toBoolOrNull(profile.craEmailNotificationsConsent),
-      toBoolOrNull(profile.craEmailConfirmed),
-      toBoolOrNull(profile.craHasForeignMailingAddress),
-      profile.spouseSameAddress == null ? true : Boolean(profile.spouseSameAddress),
-      Boolean(profile.spouseSelfEmployed),
-      Number(profile.spouseNetIncome23600 || 0),
-      Number(profile.spouseUccb11700 || 0),
-      Number(profile.spouseUccbRepayment21300 || 0)
-    ]
+     DO UPDATE SET ${updates.join(', ')}, updated_at = now()`,
+    insertValues
   )
 
   const spouseFirstName = String(spouse.firstName || '').trim()
@@ -340,6 +356,13 @@ async function findLinkedSpouseReturnId (client, clerkUserId, primaryTaxReturnId
 }
 
 export async function listTaxReturns (pool, clerkUserId) {
+  const profileColumns = await getColumnSet(pool, 'taxpayer_profiles')
+  const firstTimeFilerExpr = selectExpr(profileColumns, 'first_time_filer', 'boolean')
+  const soldPrincipalResidenceExpr = selectExpr(profileColumns, 'sold_principal_residence', 'boolean')
+  const treatyExemptExpr = selectExpr(profileColumns, 'treaty_exempt_foreign_service', 'boolean')
+  const craEmailNotifExpr = selectExpr(profileColumns, 'cra_email_notifications_consent', 'boolean')
+  const craEmailConfirmedExpr = selectExpr(profileColumns, 'cra_email_confirmed', 'boolean')
+  const craForeignMailingExpr = selectExpr(profileColumns, 'cra_has_foreign_mailing_address', 'boolean')
   const { rows } = await pool.query(
     `SELECT tr.*,
             tp.full_name AS taxpayer_name,
@@ -358,14 +381,14 @@ export async function listTaxReturns (pool, clerkUserId) {
             pr.language_correspondence,
             pr.elections_canadian_citizen,
             pr.elections_authorize,
-            pr.first_time_filer,
-            pr.sold_principal_residence,
-            pr.treaty_exempt_foreign_service,
+            ${firstTimeFilerExpr},
+            ${soldPrincipalResidenceExpr},
+            ${treatyExemptExpr},
             pr.foreign_property_over_100k,
             pr.organ_donor_consent,
-            pr.cra_email_notifications_consent,
-            pr.cra_email_confirmed,
-            pr.cra_has_foreign_mailing_address,
+            ${craEmailNotifExpr},
+            ${craEmailConfirmedExpr},
+            ${craForeignMailingExpr},
             sp.full_name AS spouse_full_name,
             sp.first_name AS spouse_first_name,
             sp.last_name AS spouse_last_name,

@@ -593,7 +593,56 @@ const ReturnBuilder: FC = () => {
       setData(returnData)
       setAllReturns(listData.returns || [])
       const setupJson = (returnData.taxReturn.setup_json || {}) as Record<string, unknown>
-      const setupProfile = (setupJson.taxpayerProfile || {}) as Record<string, unknown>
+      const setupTaxpayerProfile = (setupJson.taxpayerProfile && typeof setupJson.taxpayerProfile === 'object'
+        ? setupJson.taxpayerProfile
+        : {}) as Record<string, unknown>
+      const interview = (setupJson.interview && typeof setupJson.interview === 'object'
+        ? setupJson.interview
+        : {}) as Record<string, unknown>
+      const interviewMain = (interview.mainTaxpayer && typeof interview.mainTaxpayer === 'object'
+        ? interview.mainTaxpayer
+        : {}) as Record<string, unknown>
+      const interviewHousehold = (interview.household && typeof interview.household === 'object'
+        ? interview.household
+        : {}) as Record<string, unknown>
+      const interviewSpouse = (interview.spouse && typeof interview.spouse === 'object'
+        ? interview.spouse
+        : {}) as Record<string, unknown>
+      const interviewCra = (interview.cra && typeof interview.cra === 'object'
+        ? interview.cra
+        : {}) as Record<string, unknown>
+      const setupProfile: Record<string, unknown> = {
+        ...setupTaxpayerProfile,
+        email: setupTaxpayerProfile.email ?? interviewMain.email,
+        mailingAddressLine1: setupTaxpayerProfile.mailingAddressLine1 ?? interviewMain.mailingAddressLine1,
+        mailingCity: setupTaxpayerProfile.mailingCity ?? interviewMain.mailingCity,
+        mailingProvinceCode: setupTaxpayerProfile.mailingProvinceCode ?? interviewMain.mailingProvinceCode ?? interviewMain.provinceCode,
+        mailingPostalCode: setupTaxpayerProfile.mailingPostalCode ?? interviewMain.mailingPostalCode,
+        residenceProvinceDec31: setupTaxpayerProfile.residenceProvinceDec31 ?? interviewMain.residenceProvinceDec31 ?? interviewMain.provinceCode,
+        languageCorrespondence: setupTaxpayerProfile.languageCorrespondence ?? interviewMain.languageCorrespondence,
+        maritalStatus: setupTaxpayerProfile.maritalStatus ?? interviewHousehold.maritalStatus,
+        spouseReturnMode: setupTaxpayerProfile.spouseReturnMode ?? interviewHousehold.spouseReturnMode,
+        spouseSameAddress: setupTaxpayerProfile.spouseSameAddress ?? interviewSpouse.sameAddress,
+        electionsCanadianCitizen: setupTaxpayerProfile.electionsCanadianCitizen ?? interviewCra.electionsCanadianCitizen,
+        electionsAuthorize: setupTaxpayerProfile.electionsAuthorize ?? interviewCra.electionsAuthorize,
+        firstTimeFiler: setupTaxpayerProfile.firstTimeFiler ?? interviewCra.firstTimeFiler,
+        soldPrincipalResidence: setupTaxpayerProfile.soldPrincipalResidence ?? interviewCra.soldPrincipalResidence,
+        treatyExemptForeignService: setupTaxpayerProfile.treatyExemptForeignService ?? interviewCra.treatyExemptForeignService,
+        foreignPropertyOver100k: setupTaxpayerProfile.foreignPropertyOver100k ?? interviewCra.foreignPropertyOver100k,
+        organDonorConsent: setupTaxpayerProfile.organDonorConsent ?? interviewCra.organDonorConsent,
+        craEmailNotificationsConsent: setupTaxpayerProfile.craEmailNotificationsConsent ?? interviewCra.craEmailNotificationsConsent,
+        craEmailConfirmed: setupTaxpayerProfile.craEmailConfirmed ?? interviewCra.craEmailConfirmed,
+        craHasForeignMailingAddress: setupTaxpayerProfile.craHasForeignMailingAddress ?? interviewCra.craHasForeignMailingAddress,
+        spouse: (setupTaxpayerProfile.spouse && typeof setupTaxpayerProfile.spouse === 'object')
+          ? setupTaxpayerProfile.spouse
+          : {
+              fullName: interviewSpouse.fullName,
+              firstName: interviewSpouse.firstName,
+              lastName: interviewSpouse.lastName,
+              dateOfBirth: interviewSpouse.dateOfBirth,
+              fullSin: interviewSpouse.fullSin
+            }
+      }
       const dbProfile = (returnData.taxReturn.taxpayer_profile || {}) as Record<string, unknown>
       const spouseObj = (dbProfile.spouse as Record<string, unknown> | undefined) || (setupProfile.spouse as Record<string, unknown> | undefined) || {}
       const dependentsRaw = Array.isArray(dbProfile.dependents)

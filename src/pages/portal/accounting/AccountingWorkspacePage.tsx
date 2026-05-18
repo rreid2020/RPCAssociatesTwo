@@ -1,10 +1,8 @@
 import { FC, FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
-import { useFeatureAccess } from '../../../lib/subscriptions/hooks'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
-import UpgradePrompt from '../../../components/UpgradePrompt'
 import { portalFetch } from '../../../lib/portalApi'
 
 type AccountingView =
@@ -133,8 +131,6 @@ function fileToBase64 (file: File): Promise<string> {
 const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => {
   const { getToken } = useAuth()
   const navigate = useNavigate()
-  const hasWorkingPapers = useFeatureAccess('workingPapers')
-  const hasIntegrations = useFeatureAccess('integrations')
   const { engagementId, leadSheetId } = useParams()
   const [clients, setClients] = useState<Client[]>([])
   const [engagements, setEngagements] = useState<Engagement[]>([])
@@ -171,8 +167,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [importFile, setImportFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [importPayload, setImportPayload] = useState<{ fileName: string; base64Content: string } | null>(null)
-
-  const accessBlocked = (view === 'integrations' && !hasIntegrations) || (view !== 'integrations' && !hasWorkingPapers)
 
   const loadClients = useCallback(async () => {
     const { clients: rows } = await portalFetch<{ clients: Client[] }>('/v1/accounting/clients', getToken)
@@ -260,7 +254,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }, [getToken])
 
   useEffect(() => {
-    if (accessBlocked) return
     let mounted = true
     const run = async () => {
       setError(null)
@@ -293,7 +286,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       mounted = false
     }
   }, [
-    accessBlocked,
     loadClients,
     loadDocuments,
     loadEngagementDashboard,
@@ -527,10 +519,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
             <p className="text-sm text-text-light mt-2">{descriptionByView[view]}</p>
           </div>
 
-          {accessBlocked ? (
-            <UpgradePrompt feature={view === 'integrations' ? 'Integrations' : 'Working Papers'} />
-          ) : (
-            <>
+          <>
               {error && (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
                   {error}
@@ -542,7 +531,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                 </div>
               )}
               <div className="bg-white p-6 rounded-lg border border-border shadow-sm">
-                {loading ? (
+              {loading ? (
                   <p className="text-sm text-text-light">Loading&hellip;</p>
                 ) : (
                   <div className="space-y-4">
@@ -1044,8 +1033,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                   </Link>
                 ))}
               </div>
-            </>
-          )}
+          </>
         </div>
       </ClientPortalShell>
     </>

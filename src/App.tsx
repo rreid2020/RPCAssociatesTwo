@@ -28,8 +28,7 @@ import Services from './pages/Services'
 import Dashboard from './pages/portal/Dashboard'
 import TaxGPT from './pages/portal/TaxGPT'
 import FileRepository from './pages/portal/FileRepository'
-import WorkingPapers from './pages/portal/WorkingPapers'
-import Integrations from './pages/portal/Integrations'
+import AccountingWorkspacePage from './pages/portal/accounting/AccountingWorkspacePage'
 import Subscription from './pages/portal/Subscription'
 import SignIn from './pages/portal/SignIn'
 import SignUp from './pages/portal/SignUp'
@@ -104,6 +103,162 @@ const App: FC = () => {
             }
           />
           <Route
+            path="/portal/accounting"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <AccountingWorkspacePage view="landing" />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/accounting/working-papers"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <AccountingWorkspacePage view="workingPapersDashboard" />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/accounting/working-papers/engagements"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <AccountingWorkspacePage view="engagementList" />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/accounting/working-papers/engagements/new"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <AccountingWorkspacePage view="newEngagement" />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/accounting/working-papers/engagements/:engagementId"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <AccountingWorkspacePage view="engagementDashboard" />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/accounting/working-papers/engagements/:engagementId/trial-balance"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <AccountingWorkspacePage view="trialBalance" />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/accounting/working-papers/engagements/:engagementId/lead-sheets"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <AccountingWorkspacePage view="leadSheets" />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/accounting/working-papers/engagements/:engagementId/lead-sheets/:leadSheetId"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <AccountingWorkspacePage view="leadSheetDetail" />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/accounting/working-papers/engagements/:engagementId/documents"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <AccountingWorkspacePage view="documents" />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/accounting/working-papers/engagements/:engagementId/review"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <AccountingWorkspacePage view="review" />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/accounting/working-papers/engagements/:engagementId/settings"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <AccountingWorkspacePage view="settings" />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/accounting/integrations"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <AccountingWorkspacePage view="integrations" />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
             path="/portal/working-papers"
             element={
               <>
@@ -111,7 +266,7 @@ const App: FC = () => {
                   <Navigate to="/portal/sign-in" replace />
                 </SignedOut>
                 <SignedIn>
-                  <WorkingPapers />
+                  <Navigate to="/portal/accounting/working-papers" replace />
                 </SignedIn>
               </>
             }
@@ -124,7 +279,7 @@ const App: FC = () => {
                   <Navigate to="/portal/sign-in" replace />
                 </SignedOut>
                 <SignedIn>
-                  <Integrations />
+                  <Navigate to="/portal/accounting/integrations" replace />
                 </SignedIn>
               </>
             }

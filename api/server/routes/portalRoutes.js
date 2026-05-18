@@ -1,6 +1,47 @@
 import { Router } from 'express'
 import { getClerkUser, isStaff } from '../middleware/portalAuth.js'
 import { buildPortalObjectKey, deleteObject, getObjectStorageConfigDiagnostics, presignGet, presignPut, putObjectBytes } from '../services/portalS3.js'
+import {
+  archiveEngagement,
+  attachExistingDocument,
+  calculateTrialBalanceVariances,
+  createAdjustmentEntry,
+  createClient,
+  createEngagement,
+  createReviewNote,
+  createTask,
+  detachDocument,
+  ensureStandardMappingGroups,
+  generateLeadSheets,
+  getClientDetails,
+  getEngagementDashboard,
+  getEngagementStatusSummary,
+  getLeadSheetDetail,
+  listAdjustmentEntries,
+  listClients,
+  listDocumentsByEngagement,
+  listEngagements,
+  listIntegrations,
+  listLeadSheets,
+  listReviewNotes,
+  listTasks,
+  listTrialBalanceAccounts,
+  preparerSignoff,
+  reviewerSignoff,
+  updateAdjustmentStatus,
+  updateClient,
+  updateEngagement,
+  updateLeadSheetConclusion,
+  updateLeadSheetStatus,
+  updateReviewNoteStatus,
+  updateTask,
+  updateTrialBalanceAccountMapping,
+  upsertAdjustmentLines,
+  upsertIntegrationConnection
+} from '../services/workingPapersService.js'
+import { parseTrialBalanceFile, previewTrialBalanceImport, saveTrialBalanceImport } from '../services/trialBalanceImportService.js'
+import { GoogleSheetsProvider, QuickBooksOnlineProvider, createAccountingProvider } from '../services/accountingProviders.js'
+import { AIReviewService } from '../services/aiReviewService.js'
 
 const MAX_UPLOAD_BYTES = parseInt(process.env.PORTAL_MAX_UPLOAD_BYTES || String(100 * 1024 * 1024), 10)
 
@@ -99,6 +140,11 @@ export async function ensureUserHomeFolder (pool, userId) {
 
 export function createPortalRouter (pool) {
   const r = Router()
+  const getRole = (req) => {
+    const raw = req.headers['x-portal-role']
+    if (!raw) return 'preparer'
+    return String(raw).toLowerCase()
+  }
 
   r.get('/v1/dashboard', async (req, res) => {
     const session = await getClerkUser(req, res)
@@ -703,6 +749,452 @@ export function createPortalRouter (pool) {
       ok: true,
       note: 'Our team will follow up to complete this integration.',
       integration: rows[0]
+    })
+  })
+
+  r.get('/v1/accounting/clients', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const clients = await listClients(pool, session.userId)
+      res.json({ clients })
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: 'Could not load clients' })
+    }
+  })
+
+  r.post('/v1/accounting/clients', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const client = await createClient(pool, session.userId, session.userId, req.body || {})
+      res.json({ client })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create client' })
+    }
+  })
+
+  r.get('/v1/accounting/clients/:clientId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const client = await getClientDetails(pool, session.userId, req.params.clientId)
+    if (!client) return res.status(404).json({ error: 'Client not found' })
+    res.json({ client })
+  })
+
+  r.patch('/v1/accounting/clients/:clientId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const client = await updateClient(pool, session.userId, session.userId, req.params.clientId, req.body || {})
+      if (!client) return res.status(404).json({ error: 'Client not found' })
+      res.json({ client })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update client' })
+    }
+  })
+
+  r.get('/v1/accounting/engagements', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const engagements = await listEngagements(pool, session.userId, {
+        status: req.query.status || null,
+        clientId: req.query.clientId || null,
+        engagementType: req.query.engagementType || null,
+        search: req.query.search || null
+      })
+      res.json({ engagements })
+    } catch (e) {
+      console.error(e)
+      res.status(500).json({ error: 'Could not load engagements' })
+    }
+  })
+
+  r.post('/v1/accounting/engagements', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const engagement = await createEngagement(pool, session.userId, session.userId, req.body || {})
+      res.json({ engagement })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create engagement' })
+    }
+  })
+
+  r.patch('/v1/accounting/engagements/:engagementId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const engagement = await updateEngagement(pool, session.userId, session.userId, req.params.engagementId, req.body || {})
+      if (!engagement) return res.status(404).json({ error: 'Engagement not found' })
+      res.json({ engagement })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update engagement' })
+    }
+  })
+
+  r.post('/v1/accounting/engagements/:engagementId/archive', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    if (!isStaff(session.userId)) return res.status(403).json({ error: 'Forbidden' })
+    const engagement = await archiveEngagement(pool, session.userId, session.userId, req.params.engagementId)
+    if (!engagement) return res.status(404).json({ error: 'Engagement not found' })
+    res.json({ engagement })
+  })
+
+  r.get('/v1/accounting/engagements/status-summary', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const summary = await getEngagementStatusSummary(pool, session.userId)
+    res.json({ summary })
+  })
+
+  r.get('/v1/accounting/engagements/:engagementId/dashboard', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const dashboard = await getEngagementDashboard(pool, session.userId, req.params.engagementId)
+    if (!dashboard) return res.status(404).json({ error: 'Engagement not found' })
+    res.json(dashboard)
+  })
+
+  r.get('/v1/accounting/engagements/:engagementId/trial-balance/accounts', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const accounts = await listTrialBalanceAccounts(pool, session.userId, req.params.engagementId)
+    if (!accounts) return res.status(404).json({ error: 'Engagement not found' })
+    res.json({ accounts })
+  })
+
+  r.post('/v1/accounting/engagements/:engagementId/trial-balance/preview', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const parsed = parseTrialBalanceFile({
+        fileName: req.body?.fileName,
+        base64Content: req.body?.base64Content
+      })
+      const preview = previewTrialBalanceImport({
+        rows: parsed.rows,
+        columns: parsed.columns,
+        mapping: req.body?.mapping || null,
+        materialityAmount: req.body?.materialityAmount || null,
+        thresholdPercent: req.body?.thresholdPercent || 20
+      })
+      res.json({
+        fileType: parsed.fileType,
+        ...preview
+      })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not preview trial balance' })
+    }
+  })
+
+  r.post('/v1/accounting/engagements/:engagementId/trial-balance/import', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const result = await saveTrialBalanceImport(pool, session.userId, session.userId, req.params.engagementId, req.body || {})
+      if (!result) return res.status(404).json({ error: 'Engagement not found' })
+      res.json(result)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not import trial balance' })
+    }
+  })
+
+  r.patch('/v1/accounting/trial-balance/accounts/:accountId/mapping', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const account = await updateTrialBalanceAccountMapping(pool, session.userId, session.userId, req.params.accountId, req.body || {})
+      if (!account) return res.status(404).json({ error: 'Account not found' })
+      res.json({ account })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update mapping' })
+    }
+  })
+
+  r.post('/v1/accounting/engagements/:engagementId/trial-balance/recalculate-variances', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const result = await calculateTrialBalanceVariances(
+      pool,
+      session.userId,
+      session.userId,
+      req.params.engagementId,
+      req.body?.thresholdPercent || 20
+    )
+    if (!result) return res.status(404).json({ error: 'Engagement not found' })
+    res.json(result)
+  })
+
+  r.post('/v1/accounting/engagements/:engagementId/lead-sheets/generate', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const leadSheets = await generateLeadSheets(pool, session.userId, session.userId, req.params.engagementId)
+    if (!leadSheets) return res.status(404).json({ error: 'Engagement not found' })
+    res.json({ leadSheets })
+  })
+
+  r.get('/v1/accounting/engagements/:engagementId/lead-sheets', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const leadSheets = await listLeadSheets(pool, session.userId, req.params.engagementId)
+    res.json({ leadSheets })
+  })
+
+  r.get('/v1/accounting/engagements/:engagementId/lead-sheets/:leadSheetId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const detail = await getLeadSheetDetail(pool, session.userId, req.params.engagementId, req.params.leadSheetId)
+    if (!detail) return res.status(404).json({ error: 'Lead sheet not found' })
+    res.json(detail)
+  })
+
+  r.patch('/v1/accounting/lead-sheets/:leadSheetId/conclusion', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const leadSheet = await updateLeadSheetConclusion(pool, session.userId, session.userId, req.params.leadSheetId, req.body?.conclusionText || null)
+    if (!leadSheet) return res.status(404).json({ error: 'Lead sheet not found' })
+    res.json({ leadSheet })
+  })
+
+  r.patch('/v1/accounting/lead-sheets/:leadSheetId/status', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const leadSheet = await updateLeadSheetStatus(pool, session.userId, session.userId, req.params.leadSheetId, req.body?.status)
+      if (!leadSheet) return res.status(404).json({ error: 'Lead sheet not found' })
+      res.json({ leadSheet })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update lead sheet status' })
+    }
+  })
+
+  r.post('/v1/accounting/lead-sheets/:leadSheetId/preparer-signoff', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const leadSheet = await preparerSignoff(pool, session.userId, session.userId, req.params.leadSheetId)
+    if (!leadSheet) return res.status(404).json({ error: 'Lead sheet not found' })
+    res.json({ leadSheet })
+  })
+
+  r.post('/v1/accounting/lead-sheets/:leadSheetId/reviewer-signoff', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const role = getRole(req)
+    const canOverride = isStaff(session.userId) || role === 'manager' || role === 'reviewer' || role === 'admin' || role === 'owner'
+    try {
+      const leadSheet = await reviewerSignoff(pool, session.userId, session.userId, req.params.leadSheetId, canOverride)
+      if (!leadSheet) return res.status(404).json({ error: 'Lead sheet not found' })
+      res.json({ leadSheet })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not sign off' })
+    }
+  })
+
+  r.get('/v1/accounting/engagements/:engagementId/documents', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const documents = await listDocumentsByEngagement(pool, session.userId, req.params.engagementId, req.query.leadSheetId || null)
+    res.json({ documents })
+  })
+
+  r.post('/v1/accounting/documents/link-existing', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const document = await attachExistingDocument(pool, session.userId, session.userId, req.body || {})
+      res.json({ document })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not link document' })
+    }
+  })
+
+  r.delete('/v1/accounting/documents/:documentId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const ok = await detachDocument(pool, session.userId, session.userId, req.params.documentId)
+    if (!ok) return res.status(404).json({ error: 'Document not found' })
+    res.json({ ok: true })
+  })
+
+  r.get('/v1/accounting/engagements/:engagementId/review-notes', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const notes = await listReviewNotes(pool, session.userId, req.params.engagementId, {
+      status: req.query.status || null,
+      priority: req.query.priority || null
+    })
+    res.json({ notes })
+  })
+
+  r.post('/v1/accounting/review-notes', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const note = await createReviewNote(pool, session.userId, session.userId, req.body || {})
+      res.json({ note })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create note' })
+    }
+  })
+
+  r.patch('/v1/accounting/review-notes/:noteId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const note = await updateReviewNoteStatus(pool, session.userId, session.userId, req.params.noteId, req.body?.status, req.body || {})
+      if (!note) return res.status(404).json({ error: 'Review note not found' })
+      res.json({ note })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update review note' })
+    }
+  })
+
+  r.get('/v1/accounting/engagements/:engagementId/tasks', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const tasks = await listTasks(pool, session.userId, req.params.engagementId)
+    res.json({ tasks })
+  })
+
+  r.post('/v1/accounting/tasks', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const task = await createTask(pool, session.userId, session.userId, req.body || {})
+      res.json({ task })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create task' })
+    }
+  })
+
+  r.patch('/v1/accounting/tasks/:taskId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const task = await updateTask(pool, session.userId, session.userId, req.params.taskId, req.body || {})
+      if (!task) return res.status(404).json({ error: 'Task not found' })
+      res.json({ task })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update task' })
+    }
+  })
+
+  r.get('/v1/accounting/engagements/:engagementId/adjustments', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const entries = await listAdjustmentEntries(pool, session.userId, req.params.engagementId)
+    res.json({ entries })
+  })
+
+  r.post('/v1/accounting/adjustments', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const entry = await createAdjustmentEntry(pool, session.userId, session.userId, req.body || {})
+      res.json({ entry })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create adjustment entry' })
+    }
+  })
+
+  r.put('/v1/accounting/adjustments/:adjustmentId/lines', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const result = await upsertAdjustmentLines(pool, session.userId, session.userId, req.params.adjustmentId, req.body?.lines || [])
+      if (!result) return res.status(404).json({ error: 'Adjustment entry not found' })
+      res.json(result)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update adjustment lines' })
+    }
+  })
+
+  r.patch('/v1/accounting/adjustments/:adjustmentId/status', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const entry = await updateAdjustmentStatus(pool, session.userId, session.userId, req.params.adjustmentId, req.body?.status)
+      if (!entry) return res.status(404).json({ error: 'Adjustment entry not found' })
+      res.json({ entry })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update adjustment status' })
+    }
+  })
+
+  r.get('/v1/accounting/integrations', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    await ensureStandardMappingGroups(pool, session.userId)
+    const connections = await listIntegrations(pool, session.userId)
+    const qboEnv = QuickBooksOnlineProvider.envRequirements()
+    const googleEnv = GoogleSheetsProvider.envRequirements()
+    const qboConnection = connections.find((connection) => connection.provider === 'quickbooks_online') || null
+    const googleConnection = connections.find((connection) => connection.provider === 'google_sheets') || null
+    const qboStatus = await createAccountingProvider('quickbooks_online', qboConnection).getConnectionStatus()
+    const googleStatus = await createAccountingProvider('google_sheets', googleConnection).getConnectionStatus()
+    res.json({
+      featureFlags: {
+        ENABLE_QBO_CONNECT: process.env.ENABLE_QBO_CONNECT === 'true',
+        ENABLE_QBO_JOURNAL_POSTING: process.env.ENABLE_QBO_JOURNAL_POSTING === 'true',
+        ENABLE_GOOGLE_SHEETS_CONNECT: process.env.ENABLE_GOOGLE_SHEETS_CONNECT === 'true',
+        ENABLE_AI_REVIEW: process.env.ENABLE_AI_REVIEW === 'true'
+      },
+      envReady: {
+        qboConfigured: qboEnv.configured,
+        googleConfigured: googleEnv.configured,
+        encryptionConfigured: Boolean(process.env.ENCRYPTION_KEY)
+      },
+      providers: [
+        {
+          id: 'quickbooks_online',
+          name: 'QuickBooks Online',
+          configured: qboStatus.configured,
+          connectionStatus: qboStatus.status,
+          missingEnv: qboStatus.missingEnv,
+          enabled: process.env.ENABLE_QBO_CONNECT === 'true',
+          setupMessage: qboStatus.configured ? null : 'QuickBooks integration is not configured yet.'
+        },
+        {
+          id: 'google_sheets',
+          name: 'Google Sheets',
+          configured: googleStatus.configured,
+          connectionStatus: googleStatus.status,
+          missingEnv: googleStatus.missingEnv,
+          enabled: process.env.ENABLE_GOOGLE_SHEETS_CONNECT === 'true',
+          setupMessage: googleStatus.configured ? null : 'Google Sheets integration is not configured yet.'
+        },
+        {
+          id: 'excel_csv',
+          name: 'Excel / CSV',
+          configured: true,
+          enabled: true,
+          setupMessage: null
+        }
+      ],
+      connections
+    })
+  })
+
+  r.post('/v1/accounting/integrations/configure', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const connection = await upsertIntegrationConnection(pool, session.userId, session.userId, req.body || {})
+      res.json({ connection })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not configure integration' })
+    }
+  })
+
+  r.get('/v1/accounting/ai/status', async (_req, res) => {
+    const service = new AIReviewService()
+    res.json({
+      enabled: service.enabled,
+      message: service.enabled ? 'AI review enabled' : 'AI review is not enabled yet'
     })
   })
 

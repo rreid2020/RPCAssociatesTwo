@@ -131,7 +131,16 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
 
   const accountingWorkspaceNavigation: NavItem[] = [
     {
-      to: '/portal/working-papers',
+      to: '/portal/accounting',
+      label: 'Accounting Workspace',
+      icon: (
+        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+        </svg>
+      ),
+    },
+    {
+      to: '/portal/accounting/working-papers',
       label: 'Working Papers',
       featureKey: 'workingPapers',
       lockedLabel: 'Premium',
@@ -142,7 +151,7 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
       ),
     },
     {
-      to: '/portal/integrations',
+      to: '/portal/accounting/integrations',
       label: 'Integrations',
       featureKey: 'integrations',
       lockedLabel: 'Premium',

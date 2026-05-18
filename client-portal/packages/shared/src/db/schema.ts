@@ -1,4 +1,4 @@
-import { pgTable, pgSchema, text, timestamp, jsonb, integer, uuid, varchar, customType, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, pgSchema, text, timestamp, jsonb, integer, uuid, varchar, customType, boolean, numeric, date } from 'drizzle-orm/pg-core';
 import type { SourceType, SourceCategory, IngestStatus, Priority, RiskLevel } from '../types';
 
 // Create a dedicated schema for this application
@@ -229,5 +229,229 @@ export const portalIntegrations = taxgptSchema.table('portal_integrations', {
   metadata: jsonb('metadata').$type<Record<string, unknown>>(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const accountingClients = taxgptSchema.table('accounting_clients', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  clerkUserId: text('clerk_user_id').notNull(),
+  name: text('name').notNull(),
+  legalName: text('legal_name'),
+  businessNumber: text('business_number'),
+  fiscalYearEndMonth: integer('fiscal_year_end_month'),
+  fiscalYearEndDay: integer('fiscal_year_end_day'),
+  defaultCurrency: varchar('default_currency', { length: 3 }).notNull().default('CAD'),
+  createdBy: text('created_by').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const accountingEngagements = taxgptSchema.table('accounting_engagements', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  clerkUserId: text('clerk_user_id').notNull(),
+  clientId: uuid('client_id').notNull().references(() => accountingClients.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  engagementType: varchar('engagement_type', { length: 48 }).notNull(),
+  fiscalYear: integer('fiscal_year').notNull(),
+  periodStart: date('period_start').notNull(),
+  periodEnd: date('period_end').notNull(),
+  status: varchar('status', { length: 32 }).notNull().default('draft'),
+  sourceType: varchar('source_type', { length: 32 }).notNull().default('manual'),
+  materialityAmount: numeric('materiality_amount', { precision: 14, scale: 2 }),
+  reportingCurrency: varchar('reporting_currency', { length: 3 }).notNull().default('CAD'),
+  createdBy: text('created_by').notNull(),
+  assignedPreparerId: text('assigned_preparer_id'),
+  assignedReviewerId: text('assigned_reviewer_id'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const sourceConnections = taxgptSchema.table('source_connections', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  clerkUserId: text('clerk_user_id').notNull(),
+  clientId: uuid('client_id').notNull().references(() => accountingClients.id, { onDelete: 'cascade' }),
+  provider: varchar('provider', { length: 48 }).notNull(),
+  providerRealmId: text('provider_realm_id'),
+  connectionStatus: varchar('connection_status', { length: 32 }).notNull().default('pending'),
+  accessTokenEncrypted: text('access_token_encrypted'),
+  refreshTokenEncrypted: text('refresh_token_encrypted'),
+  tokenExpiresAt: timestamp('token_expires_at'),
+  metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default({}),
+  createdBy: text('created_by').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const trialBalances = taxgptSchema.table('trial_balances', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  engagementId: uuid('engagement_id').notNull().references(() => accountingEngagements.id, { onDelete: 'cascade' }),
+  sourceConnectionId: uuid('source_connection_id').references(() => sourceConnections.id, { onDelete: 'set null' }),
+  importBatchId: uuid('import_batch_id'),
+  name: text('name').notNull(),
+  periodStart: date('period_start').notNull(),
+  periodEnd: date('period_end').notNull(),
+  importedAt: timestamp('imported_at').notNull().defaultNow(),
+  importedBy: text('imported_by').notNull(),
+  status: varchar('status', { length: 24 }).notNull().default('draft'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const trialBalanceAccounts = taxgptSchema.table('trial_balance_accounts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  trialBalanceId: uuid('trial_balance_id').notNull().references(() => trialBalances.id, { onDelete: 'cascade' }),
+  sourceAccountId: text('source_account_id'),
+  accountNumber: text('account_number'),
+  accountName: text('account_name').notNull(),
+  accountType: varchar('account_type', { length: 64 }).notNull(),
+  normalBalance: varchar('normal_balance', { length: 8 }),
+  currentPeriodBalance: numeric('current_period_balance', { precision: 14, scale: 2 }).notNull().default('0'),
+  priorPeriodBalance: numeric('prior_period_balance', { precision: 14, scale: 2 }),
+  varianceAmount: numeric('variance_amount', { precision: 14, scale: 2 }),
+  variancePercent: numeric('variance_percent', { precision: 14, scale: 6 }),
+  varianceLabel: varchar('variance_label', { length: 32 }),
+  mappedGroupId: uuid('mapped_group_id'),
+  leadSheetSection: varchar('lead_sheet_section', { length: 8 }),
+  isMaterial: boolean('is_material').notNull().default(false),
+  isUnusual: boolean('is_unusual').notNull().default(false),
+  flags: jsonb('flags').$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const accountMappingGroups = taxgptSchema.table('account_mapping_groups', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  clerkUserId: text('clerk_user_id').notNull(),
+  code: varchar('code', { length: 16 }).notNull(),
+  name: text('name').notNull(),
+  financialStatementArea: varchar('financial_statement_area', { length: 64 }).notNull(),
+  defaultLeadSheetSection: varchar('default_lead_sheet_section', { length: 8 }),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const leadSheets = taxgptSchema.table('lead_sheets', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  engagementId: uuid('engagement_id').notNull().references(() => accountingEngagements.id, { onDelete: 'cascade' }),
+  sectionCode: varchar('section_code', { length: 8 }).notNull(),
+  sectionName: text('section_name').notNull(),
+  financialStatementArea: varchar('financial_statement_area', { length: 64 }).notNull(),
+  status: varchar('status', { length: 24 }).notNull().default('not_started'),
+  preparerId: text('preparer_id'),
+  reviewerId: text('reviewer_id'),
+  preparedAt: timestamp('prepared_at'),
+  reviewedAt: timestamp('reviewed_at'),
+  conclusionText: text('conclusion_text'),
+  riskLevel: varchar('risk_level', { length: 16 }).notNull().default('medium'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const leadSheetAccounts = taxgptSchema.table('lead_sheet_accounts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  leadSheetId: uuid('lead_sheet_id').notNull().references(() => leadSheets.id, { onDelete: 'cascade' }),
+  trialBalanceAccountId: uuid('trial_balance_account_id').notNull().references(() => trialBalanceAccounts.id, { onDelete: 'cascade' }),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const trialBalanceImportBatches = taxgptSchema.table('trial_balance_import_batches', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  engagementId: uuid('engagement_id').notNull().references(() => accountingEngagements.id, { onDelete: 'cascade' }),
+  clerkUserId: text('clerk_user_id').notNull(),
+  fileName: text('file_name').notNull(),
+  fileType: varchar('file_type', { length: 16 }).notNull(),
+  columnMapping: jsonb('column_mapping').$type<Record<string, string>>().notNull().default({}),
+  warningSummary: jsonb('warning_summary').$type<Record<string, unknown>>().notNull().default({}),
+  totalRows: integer('total_rows').notNull().default(0),
+  importedRows: integer('imported_rows').notNull().default(0),
+  createdBy: text('created_by').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const workingPaperDocuments = taxgptSchema.table('working_paper_documents', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  engagementId: uuid('engagement_id').notNull().references(() => accountingEngagements.id, { onDelete: 'cascade' }),
+  leadSheetId: uuid('lead_sheet_id').references(() => leadSheets.id, { onDelete: 'set null' }),
+  existingDocumentId: uuid('existing_document_id').references(() => portalClientFiles.id, { onDelete: 'set null' }),
+  fileName: text('file_name').notNull(),
+  fileType: varchar('file_type', { length: 64 }),
+  storagePath: text('storage_path'),
+  source: varchar('source', { length: 40 }).notNull(),
+  description: text('description'),
+  uploadedBy: text('uploaded_by').notNull(),
+  uploadedAt: timestamp('uploaded_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const reviewNotes = taxgptSchema.table('review_notes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  engagementId: uuid('engagement_id').notNull().references(() => accountingEngagements.id, { onDelete: 'cascade' }),
+  leadSheetId: uuid('lead_sheet_id').references(() => leadSheets.id, { onDelete: 'set null' }),
+  trialBalanceAccountId: uuid('trial_balance_account_id').references(() => trialBalanceAccounts.id, { onDelete: 'set null' }),
+  documentId: uuid('document_id').references(() => workingPaperDocuments.id, { onDelete: 'set null' }),
+  noteText: text('note_text').notNull(),
+  status: varchar('status', { length: 24 }).notNull().default('open'),
+  priority: varchar('priority', { length: 16 }).notNull().default('medium'),
+  createdBy: text('created_by').notNull(),
+  assignedTo: text('assigned_to'),
+  resolvedBy: text('resolved_by'),
+  resolvedAt: timestamp('resolved_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const engagementTasks = taxgptSchema.table('engagement_tasks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  engagementId: uuid('engagement_id').notNull().references(() => accountingEngagements.id, { onDelete: 'cascade' }),
+  leadSheetId: uuid('lead_sheet_id').references(() => leadSheets.id, { onDelete: 'set null' }),
+  title: text('title').notNull(),
+  description: text('description'),
+  status: varchar('status', { length: 24 }).notNull().default('not_started'),
+  assignedTo: text('assigned_to'),
+  dueDate: date('due_date'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const adjustmentEntries = taxgptSchema.table('adjustment_entries', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  engagementId: uuid('engagement_id').notNull().references(() => accountingEngagements.id, { onDelete: 'cascade' }),
+  entryNumber: text('entry_number').notNull(),
+  description: text('description').notNull(),
+  status: varchar('status', { length: 24 }).notNull().default('draft'),
+  source: varchar('source', { length: 24 }).notNull().default('manual'),
+  createdBy: text('created_by').notNull(),
+  approvedBy: text('approved_by'),
+  postedAt: timestamp('posted_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const adjustmentEntryLines = taxgptSchema.table('adjustment_entry_lines', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  adjustmentEntryId: uuid('adjustment_entry_id').notNull().references(() => adjustmentEntries.id, { onDelete: 'cascade' }),
+  accountNumber: text('account_number'),
+  accountName: text('account_name').notNull(),
+  debitAmount: numeric('debit_amount', { precision: 14, scale: 2 }).notNull().default('0'),
+  creditAmount: numeric('credit_amount', { precision: 14, scale: 2 }).notNull().default('0'),
+  memo: text('memo'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const accountingAuditLog = taxgptSchema.table('accounting_audit_log', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  clerkUserId: text('clerk_user_id').notNull(),
+  entityType: varchar('entity_type', { length: 64 }).notNull(),
+  entityId: text('entity_id').notNull(),
+  action: varchar('action', { length: 64 }).notNull(),
+  actorId: text('actor_id').notNull(),
+  beforeValue: jsonb('before_value').$type<Record<string, unknown>>(),
+  afterValue: jsonb('after_value').$type<Record<string, unknown>>(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 

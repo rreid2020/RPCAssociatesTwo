@@ -15,6 +15,13 @@
       "when": 1738000000000,
       "tag": "0005_portal_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779099000000,
+      "tag": "0006_working_papers",
+      "breakpoints": true
     }
   ]
 }

@@ -455,3 +455,24 @@ export const accountingAuditLog = taxgptSchema.table('accounting_audit_log', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
+export const accountingWorkspaces = taxgptSchema.table('accounting_workspaces', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ownerUserId: text('owner_user_id').notNull(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull(),
+  isPersonal: boolean('is_personal').notNull().default(false),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const accountingWorkspaceMembers = taxgptSchema.table('accounting_workspace_members', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  workspaceId: uuid('workspace_id').notNull().references(() => accountingWorkspaces.id, { onDelete: 'cascade' }),
+  clerkUserId: text('clerk_user_id').notNull(),
+  role: varchar('role', { length: 24 }).notNull().default('preparer'),
+  status: varchar('status', { length: 24 }).notNull().default('active'),
+  invitedBy: text('invited_by'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+

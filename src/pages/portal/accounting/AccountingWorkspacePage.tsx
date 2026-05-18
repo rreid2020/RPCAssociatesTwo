@@ -162,6 +162,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [documents, setDocuments] = useState<any[]>([])
   const [repositoryFiles, setRepositoryFiles] = useState<any[]>([])
   const [integrationsData, setIntegrationsData] = useState<any | null>(null)
+  const [workspaces, setWorkspaces] = useState<any[]>([])
+  const [workspaceMembers, setWorkspaceMembers] = useState<any[]>([])
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState('')
+  const [newWorkspaceName, setNewWorkspaceName] = useState('')
+  const [newMemberClerkUserId, setNewMemberClerkUserId] = useState('')
+  const [newMemberRole, setNewMemberRole] = useState('preparer')
   const [trialBalanceAccounts, setTrialBalanceAccounts] = useState<any[]>([])
   const [trialBalancePreview, setTrialBalancePreview] = useState<TrialBalancePreview | null>(null)
   const [importFile, setImportFile] = useState<File | null>(null)
@@ -253,6 +259,20 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setIntegrationsData(data)
   }, [getToken])
 
+  const loadWorkspaces = useCallback(async () => {
+    const { workspaces: rows } = await portalFetch<{ workspaces: any[] }>('/v1/accounting/workspaces', getToken)
+    setWorkspaces(rows)
+    if (!selectedWorkspaceId && rows[0]?.id) {
+      setSelectedWorkspaceId(rows[0].id)
+    }
+  }, [getToken, selectedWorkspaceId])
+
+  const loadWorkspaceMembers = useCallback(async () => {
+    if (!selectedWorkspaceId) return
+    const data = await portalFetch<{ members: any[] }>(`/v1/accounting/workspaces/${selectedWorkspaceId}/members`, getToken)
+    setWorkspaceMembers(data.members || [])
+  }, [getToken, selectedWorkspaceId])
+
   useEffect(() => {
     let mounted = true
     const run = async () => {
@@ -264,6 +284,9 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         if (['workingPapersDashboard', 'engagementList', 'newEngagement', 'landing'].includes(view)) {
           await Promise.all([loadEngagements(), loadStatusSummary()])
         }
+        if (['landing', 'settings', 'integrations'].includes(view)) {
+          await loadWorkspaces()
+        }
         if (view === 'engagementDashboard') await loadEngagementDashboard()
         if (view === 'trialBalance') await loadTrialBalance()
         if (view === 'leadSheets') await loadLeadSheets()
@@ -274,6 +297,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         }
         if (view === 'review') await loadReviewNotes()
         if (view === 'settings') await loadTasks()
+        if (view === 'settings') await loadWorkspaceMembers()
         if (view === 'integrations') await loadIntegrations()
       } catch (e) {
         if (mounted) setError(e instanceof Error ? e.message : 'Could not load data')
@@ -298,6 +322,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     loadStatusSummary,
     loadTasks,
     loadTrialBalance,
+    loadWorkspaceMembers,
+    loadWorkspaces,
     view
   ])
 
@@ -494,6 +520,47 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       navigate('/portal/accounting/working-papers/engagements')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not archive engagement')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onCreateWorkspace = async () => {
+    if (!newWorkspaceName.trim()) return
+    setSaving(true)
+    setError(null)
+    try {
+      await portalFetch('/v1/accounting/workspaces', getToken, {
+        method: 'POST',
+        body: JSON.stringify({ name: newWorkspaceName.trim() })
+      })
+      setNewWorkspaceName('')
+      await loadWorkspaces()
+      setNotice('Workspace created')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not create workspace')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onAddWorkspaceMember = async () => {
+    if (!selectedWorkspaceId || !newMemberClerkUserId.trim()) return
+    setSaving(true)
+    setError(null)
+    try {
+      await portalFetch(`/v1/accounting/workspaces/${selectedWorkspaceId}/members`, getToken, {
+        method: 'POST',
+        body: JSON.stringify({
+          clerkUserId: newMemberClerkUserId.trim(),
+          role: newMemberRole
+        })
+      })
+      setNewMemberClerkUserId('')
+      await loadWorkspaceMembers()
+      setNotice('Workspace member added')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not add workspace member')
     } finally {
       setSaving(false)
     }
@@ -968,6 +1035,58 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
                     {view === 'settings' && (
                       <div className="space-y-3">
+                        <div className="rounded-lg border border-border p-4 space-y-3">
+                          <h3 className="font-semibold text-primary-dark">Workspace team access</h3>
+                          <div className="flex flex-wrap gap-2">
+                            <select
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              value={selectedWorkspaceId}
+                              onChange={(e) => setSelectedWorkspaceId(e.target.value)}
+                            >
+                              {workspaces.map((workspace) => (
+                                <option key={workspace.id} value={workspace.id}>
+                                  {workspace.name} ({workspace.role})
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              placeholder="New workspace name"
+                              value={newWorkspaceName}
+                              onChange={(e) => setNewWorkspaceName(e.target.value)}
+                            />
+                            <button type="button" className="btn btn--primary text-sm py-2 px-4" disabled={saving} onClick={() => { void onCreateWorkspace() }}>
+                              Create workspace
+                            </button>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              placeholder="Employee Clerk User ID"
+                              value={newMemberClerkUserId}
+                              onChange={(e) => setNewMemberClerkUserId(e.target.value)}
+                            />
+                            <select
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              value={newMemberRole}
+                              onChange={(e) => setNewMemberRole(e.target.value)}
+                            >
+                              {['admin', 'manager', 'reviewer', 'preparer', 'read_only', 'client'].map((role) => (
+                                <option key={role} value={role}>{role}</option>
+                              ))}
+                            </select>
+                            <button type="button" className="btn btn--primary text-sm py-2 px-4" disabled={saving || !selectedWorkspaceId} onClick={() => { void onAddWorkspaceMember() }}>
+                              Add employee
+                            </button>
+                          </div>
+                          <ul className="space-y-1 text-sm text-text">
+                            {workspaceMembers.map((member) => (
+                              <li key={member.clerk_user_id}>
+                                {member.clerk_user_id} - {member.role} ({member.status})
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                         <div className="rounded-lg border border-border p-4">
                           <h3 className="font-semibold text-primary-dark mb-2">Task summary</h3>
                           <p className="text-sm text-text-light mb-2">Tasks in engagement: {tasks.length}</p>

@@ -42,6 +42,14 @@ import {
 import { parseTrialBalanceFile, previewTrialBalanceImport, saveTrialBalanceImport } from '../services/trialBalanceImportService.js'
 import { GoogleSheetsProvider, QuickBooksOnlineProvider, createAccountingProvider } from '../services/accountingProviders.js'
 import { AIReviewService } from '../services/aiReviewService.js'
+import {
+  addWorkspaceMember,
+  createWorkspace,
+  getWorkspaceContext,
+  listWorkspaceMembers,
+  listWorkspacesForUser,
+  updateWorkspaceMember
+} from '../services/accountingWorkspaceService.js'
 
 const MAX_UPLOAD_BYTES = parseInt(process.env.PORTAL_MAX_UPLOAD_BYTES || String(100 * 1024 * 1024), 10)
 
@@ -144,6 +152,20 @@ export function createPortalRouter (pool) {
     const raw = req.headers['x-portal-role']
     if (!raw) return 'preparer'
     return String(raw).toLowerCase()
+  }
+  const resolveAccountingScope = async (req, res, session) => {
+    try {
+      const requestedWorkspaceId = req.headers['x-accounting-workspace-id'] || req.query.workspaceId || null
+      const workspace = await getWorkspaceContext(pool, session.userId, requestedWorkspaceId)
+      return {
+        workspace,
+        workspaceUserId: workspace.owner_user_id,
+        actorUserId: session.userId
+      }
+    } catch (e) {
+      res.status(403).json({ error: e instanceof Error ? e.message : 'Workspace access denied' })
+      return null
+    }
   }
 
   r.get('/v1/dashboard', async (req, res) => {
@@ -752,11 +774,74 @@ export function createPortalRouter (pool) {
     })
   })
 
-  r.get('/v1/accounting/clients', async (req, res) => {
+  r.get('/v1/accounting/workspaces', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
     try {
-      const clients = await listClients(pool, session.userId)
+      const workspaces = await listWorkspacesForUser(pool, session.userId)
+      res.json({ workspaces })
+    } catch (e) {
+      res.status(500).json({ error: e instanceof Error ? e.message : 'Could not load workspaces' })
+    }
+  })
+
+  r.post('/v1/accounting/workspaces', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const workspace = await createWorkspace(pool, session.userId, req.body || {})
+      res.json({ workspace })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create workspace' })
+    }
+  })
+
+  r.get('/v1/accounting/workspaces/:workspaceId/members', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const data = await listWorkspaceMembers(pool, session.userId, req.params.workspaceId)
+      res.json(data)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load workspace members' })
+    }
+  })
+
+  r.post('/v1/accounting/workspaces/:workspaceId/members', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const member = await addWorkspaceMember(pool, session.userId, req.params.workspaceId, req.body || {})
+      res.json({ member })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not add workspace member' })
+    }
+  })
+
+  r.patch('/v1/accounting/workspaces/:workspaceId/members/:memberUserId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const member = await updateWorkspaceMember(
+        pool,
+        session.userId,
+        req.params.workspaceId,
+        req.params.memberUserId,
+        req.body || {}
+      )
+      res.json({ member })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update workspace member' })
+    }
+  })
+
+  r.get('/v1/accounting/clients', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    try {
+      const clients = await listClients(pool, scope.workspaceUserId)
       res.json({ clients })
     } catch (e) {
       console.error(e)
@@ -767,8 +852,10 @@ export function createPortalRouter (pool) {
   r.post('/v1/accounting/clients', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     try {
-      const client = await createClient(pool, session.userId, session.userId, req.body || {})
+      const client = await createClient(pool, scope.workspaceUserId, scope.actorUserId, req.body || {})
       res.json({ client })
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create client' })
@@ -778,7 +865,9 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/clients/:clientId', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const client = await getClientDetails(pool, session.userId, req.params.clientId)
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    const client = await getClientDetails(pool, scope.workspaceUserId, req.params.clientId)
     if (!client) return res.status(404).json({ error: 'Client not found' })
     res.json({ client })
   })
@@ -786,8 +875,10 @@ export function createPortalRouter (pool) {
   r.patch('/v1/accounting/clients/:clientId', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     try {
-      const client = await updateClient(pool, session.userId, session.userId, req.params.clientId, req.body || {})
+      const client = await updateClient(pool, scope.workspaceUserId, scope.actorUserId, req.params.clientId, req.body || {})
       if (!client) return res.status(404).json({ error: 'Client not found' })
       res.json({ client })
     } catch (e) {
@@ -798,8 +889,10 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/engagements', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     try {
-      const engagements = await listEngagements(pool, session.userId, {
+      const engagements = await listEngagements(pool, scope.workspaceUserId, {
         status: req.query.status || null,
         clientId: req.query.clientId || null,
         engagementType: req.query.engagementType || null,
@@ -815,8 +908,10 @@ export function createPortalRouter (pool) {
   r.post('/v1/accounting/engagements', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     try {
-      const engagement = await createEngagement(pool, session.userId, session.userId, req.body || {})
+      const engagement = await createEngagement(pool, scope.workspaceUserId, scope.actorUserId, req.body || {})
       res.json({ engagement })
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create engagement' })
@@ -826,8 +921,10 @@ export function createPortalRouter (pool) {
   r.patch('/v1/accounting/engagements/:engagementId', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     try {
-      const engagement = await updateEngagement(pool, session.userId, session.userId, req.params.engagementId, req.body || {})
+      const engagement = await updateEngagement(pool, scope.workspaceUserId, scope.actorUserId, req.params.engagementId, req.body || {})
       if (!engagement) return res.status(404).json({ error: 'Engagement not found' })
       res.json({ engagement })
     } catch (e) {
@@ -838,8 +935,11 @@ export function createPortalRouter (pool) {
   r.post('/v1/accounting/engagements/:engagementId/archive', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    if (!isStaff(session.userId)) return res.status(403).json({ error: 'Forbidden' })
-    const engagement = await archiveEngagement(pool, session.userId, session.userId, req.params.engagementId)
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    const canArchive = isStaff(session.userId) || scope.workspace.role === 'owner' || scope.workspace.role === 'admin'
+    if (!canArchive) return res.status(403).json({ error: 'Forbidden' })
+    const engagement = await archiveEngagement(pool, scope.workspaceUserId, scope.actorUserId, req.params.engagementId)
     if (!engagement) return res.status(404).json({ error: 'Engagement not found' })
     res.json({ engagement })
   })
@@ -847,14 +947,18 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/engagements/status-summary', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const summary = await getEngagementStatusSummary(pool, session.userId)
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    const summary = await getEngagementStatusSummary(pool, scope.workspaceUserId)
     res.json({ summary })
   })
 
   r.get('/v1/accounting/engagements/:engagementId/dashboard', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const dashboard = await getEngagementDashboard(pool, session.userId, req.params.engagementId)
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    const dashboard = await getEngagementDashboard(pool, scope.workspaceUserId, req.params.engagementId)
     if (!dashboard) return res.status(404).json({ error: 'Engagement not found' })
     res.json(dashboard)
   })
@@ -862,7 +966,9 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/engagements/:engagementId/trial-balance/accounts', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const accounts = await listTrialBalanceAccounts(pool, session.userId, req.params.engagementId)
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    const accounts = await listTrialBalanceAccounts(pool, scope.workspaceUserId, req.params.engagementId)
     if (!accounts) return res.status(404).json({ error: 'Engagement not found' })
     res.json({ accounts })
   })
@@ -894,8 +1000,10 @@ export function createPortalRouter (pool) {
   r.post('/v1/accounting/engagements/:engagementId/trial-balance/import', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     try {
-      const result = await saveTrialBalanceImport(pool, session.userId, session.userId, req.params.engagementId, req.body || {})
+      const result = await saveTrialBalanceImport(pool, scope.workspaceUserId, scope.actorUserId, req.params.engagementId, req.body || {})
       if (!result) return res.status(404).json({ error: 'Engagement not found' })
       res.json(result)
     } catch (e) {
@@ -906,8 +1014,10 @@ export function createPortalRouter (pool) {
   r.patch('/v1/accounting/trial-balance/accounts/:accountId/mapping', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     try {
-      const account = await updateTrialBalanceAccountMapping(pool, session.userId, session.userId, req.params.accountId, req.body || {})
+      const account = await updateTrialBalanceAccountMapping(pool, scope.workspaceUserId, scope.actorUserId, req.params.accountId, req.body || {})
       if (!account) return res.status(404).json({ error: 'Account not found' })
       res.json({ account })
     } catch (e) {
@@ -918,10 +1028,12 @@ export function createPortalRouter (pool) {
   r.post('/v1/accounting/engagements/:engagementId/trial-balance/recalculate-variances', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     const result = await calculateTrialBalanceVariances(
       pool,
-      session.userId,
-      session.userId,
+      scope.workspaceUserId,
+      scope.actorUserId,
       req.params.engagementId,
       req.body?.thresholdPercent || 20
     )
@@ -932,7 +1044,9 @@ export function createPortalRouter (pool) {
   r.post('/v1/accounting/engagements/:engagementId/lead-sheets/generate', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const leadSheets = await generateLeadSheets(pool, session.userId, session.userId, req.params.engagementId)
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    const leadSheets = await generateLeadSheets(pool, scope.workspaceUserId, scope.actorUserId, req.params.engagementId)
     if (!leadSheets) return res.status(404).json({ error: 'Engagement not found' })
     res.json({ leadSheets })
   })
@@ -940,14 +1054,18 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/engagements/:engagementId/lead-sheets', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const leadSheets = await listLeadSheets(pool, session.userId, req.params.engagementId)
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    const leadSheets = await listLeadSheets(pool, scope.workspaceUserId, req.params.engagementId)
     res.json({ leadSheets })
   })
 
   r.get('/v1/accounting/engagements/:engagementId/lead-sheets/:leadSheetId', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const detail = await getLeadSheetDetail(pool, session.userId, req.params.engagementId, req.params.leadSheetId)
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    const detail = await getLeadSheetDetail(pool, scope.workspaceUserId, req.params.engagementId, req.params.leadSheetId)
     if (!detail) return res.status(404).json({ error: 'Lead sheet not found' })
     res.json(detail)
   })
@@ -955,7 +1073,9 @@ export function createPortalRouter (pool) {
   r.patch('/v1/accounting/lead-sheets/:leadSheetId/conclusion', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const leadSheet = await updateLeadSheetConclusion(pool, session.userId, session.userId, req.params.leadSheetId, req.body?.conclusionText || null)
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    const leadSheet = await updateLeadSheetConclusion(pool, scope.workspaceUserId, scope.actorUserId, req.params.leadSheetId, req.body?.conclusionText || null)
     if (!leadSheet) return res.status(404).json({ error: 'Lead sheet not found' })
     res.json({ leadSheet })
   })
@@ -963,8 +1083,10 @@ export function createPortalRouter (pool) {
   r.patch('/v1/accounting/lead-sheets/:leadSheetId/status', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     try {
-      const leadSheet = await updateLeadSheetStatus(pool, session.userId, session.userId, req.params.leadSheetId, req.body?.status)
+      const leadSheet = await updateLeadSheetStatus(pool, scope.workspaceUserId, scope.actorUserId, req.params.leadSheetId, req.body?.status)
       if (!leadSheet) return res.status(404).json({ error: 'Lead sheet not found' })
       res.json({ leadSheet })
     } catch (e) {
@@ -975,7 +1097,9 @@ export function createPortalRouter (pool) {
   r.post('/v1/accounting/lead-sheets/:leadSheetId/preparer-signoff', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const leadSheet = await preparerSignoff(pool, session.userId, session.userId, req.params.leadSheetId)
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    const leadSheet = await preparerSignoff(pool, scope.workspaceUserId, scope.actorUserId, req.params.leadSheetId)
     if (!leadSheet) return res.status(404).json({ error: 'Lead sheet not found' })
     res.json({ leadSheet })
   })
@@ -983,10 +1107,13 @@ export function createPortalRouter (pool) {
   r.post('/v1/accounting/lead-sheets/:leadSheetId/reviewer-signoff', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     const role = getRole(req)
-    const canOverride = isStaff(session.userId) || role === 'manager' || role === 'reviewer' || role === 'admin' || role === 'owner'
+    const canOverride = isStaff(session.userId) || role === 'manager' || role === 'reviewer' || role === 'admin' || role === 'owner' ||
+      scope.workspace.role === 'manager' || scope.workspace.role === 'reviewer' || scope.workspace.role === 'admin' || scope.workspace.role === 'owner'
     try {
-      const leadSheet = await reviewerSignoff(pool, session.userId, session.userId, req.params.leadSheetId, canOverride)
+      const leadSheet = await reviewerSignoff(pool, scope.workspaceUserId, scope.actorUserId, req.params.leadSheetId, canOverride)
       if (!leadSheet) return res.status(404).json({ error: 'Lead sheet not found' })
       res.json({ leadSheet })
     } catch (e) {
@@ -997,15 +1124,19 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/engagements/:engagementId/documents', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const documents = await listDocumentsByEngagement(pool, session.userId, req.params.engagementId, req.query.leadSheetId || null)
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    const documents = await listDocumentsByEngagement(pool, scope.workspaceUserId, req.params.engagementId, req.query.leadSheetId || null)
     res.json({ documents })
   })
 
   r.post('/v1/accounting/documents/link-existing', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     try {
-      const document = await attachExistingDocument(pool, session.userId, session.userId, req.body || {})
+      const document = await attachExistingDocument(pool, scope.workspaceUserId, scope.actorUserId, req.body || {})
       res.json({ document })
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not link document' })
@@ -1015,7 +1146,9 @@ export function createPortalRouter (pool) {
   r.delete('/v1/accounting/documents/:documentId', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const ok = await detachDocument(pool, session.userId, session.userId, req.params.documentId)
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    const ok = await detachDocument(pool, scope.workspaceUserId, scope.actorUserId, req.params.documentId)
     if (!ok) return res.status(404).json({ error: 'Document not found' })
     res.json({ ok: true })
   })
@@ -1023,7 +1156,9 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/engagements/:engagementId/review-notes', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const notes = await listReviewNotes(pool, session.userId, req.params.engagementId, {
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    const notes = await listReviewNotes(pool, scope.workspaceUserId, req.params.engagementId, {
       status: req.query.status || null,
       priority: req.query.priority || null
     })
@@ -1033,8 +1168,10 @@ export function createPortalRouter (pool) {
   r.post('/v1/accounting/review-notes', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     try {
-      const note = await createReviewNote(pool, session.userId, session.userId, req.body || {})
+      const note = await createReviewNote(pool, scope.workspaceUserId, scope.actorUserId, req.body || {})
       res.json({ note })
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create note' })
@@ -1044,8 +1181,10 @@ export function createPortalRouter (pool) {
   r.patch('/v1/accounting/review-notes/:noteId', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     try {
-      const note = await updateReviewNoteStatus(pool, session.userId, session.userId, req.params.noteId, req.body?.status, req.body || {})
+      const note = await updateReviewNoteStatus(pool, scope.workspaceUserId, scope.actorUserId, req.params.noteId, req.body?.status, req.body || {})
       if (!note) return res.status(404).json({ error: 'Review note not found' })
       res.json({ note })
     } catch (e) {
@@ -1056,15 +1195,19 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/engagements/:engagementId/tasks', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const tasks = await listTasks(pool, session.userId, req.params.engagementId)
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    const tasks = await listTasks(pool, scope.workspaceUserId, req.params.engagementId)
     res.json({ tasks })
   })
 
   r.post('/v1/accounting/tasks', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     try {
-      const task = await createTask(pool, session.userId, session.userId, req.body || {})
+      const task = await createTask(pool, scope.workspaceUserId, scope.actorUserId, req.body || {})
       res.json({ task })
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create task' })
@@ -1074,8 +1217,10 @@ export function createPortalRouter (pool) {
   r.patch('/v1/accounting/tasks/:taskId', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     try {
-      const task = await updateTask(pool, session.userId, session.userId, req.params.taskId, req.body || {})
+      const task = await updateTask(pool, scope.workspaceUserId, scope.actorUserId, req.params.taskId, req.body || {})
       if (!task) return res.status(404).json({ error: 'Task not found' })
       res.json({ task })
     } catch (e) {
@@ -1086,15 +1231,19 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/engagements/:engagementId/adjustments', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const entries = await listAdjustmentEntries(pool, session.userId, req.params.engagementId)
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    const entries = await listAdjustmentEntries(pool, scope.workspaceUserId, req.params.engagementId)
     res.json({ entries })
   })
 
   r.post('/v1/accounting/adjustments', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     try {
-      const entry = await createAdjustmentEntry(pool, session.userId, session.userId, req.body || {})
+      const entry = await createAdjustmentEntry(pool, scope.workspaceUserId, scope.actorUserId, req.body || {})
       res.json({ entry })
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create adjustment entry' })
@@ -1104,8 +1253,10 @@ export function createPortalRouter (pool) {
   r.put('/v1/accounting/adjustments/:adjustmentId/lines', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     try {
-      const result = await upsertAdjustmentLines(pool, session.userId, session.userId, req.params.adjustmentId, req.body?.lines || [])
+      const result = await upsertAdjustmentLines(pool, scope.workspaceUserId, scope.actorUserId, req.params.adjustmentId, req.body?.lines || [])
       if (!result) return res.status(404).json({ error: 'Adjustment entry not found' })
       res.json(result)
     } catch (e) {
@@ -1116,8 +1267,10 @@ export function createPortalRouter (pool) {
   r.patch('/v1/accounting/adjustments/:adjustmentId/status', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     try {
-      const entry = await updateAdjustmentStatus(pool, session.userId, session.userId, req.params.adjustmentId, req.body?.status)
+      const entry = await updateAdjustmentStatus(pool, scope.workspaceUserId, scope.actorUserId, req.params.adjustmentId, req.body?.status)
       if (!entry) return res.status(404).json({ error: 'Adjustment entry not found' })
       res.json({ entry })
     } catch (e) {
@@ -1128,8 +1281,10 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/integrations', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    await ensureStandardMappingGroups(pool, session.userId)
-    const connections = await listIntegrations(pool, session.userId)
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    await ensureStandardMappingGroups(pool, scope.workspaceUserId)
+    const connections = await listIntegrations(pool, scope.workspaceUserId)
     const qboEnv = QuickBooksOnlineProvider.envRequirements()
     const googleEnv = GoogleSheetsProvider.envRequirements()
     const qboConnection = connections.find((connection) => connection.provider === 'quickbooks_online') || null
@@ -1175,15 +1330,23 @@ export function createPortalRouter (pool) {
           setupMessage: null
         }
       ],
-      connections
+      connections,
+      workspace: {
+        id: scope.workspace.id,
+        name: scope.workspace.name,
+        role: scope.workspace.role,
+        ownerUserId: scope.workspace.owner_user_id
+      }
     })
   })
 
   r.post('/v1/accounting/integrations/configure', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     try {
-      const connection = await upsertIntegrationConnection(pool, session.userId, session.userId, req.body || {})
+      const connection = await upsertIntegrationConnection(pool, scope.workspaceUserId, scope.actorUserId, req.body || {})
       res.json({ connection })
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not configure integration' })

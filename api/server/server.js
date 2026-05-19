@@ -5,7 +5,7 @@ import dotenv from 'dotenv'
 import path from 'path'
 import { existsSync } from 'fs'
 import { fileURLToPath } from 'url'
-import { createPool } from './db/pool.js'
+import { createPool, getDatabaseConnectionSummary } from './db/pool.js'
 import { sendEmail } from './utils/email.js'
 import { createLeadsTable, createContactsTable } from './db/migrations.js'
 import { ensurePortalSchema } from './db/ensurePortalSchema.js'
@@ -15,10 +15,14 @@ import { createTaxIntelligenceRouter } from './routes/taxIntelligenceRoutes.js'
 import { getNotificationInbox } from './config/mail.js'
 import { escapeHtml, singleLine } from './utils/html.js'
 
-dotenv.config()
-
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
+const apiEnvPath = path.resolve(__dirname, '.env')
+const portalEnvPath = path.resolve(__dirname, '../../client-portal/.env')
+
+dotenv.config({ path: apiEnvPath })
+// Fallback load so migrations + runtime can share DATABASE_URL when not set in api/server/.env.
+dotenv.config({ path: portalEnvPath, override: false })
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -256,12 +260,14 @@ app.use('/api/portal/tax-intelligence', createTaxIntelligenceRouter(pool))
 // Initialize database tables
 async function initializeDatabase() {
   try {
+    const dbSummary = getDatabaseConnectionSummary()
     console.log('Attempting to connect to database...')
-    console.log('DB_HOST:', process.env.DB_HOST)
-    console.log('DB_PORT:', process.env.DB_PORT)
-    console.log('DB_NAME:', process.env.DB_NAME)
-    console.log('DB_USER:', process.env.DB_USER)
-    console.log('DB_SSL:', process.env.DB_SSL)
+    console.log('DB config source:', dbSummary.mode)
+    console.log('DB_HOST:', dbSummary.host)
+    console.log('DB_PORT:', dbSummary.port)
+    console.log('DB_NAME:', dbSummary.database)
+    console.log('DB_USER:', dbSummary.user)
+    console.log('DB_SSL:', dbSummary.ssl)
     
     // Test connection first
     const testResult = await pool.query('SELECT NOW()')

@@ -952,12 +952,19 @@ export async function listAdjustmentEntries (pool, clerkUserId, engagementId) {
   return rows
 }
 
-export async function listIntegrations (pool, clerkUserId) {
+export async function listIntegrations (pool, clerkUserId, organizationId = null) {
+  if (organizationId) {
+    const { rows } = await pool.query(
+      'SELECT * FROM taxgpt.source_connections WHERE organization_id = $1::uuid ORDER BY created_at DESC',
+      [organizationId]
+    )
+    return rows.map((row) => ({ ...row, access_token_encrypted: null, refresh_token_encrypted: null }))
+  }
   const { rows } = await pool.query(
     'SELECT * FROM taxgpt.source_connections WHERE clerk_user_id = $1 ORDER BY created_at DESC',
     [clerkUserId]
   )
-  return rows
+  return rows.map((row) => ({ ...row, access_token_encrypted: null, refresh_token_encrypted: null }))
 }
 
 export async function upsertIntegrationConnection (pool, clerkUserId, actorId, payload) {
@@ -965,24 +972,58 @@ export async function upsertIntegrationConnection (pool, clerkUserId, actorId, p
   assertAllowed(payload.connectionStatus || 'pending', CONNECTION_STATUSES, 'connection_status')
   const encryptedAccessToken = payload.accessToken ? encryptSecret(payload.accessToken) : payload.accessTokenEncrypted || null
   const encryptedRefreshToken = payload.refreshToken ? encryptSecret(payload.refreshToken) : payload.refreshTokenEncrypted || null
-  const { rows } = await pool.query(
-    `INSERT INTO taxgpt.source_connections
-     (clerk_user_id, client_id, provider, provider_realm_id, connection_status, access_token_encrypted, refresh_token_encrypted, token_expires_at, metadata, created_by, created_at, updated_at)
-     VALUES ($1, $2::uuid, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, now(), now())
-     RETURNING *`,
-    [
-      clerkUserId,
-      payload.clientId,
-      payload.provider,
-      payload.providerRealmId || null,
-      payload.connectionStatus || 'pending',
-      encryptedAccessToken,
-      encryptedRefreshToken,
-      payload.tokenExpiresAt || null,
-      JSON.stringify(payload.metadata || {}),
-      actorId
-    ]
-  )
+  let rows
+  if (payload.organizationId) {
+    ({ rows } = await pool.query(
+      `INSERT INTO taxgpt.source_connections
+       (organization_id, clerk_user_id, client_id, provider, provider_realm_id, connection_status, access_token_encrypted, refresh_token_encrypted, token_expires_at, metadata, created_by, created_at, updated_at)
+       VALUES ($1::uuid, $2, $3::uuid, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, now(), now())
+       ON CONFLICT (organization_id, provider)
+       DO UPDATE SET
+         clerk_user_id = EXCLUDED.clerk_user_id,
+         client_id = EXCLUDED.client_id,
+         provider_realm_id = EXCLUDED.provider_realm_id,
+         connection_status = EXCLUDED.connection_status,
+         access_token_encrypted = EXCLUDED.access_token_encrypted,
+         refresh_token_encrypted = EXCLUDED.refresh_token_encrypted,
+         token_expires_at = EXCLUDED.token_expires_at,
+         metadata = EXCLUDED.metadata,
+         updated_at = now()
+       RETURNING *`,
+      [
+        payload.organizationId,
+        clerkUserId,
+        payload.clientId || null,
+        payload.provider,
+        payload.providerRealmId || null,
+        payload.connectionStatus || 'pending',
+        encryptedAccessToken,
+        encryptedRefreshToken,
+        payload.tokenExpiresAt || null,
+        JSON.stringify(payload.metadata || {}),
+        actorId
+      ]
+    ))
+  } else {
+    ({ rows } = await pool.query(
+      `INSERT INTO taxgpt.source_connections
+       (clerk_user_id, client_id, provider, provider_realm_id, connection_status, access_token_encrypted, refresh_token_encrypted, token_expires_at, metadata, created_by, created_at, updated_at)
+       VALUES ($1, $2::uuid, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, now(), now())
+       RETURNING *`,
+      [
+        clerkUserId,
+        payload.clientId || null,
+        payload.provider,
+        payload.providerRealmId || null,
+        payload.connectionStatus || 'pending',
+        encryptedAccessToken,
+        encryptedRefreshToken,
+        payload.tokenExpiresAt || null,
+        JSON.stringify(payload.metadata || {}),
+        actorId
+      ]
+    ))
+  }
   await logAccountingAudit(pool, clerkUserId, actorId, 'source_connection', rows[0].id, 'configured', null, rows[0])
   return { ...rows[0], access_token_encrypted: null, refresh_token_encrypted: null }
 }

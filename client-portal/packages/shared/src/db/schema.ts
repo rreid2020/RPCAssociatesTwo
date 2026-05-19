@@ -233,6 +233,7 @@ export const portalIntegrations = taxgptSchema.table('portal_integrations', {
 
 export const accountingClients = taxgptSchema.table('accounting_clients', {
   id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id'),
   clerkUserId: text('clerk_user_id').notNull(),
   name: text('name').notNull(),
   legalName: text('legal_name'),
@@ -247,6 +248,7 @@ export const accountingClients = taxgptSchema.table('accounting_clients', {
 
 export const accountingEngagements = taxgptSchema.table('accounting_engagements', {
   id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id'),
   clerkUserId: text('clerk_user_id').notNull(),
   clientId: uuid('client_id').notNull().references(() => accountingClients.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
@@ -267,8 +269,9 @@ export const accountingEngagements = taxgptSchema.table('accounting_engagements'
 
 export const sourceConnections = taxgptSchema.table('source_connections', {
   id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id'),
   clerkUserId: text('clerk_user_id').notNull(),
-  clientId: uuid('client_id').notNull().references(() => accountingClients.id, { onDelete: 'cascade' }),
+  clientId: uuid('client_id').references(() => accountingClients.id, { onDelete: 'cascade' }),
   provider: varchar('provider', { length: 48 }).notNull(),
   providerRealmId: text('provider_realm_id'),
   connectionStatus: varchar('connection_status', { length: 32 }).notNull().default('pending'),
@@ -320,6 +323,7 @@ export const trialBalanceAccounts = taxgptSchema.table('trial_balance_accounts',
 
 export const accountMappingGroups = taxgptSchema.table('account_mapping_groups', {
   id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id'),
   clerkUserId: text('clerk_user_id').notNull(),
   code: varchar('code', { length: 16 }).notNull(),
   name: text('name').notNull(),
@@ -445,6 +449,7 @@ export const adjustmentEntryLines = taxgptSchema.table('adjustment_entry_lines',
 
 export const accountingAuditLog = taxgptSchema.table('accounting_audit_log', {
   id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id'),
   clerkUserId: text('clerk_user_id').notNull(),
   entityType: varchar('entity_type', { length: 64 }).notNull(),
   entityId: text('entity_id').notNull(),

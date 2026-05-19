@@ -371,6 +371,7 @@ const STATEMENTS = [
 
   `CREATE TABLE IF NOT EXISTS taxgpt.accounting_clients (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID,
   clerk_user_id TEXT NOT NULL,
   name TEXT NOT NULL,
   legal_name TEXT,
@@ -382,10 +383,13 @@ const STATEMENTS = [
   created_at TIMESTAMP NOT NULL DEFAULT now(),
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 )`,
+  'ALTER TABLE taxgpt.accounting_clients ADD COLUMN IF NOT EXISTS organization_id UUID',
   'CREATE INDEX IF NOT EXISTS accounting_clients_user_idx ON taxgpt.accounting_clients(clerk_user_id)',
+  'CREATE INDEX IF NOT EXISTS accounting_clients_org_idx ON taxgpt.accounting_clients(organization_id)',
 
   `CREATE TABLE IF NOT EXISTS taxgpt.accounting_engagements (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID,
   clerk_user_id TEXT NOT NULL,
   client_id UUID NOT NULL REFERENCES taxgpt.accounting_clients(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -403,13 +407,16 @@ const STATEMENTS = [
   created_at TIMESTAMP NOT NULL DEFAULT now(),
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 )`,
+  'ALTER TABLE taxgpt.accounting_engagements ADD COLUMN IF NOT EXISTS organization_id UUID',
   'CREATE INDEX IF NOT EXISTS accounting_engagements_user_idx ON taxgpt.accounting_engagements(clerk_user_id, status)',
   'CREATE INDEX IF NOT EXISTS accounting_engagements_client_idx ON taxgpt.accounting_engagements(client_id)',
+  'CREATE INDEX IF NOT EXISTS accounting_engagements_org_idx ON taxgpt.accounting_engagements(organization_id, status)',
 
   `CREATE TABLE IF NOT EXISTS taxgpt.source_connections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID,
   clerk_user_id TEXT NOT NULL,
-  client_id UUID NOT NULL REFERENCES taxgpt.accounting_clients(id) ON DELETE CASCADE,
+  client_id UUID REFERENCES taxgpt.accounting_clients(id) ON DELETE CASCADE,
   provider VARCHAR(48) NOT NULL,
   provider_realm_id TEXT,
   connection_status VARCHAR(32) NOT NULL DEFAULT 'pending',
@@ -421,10 +428,15 @@ const STATEMENTS = [
   created_at TIMESTAMP NOT NULL DEFAULT now(),
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 )`,
+  'ALTER TABLE taxgpt.source_connections ADD COLUMN IF NOT EXISTS organization_id UUID',
+  'ALTER TABLE taxgpt.source_connections ALTER COLUMN client_id DROP NOT NULL',
   'CREATE INDEX IF NOT EXISTS source_connections_user_idx ON taxgpt.source_connections(clerk_user_id, provider)',
+  'CREATE INDEX IF NOT EXISTS source_connections_org_idx ON taxgpt.source_connections(organization_id, provider)',
+  'CREATE UNIQUE INDEX IF NOT EXISTS source_connections_org_provider_ux ON taxgpt.source_connections(organization_id, provider) WHERE organization_id IS NOT NULL',
 
   `CREATE TABLE IF NOT EXISTS taxgpt.account_mapping_groups (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID,
   clerk_user_id TEXT NOT NULL,
   code VARCHAR(16) NOT NULL,
   name TEXT NOT NULL,
@@ -434,7 +446,9 @@ const STATEMENTS = [
   created_at TIMESTAMP NOT NULL DEFAULT now(),
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 )`,
+  'ALTER TABLE taxgpt.account_mapping_groups ADD COLUMN IF NOT EXISTS organization_id UUID',
   'CREATE UNIQUE INDEX IF NOT EXISTS account_mapping_groups_code_user_ux ON taxgpt.account_mapping_groups(clerk_user_id, code)',
+  'CREATE UNIQUE INDEX IF NOT EXISTS account_mapping_groups_code_org_ux ON taxgpt.account_mapping_groups(organization_id, code) WHERE organization_id IS NOT NULL',
 
   `CREATE TABLE IF NOT EXISTS taxgpt.trial_balance_import_batches (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -597,6 +611,7 @@ const STATEMENTS = [
 
   `CREATE TABLE IF NOT EXISTS taxgpt.accounting_audit_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID,
   clerk_user_id TEXT NOT NULL,
   entity_type VARCHAR(64) NOT NULL,
   entity_id TEXT NOT NULL,
@@ -606,7 +621,9 @@ const STATEMENTS = [
   after_value JSONB,
   created_at TIMESTAMP NOT NULL DEFAULT now()
 )`,
+  'ALTER TABLE taxgpt.accounting_audit_log ADD COLUMN IF NOT EXISTS organization_id UUID',
   'CREATE INDEX IF NOT EXISTS accounting_audit_log_user_idx ON taxgpt.accounting_audit_log(clerk_user_id, created_at DESC)',
+  'CREATE INDEX IF NOT EXISTS accounting_audit_log_org_idx ON taxgpt.accounting_audit_log(organization_id, created_at DESC)',
 
   `CREATE TABLE IF NOT EXISTS taxgpt.accounting_workspaces (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

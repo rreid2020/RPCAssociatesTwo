@@ -566,6 +566,26 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     }
   }
 
+  const onConnectIntegration = async (providerId: string) => {
+    if (providerId !== 'quickbooks_online' && providerId !== 'google_sheets') {
+      setNotice('This integration source does not require OAuth connection.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      const response = await portalFetch<{ authUrl: string }>(
+        `/v1/accounting/integrations/${providerId}/connect-url`,
+        getToken,
+        { method: 'POST' }
+      )
+      window.location.href = response.authUrl
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not start integration connection')
+      setSaving(false)
+    }
+  }
+
   return (
     <>
       <SEO
@@ -1115,10 +1135,15 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               </p>
                               <button
                                 type="button"
-                                disabled={!provider.configured || !provider.enabled}
+                                disabled={!provider.configured || !provider.enabled || saving}
                                 className="btn btn--primary text-sm py-2 px-4 w-full disabled:opacity-50"
+                                onClick={() => { void onConnectIntegration(provider.id) }}
                               >
-                                {provider.configured && provider.enabled ? 'Connect' : 'Coming soon'}
+                                {provider.id === 'excel_csv'
+                                  ? 'Use file import'
+                                  : provider.configured && provider.enabled
+                                    ? 'Connect'
+                                    : 'Coming soon'}
                               </button>
                             </div>
                           ))}

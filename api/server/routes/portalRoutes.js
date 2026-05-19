@@ -50,6 +50,14 @@ import {
   listWorkspacesForUser,
   updateWorkspaceMember
 } from '../services/accountingWorkspaceService.js'
+import {
+  buildGoogleSheetsAuthUrl,
+  buildQboAuthUrl,
+  createSignedIntegrationState,
+  exchangeGoogleCodeForTokens,
+  exchangeQboCodeForTokens,
+  verifySignedIntegrationState
+} from '../services/integrationOAuthService.js'
 
 const MAX_UPLOAD_BYTES = parseInt(process.env.PORTAL_MAX_UPLOAD_BYTES || String(100 * 1024 * 1024), 10)
 
@@ -159,6 +167,7 @@ export function createPortalRouter (pool) {
       const workspace = await getWorkspaceContext(pool, session.userId, requestedWorkspaceId)
       return {
         workspace,
+        organizationId: workspace.id,
         workspaceUserId: workspace.owner_user_id,
         actorUserId: session.userId
       }
@@ -1284,7 +1293,7 @@ export function createPortalRouter (pool) {
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
     await ensureStandardMappingGroups(pool, scope.workspaceUserId)
-    const connections = await listIntegrations(pool, scope.workspaceUserId)
+    const connections = await listIntegrations(pool, scope.workspaceUserId, scope.organizationId)
     const qboEnv = QuickBooksOnlineProvider.envRequirements()
     const googleEnv = GoogleSheetsProvider.envRequirements()
     const qboConnection = connections.find((connection) => connection.provider === 'quickbooks_online') || null
@@ -1340,13 +1349,90 @@ export function createPortalRouter (pool) {
     })
   })
 
+  r.post('/v1/accounting/integrations/:provider/connect-url', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    const provider = String(req.params.provider || '')
+    try {
+      const stateToken = createSignedIntegrationState({
+        provider,
+        workspaceId: scope.workspace.id,
+        workspaceUserId: scope.workspaceUserId,
+        actorUserId: scope.actorUserId
+      })
+      let authUrl
+      if (provider === 'quickbooks_online') {
+        authUrl = buildQboAuthUrl(stateToken)
+      } else if (provider === 'google_sheets') {
+        authUrl = buildGoogleSheetsAuthUrl(stateToken)
+      } else {
+        return res.status(400).json({ error: 'Unsupported provider' })
+      }
+      res.json({ provider, authUrl })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not generate connect url' })
+    }
+  })
+
+  r.get('/v1/accounting/integrations/:provider/callback', async (req, res) => {
+    const provider = String(req.params.provider || '')
+    const code = req.query.code
+    const state = req.query.state
+    if (!code || !state) return res.status(400).json({ error: 'Missing code/state' })
+    try {
+      const statePayload = verifySignedIntegrationState(state)
+      if (statePayload.provider !== provider) {
+        return res.status(400).json({ error: 'Invalid provider state' })
+      }
+
+      let tokenResponse
+      let providerRealmId = null
+      if (provider === 'quickbooks_online') {
+        tokenResponse = await exchangeQboCodeForTokens(code)
+        providerRealmId = req.query.realmId ? String(req.query.realmId) : null
+      } else if (provider === 'google_sheets') {
+        tokenResponse = await exchangeGoogleCodeForTokens(code)
+      } else {
+        return res.status(400).json({ error: 'Unsupported provider' })
+      }
+
+      await upsertIntegrationConnection(pool, statePayload.workspaceUserId, statePayload.actorUserId, {
+        organizationId: statePayload.workspaceId,
+        clientId: null,
+        provider,
+        providerRealmId,
+        connectionStatus: 'connected',
+        accessToken: tokenResponse.access_token,
+        refreshToken: tokenResponse.refresh_token || null,
+        tokenExpiresAt: tokenResponse.expires_in
+          ? new Date(Date.now() + Number(tokenResponse.expires_in) * 1000).toISOString()
+          : null,
+        metadata: {
+          tokenType: tokenResponse.token_type || null,
+          scope: tokenResponse.scope || null
+        }
+      })
+
+      const frontendRedirect = '/portal/accounting/integrations?integration=connected'
+      res.redirect(frontendRedirect)
+    } catch (e) {
+      const frontendRedirect = `/portal/accounting/integrations?integration=error&message=${encodeURIComponent(e instanceof Error ? e.message : 'Integration callback failed')}`
+      res.redirect(frontendRedirect)
+    }
+  })
+
   r.post('/v1/accounting/integrations/configure', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
     try {
-      const connection = await upsertIntegrationConnection(pool, scope.workspaceUserId, scope.actorUserId, req.body || {})
+      const connection = await upsertIntegrationConnection(pool, scope.workspaceUserId, scope.actorUserId, {
+        ...(req.body || {}),
+        organizationId: scope.organizationId
+      })
       res.json({ connection })
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not configure integration' })

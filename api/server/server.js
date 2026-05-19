@@ -301,11 +301,39 @@ async function initializeDatabase() {
 // The dist folder will be copied to api/server/dist during build
 // IMPORTANT: This must come AFTER API routes to avoid conflicts
 const distPath = path.join(__dirname, 'dist')
+const publicPath = path.resolve(__dirname, '../../public')
+const sitemapDistPath = path.join(distPath, 'sitemap.xml')
+const sitemapPublicPath = path.join(publicPath, 'sitemap.xml')
+const robotsDistPath = path.join(distPath, 'robots.txt')
+const robotsPublicPath = path.join(publicPath, 'robots.txt')
 
 // Check if dist folder exists
 if (!existsSync(distPath)) {
   console.warn(`Warning: dist folder not found at ${distPath}. Static files will not be served.`)
 }
+
+// Serve crawl files explicitly so they are never handled by SPA fallback.
+app.get('/sitemap.xml', (req, res) => {
+  res.type('application/xml; charset=utf-8')
+  if (existsSync(sitemapDistPath)) {
+    return res.sendFile(sitemapDistPath)
+  }
+  if (existsSync(sitemapPublicPath)) {
+    return res.sendFile(sitemapPublicPath)
+  }
+  return res.status(404).send('Sitemap not found')
+})
+
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain; charset=utf-8')
+  if (existsSync(robotsDistPath)) {
+    return res.sendFile(robotsDistPath)
+  }
+  if (existsSync(robotsPublicPath)) {
+    return res.sendFile(robotsPublicPath)
+  }
+  return res.status(404).send('User-agent: *\nAllow: /\n')
+})
 
 // Serve static files from the frontend build (dist folder)
 // Note: express.static only handles GET/HEAD requests, so it won't interfere with POST /api/leads

@@ -7,6 +7,13 @@ function normalizeSslFromUrl (urlValue) {
   return mode === 'require' || mode === 'verify-ca' || mode === 'verify-full'
 }
 
+function sanitizeConnectionString (urlValue) {
+  const parsed = new URL(urlValue)
+  parsed.searchParams.delete('sslmode')
+  parsed.searchParams.delete('ssl')
+  return parsed.toString()
+}
+
 function getConnectionConfig () {
   const databaseUrl = process.env.DATABASE_URL
   const sslEnabledByEnv = process.env.DB_SSL === 'true'
@@ -30,7 +37,7 @@ function getConnectionConfig () {
   if (databaseUrl) {
     return {
       ...common,
-      connectionString: databaseUrl
+      connectionString: sanitizeConnectionString(databaseUrl)
     }
   }
 

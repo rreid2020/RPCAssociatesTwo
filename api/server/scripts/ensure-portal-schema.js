@@ -4,10 +4,18 @@
  * Requires DB_* (or same env as server) in .env or the environment.
  */
 import dotenv from 'dotenv'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import { createPool } from '../db/pool.js'
 import { ensurePortalSchema } from '../db/ensurePortalSchema.js'
 
-dotenv.config()
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const apiEnvPath = path.resolve(__dirname, '../.env')
+const portalEnvPath = path.resolve(__dirname, '../../../client-portal/.env')
+
+dotenv.config({ path: apiEnvPath })
+dotenv.config({ path: portalEnvPath, override: false })
 
 const pool = createPool()
 

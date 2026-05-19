@@ -128,11 +128,11 @@ const STATEMENTS = [
 )`,
   'CREATE INDEX IF NOT EXISTS tax_returns_clerk_year_idx ON taxgpt.tax_returns(clerk_user_id, tax_year)',
   'CREATE INDEX IF NOT EXISTS tax_returns_taxpayer_idx ON taxgpt.tax_returns(taxpayer_id)',
-  'CREATE INDEX IF NOT EXISTS tax_returns_parent_idx ON taxgpt.tax_returns(parent_tax_return_id)',
   'ALTER TABLE taxgpt.tax_returns ADD COLUMN IF NOT EXISTS workspace_role VARCHAR(16) NOT NULL DEFAULT \'primary\'',
   'ALTER TABLE taxgpt.tax_returns ADD COLUMN IF NOT EXISTS parent_tax_return_id UUID REFERENCES taxgpt.tax_returns(id) ON DELETE SET NULL',
   'ALTER TABLE taxgpt.tax_returns ADD COLUMN IF NOT EXISTS related_person_name TEXT',
   'ALTER TABLE taxgpt.tax_returns ADD COLUMN IF NOT EXISTS interview_stage VARCHAR(32) NOT NULL DEFAULT \'setup\'',
+  'CREATE INDEX IF NOT EXISTS tax_returns_parent_idx ON taxgpt.tax_returns(parent_tax_return_id)',
 
   `CREATE TABLE IF NOT EXISTS taxgpt.taxpayer_profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

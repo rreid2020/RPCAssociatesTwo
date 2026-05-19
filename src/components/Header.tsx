@@ -204,8 +204,10 @@ const Header: FC = () => {
                   onMouseEnter={() => handleMenuEnter('services')}
                   onMouseLeave={() => handleMenuLeave('services', 300)}
                 >
-                  <button
+                  <Link
+                    to="/services"
                     className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center gap-1.5 text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
+                    onClick={closeMenu}
                   >
                     Services
                     <svg
@@ -216,7 +218,7 @@ const Header: FC = () => {
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
-                  </button>
+                  </Link>
                   
                   {/* Desktop Services Dropdown - Card Style */}
                   {isServicesOpen && (
@@ -270,8 +272,10 @@ const Header: FC = () => {
                   onMouseEnter={() => handleMenuEnter('resources')}
                   onMouseLeave={() => handleMenuLeave('resources', 300)}
                 >
-                  <button
+                  <Link
+                    to="/resources"
                     className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center gap-1.5 text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
+                    onClick={closeMenu}
                   >
                     Resources
                     <svg
@@ -282,7 +286,7 @@ const Header: FC = () => {
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
-                  </button>
+                  </Link>
                   
                   {/* Desktop Resources Dropdown - Card Style (matching Services) */}
                   {isResourcesOpen && (
@@ -415,20 +419,31 @@ const Header: FC = () => {
             <nav className="px-4 py-6 space-y-4">
               {/* Services Section */}
               <div>
-                <button
-                  className="flex items-center justify-between w-full text-left text-text font-medium py-2"
-                  onClick={() => setIsServicesOpen(!isServicesOpen)}
-                >
-                  <span>Services</span>
-                  <svg 
-                    className={`w-5 h-5 transition-transform ${isServicesOpen ? 'rotate-180' : ''}`} 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
+                <div className="flex items-center justify-between gap-2">
+                  <Link
+                    to="/services"
+                    className="block text-text font-medium py-2"
+                    onClick={closeMenu}
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
+                    Services
+                  </Link>
+                  <button
+                    type="button"
+                    className="inline-flex h-10 w-10 items-center justify-center text-text"
+                    onClick={() => setIsServicesOpen(!isServicesOpen)}
+                    aria-expanded={isServicesOpen}
+                    aria-label="Toggle services menu"
+                  >
+                    <svg
+                      className={`w-5 h-5 transition-transform ${isServicesOpen ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
                 {isServicesOpen && (
                   <div className="mt-2 pl-4 space-y-3">
                 {services.map((service) => (
@@ -468,20 +483,31 @@ const Header: FC = () => {
 
               {/* Resources Section */}
               <div>
-                <button
-                  className="flex items-center justify-between w-full text-left text-text font-medium py-2"
-                  onClick={() => setIsResourcesOpen(!isResourcesOpen)}
-                >
-                  <span>Resources</span>
-                  <svg 
-                    className={`w-5 h-5 transition-transform ${isResourcesOpen ? 'rotate-180' : ''}`} 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
+                <div className="flex items-center justify-between gap-2">
+                  <Link
+                    to="/resources"
+                    className="block text-text font-medium py-2"
+                    onClick={closeMenu}
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
+                    Resources
+                  </Link>
+                  <button
+                    type="button"
+                    className="inline-flex h-10 w-10 items-center justify-center text-text"
+                    onClick={() => setIsResourcesOpen(!isResourcesOpen)}
+                    aria-expanded={isResourcesOpen}
+                    aria-label="Toggle resources menu"
+                  >
+                    <svg
+                      className={`w-5 h-5 transition-transform ${isResourcesOpen ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
                 {isResourcesOpen && (
                   <div className="mt-2 pl-4 space-y-3">
                 {resourceCategories.map((category) => (

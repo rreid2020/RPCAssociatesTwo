@@ -5,7 +5,6 @@ import Services from '../components/Services'
 import Why from '../components/Why'
 import About from '../components/About'
 import Remote from '../components/Remote'
-import Contact from '../components/Contact'
 
 const Home: FC = () => {
   return (
@@ -22,7 +21,6 @@ const Home: FC = () => {
         <Why />
         <About />
         <Remote />
-        <Contact />
       </main>
     </>
   )

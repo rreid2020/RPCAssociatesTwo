@@ -16,6 +16,7 @@ import ClientPortal from './pages/ClientPortal'
 import TaxCalculator from './pages/TaxCalculator'
 import BookConsultation from './pages/BookConsultation'
 import ServiceDetail from './pages/ServiceDetail'
+import ContactPage from './pages/ContactPage'
 import ScrollToTop from './components/ScrollToTop'
 import CanonicalRedirect from './components/CanonicalRedirect'
 import CashFlowCalculator from './pages/CashFlowCalculator'
@@ -514,6 +515,7 @@ const App: FC = () => {
                 <Route path="/articles/category/:categorySlug" element={<ArticleCategory />} />
                 <Route path="/articles/:slug" element={<ArticleDetail />} />
                 <Route path="/book-consultation" element={<BookConsultation />} />
+                <Route path="/contact" element={<ContactPage />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/sitemap" element={<Sitemap />} />

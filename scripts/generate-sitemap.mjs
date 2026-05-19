@@ -75,6 +75,7 @@ async function generateSitemap() {
       { url: '/', priority: '1.0', changefreq: 'weekly' },
       { url: '/services', priority: '0.9', changefreq: 'monthly' },
       { url: '/book-consultation', priority: '0.9', changefreq: 'monthly' },
+      { url: '/contact', priority: '0.9', changefreq: 'monthly' },
       { url: '/resources', priority: '0.8', changefreq: 'monthly' },
       { url: '/resources/category/online-calculators', priority: '0.8', changefreq: 'monthly' },
       { url: '/resources/category/excel-templates', priority: '0.8', changefreq: 'monthly' },

@@ -33,6 +33,10 @@ const Sitemap: FC = () => {
                 <Link to="/articles" className="text-lg lg:text-xl font-semibold text-primary no-underline mb-xs block transition-all hover:underline">Articles</Link>
                 <p className="text-sm text-text-light m-0 ml-0">Insights, tips, and updates on accounting, consulting, and technology</p>
               </li>
+              <li className="mb-lg pb-md border-b border-border last:border-b-0">
+                <Link to="/contact" className="text-lg lg:text-xl font-semibold text-primary no-underline mb-xs block transition-all hover:underline">Contact</Link>
+                <p className="text-sm text-text-light m-0 ml-0">Contact form and ways to reach our team</p>
+              </li>
             </ul>
           </section>
 
@@ -54,10 +58,6 @@ const Sitemap: FC = () => {
               <li className="mb-lg pb-md border-b border-border last:border-b-0">
                 <a href="/#remote" className="text-lg lg:text-xl font-semibold text-primary no-underline mb-xs block transition-all hover:underline">Remote Services</a>
                 <p className="text-sm text-text-light m-0 ml-0">How we serve clients remotely across Canada</p>
-              </li>
-              <li className="mb-lg pb-md border-b border-border last:border-b-0">
-                <a href="/#contact" className="text-lg lg:text-xl font-semibold text-primary no-underline mb-xs block transition-all hover:underline">Contact</a>
-                <p className="text-sm text-text-light m-0 ml-0">Get in touch with our team</p>
               </li>
             </ul>
           </section>

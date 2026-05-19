@@ -1,5 +1,5 @@
 import { FC, useState, useEffect, useRef } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import CalendlyButton from './CalendlyButton'
 import AxiomWordmark from './AxiomWordmark'
 import HeaderPortalAuthLink from './HeaderPortalAuthLink'
@@ -78,7 +78,6 @@ const Header: FC = () => {
   const [isResourcesOpen, setIsResourcesOpen] = useState(false)
   const [isArticlesOpen, setIsArticlesOpen] = useState(false)
   const [isServicesOpen, setIsServicesOpen] = useState(false)
-  const location = useLocation()
   
   // Timeout refs for delayed menu closing
   const servicesTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -142,18 +141,6 @@ const Header: FC = () => {
       document.body.style.overflow = ''
     }
   }, [isMenuOpen])
-
-  const scrollToSection = (id: string) => {
-    if (location.pathname !== '/') {
-      window.location.href = `/#${id}`
-      return
-    }
-    const element = document.getElementById(id)
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' })
-    }
-    setIsMenuOpen(false)
-  }
 
   const closeMenu = () => {
     setIsMenuOpen(false)
@@ -253,17 +240,6 @@ const Header: FC = () => {
                       </div>
                     </div>
                   )}
-                </li>
-
-                {/* Other Navigation Items */}
-                <li className="shrink-0">
-                  <a
-                    href="#contact"
-                    className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
-                    onClick={(e) => { e.preventDefault(); scrollToSection('contact') }}
-                  >
-                    Contact
-                  </a>
                 </li>
 
                 {/* Resources Dropdown */}
@@ -378,6 +354,16 @@ const Header: FC = () => {
 
                 <li className="shrink-0">
                   <Link
+                    to="/contact"
+                    className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
+                    onClick={closeMenu}
+                  >
+                    Contact
+                  </Link>
+                </li>
+
+                <li className="shrink-0">
+                  <Link
                     to="/client-portal"
                     className="btn btn--secondary inline-flex items-center justify-center whitespace-nowrap min-h-12 text-base font-medium leading-none"
                     onClick={closeMenu}
@@ -471,15 +457,6 @@ const Header: FC = () => {
                   </div>
                 )}
               </div>
-
-              {/* Other Navigation Items */}
-              <a
-                href="#contact" 
-                className="block text-text font-medium py-2"
-                onClick={(e) => { e.preventDefault(); scrollToSection('contact') }}
-              >
-                Contact
-              </a>
 
               {/* Resources Section */}
               <div>
@@ -578,6 +555,14 @@ const Header: FC = () => {
                   </div>
                 )}
               </div>
+
+              <Link
+                to="/contact"
+                className="block text-text font-medium py-2"
+                onClick={closeMenu}
+              >
+                Contact
+              </Link>
 
               <Link
                 to="/client-portal"

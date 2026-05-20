@@ -1,9 +1,18 @@
 const WORKSPACE_ROLES = new Set(['owner', 'admin', 'manager', 'reviewer', 'preparer', 'read_only', 'client'])
+const WORKSPACE_TYPES = new Set(['business', 'firm'])
 
 function assertRole (role) {
   if (!WORKSPACE_ROLES.has(role)) {
     throw new Error('Invalid workspace role')
   }
+}
+
+function normalizeWorkspaceType (value) {
+  const type = String(value || 'business').trim().toLowerCase()
+  if (!WORKSPACE_TYPES.has(type)) {
+    throw new Error('Invalid workspace type')
+  }
+  return type
 }
 
 function slugifyWorkspaceName (name) {
@@ -21,10 +30,27 @@ export async function ensureWorkspaceTables (pool) {
        owner_user_id TEXT NOT NULL,
        name TEXT NOT NULL,
        slug TEXT NOT NULL UNIQUE,
+       workspace_type VARCHAR(16) NOT NULL DEFAULT 'business',
        is_personal BOOLEAN NOT NULL DEFAULT false,
        created_at TIMESTAMP NOT NULL DEFAULT now(),
        updated_at TIMESTAMP NOT NULL DEFAULT now()
      )`
+  )
+  await pool.query('ALTER TABLE taxgpt.accounting_workspaces ADD COLUMN IF NOT EXISTS workspace_type VARCHAR(16)')
+  await pool.query("UPDATE taxgpt.accounting_workspaces SET workspace_type = 'business' WHERE workspace_type IS NULL")
+  await pool.query("ALTER TABLE taxgpt.accounting_workspaces ALTER COLUMN workspace_type SET DEFAULT 'business'")
+  await pool.query('ALTER TABLE taxgpt.accounting_workspaces ALTER COLUMN workspace_type SET NOT NULL')
+  await pool.query(
+    `DO $$
+     BEGIN
+       IF NOT EXISTS (
+         SELECT 1 FROM pg_constraint WHERE conname = 'accounting_workspaces_workspace_type_chk'
+       ) THEN
+         ALTER TABLE taxgpt.accounting_workspaces
+           ADD CONSTRAINT accounting_workspaces_workspace_type_chk
+           CHECK (workspace_type IN ('business', 'firm'));
+       END IF;
+     END $$`
   )
   await pool.query(
     `CREATE TABLE IF NOT EXISTS taxgpt.accounting_workspace_members (
@@ -60,8 +86,8 @@ export async function ensurePersonalWorkspace (pool, clerkUserId) {
   const slug = `${baseSlug}-${Date.now().toString(36)}`
   const { rows } = await pool.query(
     `INSERT INTO taxgpt.accounting_workspaces
-     (owner_user_id, name, slug, is_personal, created_at, updated_at)
-     VALUES ($1, $2, $3, true, now(), now())
+     (owner_user_id, name, slug, workspace_type, is_personal, created_at, updated_at)
+     VALUES ($1, $2, $3, 'business', true, now(), now())
      RETURNING *`,
     [clerkUserId, 'My Accounting Workspace', slug]
   )
@@ -126,14 +152,15 @@ export async function createWorkspace (pool, clerkUserId, payload) {
   await ensureWorkspaceTables(pool)
   const name = String(payload?.name || '').trim()
   if (!name) throw new Error('Workspace name is required')
+  const workspaceType = normalizeWorkspaceType(payload?.workspaceType)
   const baseSlug = slugifyWorkspaceName(name)
   const slug = `${baseSlug}-${Date.now().toString(36)}`
   const { rows } = await pool.query(
     `INSERT INTO taxgpt.accounting_workspaces
-     (owner_user_id, name, slug, is_personal, created_at, updated_at)
-     VALUES ($1, $2, $3, false, now(), now())
+     (owner_user_id, name, slug, workspace_type, is_personal, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, false, now(), now())
      RETURNING *`,
-    [clerkUserId, name, slug]
+    [clerkUserId, name, slug, workspaceType]
   )
   const workspace = rows[0]
   await pool.query(

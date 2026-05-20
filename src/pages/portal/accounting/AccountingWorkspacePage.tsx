@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
-import { portalFetch } from '../../../lib/portalApi'
+import { ACCOUNTING_WORKSPACE_STORAGE_KEY, portalFetch } from '../../../lib/portalApi'
 
 type AccountingView =
   | 'landing'
@@ -128,6 +128,11 @@ function fileToBase64 (file: File): Promise<string> {
   })
 }
 
+function getStoredWorkspaceId (): string {
+  if (typeof window === 'undefined') return ''
+  return window.localStorage.getItem(ACCOUNTING_WORKSPACE_STORAGE_KEY) || ''
+}
+
 const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => {
   const { getToken } = useAuth()
   const navigate = useNavigate()
@@ -164,8 +169,9 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [integrationsData, setIntegrationsData] = useState<any | null>(null)
   const [workspaces, setWorkspaces] = useState<any[]>([])
   const [workspaceMembers, setWorkspaceMembers] = useState<any[]>([])
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState('')
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(getStoredWorkspaceId())
   const [newWorkspaceName, setNewWorkspaceName] = useState('')
+  const [newWorkspaceType, setNewWorkspaceType] = useState<'business' | 'firm'>('business')
   const [newMemberClerkUserId, setNewMemberClerkUserId] = useState('')
   const [newMemberRole, setNewMemberRole] = useState('preparer')
   const [trialBalanceAccounts, setTrialBalanceAccounts] = useState<any[]>([])
@@ -262,16 +268,26 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const loadWorkspaces = useCallback(async () => {
     const { workspaces: rows } = await portalFetch<{ workspaces: any[] }>('/v1/accounting/workspaces', getToken)
     setWorkspaces(rows)
-    if (!selectedWorkspaceId && rows[0]?.id) {
-      setSelectedWorkspaceId(rows[0].id)
-    }
-  }, [getToken, selectedWorkspaceId])
+    setSelectedWorkspaceId((current) => {
+      if (current && rows.some((workspace) => workspace.id === current)) return current
+      return rows[0]?.id || ''
+    })
+  }, [getToken])
 
   const loadWorkspaceMembers = useCallback(async () => {
     if (!selectedWorkspaceId) return
     const data = await portalFetch<{ members: any[] }>(`/v1/accounting/workspaces/${selectedWorkspaceId}/members`, getToken)
     setWorkspaceMembers(data.members || [])
   }, [getToken, selectedWorkspaceId])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!selectedWorkspaceId) {
+      window.localStorage.removeItem(ACCOUNTING_WORKSPACE_STORAGE_KEY)
+      return
+    }
+    window.localStorage.setItem(ACCOUNTING_WORKSPACE_STORAGE_KEY, selectedWorkspaceId)
+  }, [selectedWorkspaceId])
 
   useEffect(() => {
     let mounted = true
@@ -284,9 +300,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         if (['workingPapersDashboard', 'engagementList', 'newEngagement', 'landing'].includes(view)) {
           await Promise.all([loadEngagements(), loadStatusSummary()])
         }
-        if (['landing', 'settings', 'integrations'].includes(view)) {
-          await loadWorkspaces()
-        }
+        await loadWorkspaces()
         if (view === 'engagementDashboard') await loadEngagementDashboard()
         if (view === 'trialBalance') await loadTrialBalance()
         if (view === 'leadSheets') await loadLeadSheets()
@@ -324,10 +338,18 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     loadTrialBalance,
     loadWorkspaceMembers,
     loadWorkspaces,
+    selectedWorkspaceId,
     view
   ])
 
   const activeEngagements = useMemo(() => engagements.filter((e) => e.status !== 'archived'), [engagements])
+  const activeWorkspace = useMemo(
+    () => workspaces.find((workspace) => workspace.id === selectedWorkspaceId) || null,
+    [workspaces, selectedWorkspaceId]
+  )
+  const isFirmWorkspace = activeWorkspace?.workspace_type === 'firm'
+  const clientLabel = isFirmWorkspace ? 'Accounting client' : 'Business entity'
+  const clientLabelPlural = isFirmWorkspace ? 'Accounting clients' : 'Business entities'
 
   const onCreateClient = async () => {
     const name = newClientName.trim()
@@ -532,9 +554,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     try {
       await portalFetch('/v1/accounting/workspaces', getToken, {
         method: 'POST',
-        body: JSON.stringify({ name: newWorkspaceName.trim() })
+        body: JSON.stringify({ name: newWorkspaceName.trim(), workspaceType: newWorkspaceType })
       })
       setNewWorkspaceName('')
+      setNewWorkspaceType('business')
       await loadWorkspaces()
       setNotice('Workspace created')
     } catch (e) {
@@ -617,6 +640,29 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                   {notice}
                 </div>
               )}
+              {workspaces.length > 0 && (
+                <div className="bg-white p-4 rounded-lg border border-border shadow-sm">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="text-xs text-text-light">Active workspace</label>
+                    <select
+                      className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
+                      value={selectedWorkspaceId}
+                      onChange={(e) => setSelectedWorkspaceId(e.target.value)}
+                    >
+                      {workspaces.map((workspace) => (
+                        <option key={workspace.id} value={workspace.id}>
+                          {workspace.name} ({workspace.workspace_type || 'business'} / {workspace.role})
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-xs text-text-light">
+                      {isFirmWorkspace
+                        ? 'Firm workspace: manage many accounting clients and engagements in one place.'
+                        : 'Business workspace: manage accounting work for one company with your internal team.'}
+                    </span>
+                  </div>
+                </div>
+              )}
               <div className="bg-white p-6 rounded-lg border border-border shadow-sm">
               {loading ? (
                   <p className="text-sm text-text-light">Loading&hellip;</p>
@@ -694,7 +740,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             <thead>
                               <tr className="border-b border-border text-left text-text-light">
                                 <th className="py-2">Engagement</th>
-                                <th className="py-2">Client</th>
+                                <th className="py-2">{clientLabel}</th>
                                 <th className="py-2">Type</th>
                                 <th className="py-2">Status</th>
                                 <th className="py-2">Period End</th>
@@ -724,21 +770,21 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                       <form className="space-y-4" onSubmit={onCreateEngagement}>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-xs text-text-light mb-1">Client</label>
+                            <label className="block text-xs text-text-light mb-1">{clientLabel}</label>
                             <select
                               className="border border-border rounded-md px-3 py-2 text-sm w-full"
                               value={newEngagement.clientId}
                               onChange={(e) => setNewEngagement((prev) => ({ ...prev, clientId: e.target.value }))}
                               required
                             >
-                              <option value="">Select a client</option>
+                              <option value="">Select {clientLabel.toLowerCase()}</option>
                               {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
                             </select>
                           </div>
                           <div>
-                            <label className="block text-xs text-text-light mb-1">New client (optional quick add)</label>
+                            <label className="block text-xs text-text-light mb-1">New {clientLabel.toLowerCase()} (optional quick add)</label>
                             <div className="flex gap-2">
-                              <input className="border border-border rounded-md px-3 py-2 text-sm w-full" value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
+                              <input className="border border-border rounded-md px-3 py-2 text-sm w-full" placeholder={`New ${clientLabel.toLowerCase()} name`} value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
                               <button type="button" className="btn btn--primary text-sm py-2 px-4" disabled={saving} onClick={() => { void onCreateClient() }}>
                                 Add
                               </button>
@@ -1056,7 +1102,14 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                     {view === 'settings' && (
                       <div className="space-y-3">
                         <div className="rounded-lg border border-border p-4 space-y-3">
-                          <h3 className="font-semibold text-primary-dark">Workspace team access</h3>
+                          <h3 className="font-semibold text-primary-dark">
+                            {isFirmWorkspace ? 'Firm workspace team access' : 'Business workspace team access'}
+                          </h3>
+                          <p className="text-xs text-text-light">
+                            {isFirmWorkspace
+                              ? 'Use this mode when your firm has employees serving multiple accounting clients.'
+                              : 'Use this mode when one company has employees managing internal accounting work.'}
+                          </p>
                           <div className="flex flex-wrap gap-2">
                             <select
                               className="border border-border rounded-md px-3 py-2 text-sm"
@@ -1065,7 +1118,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             >
                               {workspaces.map((workspace) => (
                                 <option key={workspace.id} value={workspace.id}>
-                                  {workspace.name} ({workspace.role})
+                                  {workspace.name} ({workspace.workspace_type || 'business'} / {workspace.role})
                                 </option>
                               ))}
                             </select>
@@ -1075,6 +1128,14 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               value={newWorkspaceName}
                               onChange={(e) => setNewWorkspaceName(e.target.value)}
                             />
+                            <select
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              value={newWorkspaceType}
+                              onChange={(e) => setNewWorkspaceType((e.target.value as 'business' | 'firm'))}
+                            >
+                              <option value="business">Business workspace</option>
+                              <option value="firm">Firm workspace</option>
+                            </select>
                             <button type="button" className="btn btn--primary text-sm py-2 px-4" disabled={saving} onClick={() => { void onCreateWorkspace() }}>
                               Create workspace
                             </button>
@@ -1109,7 +1170,9 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         </div>
                         <div className="rounded-lg border border-border p-4">
                           <h3 className="font-semibold text-primary-dark mb-2">Task summary</h3>
-                          <p className="text-sm text-text-light mb-2">Tasks in engagement: {tasks.length}</p>
+                          <p className="text-sm text-text-light mb-2">
+                            {clientLabelPlural} in active workspace: {clients.length} | Tasks in engagement: {tasks.length}
+                          </p>
                           <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/review`} className="text-sm text-primary-dark underline">
                             Manage review notes and workflow
                           </Link>

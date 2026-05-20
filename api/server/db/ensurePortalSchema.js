@@ -630,10 +630,30 @@ const STATEMENTS = [
   owner_user_id TEXT NOT NULL,
   name TEXT NOT NULL,
   slug TEXT NOT NULL UNIQUE,
+  workspace_type VARCHAR(16) NOT NULL DEFAULT 'business',
   is_personal BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP NOT NULL DEFAULT now(),
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 )`,
+  `ALTER TABLE taxgpt.accounting_workspaces
+   ADD COLUMN IF NOT EXISTS workspace_type VARCHAR(16)`,
+  `UPDATE taxgpt.accounting_workspaces
+   SET workspace_type = 'business'
+   WHERE workspace_type IS NULL`,
+  `ALTER TABLE taxgpt.accounting_workspaces
+   ALTER COLUMN workspace_type SET DEFAULT 'business'`,
+  `ALTER TABLE taxgpt.accounting_workspaces
+   ALTER COLUMN workspace_type SET NOT NULL`,
+  `DO $$
+   BEGIN
+     IF NOT EXISTS (
+       SELECT 1 FROM pg_constraint WHERE conname = 'accounting_workspaces_workspace_type_chk'
+     ) THEN
+       ALTER TABLE taxgpt.accounting_workspaces
+         ADD CONSTRAINT accounting_workspaces_workspace_type_chk
+         CHECK (workspace_type IN ('business', 'firm'));
+     END IF;
+   END $$`,
 
   `CREATE TABLE IF NOT EXISTS taxgpt.accounting_workspace_members (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

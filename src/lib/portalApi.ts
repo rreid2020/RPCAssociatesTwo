@@ -14,6 +14,14 @@ function getApiPrefix (): string {
 const htmlInsteadOfJsonHint =
   'The app received a web page instead of API data. The portal API must be reachable at /api (same host) or set VITE_API_BASE_URL to your API origin at build time, with CORS enabled on the API.'
 
+export const ACCOUNTING_WORKSPACE_STORAGE_KEY = 'accounting:selectedWorkspaceId'
+
+function getSelectedAccountingWorkspaceId (): string | null {
+  if (typeof window === 'undefined') return null
+  const id = window.localStorage.getItem(ACCOUNTING_WORKSPACE_STORAGE_KEY)
+  return id && id.trim() ? id.trim() : null
+}
+
 function parseJsonBody<T> (text: string, allowEmpty: boolean): T {
   const t = text.trim()
   if (!t) {
@@ -44,6 +52,7 @@ export async function portalFetch<T> (
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
+      ...(getSelectedAccountingWorkspaceId() ? { 'x-accounting-workspace-id': getSelectedAccountingWorkspaceId() as string } : {}),
       ...init.headers
     }
   })

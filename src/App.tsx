@@ -117,6 +117,32 @@ const App: FC = () => {
             }
           />
           <Route
+            path="/portal/accounting/workspaces"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <AccountingWorkspacePage view="workspaceAdmin" />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
+            path="/portal/accounting/join"
+            element={
+              <>
+                <SignedOut>
+                  <Navigate to="/portal/sign-in" replace />
+                </SignedOut>
+                <SignedIn>
+                  <AccountingWorkspacePage view="joinWorkspaceInvite" />
+                </SignedIn>
+              </>
+            }
+          />
+          <Route
             path="/portal/accounting/working-papers"
             element={
               <>

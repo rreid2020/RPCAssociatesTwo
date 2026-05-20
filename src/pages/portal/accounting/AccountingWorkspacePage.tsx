@@ -1,5 +1,5 @@
 import { FC, FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
@@ -7,6 +7,7 @@ import { ACCOUNTING_WORKSPACE_STORAGE_KEY, portalFetch } from '../../../lib/port
 
 type AccountingView =
   | 'landing'
+  | 'workspaceAdmin'
   | 'workingPapersDashboard'
   | 'engagementList'
   | 'newEngagement'
@@ -18,13 +19,15 @@ type AccountingView =
   | 'review'
   | 'settings'
   | 'integrations'
+  | 'joinWorkspaceInvite'
 
 interface AccountingWorkspacePageProps {
   view: AccountingView
 }
 
 const titleByView: Record<AccountingView, string> = {
-  landing: 'Accounting Workspace',
+  landing: 'Accounting Operations',
+  workspaceAdmin: 'Workspace Administration',
   workingPapersDashboard: 'Working Papers',
   engagementList: 'Engagements',
   newEngagement: 'New Engagement',
@@ -35,11 +38,13 @@ const titleByView: Record<AccountingView, string> = {
   documents: 'Supporting Documents',
   review: 'Review',
   settings: 'Engagement Settings',
-  integrations: 'Accounting Integrations',
+  integrations: 'Integrations',
+  joinWorkspaceInvite: 'Join Workspace',
 }
 
 const descriptionByView: Record<AccountingView, string> = {
-  landing: 'Manage engagements, trial balances, lead sheets, and accounting integrations.',
+  landing: 'Manage workspace administration, engagements, working papers, and integrations from one place.',
+  workspaceAdmin: 'Configure organization workspaces, employee onboarding, and role assignments.',
   workingPapersDashboard: 'Track engagement progress, review items, and trial balance readiness.',
   engagementList: 'Search and manage accounting engagements.',
   newEngagement: 'Create a new accounting engagement.',
@@ -51,11 +56,13 @@ const descriptionByView: Record<AccountingView, string> = {
   review: 'Track and clear review notes.',
   settings: 'Configure engagement settings and assignments.',
   integrations: 'Configure accounting system integrations and connection states.',
+  joinWorkspaceInvite: 'Accept a workspace invitation and join your team workspace.',
 }
 
 const quickLinks = [
-  { to: '/portal/accounting/working-papers', label: 'Working Papers' },
+  { to: '/portal/accounting/workspaces', label: 'Workspace Admin' },
   { to: '/portal/accounting/working-papers/engagements', label: 'Engagements' },
+  { to: '/portal/accounting/working-papers', label: 'Working Papers' },
   { to: '/portal/accounting/working-papers/engagements/new', label: 'Create Engagement' },
   { to: '/portal/accounting/integrations', label: 'Integrations' },
 ]
@@ -136,6 +143,7 @@ function getStoredWorkspaceId (): string {
 const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => {
   const { getToken } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const { engagementId, leadSheetId } = useParams()
   const [clients, setClients] = useState<Client[]>([])
   const [engagements, setEngagements] = useState<Engagement[]>([])
@@ -169,12 +177,16 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [integrationsData, setIntegrationsData] = useState<any | null>(null)
   const [workspaces, setWorkspaces] = useState<any[]>([])
   const [workspaceMembers, setWorkspaceMembers] = useState<any[]>([])
+  const [workspaceInvites, setWorkspaceInvites] = useState<any[]>([])
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(getStoredWorkspaceId())
   const [newWorkspaceName, setNewWorkspaceName] = useState('')
   const [newWorkspaceType, setNewWorkspaceType] = useState<'business' | 'firm'>('business')
   const [showWorkspaceTools, setShowWorkspaceTools] = useState(false)
   const [newMemberClerkUserId, setNewMemberClerkUserId] = useState('')
   const [newMemberRole, setNewMemberRole] = useState('preparer')
+  const [newInviteEmail, setNewInviteEmail] = useState('')
+  const [newInviteRole, setNewInviteRole] = useState('preparer')
+  const [lastInviteLink, setLastInviteLink] = useState('')
   const [trialBalanceAccounts, setTrialBalanceAccounts] = useState<any[]>([])
   const [trialBalancePreview, setTrialBalancePreview] = useState<TrialBalancePreview | null>(null)
   const [importFile, setImportFile] = useState<File | null>(null)
@@ -281,6 +293,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setWorkspaceMembers(data.members || [])
   }, [getToken, selectedWorkspaceId])
 
+  const loadWorkspaceInvites = useCallback(async () => {
+    if (!selectedWorkspaceId) return
+    const data = await portalFetch<{ invites: any[] }>(`/v1/accounting/workspaces/${selectedWorkspaceId}/invites`, getToken)
+    setWorkspaceInvites(data.invites || [])
+  }, [getToken, selectedWorkspaceId])
+
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (!selectedWorkspaceId) {
@@ -297,6 +315,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       setNotice(null)
       setLoading(true)
       try {
+        if (view === 'joinWorkspaceInvite') {
+          await loadWorkspaces()
+          return
+        }
         await loadClients()
         if (['workingPapersDashboard', 'engagementList', 'newEngagement', 'landing'].includes(view)) {
           await Promise.all([loadEngagements(), loadStatusSummary()])
@@ -337,6 +359,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     loadStatusSummary,
     loadTasks,
     loadTrialBalance,
+    loadWorkspaceInvites,
     loadWorkspaceMembers,
     loadWorkspaces,
     selectedWorkspaceId,
@@ -356,7 +379,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   useEffect(() => {
     if (!showWorkspaceTools || !selectedWorkspaceId) return
     void loadWorkspaceMembers()
-  }, [loadWorkspaceMembers, selectedWorkspaceId, showWorkspaceTools])
+    void loadWorkspaceInvites()
+  }, [loadWorkspaceInvites, loadWorkspaceMembers, selectedWorkspaceId, showWorkspaceTools])
 
   const onCreateClient = async () => {
     const name = newClientName.trim()
@@ -596,6 +620,60 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     }
   }
 
+  const onCreateWorkspaceInvite = async () => {
+    if (!selectedWorkspaceId) return
+    setSaving(true)
+    setError(null)
+    try {
+      const { invite } = await portalFetch<{ invite: any }>(
+        `/v1/accounting/workspaces/${selectedWorkspaceId}/invites`,
+        getToken,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            email: newInviteEmail.trim() || null,
+            role: newInviteRole
+          })
+        }
+      )
+      const inviteLink = `${window.location.origin}/portal/accounting/join?token=${encodeURIComponent(invite.invite_token)}`
+      setLastInviteLink(inviteLink)
+      setNewInviteEmail('')
+      await loadWorkspaceInvites()
+      setNotice('Invite link generated. Share it with your employee.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not create workspace invite')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onAcceptInviteFromUrl = useCallback(async () => {
+    if (view !== 'joinWorkspaceInvite') return
+    const token = new URLSearchParams(location.search).get('token') || ''
+    if (!token) {
+      setError('Invite token missing from URL')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const accepted = await portalFetch<{ workspace: any }>(
+        `/v1/accounting/invites/${encodeURIComponent(token)}/accept`,
+        getToken,
+        { method: 'POST' }
+      )
+      setSelectedWorkspaceId(accepted.workspace.id)
+      setNotice(`Invite accepted. You joined ${accepted.workspace.name}.`)
+      navigate('/portal/accounting', { replace: true })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not accept invite')
+    } finally {
+      setSaving(false)
+    }
+  }, [getToken, location.search, navigate, view])
+
   const onConnectIntegration = async (providerId: string) => {
     if (providerId !== 'quickbooks_online' && providerId !== 'google_sheets') {
       setNotice('This integration source does not require OAuth connection.')
@@ -616,6 +694,11 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     }
   }
 
+  useEffect(() => {
+    if (view !== 'joinWorkspaceInvite') return
+    void onAcceptInviteFromUrl()
+  }, [onAcceptInviteFromUrl, view])
+
   return (
     <>
       <SEO
@@ -624,6 +707,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         canonical={
           view === 'landing'
             ? '/portal/accounting'
+            : view === 'workspaceAdmin'
+              ? '/portal/accounting/workspaces'
+              : view === 'joinWorkspaceInvite'
+                ? '/portal/accounting/join'
             : view === 'integrations'
               ? '/portal/accounting/integrations'
               : '/portal/accounting/working-papers'
@@ -647,7 +734,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                   {notice}
                 </div>
               )}
-              {workspaces.length > 0 && (
+              {workspaces.length > 0 && (view === 'landing' || view === 'workspaceAdmin') && (
                 <div className="bg-white p-4 rounded-lg border border-border shadow-sm">
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-3">
@@ -668,7 +755,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         className="btn btn--primary text-sm py-2 px-3"
                         onClick={() => setShowWorkspaceTools((prev) => !prev)}
                       >
-                        {showWorkspaceTools ? 'Hide workspace tools' : 'Manage workspaces'}
+                        {showWorkspaceTools ? 'Hide Workspace Admin Tools' : 'Open Workspace Admin Tools'}
                       </button>
                       <span className="text-xs text-text-light">
                         {isFirmWorkspace
@@ -679,7 +766,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                     {showWorkspaceTools && (
                       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                         <div className="rounded-lg border border-border p-3 space-y-3">
-                          <h4 className="text-sm font-semibold text-primary-dark">Create workspace</h4>
+                          <h4 className="text-sm font-semibold text-primary-dark">Create Workspace</h4>
                           <div className="flex flex-wrap items-center gap-2">
                             <input
                               className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
@@ -701,7 +788,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               disabled={saving || !newWorkspaceName.trim()}
                               onClick={() => { void onCreateWorkspace() }}
                             >
-                              Create workspace
+                              Create Workspace
                             </button>
                           </div>
                         </div>
@@ -709,9 +796,79 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           <h4 className="text-sm font-semibold text-primary-dark">Employee onboarding</h4>
                           <ol className="text-xs text-text-light space-y-1 list-decimal pl-4">
                             <li>Select the workspace where the employee should work.</li>
-                            <li>Ask the employee to sign in once and share their Clerk User ID (starts with <span className="font-mono">user_</span>).</li>
-                            <li>Choose the role and add them to the workspace.</li>
+                            <li>Create an invite link (optionally restricted to employee email) and share it.</li>
+                            <li>Employee signs in with Clerk and opens the invite link to auto-join the workspace.</li>
                           </ol>
+                          <div className="rounded-md border border-border p-2 space-y-2">
+                            <p className="text-xs text-text-light">Step 1: Invite employee with secure join link</p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <input
+                                className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
+                                placeholder="Employee email (optional but recommended)"
+                                value={newInviteEmail}
+                                onChange={(e) => setNewInviteEmail(e.target.value)}
+                              />
+                              <select
+                                className="border border-border rounded-md px-3 py-2 text-sm"
+                                value={newInviteRole}
+                                onChange={(e) => setNewInviteRole(e.target.value)}
+                              >
+                                {['admin', 'manager', 'reviewer', 'preparer', 'read_only', 'client'].map((role) => (
+                                  <option key={role} value={role}>{role}</option>
+                                ))}
+                              </select>
+                              <button
+                                type="button"
+                                className="btn btn--primary text-sm py-2 px-4"
+                                disabled={saving || !selectedWorkspaceId || !canManageWorkspaceMembers}
+                                onClick={() => { void onCreateWorkspaceInvite() }}
+                              >
+                                Create Invite Link
+                              </button>
+                            </div>
+                            {lastInviteLink && (
+                              <div className="flex flex-wrap items-center gap-2">
+                                <input className="border border-border rounded-md px-3 py-2 text-xs min-w-64 flex-1" readOnly value={lastInviteLink} />
+                                <button
+                                  type="button"
+                                  className="btn btn--secondary text-sm py-2 px-3"
+                                  onClick={() => {
+                                    void navigator.clipboard.writeText(lastInviteLink)
+                                    setNotice('Invite link copied to clipboard')
+                                  }}
+                                >
+                                  Copy Link
+                                </button>
+                              </div>
+                            )}
+                            {workspaceInvites.length > 0 && (
+                              <div className="max-h-32 overflow-auto rounded-md border border-border">
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr className="border-b border-border text-left text-text-light">
+                                      <th className="py-2 px-2">Email</th>
+                                      <th className="py-2 px-2">Role</th>
+                                      <th className="py-2 px-2">Status</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {workspaceInvites.map((invite) => (
+                                      <tr key={invite.id} className="border-b border-border/70">
+                                        <td className="py-2 px-2">{invite.invite_email || 'Any signed-in user with link'}</td>
+                                        <td className="py-2 px-2">{invite.role}</td>
+                                        <td className="py-2 px-2">{invite.status}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                            {workspaceInvites.length === 0 && (
+                              <p className="text-xs text-text-light">No pending workspace invites yet.</p>
+                            )}
+                          </div>
+                          <div className="rounded-md border border-border p-2 space-y-2">
+                            <p className="text-xs text-text-light">Step 2: Manual fallback (Clerk User ID)</p>
                           <div className="flex flex-wrap items-center gap-2">
                             <input
                               className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
@@ -734,16 +891,17 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               disabled={saving || !selectedWorkspaceId || !newMemberClerkUserId.trim() || !canManageWorkspaceMembers}
                               onClick={() => { void onAddWorkspaceMember() }}
                             >
-                              Add employee
+                              Add Employee
                             </button>
                             <button
                               type="button"
                               className="btn btn--secondary text-sm py-2 px-4"
                               disabled={!selectedWorkspaceId || saving}
-                              onClick={() => { void loadWorkspaceMembers() }}
+                              onClick={() => { void Promise.all([loadWorkspaceMembers(), loadWorkspaceInvites()]) }}
                             >
-                              Refresh members
+                              Refresh Workspace Team
                             </button>
+                          </div>
                           </div>
                           {!canManageWorkspaceMembers && (
                             <p className="text-xs text-text-light">
@@ -762,7 +920,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               <tbody>
                                 {workspaceMembers.length === 0 ? (
                                   <tr>
-                                    <td className="py-2 px-2 text-text-light" colSpan={3}>No members yet.</td>
+                                    <td className="py-2 px-2 text-text-light" colSpan={3}>No team members in this workspace yet.</td>
                                   </tr>
                                 ) : workspaceMembers.map((member) => (
                                   <tr key={member.clerk_user_id} className="border-b border-border/70">
@@ -785,8 +943,32 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                   <p className="text-sm text-text-light">Loading&hellip;</p>
                 ) : (
                   <div className="space-y-4">
+                    {view === 'joinWorkspaceInvite' && (
+                      <div className="rounded-lg border border-border p-4">
+                        <h3 className="font-semibold text-primary-dark mb-2">Workspace invitation</h3>
+                        <p className="text-sm text-text-light">
+                          {saving
+                            ? 'Accepting invitation...'
+                            : 'If this invite is valid, you will be redirected to Workspace Admin.'}
+                        </p>
+                      </div>
+                    )}
                     {view === 'landing' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="rounded-lg border border-border p-4">
+                          <h3 className="font-semibold text-primary-dark mb-1">Workspace Admin</h3>
+                          <p className="text-sm text-text-light mb-3">Set workspace type, onboard employees, and manage access roles.</p>
+                          <Link className="btn btn--primary text-sm py-2 px-4 inline-block" to="/portal/accounting/workspaces">
+                            Open Workspace Admin
+                          </Link>
+                        </div>
+                        <div className="rounded-lg border border-border p-4">
+                          <h3 className="font-semibold text-primary-dark mb-1">Engagements</h3>
+                          <p className="text-sm text-text-light mb-3">Plan and monitor client work before opening detailed working papers.</p>
+                          <Link className="btn btn--primary text-sm py-2 px-4 inline-block" to="/portal/accounting/working-papers/engagements">
+                            Open Engagements
+                          </Link>
+                        </div>
                         <div className="rounded-lg border border-border p-4">
                           <h3 className="font-semibold text-primary-dark mb-1">Working Papers</h3>
                           <p className="text-sm text-text-light mb-3">Engagements, trial balances, lead sheets, review notes, signoffs.</p>
@@ -798,6 +980,42 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           <h3 className="font-semibold text-primary-dark mb-1">Integrations</h3>
                           <p className="text-sm text-text-light mb-3">QuickBooks and Google Sheets setup readiness with feature flags.</p>
                           <Link className="btn btn--primary text-sm py-2 px-4 inline-block" to="/portal/accounting/integrations">
+                            Open Integrations
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+
+                    {view === 'workspaceAdmin' && (
+                      <div className="space-y-4">
+                        <div className="rounded-lg border border-border p-4">
+                          <h3 className="font-semibold text-primary-dark mb-2">Hierarchy</h3>
+                          <p className="text-sm text-text-light">
+                            Organization (business or firm) → workspace(s) → employee assignments → engagements → working papers.
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div className="rounded-lg border border-border p-4">
+                            <p className="text-xs text-text-light">Workspaces</p>
+                            <p className="text-2xl font-bold text-primary-dark">{workspaces.length}</p>
+                          </div>
+                          <div className="rounded-lg border border-border p-4">
+                            <p className="text-xs text-text-light">Members in active workspace</p>
+                            <p className="text-2xl font-bold text-primary-dark">{workspaceMembers.length}</p>
+                          </div>
+                          <div className="rounded-lg border border-border p-4">
+                            <p className="text-xs text-text-light">Invites in active workspace</p>
+                            <p className="text-2xl font-bold text-primary-dark">{workspaceInvites.length}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Link to="/portal/accounting/working-papers/engagements" className="btn btn--primary text-sm py-2 px-4">
+                            Open Engagements
+                          </Link>
+                          <Link to="/portal/accounting/working-papers" className="btn btn--primary text-sm py-2 px-4">
+                            Open Working Papers
+                          </Link>
+                          <Link to="/portal/accounting/integrations" className="btn btn--primary text-sm py-2 px-4">
                             Open Integrations
                           </Link>
                         </div>
@@ -821,8 +1039,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Link to="/portal/accounting/working-papers/engagements/new" className="btn btn--primary text-sm py-2 px-4">New engagement</Link>
-                          <Link to="/portal/accounting/working-papers/engagements" className="btn btn--primary text-sm py-2 px-4">View engagements</Link>
+                          <Link to="/portal/accounting/working-papers/engagements/new" className="btn btn--primary text-sm py-2 px-4">Create Engagement</Link>
+                          <Link to="/portal/accounting/working-papers/engagements" className="btn btn--primary text-sm py-2 px-4">Open Engagements</Link>
                         </div>
                       </div>
                     )}
@@ -832,7 +1050,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         <div className="flex flex-wrap gap-2">
                           <input
                             className="border border-border rounded-md px-3 py-2 text-sm"
-                            placeholder="Search engagement or client"
+                            placeholder={`Search engagement or ${clientLabel.toLowerCase()}`}
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                           />
@@ -841,7 +1059,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
                           </select>
                           <select className="border border-border rounded-md px-3 py-2 text-sm" value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}>
-                            <option value="">All clients</option>
+                            <option value="">{`All ${clientLabelPlural.toLowerCase()}`}</option>
                             {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
                           </select>
                           <select className="border border-border rounded-md px-3 py-2 text-sm" value={engagementTypeFilter} onChange={(e) => setEngagementTypeFilter(e.target.value)}>
@@ -849,7 +1067,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             {engagementTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
                           </select>
                           <button type="button" className="btn btn--primary text-sm py-2 px-4" onClick={() => { void loadEngagements() }}>
-                            Apply
+                            Apply Filters
                           </button>
                         </div>
                         <div className="overflow-x-auto">
@@ -864,19 +1082,23 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               </tr>
                             </thead>
                             <tbody>
-                              {engagements.map((engagement) => (
-                                <tr key={engagement.id} className="border-b border-border/70">
-                                  <td className="py-2">
-                                    <Link className="text-primary-dark hover:underline" to={`/portal/accounting/working-papers/engagements/${engagement.id}`}>
-                                      {engagement.name}
-                                    </Link>
-                                  </td>
-                                  <td className="py-2">{engagement.client_name}</td>
-                                  <td className="py-2">{engagement.engagement_type}</td>
-                                  <td className="py-2">{engagement.status}</td>
-                                  <td className="py-2">{new Date(engagement.period_end).toLocaleDateString()}</td>
+                              {engagements.length === 0 ? (
+                                <tr>
+                                  <td className="py-3 text-text-light" colSpan={5}>No engagements match the current filters.</td>
                                 </tr>
-                              ))}
+                              ) : engagements.map((engagement) => (
+                                  <tr key={engagement.id} className="border-b border-border/70">
+                                    <td className="py-2">
+                                      <Link className="text-primary-dark hover:underline" to={`/portal/accounting/working-papers/engagements/${engagement.id}`}>
+                                        {engagement.name}
+                                      </Link>
+                                    </td>
+                                    <td className="py-2">{engagement.client_name}</td>
+                                    <td className="py-2">{engagement.engagement_type}</td>
+                                    <td className="py-2">{engagement.status}</td>
+                                    <td className="py-2">{new Date(engagement.period_end).toLocaleDateString()}</td>
+                                  </tr>
+                                ))}
                             </tbody>
                           </table>
                         </div>
@@ -991,8 +1213,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/trial-balance`} className="btn btn--primary text-sm py-2 px-4">Trial balance</Link>
-                          <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/lead-sheets`} className="btn btn--primary text-sm py-2 px-4">Lead sheets</Link>
+                          <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/trial-balance`} className="btn btn--primary text-sm py-2 px-4">Trial Balance</Link>
+                          <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/lead-sheets`} className="btn btn--primary text-sm py-2 px-4">Lead Sheets</Link>
                           <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/documents`} className="btn btn--primary text-sm py-2 px-4">Documents</Link>
                           <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/review`} className="btn btn--primary text-sm py-2 px-4">Review</Link>
                           <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/settings`} className="btn btn--primary text-sm py-2 px-4">Settings</Link>
@@ -1011,13 +1233,13 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           />
                           <div className="flex gap-2">
                             <button type="button" className="btn btn--primary text-sm py-2 px-4" disabled={!importFile || saving} onClick={() => { void onPreviewImport() }}>
-                              Preview import
+                              Preview Import
                             </button>
                             <button type="button" className="btn btn--primary text-sm py-2 px-4" disabled={!trialBalancePreview || saving} onClick={() => { void onImportTrialBalance() }}>
-                              Import trial balance
+                              Import Trial Balance
                             </button>
                             <button type="button" className="btn btn--primary text-sm py-2 px-4" disabled={saving} onClick={() => { void onGenerateLeadSheets() }}>
-                              Generate lead sheets
+                              Generate Lead Sheets
                             </button>
                           </div>
                         </div>
@@ -1043,16 +1265,20 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               </tr>
                             </thead>
                             <tbody>
-                              {trialBalanceAccounts.map((account) => (
-                                <tr key={account.id} className="border-b border-border/70">
-                                  <td className="py-2">{account.account_number || '—'} {account.account_name}</td>
-                                  <td className="py-2">{account.current_period_balance}</td>
-                                  <td className="py-2">{account.prior_period_balance ?? '—'}</td>
-                                  <td className="py-2">{account.variance_amount ?? '—'}</td>
-                                  <td className="py-2">{account.variance_percent != null ? `${(Number(account.variance_percent) * 100).toFixed(1)}%` : account.variance_label || '—'}</td>
-                                  <td className="py-2">{account.is_material ? 'Material' : account.is_unusual ? 'Unusual' : '—'}</td>
+                              {trialBalanceAccounts.length === 0 ? (
+                                <tr>
+                                  <td className="py-3 text-text-light" colSpan={6}>No trial balance accounts imported yet.</td>
                                 </tr>
-                              ))}
+                              ) : trialBalanceAccounts.map((account) => (
+                                  <tr key={account.id} className="border-b border-border/70">
+                                    <td className="py-2">{account.account_number || '—'} {account.account_name}</td>
+                                    <td className="py-2">{account.current_period_balance}</td>
+                                    <td className="py-2">{account.prior_period_balance ?? '—'}</td>
+                                    <td className="py-2">{account.variance_amount ?? '—'}</td>
+                                    <td className="py-2">{account.variance_percent != null ? `${(Number(account.variance_percent) * 100).toFixed(1)}%` : account.variance_label || '—'}</td>
+                                    <td className="py-2">{account.is_material ? 'Material' : account.is_unusual ? 'Unusual' : '—'}</td>
+                                  </tr>
+                                ))}
                             </tbody>
                           </table>
                         </div>
@@ -1063,7 +1289,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                       <div className="space-y-3">
                         <div className="flex justify-end">
                           <button type="button" className="btn btn--primary text-sm py-2 px-4" disabled={saving} onClick={() => { void onGenerateLeadSheets() }}>
-                            Generate / refresh lead sheets
+                            Generate or Refresh Lead Sheets
                           </button>
                         </div>
                         <div className="overflow-x-auto">
@@ -1078,19 +1304,23 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               </tr>
                             </thead>
                             <tbody>
-                              {leadSheets.map((sheet) => (
-                                <tr key={sheet.id} className="border-b border-border/70">
-                                  <td className="py-2">
-                                    <Link className="text-primary-dark hover:underline" to={`/portal/accounting/working-papers/engagements/${engagementId}/lead-sheets/${sheet.id}`}>
-                                      {sheet.section_code} - {sheet.section_name}
-                                    </Link>
-                                  </td>
-                                  <td className="py-2">{sheet.status}</td>
-                                  <td className="py-2">{sheet.risk_level}</td>
-                                  <td className="py-2">{sheet.open_note_count}</td>
-                                  <td className="py-2">{sheet.document_count}</td>
+                              {leadSheets.length === 0 ? (
+                                <tr>
+                                  <td className="py-3 text-text-light" colSpan={5}>No lead sheets generated yet.</td>
                                 </tr>
-                              ))}
+                              ) : leadSheets.map((sheet) => (
+                                  <tr key={sheet.id} className="border-b border-border/70">
+                                    <td className="py-2">
+                                      <Link className="text-primary-dark hover:underline" to={`/portal/accounting/working-papers/engagements/${engagementId}/lead-sheets/${sheet.id}`}>
+                                        {sheet.section_code} - {sheet.section_name}
+                                      </Link>
+                                    </td>
+                                    <td className="py-2">{sheet.status}</td>
+                                    <td className="py-2">{sheet.risk_level}</td>
+                                    <td className="py-2">{sheet.open_note_count}</td>
+                                    <td className="py-2">{sheet.document_count}</td>
+                                  </tr>
+                                ))}
                             </tbody>
                           </table>
                         </div>
@@ -1127,10 +1357,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           />
                           <div className="flex flex-wrap gap-2 mt-3">
                             <button type="button" className="btn btn--primary text-sm py-2 px-4" disabled={saving} onClick={() => { void onPreparerSignoff() }}>
-                              Preparer signoff
+                              Preparer Signoff
                             </button>
                             <button type="button" className="btn btn--primary text-sm py-2 px-4" disabled={saving} onClick={() => { void onReviewerSignoff() }}>
-                              Reviewer signoff
+                              Reviewer Signoff
                             </button>
                           </div>
                         </div>
@@ -1140,7 +1370,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                     {view === 'documents' && (
                       <div className="space-y-4">
                         <div className="rounded-lg border border-border p-4">
-                          <h3 className="font-semibold text-primary-dark mb-2">Link existing repository documents</h3>
+                          <h3 className="font-semibold text-primary-dark mb-2">Link repository documents to this engagement</h3>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                             {repositoryFiles.slice(0, 20).map((file) => (
                               <button
@@ -1164,13 +1394,17 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               </tr>
                             </thead>
                             <tbody>
-                              {documents.map((document) => (
-                                <tr key={document.id} className="border-b border-border/70">
-                                  <td className="py-2">{document.file_name}</td>
-                                  <td className="py-2">{document.source}</td>
-                                  <td className="py-2">{new Date(document.uploaded_at).toLocaleString()}</td>
+                              {documents.length === 0 ? (
+                                <tr>
+                                  <td className="py-3 text-text-light" colSpan={3}>No supporting documents linked to this engagement yet.</td>
                                 </tr>
-                              ))}
+                              ) : documents.map((document) => (
+                                  <tr key={document.id} className="border-b border-border/70">
+                                    <td className="py-2">{document.file_name}</td>
+                                    <td className="py-2">{document.source}</td>
+                                    <td className="py-2">{new Date(document.uploaded_at).toLocaleString()}</td>
+                                  </tr>
+                                ))}
                             </tbody>
                           </table>
                         </div>
@@ -1190,26 +1424,30 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               </tr>
                             </thead>
                             <tbody>
-                              {reviewNotes.map((note) => (
-                                <tr key={note.id} className="border-b border-border/70">
-                                  <td className="py-2">{note.priority}</td>
-                                  <td className="py-2">{note.status}</td>
-                                  <td className="py-2">{note.note_text}</td>
-                                  <td className="py-2">
-                                    <div className="flex gap-2">
-                                      <button type="button" className="text-xs text-primary-dark underline" onClick={() => { void onUpdateReviewNoteStatus(note.id, 'addressed') }}>
-                                        Address
-                                      </button>
-                                      <button type="button" className="text-xs text-primary-dark underline" onClick={() => { void onUpdateReviewNoteStatus(note.id, 'cleared') }}>
-                                        Clear
-                                      </button>
-                                      <button type="button" className="text-xs text-primary-dark underline" onClick={() => { void onUpdateReviewNoteStatus(note.id, 'reopened') }}>
-                                        Reopen
-                                      </button>
-                                    </div>
-                                  </td>
+                              {reviewNotes.length === 0 ? (
+                                <tr>
+                                  <td className="py-3 text-text-light" colSpan={4}>No review notes for this engagement.</td>
                                 </tr>
-                              ))}
+                              ) : reviewNotes.map((note) => (
+                                  <tr key={note.id} className="border-b border-border/70">
+                                    <td className="py-2">{note.priority}</td>
+                                    <td className="py-2">{note.status}</td>
+                                    <td className="py-2">{note.note_text}</td>
+                                    <td className="py-2">
+                                      <div className="flex gap-2">
+                                        <button type="button" className="text-xs text-primary-dark underline" onClick={() => { void onUpdateReviewNoteStatus(note.id, 'addressed') }}>
+                                          Address
+                                        </button>
+                                        <button type="button" className="text-xs text-primary-dark underline" onClick={() => { void onUpdateReviewNoteStatus(note.id, 'cleared') }}>
+                                          Clear
+                                        </button>
+                                        <button type="button" className="text-xs text-primary-dark underline" onClick={() => { void onUpdateReviewNoteStatus(note.id, 'reopened') }}>
+                                          Reopen
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
                             </tbody>
                           </table>
                         </div>
@@ -1220,7 +1458,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                       <div className="space-y-3">
                         <div className="rounded-lg border border-border p-4 space-y-3">
                           <h3 className="font-semibold text-primary-dark">
-                            {isFirmWorkspace ? 'Firm workspace team access' : 'Business workspace team access'}
+                            Team access (managed in Workspace Admin)
                           </h3>
                           <p className="text-xs text-text-light">
                             {isFirmWorkspace
@@ -1228,7 +1466,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               : 'Use this mode when one company has employees managing internal accounting work.'}
                           </p>
                           <p className="text-sm text-text-light">
-                            Use <span className="font-medium">Manage workspaces</span> in the top workspace panel for employee onboarding and member management.
+                            Use <Link className="font-medium underline" to="/portal/accounting/workspaces">Workspace Administration</Link> for employee onboarding and member management.
                           </p>
                         </div>
                         <div className="rounded-lg border border-border p-4">
@@ -1244,7 +1482,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           <h3 className="font-semibold text-red-700 mb-2">Danger zone</h3>
                           <p className="text-sm text-red-700 mb-3">Archive this engagement after completion.</p>
                           <button type="button" className="btn btn--primary text-sm py-2 px-4" disabled={saving} onClick={() => { void onArchiveEngagement() }}>
-                            Archive engagement
+                            Archive Engagement
                           </button>
                         </div>
                       </div>
@@ -1266,17 +1504,19 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                 onClick={() => { void onConnectIntegration(provider.id) }}
                               >
                                 {provider.id === 'excel_csv'
-                                  ? 'Use file import'
+                                  ? 'Use File Import'
                                   : provider.configured && provider.enabled
                                     ? 'Connect'
-                                    : 'Coming soon'}
+                                    : 'Coming Soon'}
                               </button>
                             </div>
                           ))}
                         </div>
-                        {integrationsData.connections.length > 0 && (
-                          <div className="rounded-lg border border-border p-4">
-                            <h3 className="font-semibold text-primary-dark mb-2">Connection records</h3>
+                        <div className="rounded-lg border border-border p-4">
+                          <h3 className="font-semibold text-primary-dark mb-2">Connection records</h3>
+                          {integrationsData.connections.length === 0 ? (
+                            <p className="text-sm text-text-light">No integration connections recorded yet for this workspace.</p>
+                          ) : (
                             <ul className="space-y-1 text-sm text-text">
                               {integrationsData.connections.map((connection: any) => (
                                 <li key={connection.id}>
@@ -1284,8 +1524,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                 </li>
                               ))}
                             </ul>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>

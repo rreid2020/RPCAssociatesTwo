@@ -482,3 +482,17 @@ export const accountingWorkspaceMembers = taxgptSchema.table('accounting_workspa
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
+export const accountingWorkspaceInvites = taxgptSchema.table('accounting_workspace_invites', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  workspaceId: uuid('workspace_id').notNull().references(() => accountingWorkspaces.id, { onDelete: 'cascade' }),
+  inviteEmail: text('invite_email'),
+  inviteToken: text('invite_token').notNull(),
+  role: varchar('role', { length: 24 }).notNull().default('preparer'),
+  status: varchar('status', { length: 24 }).notNull().default('pending'),
+  invitedBy: text('invited_by').notNull(),
+  acceptedBy: text('accepted_by'),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+

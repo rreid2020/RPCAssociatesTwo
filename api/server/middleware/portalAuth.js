@@ -1,7 +1,7 @@
 import { verifyToken } from '@clerk/backend'
 
 /**
- * @returns {Promise<{ userId: string } | null>} null if response already sent
+ * @returns {Promise<{ userId: string, email: string | null } | null>} null if response already sent
  */
 export async function getClerkUser (req, res) {
   const auth = req.headers.authorization
@@ -13,7 +13,7 @@ export async function getClerkUser (req, res) {
   const secret = process.env.CLERK_SECRET_KEY
   if (!secret) {
     if (process.env.NODE_ENV === 'development') {
-      return { userId: 'dev_clerk_user' }
+      return { userId: 'dev_clerk_user', email: 'dev@example.com' }
     }
     res.status(503).json({ error: 'Clerk not configured on server' })
     return null
@@ -25,7 +25,10 @@ export async function getClerkUser (req, res) {
       res.status(401).json({ error: 'Invalid token' })
       return null
     }
-    return { userId }
+    const email = typeof payload.email === 'string'
+      ? payload.email
+      : (typeof payload.email_address === 'string' ? payload.email_address : null)
+    return { userId, email }
   } catch (e) {
     console.error('verifyToken', e)
     res.status(401).json({ error: 'Invalid or expired token' })

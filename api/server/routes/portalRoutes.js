@@ -44,8 +44,11 @@ import { GoogleSheetsProvider, QuickBooksOnlineProvider, createAccountingProvide
 import { AIReviewService } from '../services/aiReviewService.js'
 import {
   addWorkspaceMember,
+  acceptWorkspaceInvite,
+  createWorkspaceInvite,
   createWorkspace,
   getWorkspaceContext,
+  listWorkspaceInvites,
   listWorkspaceMembers,
   listWorkspacesForUser,
   updateWorkspaceMember
@@ -841,6 +844,39 @@ export function createPortalRouter (pool) {
       res.json({ member })
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update workspace member' })
+    }
+  })
+
+  r.get('/v1/accounting/workspaces/:workspaceId/invites', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const data = await listWorkspaceInvites(pool, session.userId, req.params.workspaceId)
+      res.json(data)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load workspace invites' })
+    }
+  })
+
+  r.post('/v1/accounting/workspaces/:workspaceId/invites', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const invite = await createWorkspaceInvite(pool, session.userId, req.params.workspaceId, req.body || {})
+      res.json({ invite })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create workspace invite' })
+    }
+  })
+
+  r.post('/v1/accounting/invites/:inviteToken/accept', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const accepted = await acceptWorkspaceInvite(pool, session.userId, session.email, req.params.inviteToken)
+      res.json(accepted)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not accept invite' })
     }
   })
 

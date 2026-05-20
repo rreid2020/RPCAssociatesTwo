@@ -131,6 +131,24 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
 
   const accountingWorkspaceNavigation: NavItem[] = [
     {
+      to: '/portal/accounting/workspaces',
+      label: 'Workspace Admin',
+      icon: (
+        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5V4H2v16h5m10 0v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5m10 0H7" />
+        </svg>
+      ),
+    },
+    {
+      to: '/portal/accounting/working-papers/engagements',
+      label: 'Engagements',
+      icon: (
+        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10m-12 9h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2z" />
+        </svg>
+      ),
+    },
+    {
       to: '/portal/accounting/working-papers',
       label: 'Working Papers',
       icon: (
@@ -272,7 +290,7 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
                   </svg>
                 </span>
-                <span>Accounting Workspace</span>
+                <span>Accounting Operations</span>
               </div>
               <div className="space-y-1">
                 {accountingWorkspaceNavigation.map((item) => renderNavItem(item, { nestedLevel: 1 }))}

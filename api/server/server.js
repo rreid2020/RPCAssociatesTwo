@@ -3,6 +3,7 @@ import cors from 'cors'
 import helmet from 'helmet'
 import dotenv from 'dotenv'
 import path from 'path'
+import crypto from 'crypto'
 import { existsSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { createPool, getDatabaseConnectionSummary } from './db/pool.js'
@@ -12,6 +13,7 @@ import { ensurePortalSchema } from './db/ensurePortalSchema.js'
 import { logPortalObjectStorageConfig } from './services/portalS3.js'
 import { createPortalRouter } from './routes/portalRoutes.js'
 import { createTaxIntelligenceRouter } from './routes/taxIntelligenceRoutes.js'
+import { logServerEnvSummary } from './config/env.js'
 import { getNotificationInbox } from './config/mail.js'
 import { escapeHtml, singleLine } from './utils/html.js'
 
@@ -23,9 +25,17 @@ const portalEnvPath = path.resolve(__dirname, '../../client-portal/.env')
 dotenv.config({ path: apiEnvPath })
 // Fallback load so migrations + runtime can share DATABASE_URL when not set in api/server/.env.
 dotenv.config({ path: portalEnvPath, override: false })
+logServerEnvSummary()
 
 const app = express()
 const PORT = process.env.PORT || 3000
+
+app.use((req, res, next) => {
+  const requestId = String(req.headers['x-request-id'] || crypto.randomUUID())
+  req.requestId = requestId
+  res.setHeader('x-request-id', requestId)
+  next()
+})
 
 // Middleware
 app.use(helmet({

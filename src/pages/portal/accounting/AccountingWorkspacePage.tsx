@@ -172,6 +172,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(getStoredWorkspaceId())
   const [newWorkspaceName, setNewWorkspaceName] = useState('')
   const [newWorkspaceType, setNewWorkspaceType] = useState<'business' | 'firm'>('business')
+  const [showWorkspaceTools, setShowWorkspaceTools] = useState(false)
   const [newMemberClerkUserId, setNewMemberClerkUserId] = useState('')
   const [newMemberRole, setNewMemberRole] = useState('preparer')
   const [trialBalanceAccounts, setTrialBalanceAccounts] = useState<any[]>([])
@@ -348,8 +349,14 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     [workspaces, selectedWorkspaceId]
   )
   const isFirmWorkspace = activeWorkspace?.workspace_type === 'firm'
+  const canManageWorkspaceMembers = activeWorkspace?.role === 'owner' || activeWorkspace?.role === 'admin'
   const clientLabel = isFirmWorkspace ? 'Accounting client' : 'Business entity'
   const clientLabelPlural = isFirmWorkspace ? 'Accounting clients' : 'Business entities'
+
+  useEffect(() => {
+    if (!showWorkspaceTools || !selectedWorkspaceId) return
+    void loadWorkspaceMembers()
+  }, [loadWorkspaceMembers, selectedWorkspaceId, showWorkspaceTools])
 
   const onCreateClient = async () => {
     const name = newClientName.trim()
@@ -642,24 +649,134 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
               )}
               {workspaces.length > 0 && (
                 <div className="bg-white p-4 rounded-lg border border-border shadow-sm">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <label className="text-xs text-text-light">Active workspace</label>
-                    <select
-                      className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
-                      value={selectedWorkspaceId}
-                      onChange={(e) => setSelectedWorkspaceId(e.target.value)}
-                    >
-                      {workspaces.map((workspace) => (
-                        <option key={workspace.id} value={workspace.id}>
-                          {workspace.name} ({workspace.workspace_type || 'business'} / {workspace.role})
-                        </option>
-                      ))}
-                    </select>
-                    <span className="text-xs text-text-light">
-                      {isFirmWorkspace
-                        ? 'Firm workspace: manage many accounting clients and engagements in one place.'
-                        : 'Business workspace: manage accounting work for one company with your internal team.'}
-                    </span>
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <label className="text-xs text-text-light">Active workspace</label>
+                      <select
+                        className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
+                        value={selectedWorkspaceId}
+                        onChange={(e) => setSelectedWorkspaceId(e.target.value)}
+                      >
+                        {workspaces.map((workspace) => (
+                          <option key={workspace.id} value={workspace.id}>
+                            {workspace.name} ({workspace.workspace_type || 'business'} / {workspace.role})
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="btn btn--primary text-sm py-2 px-3"
+                        onClick={() => setShowWorkspaceTools((prev) => !prev)}
+                      >
+                        {showWorkspaceTools ? 'Hide workspace tools' : 'Manage workspaces'}
+                      </button>
+                      <span className="text-xs text-text-light">
+                        {isFirmWorkspace
+                          ? 'Firm workspace: manage many accounting clients and engagements in one place.'
+                          : 'Business workspace: manage accounting work for one company with your internal team.'}
+                      </span>
+                    </div>
+                    {showWorkspaceTools && (
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                        <div className="rounded-lg border border-border p-3 space-y-3">
+                          <h4 className="text-sm font-semibold text-primary-dark">Create workspace</h4>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
+                              placeholder="New workspace name"
+                              value={newWorkspaceName}
+                              onChange={(e) => setNewWorkspaceName(e.target.value)}
+                            />
+                            <select
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              value={newWorkspaceType}
+                              onChange={(e) => setNewWorkspaceType((e.target.value as 'business' | 'firm'))}
+                            >
+                              <option value="business">Business workspace</option>
+                              <option value="firm">Firm workspace</option>
+                            </select>
+                            <button
+                              type="button"
+                              className="btn btn--primary text-sm py-2 px-4"
+                              disabled={saving || !newWorkspaceName.trim()}
+                              onClick={() => { void onCreateWorkspace() }}
+                            >
+                              Create workspace
+                            </button>
+                          </div>
+                        </div>
+                        <div className="rounded-lg border border-border p-3 space-y-3">
+                          <h4 className="text-sm font-semibold text-primary-dark">Employee onboarding</h4>
+                          <ol className="text-xs text-text-light space-y-1 list-decimal pl-4">
+                            <li>Select the workspace where the employee should work.</li>
+                            <li>Ask the employee to sign in once and share their Clerk User ID (starts with <span className="font-mono">user_</span>).</li>
+                            <li>Choose the role and add them to the workspace.</li>
+                          </ol>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
+                              placeholder="Employee Clerk User ID (user_...)"
+                              value={newMemberClerkUserId}
+                              onChange={(e) => setNewMemberClerkUserId(e.target.value)}
+                            />
+                            <select
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              value={newMemberRole}
+                              onChange={(e) => setNewMemberRole(e.target.value)}
+                            >
+                              {['admin', 'manager', 'reviewer', 'preparer', 'read_only', 'client'].map((role) => (
+                                <option key={role} value={role}>{role}</option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              className="btn btn--primary text-sm py-2 px-4"
+                              disabled={saving || !selectedWorkspaceId || !newMemberClerkUserId.trim() || !canManageWorkspaceMembers}
+                              onClick={() => { void onAddWorkspaceMember() }}
+                            >
+                              Add employee
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn--secondary text-sm py-2 px-4"
+                              disabled={!selectedWorkspaceId || saving}
+                              onClick={() => { void loadWorkspaceMembers() }}
+                            >
+                              Refresh members
+                            </button>
+                          </div>
+                          {!canManageWorkspaceMembers && (
+                            <p className="text-xs text-text-light">
+                              Only workspace owners/admins can add employees.
+                            </p>
+                          )}
+                          <div className="max-h-40 overflow-auto rounded-md border border-border">
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="border-b border-border text-left text-text-light">
+                                  <th className="py-2 px-2">User</th>
+                                  <th className="py-2 px-2">Role</th>
+                                  <th className="py-2 px-2">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {workspaceMembers.length === 0 ? (
+                                  <tr>
+                                    <td className="py-2 px-2 text-text-light" colSpan={3}>No members yet.</td>
+                                  </tr>
+                                ) : workspaceMembers.map((member) => (
+                                  <tr key={member.clerk_user_id} className="border-b border-border/70">
+                                    <td className="py-2 px-2 font-mono">{member.clerk_user_id}</td>
+                                    <td className="py-2 px-2">{member.role}</td>
+                                    <td className="py-2 px-2">{member.status}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1110,63 +1227,9 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               ? 'Use this mode when your firm has employees serving multiple accounting clients.'
                               : 'Use this mode when one company has employees managing internal accounting work.'}
                           </p>
-                          <div className="flex flex-wrap gap-2">
-                            <select
-                              className="border border-border rounded-md px-3 py-2 text-sm"
-                              value={selectedWorkspaceId}
-                              onChange={(e) => setSelectedWorkspaceId(e.target.value)}
-                            >
-                              {workspaces.map((workspace) => (
-                                <option key={workspace.id} value={workspace.id}>
-                                  {workspace.name} ({workspace.workspace_type || 'business'} / {workspace.role})
-                                </option>
-                              ))}
-                            </select>
-                            <input
-                              className="border border-border rounded-md px-3 py-2 text-sm"
-                              placeholder="New workspace name"
-                              value={newWorkspaceName}
-                              onChange={(e) => setNewWorkspaceName(e.target.value)}
-                            />
-                            <select
-                              className="border border-border rounded-md px-3 py-2 text-sm"
-                              value={newWorkspaceType}
-                              onChange={(e) => setNewWorkspaceType((e.target.value as 'business' | 'firm'))}
-                            >
-                              <option value="business">Business workspace</option>
-                              <option value="firm">Firm workspace</option>
-                            </select>
-                            <button type="button" className="btn btn--primary text-sm py-2 px-4" disabled={saving} onClick={() => { void onCreateWorkspace() }}>
-                              Create workspace
-                            </button>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            <input
-                              className="border border-border rounded-md px-3 py-2 text-sm"
-                              placeholder="Employee Clerk User ID"
-                              value={newMemberClerkUserId}
-                              onChange={(e) => setNewMemberClerkUserId(e.target.value)}
-                            />
-                            <select
-                              className="border border-border rounded-md px-3 py-2 text-sm"
-                              value={newMemberRole}
-                              onChange={(e) => setNewMemberRole(e.target.value)}
-                            >
-                              {['admin', 'manager', 'reviewer', 'preparer', 'read_only', 'client'].map((role) => (
-                                <option key={role} value={role}>{role}</option>
-                              ))}
-                            </select>
-                            <button type="button" className="btn btn--primary text-sm py-2 px-4" disabled={saving || !selectedWorkspaceId} onClick={() => { void onAddWorkspaceMember() }}>
-                              Add employee
-                            </button>
-                          </div>
-                          <ul className="space-y-1 text-sm text-text">
-                            {workspaceMembers.map((member) => (
-                              <li key={member.clerk_user_id}>
-                                {member.clerk_user_id} - {member.role} ({member.status})
-                              </li>
-                            ))}
-                          </ul>
+                          <p className="text-sm text-text-light">
+                            Use <span className="font-medium">Manage workspaces</span> in the top workspace panel for employee onboarding and member management.
+                          </p>
                         </div>
                         <div className="rounded-lg border border-border p-4">
                           <h3 className="font-semibold text-primary-dark mb-2">Task summary</h3>

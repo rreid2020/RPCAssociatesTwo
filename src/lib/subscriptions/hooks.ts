@@ -2,6 +2,11 @@ import { useMemo } from 'react'
 import { useUser } from '@clerk/clerk-react'
 import { SubscriptionPlan, SUBSCRIPTION_PLANS } from './types'
 
+function forceEnterpriseAccess (): boolean {
+  // Temporary rollout mode: everyone gets enterprise access unless explicitly disabled.
+  return import.meta.env.VITE_FORCE_ENTERPRISE_ACCESS !== 'false'
+}
+
 /**
  * Hook to get the user's current subscription plan
  * Returns 'free' by default if no subscription is set
@@ -11,6 +16,10 @@ export function useSubscription(): SubscriptionPlan {
 
   return useMemo(() => {
     if (!user) return 'free'
+
+    if (forceEnterpriseAccess()) {
+      return 'enterprise'
+    }
 
     const metadata = user.publicMetadata as Record<string, unknown> | undefined
     const plan = metadata?.subscriptionPlan as SubscriptionPlan | undefined

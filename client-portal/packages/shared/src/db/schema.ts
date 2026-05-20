@@ -496,3 +496,25 @@ export const accountingWorkspaceInvites = taxgptSchema.table('accounting_workspa
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
+export const accountingWorkspaceProfiles = taxgptSchema.table('accounting_workspace_profiles', {
+  workspaceId: uuid('workspace_id').primaryKey().references(() => accountingWorkspaces.id, { onDelete: 'cascade' }),
+  organizationType: varchar('organization_type', { length: 16 }).notNull().default('business'),
+  companyLegalName: text('company_legal_name').notNull(),
+  companyOperatingName: text('company_operating_name'),
+  industry: text('industry'),
+  websiteUrl: text('website_url'),
+  taxIdentifier: text('tax_identifier'),
+  primaryContactName: text('primary_contact_name'),
+  primaryContactEmail: text('primary_contact_email'),
+  primaryContactPhone: text('primary_contact_phone'),
+  addressLine1: text('address_line1'),
+  addressLine2: text('address_line2'),
+  city: text('city'),
+  provinceState: text('province_state'),
+  postalCode: text('postal_code'),
+  countryCode: varchar('country_code', { length: 2 }).notNull().default('CA'),
+  onboardingCompletedAt: timestamp('onboarding_completed_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+

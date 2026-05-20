@@ -1,9 +1,17 @@
 import { SubscriptionPlan, SUBSCRIPTION_PLANS } from './types'
 
+function forceEnterpriseAccess (): boolean {
+  return import.meta.env.VITE_FORCE_ENTERPRISE_ACCESS !== 'false'
+}
+
 /**
  * Get subscription plan from user metadata
  */
 export function getSubscriptionPlan(metadata: Record<string, unknown> | undefined): SubscriptionPlan {
+  if (forceEnterpriseAccess()) {
+    return 'enterprise'
+  }
+
   const plan = metadata?.subscriptionPlan as SubscriptionPlan | undefined
 
   if (plan && plan in SUBSCRIPTION_PLANS) {

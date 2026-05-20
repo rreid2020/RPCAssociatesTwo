@@ -29,6 +29,11 @@ function slugifyWorkspaceName (name) {
     .slice(0, 64) || 'workspace'
 }
 
+function normalizeOptionalText (value) {
+  const text = String(value || '').trim()
+  return text ? text : null
+}
+
 export async function ensureWorkspaceTables (pool) {
   await pool.query(
     `CREATE TABLE IF NOT EXISTS taxgpt.accounting_workspaces (
@@ -87,6 +92,30 @@ export async function ensureWorkspaceTables (pool) {
      )`
   )
   await pool.query('CREATE INDEX IF NOT EXISTS accounting_workspace_invites_workspace_idx ON taxgpt.accounting_workspace_invites(workspace_id, status, created_at DESC)')
+  await pool.query(
+    `CREATE TABLE IF NOT EXISTS taxgpt.accounting_workspace_profiles (
+       workspace_id UUID PRIMARY KEY REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,
+       organization_type VARCHAR(16) NOT NULL DEFAULT 'business',
+       company_legal_name TEXT NOT NULL,
+       company_operating_name TEXT,
+       industry TEXT,
+       website_url TEXT,
+       tax_identifier TEXT,
+       primary_contact_name TEXT,
+       primary_contact_email TEXT,
+       primary_contact_phone TEXT,
+       address_line1 TEXT,
+       address_line2 TEXT,
+       city TEXT,
+       province_state TEXT,
+       postal_code TEXT,
+       country_code VARCHAR(2) NOT NULL DEFAULT 'CA',
+       onboarding_completed_at TIMESTAMP,
+       created_at TIMESTAMP NOT NULL DEFAULT now(),
+       updated_at TIMESTAMP NOT NULL DEFAULT now()
+     )`
+  )
+  await pool.query('CREATE INDEX IF NOT EXISTS accounting_workspace_profiles_contact_email_idx ON taxgpt.accounting_workspace_profiles(primary_contact_email)')
 }
 
 export async function ensurePersonalWorkspace (pool, clerkUserId) {
@@ -159,9 +188,12 @@ export async function getWorkspaceContext (pool, clerkUserId, requestedWorkspace
 export async function listWorkspacesForUser (pool, clerkUserId) {
   await ensurePersonalWorkspace(pool, clerkUserId)
   const { rows } = await pool.query(
-    `SELECT w.*, m.role, m.status
+    `SELECT w.*, m.role, m.status,
+            p.company_legal_name AS profile_company_legal_name,
+            p.onboarding_completed_at AS profile_onboarding_completed_at
      FROM taxgpt.accounting_workspaces w
      INNER JOIN taxgpt.accounting_workspace_members m ON m.workspace_id = w.id
+     LEFT JOIN taxgpt.accounting_workspace_profiles p ON p.workspace_id = w.id
      WHERE m.clerk_user_id = $1
        AND m.status = 'active'
      ORDER BY w.created_at ASC`,
@@ -191,7 +223,89 @@ export async function createWorkspace (pool, clerkUserId, payload) {
      VALUES ($1::uuid, $2, 'owner', 'active', $2, now(), now())`,
     [workspace.id, clerkUserId]
   )
+  if (payload?.profile) {
+    await upsertWorkspaceProfile(pool, clerkUserId, workspace.id, payload.profile)
+  }
   return workspace
+}
+
+export async function getWorkspaceProfile (pool, actorUserId, workspaceId) {
+  const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
+  const { rows } = await pool.query(
+    `SELECT workspace_id, organization_type, company_legal_name, company_operating_name, industry, website_url, tax_identifier,
+            primary_contact_name, primary_contact_email, primary_contact_phone, address_line1, address_line2, city, province_state,
+            postal_code, country_code, onboarding_completed_at, created_at, updated_at
+     FROM taxgpt.accounting_workspace_profiles
+     WHERE workspace_id = $1::uuid
+     LIMIT 1`,
+    [workspace.id]
+  )
+  return { workspace, profile: rows[0] || null }
+}
+
+export async function upsertWorkspaceProfile (pool, actorUserId, workspaceId, payload = {}) {
+  const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
+  if (!canManageWorkspace(workspace)) {
+    throw new Error('Only owner/admin can update workspace profile')
+  }
+  const companyLegalName = String(payload?.companyLegalName || '').trim()
+  if (!companyLegalName) throw new Error('companyLegalName is required')
+  const organizationType = normalizeWorkspaceType(payload?.organizationType || workspace.workspace_type)
+  const onboardingCompletedAt = payload?.onboardingCompleted ? new Date().toISOString() : null
+
+  const { rows } = await pool.query(
+    `INSERT INTO taxgpt.accounting_workspace_profiles
+     (workspace_id, organization_type, company_legal_name, company_operating_name, industry, website_url, tax_identifier,
+      primary_contact_name, primary_contact_email, primary_contact_phone, address_line1, address_line2, city, province_state,
+      postal_code, country_code, onboarding_completed_at, created_at, updated_at)
+     VALUES (
+      $1::uuid, $2, $3, $4, $5, $6, $7,
+      $8, $9, $10, $11, $12, $13, $14,
+      $15, $16, $17::timestamp, now(), now()
+     )
+     ON CONFLICT (workspace_id) DO UPDATE SET
+      organization_type = EXCLUDED.organization_type,
+      company_legal_name = EXCLUDED.company_legal_name,
+      company_operating_name = EXCLUDED.company_operating_name,
+      industry = EXCLUDED.industry,
+      website_url = EXCLUDED.website_url,
+      tax_identifier = EXCLUDED.tax_identifier,
+      primary_contact_name = EXCLUDED.primary_contact_name,
+      primary_contact_email = EXCLUDED.primary_contact_email,
+      primary_contact_phone = EXCLUDED.primary_contact_phone,
+      address_line1 = EXCLUDED.address_line1,
+      address_line2 = EXCLUDED.address_line2,
+      city = EXCLUDED.city,
+      province_state = EXCLUDED.province_state,
+      postal_code = EXCLUDED.postal_code,
+      country_code = EXCLUDED.country_code,
+      onboarding_completed_at = COALESCE(EXCLUDED.onboarding_completed_at, taxgpt.accounting_workspace_profiles.onboarding_completed_at),
+      updated_at = now()
+     RETURNING workspace_id, organization_type, company_legal_name, company_operating_name, industry, website_url, tax_identifier,
+               primary_contact_name, primary_contact_email, primary_contact_phone, address_line1, address_line2, city, province_state,
+               postal_code, country_code, onboarding_completed_at, created_at, updated_at`,
+    [
+      workspace.id,
+      organizationType,
+      companyLegalName,
+      normalizeOptionalText(payload?.companyOperatingName),
+      normalizeOptionalText(payload?.industry),
+      normalizeOptionalText(payload?.websiteUrl),
+      normalizeOptionalText(payload?.taxIdentifier),
+      normalizeOptionalText(payload?.primaryContactName),
+      normalizeOptionalText(payload?.primaryContactEmail),
+      normalizeOptionalText(payload?.primaryContactPhone),
+      normalizeOptionalText(payload?.addressLine1),
+      normalizeOptionalText(payload?.addressLine2),
+      normalizeOptionalText(payload?.city),
+      normalizeOptionalText(payload?.provinceState),
+      normalizeOptionalText(payload?.postalCode),
+      String(payload?.countryCode || 'CA').trim().toUpperCase().slice(0, 2) || 'CA',
+      onboardingCompletedAt
+    ]
+  )
+
+  return { workspace, profile: rows[0] }
 }
 
 export async function listWorkspaceMembers (pool, actorUserId, workspaceId) {

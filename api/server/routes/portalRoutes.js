@@ -47,10 +47,12 @@ import {
   acceptWorkspaceInvite,
   createWorkspaceInvite,
   createWorkspace,
+  getWorkspaceProfile,
   getWorkspaceContext,
   listWorkspaceInvites,
   listWorkspaceMembers,
   listWorkspacesForUser,
+  upsertWorkspaceProfile,
   updateWorkspaceMember
 } from '../services/accountingWorkspaceService.js'
 import {
@@ -805,6 +807,28 @@ export function createPortalRouter (pool) {
       res.json({ workspace })
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create workspace' })
+    }
+  })
+
+  r.get('/v1/accounting/workspaces/:workspaceId/profile', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const data = await getWorkspaceProfile(pool, session.userId, req.params.workspaceId)
+      res.json(data)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load workspace profile' })
+    }
+  })
+
+  r.put('/v1/accounting/workspaces/:workspaceId/profile', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const data = await upsertWorkspaceProfile(pool, session.userId, req.params.workspaceId, req.body || {})
+      res.json(data)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not save workspace profile' })
     }
   })
 

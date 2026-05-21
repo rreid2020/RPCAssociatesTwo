@@ -346,6 +346,28 @@ export async function ensureWorkspaceClerkOrganization (pool, workspace, actorUs
   return rows[0] || workspace
 }
 
+async function safeEnsureWorkspaceClerkOrganization (pool, workspace, actorUserId) {
+  try {
+    return await ensureWorkspaceClerkOrganization(pool, workspace, actorUserId)
+  } catch (error) {
+    console.warn('Workspace Clerk org sync deferred:', {
+      workspaceId: workspace?.id,
+      actorUserId,
+      message: error instanceof Error ? error.message : String(error)
+    })
+    try {
+      await pool.query(
+        `UPDATE taxgpt.accounting_workspaces
+         SET org_sync_status = 'pending',
+             updated_at = now()
+         WHERE id = $1::uuid`,
+        [workspace.id]
+      )
+    } catch {}
+    return workspace
+  }
+}
+
 export async function getWorkspaceAuthorizationContext (pool, workspace, actorUserId) {
   const resolved = await resolveEffectiveWorkspacePermissions(pool, workspace.id, workspace.role, actorUserId)
   return {
@@ -373,7 +395,7 @@ export async function getWorkspaceContext (pool, clerkUserId, requestedWorkspace
     if (!rows[0]) throw new Error('Workspace access denied')
     const workspace = rows[0]
     if (!workspace.clerk_org_id && canManageWorkspace(workspace)) {
-      return await ensureWorkspaceClerkOrganization(pool, workspace, clerkUserId)
+      return await safeEnsureWorkspaceClerkOrganization(pool, workspace, clerkUserId)
     }
     return workspace
   }
@@ -391,7 +413,7 @@ export async function getWorkspaceContext (pool, clerkUserId, requestedWorkspace
   if (!rows[0]) throw new Error('Workspace not found')
   const workspace = rows[0]
   if (!workspace.clerk_org_id && canManageWorkspace(workspace)) {
-    return await ensureWorkspaceClerkOrganization(pool, workspace, clerkUserId)
+    return await safeEnsureWorkspaceClerkOrganization(pool, workspace, clerkUserId)
   }
   return workspace
 }
@@ -446,7 +468,7 @@ export async function createWorkspace (pool, clerkUserId, payload) {
      VALUES ($1::uuid, $2, 'owner', 'active', $2, now(), now())`,
     [workspace.id, clerkUserId]
   )
-  const linkedWorkspace = await ensureWorkspaceClerkOrganization(pool, workspace, clerkUserId)
+  const linkedWorkspace = await safeEnsureWorkspaceClerkOrganization(pool, workspace, clerkUserId)
   if (payload?.profile) {
     await upsertWorkspaceProfile(pool, clerkUserId, linkedWorkspace.id, payload.profile)
   }
@@ -633,7 +655,7 @@ export async function createWorkspaceInvite (pool, actorUserId, workspaceId, pay
   const role = String(payload?.role || 'preparer')
   assertRole(role)
   const inviteEmail = normalizeInviteEmail(payload?.email)
-  const linkedWorkspace = await ensureWorkspaceClerkOrganization(pool, workspace, actorUserId)
+  const linkedWorkspace = await safeEnsureWorkspaceClerkOrganization(pool, workspace, actorUserId)
   let clerkInvitation = null
   if (linkedWorkspace.clerk_org_id) {
     clerkInvitation = await createClerkOrganizationInvitation({

@@ -630,11 +630,25 @@ const STATEMENTS = [
   owner_user_id TEXT NOT NULL,
   name TEXT NOT NULL,
   slug TEXT NOT NULL UNIQUE,
+  clerk_org_id TEXT UNIQUE,
+  org_sync_status VARCHAR(24) NOT NULL DEFAULT 'pending',
+  org_synced_at TIMESTAMP,
   workspace_type VARCHAR(16) NOT NULL DEFAULT 'business',
   is_personal BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP NOT NULL DEFAULT now(),
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 )`,
+  'ALTER TABLE taxgpt.accounting_workspaces ADD COLUMN IF NOT EXISTS clerk_org_id TEXT',
+  'ALTER TABLE taxgpt.accounting_workspaces ADD COLUMN IF NOT EXISTS org_sync_status VARCHAR(24)',
+  `UPDATE taxgpt.accounting_workspaces
+   SET org_sync_status = 'pending'
+   WHERE org_sync_status IS NULL`,
+  `ALTER TABLE taxgpt.accounting_workspaces
+   ALTER COLUMN org_sync_status SET DEFAULT 'pending'`,
+  `ALTER TABLE taxgpt.accounting_workspaces
+   ALTER COLUMN org_sync_status SET NOT NULL`,
+  'ALTER TABLE taxgpt.accounting_workspaces ADD COLUMN IF NOT EXISTS org_synced_at TIMESTAMP',
+  'CREATE UNIQUE INDEX IF NOT EXISTS accounting_workspaces_clerk_org_id_ux ON taxgpt.accounting_workspaces(clerk_org_id) WHERE clerk_org_id IS NOT NULL',
   `ALTER TABLE taxgpt.accounting_workspaces
    ADD COLUMN IF NOT EXISTS workspace_type VARCHAR(16)`,
   `UPDATE taxgpt.accounting_workspaces
@@ -661,11 +675,13 @@ const STATEMENTS = [
   clerk_user_id TEXT NOT NULL,
   role VARCHAR(24) NOT NULL DEFAULT 'preparer',
   status VARCHAR(24) NOT NULL DEFAULT 'active',
+  clerk_org_membership_id TEXT,
   invited_by TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT now(),
   updated_at TIMESTAMP NOT NULL DEFAULT now(),
   UNIQUE (workspace_id, clerk_user_id)
 )`,
+  'ALTER TABLE taxgpt.accounting_workspace_members ADD COLUMN IF NOT EXISTS clerk_org_membership_id TEXT',
   'CREATE INDEX IF NOT EXISTS accounting_workspace_members_user_idx ON taxgpt.accounting_workspace_members(clerk_user_id, status)',
 
   `CREATE TABLE IF NOT EXISTS taxgpt.accounting_workspace_invites (
@@ -675,13 +691,54 @@ const STATEMENTS = [
   invite_token TEXT NOT NULL UNIQUE,
   role VARCHAR(24) NOT NULL DEFAULT 'preparer',
   status VARCHAR(24) NOT NULL DEFAULT 'pending',
+  source VARCHAR(24) NOT NULL DEFAULT \'clerk\',
+  clerk_invitation_id TEXT,
   invited_by TEXT NOT NULL,
   accepted_by TEXT,
   expires_at TIMESTAMP NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT now(),
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 )`,
+  'ALTER TABLE taxgpt.accounting_workspace_invites ADD COLUMN IF NOT EXISTS source VARCHAR(24)',
+  `UPDATE taxgpt.accounting_workspace_invites
+   SET source = 'clerk'
+   WHERE source IS NULL`,
+  'ALTER TABLE taxgpt.accounting_workspace_invites ALTER COLUMN source SET DEFAULT \'clerk\'',
+  'ALTER TABLE taxgpt.accounting_workspace_invites ALTER COLUMN source SET NOT NULL',
+  'ALTER TABLE taxgpt.accounting_workspace_invites ADD COLUMN IF NOT EXISTS clerk_invitation_id TEXT',
   'CREATE INDEX IF NOT EXISTS accounting_workspace_invites_workspace_idx ON taxgpt.accounting_workspace_invites(workspace_id, status, created_at DESC)',
+  'CREATE INDEX IF NOT EXISTS accounting_workspace_invites_clerk_invite_idx ON taxgpt.accounting_workspace_invites(clerk_invitation_id)',
+  `CREATE TABLE IF NOT EXISTS taxgpt.workspace_custom_roles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,
+  role_name TEXT NOT NULL,
+  source_role TEXT NOT NULL,
+  display_name TEXT NOT NULL,
+  is_system BOOLEAN NOT NULL DEFAULT false,
+  created_by TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now(),
+  UNIQUE (workspace_id, role_name)
+)`,
+  `CREATE TABLE IF NOT EXISTS taxgpt.workspace_role_permissions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,
+  role_name TEXT NOT NULL,
+  permission_key TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  UNIQUE (workspace_id, role_name, permission_key)
+)`,
+  `CREATE TABLE IF NOT EXISTS taxgpt.workspace_member_roles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,
+  clerk_user_id TEXT NOT NULL,
+  role_name TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  UNIQUE (workspace_id, clerk_user_id, role_name)
+)`,
+  'CREATE INDEX IF NOT EXISTS workspace_custom_roles_workspace_idx ON taxgpt.workspace_custom_roles(workspace_id)',
+  'CREATE INDEX IF NOT EXISTS workspace_member_roles_workspace_user_idx ON taxgpt.workspace_member_roles(workspace_id, clerk_user_id)',
   `CREATE TABLE IF NOT EXISTS taxgpt.accounting_workspace_profiles (
   workspace_id UUID PRIMARY KEY REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,
   organization_type VARCHAR(16) NOT NULL DEFAULT 'business',

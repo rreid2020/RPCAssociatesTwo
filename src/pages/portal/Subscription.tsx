@@ -66,7 +66,6 @@ const Subscription: FC = () => {
   const [newWorkspaceName, setNewWorkspaceName] = useState('')
   const [profileDraft, setProfileDraft] = useState<WorkspaceProfileDraft>(defaultProfileDraft)
   const [inviteDrafts, setInviteDrafts] = useState<InviteDraft[]>([{ email: '', role: 'manager' }])
-  const [createdInviteLinks, setCreatedInviteLinks] = useState<string[]>([])
   const [onboardingStep, setOnboardingStep] = useState(1)
 
   const loadWorkspaces = useCallback(async () => {
@@ -184,24 +183,23 @@ const Subscription: FC = () => {
     }
   }
 
-  const onCreateInviteLinks = async () => {
+  const onSendInviteEmails = async () => {
     if (!selectedWorkspaceId) return
     const validInvites = inviteDrafts
-      .map((draft) => ({ email: draft.email.trim(), role: draft.role }))
+      .map((draft) => ({ email: draft.email.trim().toLowerCase(), role: draft.role }))
       .filter((draft) => draft.email.length > 0)
 
     if (validInvites.length === 0) {
-      setError('Add at least one employee email before creating invite links.')
+      setError('Add at least one employee email before sending invites.')
       return
     }
 
     setSaving(true)
     setError(null)
     setNotice(null)
-    const links: string[] = []
     try {
       for (const invite of validInvites) {
-        const created = await portalFetch<{ invite: any }>(
+        await portalFetch<{ invite: any }>(
           `/v1/accounting/workspaces/${selectedWorkspaceId}/invites`,
           getToken,
           {
@@ -209,16 +207,11 @@ const Subscription: FC = () => {
             body: JSON.stringify(invite)
           }
         )
-        const token = created.invite?.invite_token
-        if (token) {
-          links.push(`${window.location.origin}/portal/accounting/join?token=${encodeURIComponent(token)}`)
-        }
       }
-      setCreatedInviteLinks(links)
       setOnboardingStep(3)
-      setNotice('Invite links generated. Share them with your team.')
+      setNotice('Clerk invite emails sent. Employees will be added automatically after they create/sign in to their account.')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not create one or more invite links')
+      setError(e instanceof Error ? e.message : 'Could not send one or more employee invites')
     } finally {
       setSaving(false)
     }
@@ -510,18 +503,13 @@ const Subscription: FC = () => {
                       type="button"
                       className="btn btn--primary text-sm py-2 px-4"
                       disabled={saving || !selectedWorkspaceId}
-                      onClick={() => { void onCreateInviteLinks() }}
+                      onClick={() => { void onSendInviteEmails() }}
                     >
-                      {saving ? 'Creating...' : 'Create Invite Links'}
+                      {saving ? 'Sending...' : 'Send Invite Emails'}
                     </button>
-                    {createdInviteLinks.length > 0 && (
-                      <div className="rounded-lg border border-border p-3 space-y-2">
-                        <p className="text-sm text-text-light">Share these secure join links with your team:</p>
-                        {createdInviteLinks.map((link, idx) => (
-                          <input key={`link-${idx}`} readOnly className="w-full border border-border rounded-md px-3 py-2 text-xs" value={link} />
-                        ))}
-                      </div>
-                    )}
+                    <p className="text-xs text-text-light">
+                      Clerk will email each invited employee with a secure account-setup link.
+                    </p>
                     {activeWorkspace && (
                       <p className="text-xs text-text-light">
                         Need advanced team management? Use <Link className="underline font-medium" to="/portal/accounting/workspaces">Workspace Administration</Link>.

@@ -1,5 +1,5 @@
 import { FC, ReactNode } from 'react'
-import { AuthGuard, OnboardingGuard } from '../platform/api/guards'
+import { AuthGuard, OnboardingGuard, WorkspaceGuard } from '../platform/api/guards'
 
 interface ProtectedRouteProps {
   children: ReactNode
@@ -7,7 +7,9 @@ interface ProtectedRouteProps {
 
 export const ProtectedRoute: FC<ProtectedRouteProps> = ({ children }) => (
   <AuthGuard>
-    <OnboardingGuard>{children}</OnboardingGuard>
+    <WorkspaceGuard>
+      <OnboardingGuard>{children}</OnboardingGuard>
+    </WorkspaceGuard>
   </AuthGuard>
 )
 

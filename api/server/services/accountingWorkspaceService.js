@@ -1,4 +1,14 @@
 import { randomBytes } from 'crypto'
+import {
+  createClerkEmailInvite,
+  createClerkOrganization,
+  createClerkOrganizationInvitation
+} from './clerkAdminService.js'
+import {
+  assertWorkspacePermissionWithCustomRoles,
+  ensureWorkspaceRbacTables,
+  resolveEffectiveWorkspacePermissions
+} from './authz/workspaceRbacService.js'
 
 const WORKSPACE_ROLES = new Set(['owner', 'admin', 'manager', 'reviewer', 'preparer', 'read_only', 'client'])
 const WORKSPACE_TYPES = new Set(['business', 'firm'])
@@ -34,6 +44,70 @@ function normalizeOptionalText (value) {
   return text ? text : null
 }
 
+function normalizeInviteEmail (value) {
+  const inviteEmail = String(value || '').trim().toLowerCase()
+  if (!inviteEmail) {
+    throw new Error('Employee email is required')
+  }
+  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail)
+  if (!isValidEmail) {
+    throw new Error('Invalid employee email address')
+  }
+  return inviteEmail
+}
+
+function getInviteRedirectUrl () {
+  const configuredBaseUrl = String(process.env.PORTAL_APP_URL || process.env.VITE_SITE_URL || '').trim().replace(/\/$/, '')
+  const appBaseUrl = configuredBaseUrl || 'http://localhost:5173'
+  return `${appBaseUrl}/portal/post-auth`
+}
+
+function mapWorkspaceRoleToClerkOrgRole (workspaceRole) {
+  if (workspaceRole === 'owner' || workspaceRole === 'admin' || workspaceRole === 'manager') {
+    return 'org:admin'
+  }
+  return 'org:member'
+}
+
+async function getWorkspaceEntitlementSnapshot (pool, workspaceId) {
+  const { rows } = await pool.query(
+    `SELECT can_invite_users, max_users
+     FROM taxgpt.workspace_entitlements
+     WHERE workspace_id = $1::uuid
+     LIMIT 1`,
+    [workspaceId]
+  )
+  return rows[0] || { can_invite_users: true, max_users: 3 }
+}
+
+async function getWorkspaceActiveUserCount (pool, workspaceId) {
+  const { rows } = await pool.query(
+    `SELECT count(*)::int AS c
+     FROM taxgpt.accounting_workspace_members
+     WHERE workspace_id = $1::uuid
+       AND status = 'active'`,
+    [workspaceId]
+  )
+  return Number(rows[0]?.c || 0)
+}
+
+async function writeWorkspaceAuditEvent (pool, workspaceId, actorUserId, action, entityType, entityId, beforeValue = null, afterValue = null) {
+  await pool.query(
+    `INSERT INTO taxgpt.accounting_audit_log
+     (organization_id, clerk_user_id, entity_type, entity_id, action, actor_id, before_value, after_value, created_at)
+     VALUES ($1::uuid, $2, $3, $4, $5, $2, $6::jsonb, $7::jsonb, now())`,
+    [
+      workspaceId,
+      actorUserId,
+      entityType,
+      String(entityId || ''),
+      action,
+      beforeValue ? JSON.stringify(beforeValue) : null,
+      afterValue ? JSON.stringify(afterValue) : null
+    ]
+  )
+}
+
 export async function ensureWorkspaceTables (pool) {
   await pool.query(
     `CREATE TABLE IF NOT EXISTS taxgpt.accounting_workspaces (
@@ -41,12 +115,22 @@ export async function ensureWorkspaceTables (pool) {
        owner_user_id TEXT NOT NULL,
        name TEXT NOT NULL,
        slug TEXT NOT NULL UNIQUE,
+       clerk_org_id TEXT UNIQUE,
+       org_sync_status VARCHAR(24) NOT NULL DEFAULT 'pending',
+       org_synced_at TIMESTAMP,
        workspace_type VARCHAR(16) NOT NULL DEFAULT 'business',
        is_personal BOOLEAN NOT NULL DEFAULT false,
        created_at TIMESTAMP NOT NULL DEFAULT now(),
        updated_at TIMESTAMP NOT NULL DEFAULT now()
      )`
   )
+  await pool.query('ALTER TABLE taxgpt.accounting_workspaces ADD COLUMN IF NOT EXISTS clerk_org_id TEXT')
+  await pool.query('ALTER TABLE taxgpt.accounting_workspaces ADD COLUMN IF NOT EXISTS org_sync_status VARCHAR(24)')
+  await pool.query("UPDATE taxgpt.accounting_workspaces SET org_sync_status = 'pending' WHERE org_sync_status IS NULL")
+  await pool.query("ALTER TABLE taxgpt.accounting_workspaces ALTER COLUMN org_sync_status SET DEFAULT 'pending'")
+  await pool.query('ALTER TABLE taxgpt.accounting_workspaces ALTER COLUMN org_sync_status SET NOT NULL')
+  await pool.query('ALTER TABLE taxgpt.accounting_workspaces ADD COLUMN IF NOT EXISTS org_synced_at TIMESTAMP')
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS accounting_workspaces_clerk_org_id_ux ON taxgpt.accounting_workspaces(clerk_org_id) WHERE clerk_org_id IS NOT NULL')
   await pool.query('ALTER TABLE taxgpt.accounting_workspaces ADD COLUMN IF NOT EXISTS workspace_type VARCHAR(16)')
   await pool.query("UPDATE taxgpt.accounting_workspaces SET workspace_type = 'business' WHERE workspace_type IS NULL")
   await pool.query("ALTER TABLE taxgpt.accounting_workspaces ALTER COLUMN workspace_type SET DEFAULT 'business'")
@@ -70,12 +154,14 @@ export async function ensureWorkspaceTables (pool) {
        clerk_user_id TEXT NOT NULL,
        role VARCHAR(24) NOT NULL DEFAULT 'preparer',
        status VARCHAR(24) NOT NULL DEFAULT 'active',
+       clerk_org_membership_id TEXT,
        invited_by TEXT,
        created_at TIMESTAMP NOT NULL DEFAULT now(),
        updated_at TIMESTAMP NOT NULL DEFAULT now(),
        UNIQUE (workspace_id, clerk_user_id)
      )`
   )
+  await pool.query('ALTER TABLE taxgpt.accounting_workspace_members ADD COLUMN IF NOT EXISTS clerk_org_membership_id TEXT')
   await pool.query(
     `CREATE TABLE IF NOT EXISTS taxgpt.accounting_workspace_invites (
        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -84,6 +170,8 @@ export async function ensureWorkspaceTables (pool) {
        invite_token TEXT NOT NULL UNIQUE,
        role VARCHAR(24) NOT NULL DEFAULT 'preparer',
        status VARCHAR(24) NOT NULL DEFAULT 'pending',
+       source VARCHAR(24) NOT NULL DEFAULT 'clerk',
+       clerk_invitation_id TEXT,
        invited_by TEXT NOT NULL,
        accepted_by TEXT,
        expires_at TIMESTAMP NOT NULL,
@@ -91,7 +179,13 @@ export async function ensureWorkspaceTables (pool) {
        updated_at TIMESTAMP NOT NULL DEFAULT now()
      )`
   )
+  await pool.query('ALTER TABLE taxgpt.accounting_workspace_invites ADD COLUMN IF NOT EXISTS source VARCHAR(24)')
+  await pool.query("UPDATE taxgpt.accounting_workspace_invites SET source = 'clerk' WHERE source IS NULL")
+  await pool.query("ALTER TABLE taxgpt.accounting_workspace_invites ALTER COLUMN source SET DEFAULT 'clerk'")
+  await pool.query('ALTER TABLE taxgpt.accounting_workspace_invites ALTER COLUMN source SET NOT NULL')
+  await pool.query('ALTER TABLE taxgpt.accounting_workspace_invites ADD COLUMN IF NOT EXISTS clerk_invitation_id TEXT')
   await pool.query('CREATE INDEX IF NOT EXISTS accounting_workspace_invites_workspace_idx ON taxgpt.accounting_workspace_invites(workspace_id, status, created_at DESC)')
+  await pool.query('CREATE INDEX IF NOT EXISTS accounting_workspace_invites_clerk_invite_idx ON taxgpt.accounting_workspace_invites(clerk_invitation_id)')
   await pool.query(
     `CREATE TABLE IF NOT EXISTS taxgpt.accounting_workspace_profiles (
        workspace_id UUID PRIMARY KEY REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,
@@ -191,6 +285,7 @@ export async function ensureWorkspaceTables (pool) {
        created_at TIMESTAMP NOT NULL DEFAULT now()
      )`
   )
+  await ensureWorkspaceRbacTables(pool)
 }
 
 export async function ensurePersonalWorkspace (pool, clerkUserId) {
@@ -229,6 +324,39 @@ export async function ensurePersonalWorkspace (pool, clerkUserId) {
   return workspace
 }
 
+export async function ensureWorkspaceClerkOrganization (pool, workspace, actorUserId) {
+  if (!workspace || workspace.clerk_org_id) return workspace
+  const safeName = String(workspace.name || 'Workspace').trim().slice(0, 150) || 'Workspace'
+  const slugSeed = `${slugifyWorkspaceName(workspace.name)}-${String(workspace.id).slice(0, 8)}`
+  const organization = await createClerkOrganization({
+    name: safeName,
+    slug: slugSeed,
+    createdBy: actorUserId
+  })
+  const { rows } = await pool.query(
+    `UPDATE taxgpt.accounting_workspaces
+     SET clerk_org_id = $1,
+         org_sync_status = 'synced',
+         org_synced_at = now(),
+         updated_at = now()
+     WHERE id = $2::uuid
+     RETURNING *`,
+    [organization.id, workspace.id]
+  )
+  return rows[0] || workspace
+}
+
+export async function getWorkspaceAuthorizationContext (pool, workspace, actorUserId) {
+  const resolved = await resolveEffectiveWorkspacePermissions(pool, workspace.id, workspace.role, actorUserId)
+  return {
+    workspaceId: workspace.id,
+    workspaceRole: workspace.role,
+    platformRole: resolved.platformRole,
+    customRoles: resolved.customRoles,
+    permissions: resolved.permissions
+  }
+}
+
 export async function getWorkspaceContext (pool, clerkUserId, requestedWorkspaceId = null) {
   await ensurePersonalWorkspace(pool, clerkUserId)
   if (requestedWorkspaceId) {
@@ -243,7 +371,11 @@ export async function getWorkspaceContext (pool, clerkUserId, requestedWorkspace
       [requestedWorkspaceId, clerkUserId]
     )
     if (!rows[0]) throw new Error('Workspace access denied')
-    return rows[0]
+    const workspace = rows[0]
+    if (!workspace.clerk_org_id && canManageWorkspace(workspace)) {
+      return await ensureWorkspaceClerkOrganization(pool, workspace, clerkUserId)
+    }
+    return workspace
   }
 
   const { rows } = await pool.query(
@@ -257,7 +389,11 @@ export async function getWorkspaceContext (pool, clerkUserId, requestedWorkspace
     [clerkUserId]
   )
   if (!rows[0]) throw new Error('Workspace not found')
-  return rows[0]
+  const workspace = rows[0]
+  if (!workspace.clerk_org_id && canManageWorkspace(workspace)) {
+    return await ensureWorkspaceClerkOrganization(pool, workspace, clerkUserId)
+  }
+  return workspace
 }
 
 export async function listWorkspacesForUser (pool, clerkUserId) {
@@ -310,10 +446,11 @@ export async function createWorkspace (pool, clerkUserId, payload) {
      VALUES ($1::uuid, $2, 'owner', 'active', $2, now(), now())`,
     [workspace.id, clerkUserId]
   )
+  const linkedWorkspace = await ensureWorkspaceClerkOrganization(pool, workspace, clerkUserId)
   if (payload?.profile) {
-    await upsertWorkspaceProfile(pool, clerkUserId, workspace.id, payload.profile)
+    await upsertWorkspaceProfile(pool, clerkUserId, linkedWorkspace.id, payload.profile)
   }
-  return workspace
+  return linkedWorkspace
 }
 
 export async function getWorkspaceProfile (pool, actorUserId, workspaceId) {
@@ -409,13 +546,24 @@ export async function listWorkspaceMembers (pool, actorUserId, workspaceId) {
 
 export async function addWorkspaceMember (pool, actorUserId, workspaceId, payload) {
   const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
-  if (!canManageWorkspace(workspace)) {
-    throw new Error('Only owner/admin can add members')
-  }
+  await assertWorkspacePermissionWithCustomRoles(pool, {
+    workspaceId: workspace.id,
+    workspaceRole: workspace.role,
+    clerkUserId: actorUserId,
+    permission: 'workspace.invite'
+  })
   const clerkUserId = String(payload?.clerkUserId || '').trim()
   if (!clerkUserId) throw new Error('clerkUserId is required')
   const role = String(payload?.role || 'preparer')
   assertRole(role)
+  const entitlements = await getWorkspaceEntitlementSnapshot(pool, workspace.id)
+  if (!entitlements.can_invite_users) {
+    throw new Error('Current workspace plan does not allow inviting users')
+  }
+  const activeUsers = await getWorkspaceActiveUserCount(pool, workspace.id)
+  if (activeUsers >= Number(entitlements.max_users || 0)) {
+    throw new Error('Workspace user limit reached for current plan')
+  }
   const { rows } = await pool.query(
     `INSERT INTO taxgpt.accounting_workspace_members
      (workspace_id, clerk_user_id, role, status, invited_by, created_at, updated_at)
@@ -425,6 +573,7 @@ export async function addWorkspaceMember (pool, actorUserId, workspaceId, payloa
      RETURNING workspace_id, clerk_user_id, role, status, invited_by, created_at, updated_at`,
     [workspace.id, clerkUserId, role, actorUserId]
   )
+  await writeWorkspaceAuditEvent(pool, workspace.id, actorUserId, 'workspace.member_added', 'workspace_member', clerkUserId, null, rows[0])
   return rows[0]
 }
 
@@ -449,13 +598,14 @@ export async function updateWorkspaceMember (pool, actorUserId, workspaceId, mem
     [role, status, workspace.id, memberUserId]
   )
   if (!rows[0]) throw new Error('Member not found')
+  await writeWorkspaceAuditEvent(pool, workspace.id, actorUserId, 'workspace.member_updated', 'workspace_member', memberUserId, null, rows[0])
   return rows[0]
 }
 
 export async function listWorkspaceInvites (pool, actorUserId, workspaceId) {
   const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
   const { rows } = await pool.query(
-    `SELECT id, workspace_id, invite_email, invite_token, role, status, invited_by, accepted_by, expires_at, created_at, updated_at
+    `SELECT id, workspace_id, invite_email, invite_token, role, status, source, clerk_invitation_id, invited_by, accepted_by, expires_at, created_at, updated_at
      FROM taxgpt.accounting_workspace_invites
      WHERE workspace_id = $1::uuid
      ORDER BY created_at DESC`,
@@ -466,23 +616,69 @@ export async function listWorkspaceInvites (pool, actorUserId, workspaceId) {
 
 export async function createWorkspaceInvite (pool, actorUserId, workspaceId, payload = {}) {
   const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
-  if (!canManageWorkspace(workspace)) {
-    throw new Error('Only owner/admin can invite members')
+  await assertWorkspacePermissionWithCustomRoles(pool, {
+    workspaceId: workspace.id,
+    workspaceRole: workspace.role,
+    clerkUserId: actorUserId,
+    permission: 'workspace.invite'
+  })
+  const entitlements = await getWorkspaceEntitlementSnapshot(pool, workspace.id)
+  if (!entitlements.can_invite_users) {
+    throw new Error('Current workspace plan does not allow inviting users')
+  }
+  const activeUsers = await getWorkspaceActiveUserCount(pool, workspace.id)
+  if (activeUsers >= Number(entitlements.max_users || 0)) {
+    throw new Error('Workspace user limit reached for current plan')
   }
   const role = String(payload?.role || 'preparer')
   assertRole(role)
-  const inviteEmail = payload?.email ? String(payload.email).trim().toLowerCase() : null
-  const token = randomBytes(24).toString('hex')
+  const inviteEmail = normalizeInviteEmail(payload?.email)
+  const linkedWorkspace = await ensureWorkspaceClerkOrganization(pool, workspace, actorUserId)
+  let clerkInvitation = null
+  if (linkedWorkspace.clerk_org_id) {
+    clerkInvitation = await createClerkOrganizationInvitation({
+      organizationId: linkedWorkspace.clerk_org_id,
+      emailAddress: inviteEmail,
+      role: mapWorkspaceRoleToClerkOrgRole(role),
+      inviterUserId: actorUserId,
+      redirectUrl: getInviteRedirectUrl(),
+      publicMetadata: {
+        invite_type: 'workspace_member',
+        workspace_id: linkedWorkspace.id,
+        workspace_name: linkedWorkspace.name,
+        workspace_role: role,
+        invited_by: actorUserId
+      }
+    })
+  } else {
+    clerkInvitation = await createClerkEmailInvite({
+      emailAddress: inviteEmail,
+      redirectUrl: getInviteRedirectUrl(),
+      publicMetadata: {
+        invite_type: 'workspace_member',
+        workspace_id: linkedWorkspace.id,
+        workspace_name: linkedWorkspace.name,
+        workspace_role: role,
+        invited_by: actorUserId
+      }
+    })
+  }
+  const token = `clerk:${clerkInvitation.id}:${randomBytes(8).toString('hex')}`
   const expiresAt = payload?.expiresAt || new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString()
 
   const { rows } = await pool.query(
     `INSERT INTO taxgpt.accounting_workspace_invites
-     (workspace_id, invite_email, invite_token, role, status, invited_by, expires_at, created_at, updated_at)
-     VALUES ($1::uuid, $2, $3, $4, 'pending', $5, $6::timestamp, now(), now())
-     RETURNING id, workspace_id, invite_email, invite_token, role, status, invited_by, accepted_by, expires_at, created_at, updated_at`,
-    [workspace.id, inviteEmail, token, role, actorUserId, expiresAt]
+     (workspace_id, invite_email, invite_token, role, status, source, clerk_invitation_id, invited_by, expires_at, created_at, updated_at)
+     VALUES ($1::uuid, $2, $3, $4, 'pending', 'clerk', $5, $6, $7::timestamp, now(), now())
+     RETURNING id, workspace_id, invite_email, invite_token, role, status, source, clerk_invitation_id, invited_by, accepted_by, expires_at, created_at, updated_at`,
+    [linkedWorkspace.id, inviteEmail, token, role, clerkInvitation.id, actorUserId, expiresAt]
   )
-  return rows[0]
+  await writeWorkspaceAuditEvent(pool, linkedWorkspace.id, actorUserId, 'workspace.invite_created', 'workspace_invite', rows[0].id, null, rows[0])
+  return {
+    ...rows[0],
+    clerk_invitation_id: clerkInvitation.id,
+    clerk_invitation_status: clerkInvitation.status || 'pending'
+  }
 }
 
 export async function acceptWorkspaceInvite (pool, actorUserId, actorEmail, inviteToken) {
@@ -527,5 +723,90 @@ export async function acceptWorkspaceInvite (pool, actorUserId, actorEmail, invi
 
   const workspace = await getWorkspaceContext(pool, actorUserId, invite.workspace_id)
   return { invite: updatedInvite[0], workspace }
+}
+
+export async function acceptPendingWorkspaceInvites (pool, actorUserId, actorEmail) {
+  const normalizedEmail = String(actorEmail || '').trim().toLowerCase()
+  if (!normalizedEmail) {
+    return { acceptedInvites: [] }
+  }
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    const { rows: pendingInvites } = await client.query(
+      `SELECT i.id, i.workspace_id, i.invite_email, i.role, i.invited_by, w.name AS workspace_name
+       FROM taxgpt.accounting_workspace_invites i
+       INNER JOIN taxgpt.accounting_workspaces w ON w.id = i.workspace_id
+       WHERE i.status = 'pending'
+         AND i.expires_at >= now()
+         AND lower(i.invite_email) = $1
+       ORDER BY i.created_at ASC
+       FOR UPDATE`,
+      [normalizedEmail]
+    )
+
+    const acceptedInvites = []
+    for (const invite of pendingInvites) {
+      await client.query(
+        `INSERT INTO taxgpt.accounting_workspace_members
+         (workspace_id, clerk_user_id, role, status, invited_by, created_at, updated_at)
+         VALUES ($1::uuid, $2, $3, 'active', $4, now(), now())
+         ON CONFLICT (workspace_id, clerk_user_id)
+         DO UPDATE SET role = EXCLUDED.role, status = 'active', invited_by = EXCLUDED.invited_by, updated_at = now()`,
+        [invite.workspace_id, actorUserId, invite.role, invite.invited_by]
+      )
+      await client.query(
+        `UPDATE taxgpt.accounting_workspace_invites
+         SET status = 'accepted', accepted_by = $1, updated_at = now()
+         WHERE id = $2::uuid`,
+        [actorUserId, invite.id]
+      )
+      acceptedInvites.push({
+        inviteId: invite.id,
+        workspaceId: invite.workspace_id,
+        workspaceName: invite.workspace_name,
+        role: invite.role
+      })
+    }
+    await client.query('COMMIT')
+    return { acceptedInvites }
+  } catch (e) {
+    await client.query('ROLLBACK')
+    throw e
+  } finally {
+    client.release()
+  }
+}
+
+export async function getWorkspacePermissionSnapshot (pool, actorUserId, workspaceId) {
+  const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
+  const authz = await getWorkspaceAuthorizationContext(pool, workspace, actorUserId)
+  return { workspace, authorization: authz }
+}
+
+export async function getWorkspaceOrgMigrationHealth (pool) {
+  await ensureWorkspaceTables(pool)
+  const { rows: summaryRows } = await pool.query(
+    `SELECT
+       count(*)::int AS total_workspaces,
+       count(*) FILTER (WHERE clerk_org_id IS NOT NULL)::int AS mapped_workspaces,
+       count(*) FILTER (WHERE clerk_org_id IS NULL)::int AS unmapped_workspaces
+     FROM taxgpt.accounting_workspaces`
+  )
+  const { rows: unmappedRows } = await pool.query(
+    `SELECT id, name, owner_user_id, workspace_type, created_at
+     FROM taxgpt.accounting_workspaces
+     WHERE clerk_org_id IS NULL
+     ORDER BY created_at ASC
+     LIMIT 25`
+  )
+  return {
+    summary: summaryRows[0] || {
+      total_workspaces: 0,
+      mapped_workspaces: 0,
+      unmapped_workspaces: 0
+    },
+    sampleUnmappedWorkspaces: unmappedRows
+  }
 }
 

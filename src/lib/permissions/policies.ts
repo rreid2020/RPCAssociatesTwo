@@ -34,15 +34,25 @@ const ROLE_PERMISSIONS: Record<PlatformRole, PermissionKey[]> = {
   manager: [
     'engagement.read',
     'engagement.manage',
+    'documents.read',
+    'documents.write',
+    'workflows.approve',
+    'workflows.manage',
+    'ai.use',
+    'tax.review',
     'billing.read',
     'working_papers.read',
     'working_papers.manage',
+    'workingpapers.edit',
     'review_notes.manage',
     'signoff.perform',
     'documents.manage'
   ],
   reviewer: [
     'engagement.read',
+    'documents.read',
+    'workflows.approve',
+    'tax.review',
     'billing.read',
     'working_papers.read',
     'review_notes.manage',
@@ -51,17 +61,23 @@ const ROLE_PERMISSIONS: Record<PlatformRole, PermissionKey[]> = {
   ],
   staff: [
     'engagement.read',
+    'documents.read',
+    'documents.write',
+    'ai.use',
     'working_papers.read',
     'working_papers.manage',
+    'workingpapers.edit',
     'documents.manage'
   ],
   client: [
     'engagement.read',
+    'documents.read',
     'billing.read',
     'working_papers.read'
   ],
   external_read_only: [
     'engagement.read',
+    'documents.read',
     'billing.read',
     'working_papers.read'
   ]

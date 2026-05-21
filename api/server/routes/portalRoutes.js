@@ -45,17 +45,25 @@ import { AIReviewService } from '../services/aiReviewService.js'
 import {
   addWorkspaceMember,
   acceptWorkspaceInvite,
+  acceptPendingWorkspaceInvites,
   createWorkspaceInvite,
   createWorkspace,
   getWorkspaceProfile,
   getWorkspaceContext,
   getOnboardingStatusForUser,
+  getWorkspaceOrgMigrationHealth,
+  getWorkspacePermissionSnapshot,
   listWorkspaceInvites,
   listWorkspaceMembers,
   listWorkspacesForUser,
   upsertWorkspaceProfile,
   updateWorkspaceMember
 } from '../services/accountingWorkspaceService.js'
+import {
+  assignWorkspaceMemberRole,
+  listWorkspaceRoles,
+  upsertWorkspaceCustomRole
+} from '../services/authz/workspaceRbacService.js'
 import {
   buildGoogleSheetsAuthUrl,
   buildQboAuthUrl,
@@ -163,11 +171,6 @@ export async function ensureUserHomeFolder (pool, userId) {
 
 export function createPortalRouter (pool) {
   const r = Router()
-  const getRole = (req) => {
-    const raw = req.headers['x-portal-role']
-    if (!raw) return 'preparer'
-    return String(raw).toLowerCase()
-  }
   const resolveAccountingScope = async (req, res, session) => {
     try {
       const requestedWorkspaceId = req.headers['x-accounting-workspace-id'] || req.query.workspaceId || null
@@ -829,6 +832,20 @@ export function createPortalRouter (pool) {
     }
   })
 
+  r.get('/v1/accounting/workspaces/migration-health', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    if (!isStaff(session.userId)) {
+      return res.status(403).json({ error: 'Forbidden' })
+    }
+    try {
+      const health = await getWorkspaceOrgMigrationHealth(pool)
+      res.json(health)
+    } catch (e) {
+      res.status(500).json({ error: e instanceof Error ? e.message : 'Could not load migration health' })
+    }
+  })
+
   r.post('/v1/accounting/workspaces', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
@@ -901,6 +918,82 @@ export function createPortalRouter (pool) {
     }
   })
 
+  r.get('/v1/accounting/workspaces/:workspaceId/permissions', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const data = await getWorkspacePermissionSnapshot(pool, session.userId, req.params.workspaceId)
+      res.json(data)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load workspace permissions' })
+    }
+  })
+
+  r.get('/v1/accounting/workspaces/:workspaceId/roles', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const scope = await resolveAccountingScope(req, res, session)
+      if (!scope) return
+      if (!(scope.workspace.role === 'owner' || scope.workspace.role === 'admin')) {
+        return res.status(403).json({ error: 'Only owner/admin can view role configuration' })
+      }
+      const roles = await listWorkspaceRoles(pool, req.params.workspaceId)
+      res.json({ workspace: scope.workspace, roles })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load workspace roles' })
+    }
+  })
+
+  r.put('/v1/accounting/workspaces/:workspaceId/roles/:roleName', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const scope = await resolveAccountingScope(req, res, session)
+      if (!scope) return
+      if (!(scope.workspace.role === 'owner' || scope.workspace.role === 'admin')) {
+        return res.status(403).json({ error: 'Only owner/admin can manage role configuration' })
+      }
+      const role = await upsertWorkspaceCustomRole(pool, req.params.workspaceId, session.userId, {
+        roleName: req.params.roleName,
+        sourceRole: req.body?.sourceRole,
+        displayName: req.body?.displayName,
+        permissions: req.body?.permissions || []
+      })
+      await pool.query(
+        `INSERT INTO taxgpt.accounting_audit_log
+         (organization_id, clerk_user_id, entity_type, entity_id, action, actor_id, after_value, created_at)
+         VALUES ($1::uuid, $2, 'workspace_role', $3, 'workspace.role_upserted', $2, $4::jsonb, now())`,
+        [req.params.workspaceId, session.userId, role.roleName, JSON.stringify(role)]
+      )
+      res.json({ role })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not save workspace role' })
+    }
+  })
+
+  r.post('/v1/accounting/workspaces/:workspaceId/members/:memberUserId/roles/:roleName', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const scope = await resolveAccountingScope(req, res, session)
+      if (!scope) return
+      if (!(scope.workspace.role === 'owner' || scope.workspace.role === 'admin')) {
+        return res.status(403).json({ error: 'Only owner/admin can assign workspace roles' })
+      }
+      const assignment = await assignWorkspaceMemberRole(pool, req.params.workspaceId, session.userId, req.params.memberUserId, req.params.roleName)
+      await pool.query(
+        `INSERT INTO taxgpt.accounting_audit_log
+         (organization_id, clerk_user_id, entity_type, entity_id, action, actor_id, after_value, created_at)
+         VALUES ($1::uuid, $2, 'workspace_member_role', $3, 'workspace.member_role_assigned', $2, $4::jsonb, now())`,
+        [req.params.workspaceId, session.userId, `${req.params.memberUserId}:${req.params.roleName}`, JSON.stringify(assignment)]
+      )
+      res.json({ assignment })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not assign workspace role' })
+    }
+  })
+
   r.get('/v1/accounting/workspaces/:workspaceId/invites', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
@@ -920,6 +1013,17 @@ export function createPortalRouter (pool) {
       res.json({ invite })
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create workspace invite' })
+    }
+  })
+
+  r.post('/v1/accounting/invites/accept-pending', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const accepted = await acceptPendingWorkspaceInvites(pool, session.userId, session.email)
+      res.json(accepted)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not accept pending invites' })
     }
   })
 
@@ -1210,9 +1314,11 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
-    const role = getRole(req)
-    const canOverride = isStaff(session.userId) || role === 'manager' || role === 'reviewer' || role === 'admin' || role === 'owner' ||
-      scope.workspace.role === 'manager' || scope.workspace.role === 'reviewer' || scope.workspace.role === 'admin' || scope.workspace.role === 'owner'
+    const canOverride = isStaff(session.userId) ||
+      scope.workspace.role === 'manager' ||
+      scope.workspace.role === 'reviewer' ||
+      scope.workspace.role === 'admin' ||
+      scope.workspace.role === 'owner'
     try {
       const leadSheet = await reviewerSignoff(pool, scope.workspaceUserId, scope.actorUserId, req.params.leadSheetId, canOverride)
       if (!leadSheet) return res.status(404).json({ error: 'Lead sheet not found' })

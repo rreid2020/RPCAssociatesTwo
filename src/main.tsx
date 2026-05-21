@@ -6,6 +6,7 @@ import './styles/global.css'
 import { getFrontendEnvConfig } from './config/env'
 import ObservabilityProvider from './providers/ObservabilityProvider'
 import { WorkspaceContextProvider } from './domains/Workspace'
+import { WorkspaceAuthorizationProvider } from './platform/permissions/WorkspaceAuthorizationProvider'
 
 const env = getFrontendEnvConfig()
 const clerkPubKey = env.clerkPublishableKey
@@ -20,14 +21,18 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <ClerkProvider publishableKey={clerkPubKey}>
         <ObservabilityProvider>
           <WorkspaceContextProvider>
-            <App />
+            <WorkspaceAuthorizationProvider>
+              <App />
+            </WorkspaceAuthorizationProvider>
           </WorkspaceContextProvider>
         </ObservabilityProvider>
       </ClerkProvider>
     ) : (
       <ObservabilityProvider>
         <WorkspaceContextProvider>
-          <App />
+          <WorkspaceAuthorizationProvider>
+            <App />
+          </WorkspaceAuthorizationProvider>
         </WorkspaceContextProvider>
       </ObservabilityProvider>
     )}

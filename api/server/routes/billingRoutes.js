@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { getClerkUser } from '../middleware/portalAuth.js'
 import { getWorkspaceContext } from '../services/accountingWorkspaceService.js'
+import { assertWorkspacePermissionWithCustomRoles } from '../services/authz/workspaceRbacService.js'
 import {
   getWorkspaceBillingOverview,
   getWorkspaceEntitlements,
@@ -29,11 +30,27 @@ export function createBillingRouter (pool) {
     }
   }
 
+  const requirePermission = async (scope, session, permission, res) => {
+    try {
+      await assertWorkspacePermissionWithCustomRoles(pool, {
+        workspaceId: scope.workspace.id,
+        workspaceRole: scope.workspace.role,
+        clerkUserId: session.userId,
+        permission
+      })
+      return true
+    } catch (e) {
+      res.status(403).json({ error: e instanceof Error ? e.message : 'Permission denied' })
+      return false
+    }
+  }
+
   r.get('/v1/billing/overview', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
     const scope = await resolveScope(req, res, session)
     if (!scope) return
+    if (!(await requirePermission(scope, session, 'billing.read', res))) return
     try {
       const billing = await getWorkspaceBillingOverview(pool, scope.workspace.id)
       res.json({ billing })
@@ -47,6 +64,7 @@ export function createBillingRouter (pool) {
     if (!session) return
     const scope = await resolveScope(req, res, session)
     if (!scope) return
+    if (!(await requirePermission(scope, session, 'billing.read', res))) return
     try {
       const entitlements = await getWorkspaceEntitlements(pool, scope.workspace.id)
       res.json({ entitlements })
@@ -60,6 +78,7 @@ export function createBillingRouter (pool) {
     if (!session) return
     const scope = await resolveScope(req, res, session)
     if (!scope) return
+    if (!(await requirePermission(scope, session, 'subscription.change', res))) return
     try {
       const checkout = await createCheckoutSession({
         workspaceId: scope.workspace.id,
@@ -79,6 +98,7 @@ export function createBillingRouter (pool) {
     if (!session) return
     const scope = await resolveScope(req, res, session)
     if (!scope) return
+    if (!(await requirePermission(scope, session, 'billing.manage', res))) return
     try {
       const portal = await createBillingPortalSession({
         workspaceId: scope.workspace.id,
@@ -95,6 +115,7 @@ export function createBillingRouter (pool) {
     if (!session) return
     const scope = await resolveScope(req, res, session)
     if (!scope) return
+    if (!(await requirePermission(scope, session, 'subscription.change', res))) return
     try {
       await cancelSubscription({ workspaceId: scope.workspace.id })
       const subscription = await syncSubscriptionStatus(pool, scope.workspace.id, {
@@ -115,6 +136,7 @@ export function createBillingRouter (pool) {
     if (!session) return
     const scope = await resolveScope(req, res, session)
     if (!scope) return
+    if (!(await requirePermission(scope, session, 'subscription.change', res))) return
     try {
       await changeSubscriptionPlan({
         workspaceId: scope.workspace.id,
@@ -144,6 +166,7 @@ export function createBillingRouter (pool) {
     if (!session) return
     const scope = await resolveScope(req, res, session)
     if (!scope) return
+    if (!(await requirePermission(scope, session, 'billing.manage', res))) return
     try {
       const subscription = await syncSubscriptionStatus(pool, scope.workspace.id, {
         planId: req.body?.planId || 'FREE',

@@ -2,6 +2,7 @@ import { FC, useEffect } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import { getOnboardingStatus, resolvePostAuthPath } from '../../lib/onboarding/state'
+import { portalFetch } from '../../lib/portalApi'
 
 const PostAuthRedirect: FC = () => {
   const navigate = useNavigate()
@@ -11,6 +12,10 @@ const PostAuthRedirect: FC = () => {
     if (!isLoaded || !isSignedIn) return
     let mounted = true
     const run = async () => {
+      // Auto-apply pending workspace invites created through Clerk email invitations.
+      try {
+        await portalFetch('/v1/accounting/invites/accept-pending', getToken, { method: 'POST' })
+      } catch {}
       const status = await getOnboardingStatus(getToken)
       if (!mounted) return
       navigate(resolvePostAuthPath(status), { replace: true })

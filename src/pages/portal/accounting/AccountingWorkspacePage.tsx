@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
-import { ACCOUNTING_WORKSPACE_STORAGE_KEY, portalFetch } from '../../../lib/portalApi'
+import { portalFetch } from '../../../lib/portalApi'
+import { useWorkspaceState } from '../../../platform/workspace/useWorkspaceState'
 
 type AccountingView =
   | 'landing'
@@ -135,13 +136,9 @@ function fileToBase64 (file: File): Promise<string> {
   })
 }
 
-function getStoredWorkspaceId (): string {
-  if (typeof window === 'undefined') return ''
-  return window.localStorage.getItem(ACCOUNTING_WORKSPACE_STORAGE_KEY) || ''
-}
-
 const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => {
   const { getToken } = useAuth()
+  const { workspaceId, setWorkspaceId } = useWorkspaceState()
   const navigate = useNavigate()
   const location = useLocation()
   const { engagementId, leadSheetId } = useParams()
@@ -178,7 +175,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [workspaces, setWorkspaces] = useState<any[]>([])
   const [workspaceMembers, setWorkspaceMembers] = useState<any[]>([])
   const [workspaceInvites, setWorkspaceInvites] = useState<any[]>([])
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(getStoredWorkspaceId())
+  const selectedWorkspaceId = workspaceId || ''
   const [newWorkspaceName, setNewWorkspaceName] = useState('')
   const [newWorkspaceType, setNewWorkspaceType] = useState<'business' | 'firm'>('business')
   const [showWorkspaceTools, setShowWorkspaceTools] = useState(false)
@@ -186,7 +183,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [newMemberRole, setNewMemberRole] = useState('preparer')
   const [newInviteEmail, setNewInviteEmail] = useState('')
   const [newInviteRole, setNewInviteRole] = useState('preparer')
-  const [lastInviteLink, setLastInviteLink] = useState('')
   const [trialBalanceAccounts, setTrialBalanceAccounts] = useState<any[]>([])
   const [trialBalancePreview, setTrialBalancePreview] = useState<TrialBalancePreview | null>(null)
   const [importFile, setImportFile] = useState<File | null>(null)
@@ -281,11 +277,9 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const loadWorkspaces = useCallback(async () => {
     const { workspaces: rows } = await portalFetch<{ workspaces: any[] }>('/v1/accounting/workspaces', getToken)
     setWorkspaces(rows)
-    setSelectedWorkspaceId((current) => {
-      if (current && rows.some((workspace) => workspace.id === current)) return current
-      return rows[0]?.id || ''
-    })
-  }, [getToken])
+    if (selectedWorkspaceId && rows.some((workspace) => workspace.id === selectedWorkspaceId)) return
+    setWorkspaceId(rows[0]?.id || null)
+  }, [getToken, selectedWorkspaceId, setWorkspaceId])
 
   const loadWorkspaceMembers = useCallback(async () => {
     if (!selectedWorkspaceId) return
@@ -298,15 +292,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     const data = await portalFetch<{ invites: any[] }>(`/v1/accounting/workspaces/${selectedWorkspaceId}/invites`, getToken)
     setWorkspaceInvites(data.invites || [])
   }, [getToken, selectedWorkspaceId])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (!selectedWorkspaceId) {
-      window.localStorage.removeItem(ACCOUNTING_WORKSPACE_STORAGE_KEY)
-      return
-    }
-    window.localStorage.setItem(ACCOUNTING_WORKSPACE_STORAGE_KEY, selectedWorkspaceId)
-  }, [selectedWorkspaceId])
 
   useEffect(() => {
     let mounted = true
@@ -622,25 +607,28 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
   const onCreateWorkspaceInvite = async () => {
     if (!selectedWorkspaceId) return
+    const inviteEmail = newInviteEmail.trim().toLowerCase()
+    if (!inviteEmail) {
+      setError('Employee email is required to send a Clerk invite.')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
-      const { invite } = await portalFetch<{ invite: any }>(
+      await portalFetch<{ invite: any }>(
         `/v1/accounting/workspaces/${selectedWorkspaceId}/invites`,
         getToken,
         {
           method: 'POST',
           body: JSON.stringify({
-            email: newInviteEmail.trim() || null,
+            email: inviteEmail,
             role: newInviteRole
           })
         }
       )
-      const inviteLink = `${window.location.origin}/portal/accounting/join?token=${encodeURIComponent(invite.invite_token)}`
-      setLastInviteLink(inviteLink)
       setNewInviteEmail('')
       await loadWorkspaceInvites()
-      setNotice('Invite link generated. Share it with your employee.')
+      setNotice('Clerk invite email sent. Once the employee creates/signs in to their account, they will be added to this workspace automatically.')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not create workspace invite')
     } finally {
@@ -664,7 +652,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         getToken,
         { method: 'POST' }
       )
-      setSelectedWorkspaceId(accepted.workspace.id)
+      setWorkspaceId(accepted.workspace.id)
       setNotice(`Invite accepted. You joined ${accepted.workspace.name}.`)
       navigate('/portal/accounting', { replace: true })
     } catch (e) {
@@ -672,7 +660,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     } finally {
       setSaving(false)
     }
-  }, [getToken, location.search, navigate, view])
+  }, [getToken, location.search, navigate, setWorkspaceId, view])
 
   const onConnectIntegration = async (providerId: string) => {
     if (providerId !== 'quickbooks_online' && providerId !== 'google_sheets') {
@@ -742,7 +730,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                       <select
                         className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
                         value={selectedWorkspaceId}
-                        onChange={(e) => setSelectedWorkspaceId(e.target.value)}
+                        onChange={(e) => setWorkspaceId(e.target.value || null)}
                       >
                         {workspaces.map((workspace) => (
                           <option key={workspace.id} value={workspace.id}>
@@ -796,15 +784,15 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           <h4 className="text-sm font-semibold text-primary-dark">Employee onboarding</h4>
                           <ol className="text-xs text-text-light space-y-1 list-decimal pl-4">
                             <li>Select the workspace where the employee should work.</li>
-                            <li>Create an invite link (optionally restricted to employee email) and share it.</li>
-                            <li>Employee signs in with Clerk and opens the invite link to auto-join the workspace.</li>
+                            <li>Send a Clerk invite email to the employee with the role they should receive.</li>
+                            <li>Employee creates/signs into Clerk using that email and is auto-added to the workspace.</li>
                           </ol>
                           <div className="rounded-md border border-border p-2 space-y-2">
-                            <p className="text-xs text-text-light">Step 1: Invite employee with secure join link</p>
+                            <p className="text-xs text-text-light">Step 1: Send employee invite email (Clerk)</p>
                             <div className="flex flex-wrap items-center gap-2">
                               <input
                                 className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
-                                placeholder="Employee email (optional but recommended)"
+                                placeholder="Employee email"
                                 value={newInviteEmail}
                                 onChange={(e) => setNewInviteEmail(e.target.value)}
                               />
@@ -820,27 +808,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               <button
                                 type="button"
                                 className="btn btn--primary text-sm py-2 px-4"
-                                disabled={saving || !selectedWorkspaceId || !canManageWorkspaceMembers}
+                                disabled={saving || !selectedWorkspaceId || !newInviteEmail.trim() || !canManageWorkspaceMembers}
                                 onClick={() => { void onCreateWorkspaceInvite() }}
                               >
-                                Create Invite Link
+                                Send Invite Email
                               </button>
                             </div>
-                            {lastInviteLink && (
-                              <div className="flex flex-wrap items-center gap-2">
-                                <input className="border border-border rounded-md px-3 py-2 text-xs min-w-64 flex-1" readOnly value={lastInviteLink} />
-                                <button
-                                  type="button"
-                                  className="btn btn--secondary text-sm py-2 px-3"
-                                  onClick={() => {
-                                    void navigator.clipboard.writeText(lastInviteLink)
-                                    setNotice('Invite link copied to clipboard')
-                                  }}
-                                >
-                                  Copy Link
-                                </button>
-                              </div>
-                            )}
                             {workspaceInvites.length > 0 && (
                               <div className="max-h-32 overflow-auto rounded-md border border-border">
                                 <table className="w-full text-xs">

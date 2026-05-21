@@ -1,20 +1,11 @@
-import { FC, ReactNode, useCallback, useState } from 'react'
+import { FC, ReactNode, useCallback, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useUser, useClerk } from '@clerk/clerk-react'
 import { useFeatureAccess } from '../lib/subscriptions/hooks'
 import AxiomWordmark from './AxiomWordmark'
-
-interface NavItem {
-  to: string
-  label: string
-  icon: JSX.Element
-  /** Non-clickable item used for future placeholders. */
-  disabled?: boolean
-  /** Gated: link disabled when the user does not have this feature. */
-  featureKey?: 'workingPapers' | 'integrations'
-  /** Shown on top of a locked item (e.g. Premium) */
-  lockedLabel?: string
-}
+import { useWorkspaceAuthorization } from '../platform/permissions/WorkspaceAuthorizationProvider'
+import { useWorkspaceState } from '../platform/workspace/useWorkspaceState'
+import { buildNavigationSections, type NavigationItem } from '../platform/navigation/navigationRegistry'
 
 interface ClientPortalShellProps {
   children: ReactNode
@@ -25,6 +16,8 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
   const location = useLocation()
   const { user } = useUser()
   const { signOut } = useClerk()
+  const { permissions } = useWorkspaceAuthorization()
+  const { workspaceId } = useWorkspaceState()
   const handleSignOut = useCallback(() => {
     const ts = Date.now()
     const redirectUrl = `${window.location.origin}/portal/sign-in?fresh=${ts}`
@@ -34,208 +27,47 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
   const workingPapers = useFeatureAccess('workingPapers')
   const integrations = useFeatureAccess('integrations')
 
-  const isLocked = (item: NavItem) => {
-    if (item.disabled) return true
-    if (!item.featureKey) return false
-    if (item.featureKey === 'workingPapers') return !workingPapers
-    if (item.featureKey === 'integrations') return !integrations
-    return false
+  const navigationSections = useMemo(() => (
+    buildNavigationSections({
+      workspaceType: null,
+      onboardingComplete: Boolean(workspaceId),
+      features: { workingPapers, integrations },
+      permissions
+    })
+  ), [integrations, permissions, workingPapers, workspaceId])
+
+  const iconForKey = (iconKey: string, active: boolean) => {
+    const iconClass = active ? 'text-white' : 'text-text-light'
+    const icons: Record<string, JSX.Element> = {
+      dashboard: <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" /></svg>,
+      sparkles: <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3l2.5 5 5.5 2.5-5.5 2.5L12 18l-2.5-5-5.5-2.5 5.5-2.5L12 3z" /></svg>,
+      document: <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
+      plus: <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>,
+      exchange: <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0l-4 4m4-4l4 4m6 8v4m0 0l4-4m-4 4l-4-4" /></svg>,
+      magic: <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 1.343-3 3v6l3-2 3 2v-6c0-1.657-1.343-3-3-3zm0 0V5m-7 6h2m10 0h2" /></svg>,
+      trend: <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>,
+      shield: <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>,
+      terminal: <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>,
+      workspace: <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5V4H2v16h5m10 0v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5m10 0H7" /></svg>,
+      calendar: <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10m-12 9h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2z" /></svg>,
+      folder: <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" /></svg>,
+      lock: <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a5 5 0 00-10 0v2m-2 0h14a1 1 0 011 1v8a1 1 0 01-1 1H5a1 1 0 01-1-1v-8a1 1 0 011-1z" /></svg>
+    }
+    return <span className={iconClass}>{icons[iconKey] || icons.document}</span>
   }
 
-  const primaryNavigation: NavItem[] = [
-    {
-      to: '/portal/dashboard',
-      label: 'Dashboard',
-      icon: (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" />
-        </svg>
-      ),
-    },
-  ]
-
-  const taxIntelligenceNavigation: NavItem[] = [
-    {
-      to: '/portal/taxgpt',
-      label: 'Tax GPT',
-      icon: (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3l2.5 5 5.5 2.5-5.5 2.5L12 18l-2.5-5-5.5-2.5 5.5-2.5L12 3z" />
-        </svg>
-      ),
-    },
-    {
-      to: '/app/tax-intelligence/returns',
-      label: 'Tax Returns',
-      icon: (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      ),
-    },
-    {
-      to: '/app/tax-intelligence/returns',
-      label: 'Return Builder',
-      icon: (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-        </svg>
-      ),
-    },
-    {
-      to: '/app/tax-intelligence/documents',
-      label: 'Document Processing',
-      icon: (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0l-4 4m4-4l4 4m6 8v4m0 0l4-4m-4 4l-4-4" />
-        </svg>
-      ),
-    },
-    {
-      to: '/app/tax-intelligence/optimization',
-      label: 'Optimization',
-      icon: (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 1.343-3 3v6l3-2 3 2v-6c0-1.657-1.343-3-3-3zm0 0V5m-7 6h2m10 0h2" />
-        </svg>
-      ),
-    },
-    {
-      to: '/app/tax-intelligence/scenarios',
-      label: 'Scenarios',
-      icon: (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-        </svg>
-      ),
-    },
-    {
-      to: '/app/tax-intelligence/risk',
-      label: 'Audit & Risk',
-      icon: (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-        </svg>
-      ),
-    },
-    {
-      to: '/app/tax-intelligence/forms-schedules',
-      label: 'Forms & Schedules',
-      icon: (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-      ),
-    },
-  ]
-
-  const accountingWorkspaceNavigation: NavItem[] = [
-    {
-      to: '/portal/accounting/workspaces',
-      label: 'Workspace Admin',
-      icon: (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5V4H2v16h5m10 0v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5m10 0H7" />
-        </svg>
-      ),
-    },
-    {
-      to: '/portal/accounting/working-papers/engagements',
-      label: 'Engagements',
-      icon: (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10m-12 9h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2z" />
-        </svg>
-      ),
-    },
-    {
-      to: '/portal/accounting/working-papers',
-      label: 'Working Papers',
-      icon: (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      ),
-    },
-    {
-      to: '/portal/accounting/integrations',
-      label: 'Integrations',
-      icon: (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-      ),
-    },
-  ]
-
-  const documentsAndSubscriptionNavigation: NavItem[] = [
-    {
-      to: '/portal/files',
-      label: 'Documents',
-      icon: (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
-        </svg>
-      ),
-    },
-    {
-      to: '/portal/subscription',
-      label: 'Subscription',
-      icon: (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-        </svg>
-      ),
-    },
-    {
-      to: '/portal/billing/subscription',
-      label: 'Billing',
-      icon: (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a5 5 0 00-10 0v2m-2 0h14a1 1 0 011 1v8a1 1 0 01-1 1H5a1 1 0 01-1-1v-8a1 1 0 011-1z" />
-        </svg>
-      ),
-    },
-  ]
+  const isLocked = (item: NavigationItem) => {
+    if (item.requiredFeature === 'workingPapers' && !workingPapers) return true
+    if (item.requiredFeature === 'integrations' && !integrations) return true
+    if (item.requiredPermission && !permissions.includes(item.requiredPermission)) return true
+    return false
+  }
 
   const isActive = (path: string) => {
     if (path === '/portal/dashboard') {
       return location.pathname === '/portal/dashboard'
     }
     return location.pathname.startsWith(path)
-  }
-
-  const renderNavItem = (item: NavItem, opts?: { nestedLevel?: 0 | 1 | 2 }) => {
-    const active = isActive(item.to)
-    const locked = isLocked(item)
-    const nestedLevel = opts?.nestedLevel ?? 0
-    return (
-      <Link
-        key={item.to}
-        to={item.to}
-        onClick={() => setSidebarOpen(false)}
-        className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors ${
-          nestedLevel === 0 ? 'px-3 py-2' : nestedLevel === 1 ? 'ml-6 px-3 py-1.5' : 'ml-10 px-3 py-1.5'
-        } ${
-          active
-            ? 'bg-primary-dark text-white'
-            : 'text-text hover:bg-background hover:text-primary-dark'
-        } ${locked ? 'opacity-60 cursor-not-allowed' : ''} ${item.disabled ? 'pointer-events-none' : ''}`}
-        onClickCapture={(e) => {
-          if (locked) {
-            e.preventDefault()
-          }
-        }}
-      >
-        <span className={active ? 'text-white' : 'text-text-light'}>{item.icon}</span>
-        <span className="flex-1">{item.label}</span>
-        {locked && item.lockedLabel && (
-          <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">
-            {item.lockedLabel}
-          </span>
-        )}
-      </Link>
-    )
   }
 
   return (
@@ -270,44 +102,42 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
 
           {/* Navigation */}
           <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-            {primaryNavigation.map((item) => renderNavItem(item))}
-            <div className="pt-2">
-              <div className="flex items-center gap-3 px-3 py-2 text-sm font-semibold text-primary-dark">
-                <span className="text-text-light" aria-hidden>
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3l2.5 5 5.5 2.5-5.5 2.5L12 18l-2.5-5-5.5-2.5 5.5-2.5L12 3z" />
-                  </svg>
-                </span>
-                <span>Financial Intelligence</span>
+            {navigationSections.map((section) => (
+              <div key={section.id} className="pt-1">
+                {section.label && (
+                  <div className={`flex items-center gap-3 px-3 py-2 text-sm font-semibold text-primary-dark ${section.depth === 1 ? 'ml-6' : ''}`}>
+                    <span className="text-text-light" aria-hidden>{iconForKey('sparkles', false)}</span>
+                    <span>{section.label}</span>
+                  </div>
+                )}
+                <div className="space-y-1">
+                  {section.items.map((item) => {
+                    const active = isActive(item.to)
+                    return (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setSidebarOpen(false)}
+                        className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors ${
+                          section.depth === 2 ? 'ml-10 px-3 py-1.5' : section.depth === 1 ? 'ml-6 px-3 py-1.5' : 'px-3 py-2'
+                        } ${
+                          active ? 'bg-primary-dark text-white' : 'text-text hover:bg-background hover:text-primary-dark'
+                        } ${isLocked(item) ? 'opacity-60 cursor-not-allowed' : ''}`}
+                        onClickCapture={(e) => {
+                          if (isLocked(item)) e.preventDefault()
+                        }}
+                      >
+                        {iconForKey(item.iconKey, active)}
+                        <span className="flex-1">{item.label}</span>
+                        {isLocked(item) && (
+                          <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">Premium</span>
+                        )}
+                      </Link>
+                    )
+                  })}
+                </div>
               </div>
-              <div className="flex items-center gap-3 px-3 py-2 text-sm font-semibold text-primary-dark ml-6">
-                <span className="text-text-light" aria-hidden>
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3l2.5 5 5.5 2.5-5.5 2.5L12 18l-2.5-5-5.5-2.5 5.5-2.5L12 3z" />
-                  </svg>
-                </span>
-                <span>Tax Intelligence</span>
-              </div>
-              <div className="space-y-1">
-                {taxIntelligenceNavigation.map((item) => renderNavItem(item, { nestedLevel: 2 }))}
-              </div>
-            </div>
-            <div className="pt-2">
-              <div className="flex items-center gap-3 px-3 py-2 text-sm font-semibold text-primary-dark">
-                <span className="text-text-light" aria-hidden>
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
-                  </svg>
-                </span>
-                <span>Accounting Operations</span>
-              </div>
-              <div className="space-y-1">
-                {accountingWorkspaceNavigation.map((item) => renderNavItem(item, { nestedLevel: 1 }))}
-              </div>
-            </div>
-            <div className="pt-1">
-              {documentsAndSubscriptionNavigation.map((item) => renderNavItem(item))}
-            </div>
+            ))}
           </nav>
 
           {/* Footer */}

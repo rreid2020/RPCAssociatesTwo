@@ -54,6 +54,7 @@ const Subscription: FC = () => {
   const [searchParams] = useSearchParams()
   const currentPlan = useSubscription()
   const currentPlanConfig = useSubscriptionPlan()
+  const forceEnterpriseAccess = import.meta.env.VITE_FORCE_ENTERPRISE_ACCESS !== 'false'
   const onboardingRequested = searchParams.get('onboarding') === '1'
   const [loadingWorkspaces, setLoadingWorkspaces] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -257,7 +258,11 @@ const Subscription: FC = () => {
           <h1 className="text-3xl font-bold text-primary-dark mb-6">Subscription</h1>
 
           <div className="bg-accent/10 border border-accent/30 rounded-lg px-4 py-3 mb-6">
-            <p className="text-sm text-accent font-medium">Temporary Access Mode: Enterprise enabled for all signed-in users during rollout/testing.</p>
+            <p className="text-sm text-accent font-medium">
+              {forceEnterpriseAccess
+                ? 'Temporary Access Mode: Enterprise enabled for all signed-in users during rollout/testing.'
+                : 'Workspace entitlement mode is active. Access is resolved from workspace subscription state.'}
+            </p>
           </div>
 
           {(onboardingRequested || workspaces.length === 0) && (
@@ -553,12 +558,12 @@ const Subscription: FC = () => {
               </div>
               <div className="text-right">
                 <p className="text-2xl font-bold text-primary-dark">
-                  {formatSubscriptionPrice(currentPlanConfig.price)}
+                  {formatSubscriptionPrice(currentPlanConfig.monthlyPrice)}
                 </p>
-                {currentPlan === 'free' && (
+                {currentPlan === 'FREE' && (
                   <p className="text-sm text-text-light mt-1">Always free for development</p>
                 )}
-                {currentPlan === 'enterprise' && (
+                {currentPlan === 'ENTERPRISE' && (
                   <p className="text-sm text-accent mt-1">Full access currently enabled for rollout/testing</p>
                 )}
               </div>
@@ -589,7 +594,7 @@ const Subscription: FC = () => {
                     <p className="text-text-light text-sm mb-4">{plan.description}</p>
                     <div className="mb-4">
                       <p className="text-2xl font-bold text-primary-dark">
-                        {formatSubscriptionPrice(plan.price)}
+                        {formatSubscriptionPrice(plan.monthlyPrice)}
                       </p>
                     </div>
                     <ul className="space-y-2 mb-6">
@@ -654,7 +659,7 @@ const Subscription: FC = () => {
                         </span>
                       </li>
                     </ul>
-                    {!isCurrentPlan && plan.id !== 'free' && (
+                    {!isCurrentPlan && plan.id !== 'FREE' && (
                       <button
                         disabled
                         className="w-full btn btn--primary opacity-50 cursor-not-allowed"
@@ -670,7 +675,7 @@ const Subscription: FC = () => {
           </div>
 
           {/* Note about free plan */}
-          {currentPlan === 'free' && (
+          {currentPlan === 'FREE' && (
             <div className="bg-background p-6 rounded-lg border border-border">
               <h3 className="text-lg font-semibold text-primary-dark mb-2">Free Plan Active</h3>
               <p className="text-text-light">

@@ -1,4 +1,4 @@
-import { SubscriptionPlan, SUBSCRIPTION_PLANS } from './types'
+import { FeatureAccessKey, SubscriptionPlan, SUBSCRIPTION_PLANS } from './types'
 
 function forceEnterpriseAccess (): boolean {
   return import.meta.env.VITE_FORCE_ENTERPRISE_ACCESS !== 'false'
@@ -9,16 +9,24 @@ function forceEnterpriseAccess (): boolean {
  */
 export function getSubscriptionPlan(metadata: Record<string, unknown> | undefined): SubscriptionPlan {
   if (forceEnterpriseAccess()) {
-    return 'enterprise'
+    return 'ENTERPRISE'
   }
 
-  const plan = metadata?.subscriptionPlan as SubscriptionPlan | undefined
+  const rawPlan = String(metadata?.subscriptionPlan || '').trim().toUpperCase()
+  const legacyMap: Record<string, SubscriptionPlan> = {
+    FREE: 'FREE',
+    BASIC: 'PROFESSIONAL',
+    PROFESSIONAL: 'PROFESSIONAL',
+    TAX_INTELLIGENCE: 'TAX_INTELLIGENCE',
+    ENTERPRISE: 'ENTERPRISE'
+  }
+  const plan = legacyMap[rawPlan]
 
   if (plan && plan in SUBSCRIPTION_PLANS) {
     return plan
   }
 
-  return 'free'
+  return 'FREE'
 }
 
 /**
@@ -26,7 +34,7 @@ export function getSubscriptionPlan(metadata: Record<string, unknown> | undefine
  */
 export function hasFeatureAccess(
   plan: SubscriptionPlan,
-  feature: keyof typeof SUBSCRIPTION_PLANS.free.features
+  feature: FeatureAccessKey
 ): boolean {
   const planConfig = SUBSCRIPTION_PLANS[plan]
   return planConfig.features[feature] ?? false
@@ -36,6 +44,6 @@ export function hasFeatureAccess(
  * Format subscription price for display
  */
 export function formatSubscriptionPrice(price: number | null): string {
-  if (price === null) return 'Free'
+  if (price === null || price <= 0) return 'Free'
   return `$${price.toFixed(2)}/month`
 }

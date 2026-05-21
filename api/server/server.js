@@ -13,6 +13,7 @@ import { ensurePortalSchema } from './db/ensurePortalSchema.js'
 import { logPortalObjectStorageConfig } from './services/portalS3.js'
 import { createPortalRouter } from './routes/portalRoutes.js'
 import { createTaxIntelligenceRouter } from './routes/taxIntelligenceRoutes.js'
+import { createBillingRouter } from './routes/billingRoutes.js'
 import { logServerEnvSummary } from './config/env.js'
 import { getNotificationInbox } from './config/mail.js'
 import { escapeHtml, singleLine } from './utils/html.js'
@@ -264,6 +265,7 @@ app.post('/api/contact', async (req, res) => {
 
 // Client Portal API (Clerk JWT; data in taxgpt.*)
 app.use('/api/portal', createPortalRouter(pool))
+app.use('/api/portal', createBillingRouter(pool))
 app.use('/api', createTaxIntelligenceRouter(pool))
 app.use('/api/portal/tax-intelligence', createTaxIntelligenceRouter(pool))
 

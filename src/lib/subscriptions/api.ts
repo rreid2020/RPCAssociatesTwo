@@ -39,9 +39,9 @@ export async function getSubscriptionPlan(userId: string): Promise<SubscriptionP
   const response = await fetch(`/api/subscriptions/${userId}`)
 
   if (!response.ok) {
-    return 'free' // Default to free on error
+    return 'FREE' // Default to free on error
   }
 
   const data = await response.json()
-  return data.plan || 'free'
+  return data.plan || 'FREE'
 }

@@ -5,4 +5,5 @@ export * from './accounting/workspaceService'
 export * from './tax/taxIntelligenceService'
 export * from './integrations/integrationService'
 export * from './documents/documentService'
+export * from './billing'
 

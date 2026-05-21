@@ -49,6 +49,7 @@ import {
   createWorkspace,
   getWorkspaceProfile,
   getWorkspaceContext,
+  getOnboardingStatusForUser,
   listWorkspaceInvites,
   listWorkspaceMembers,
   listWorkspacesForUser,
@@ -63,6 +64,7 @@ import {
   exchangeQboCodeForTokens,
   verifySignedIntegrationState
 } from '../services/integrationOAuthService.js'
+import { getWorkspaceEntitlements } from '../services/orchestrators/billingOrchestrator.js'
 
 const MAX_UPLOAD_BYTES = parseInt(process.env.PORTAL_MAX_UPLOAD_BYTES || String(100 * 1024 * 1024), 10)
 
@@ -179,6 +181,23 @@ export function createPortalRouter (pool) {
     } catch (e) {
       res.status(403).json({ error: e instanceof Error ? e.message : 'Workspace access denied' })
       return null
+    }
+  }
+  const hasEntitlement = async (res, workspaceId, key) => {
+    try {
+      const entitlements = await getWorkspaceEntitlements(pool, workspaceId)
+      const mapping = {
+        workingPapers: Boolean(entitlements.can_access_working_papers),
+        integrations: Boolean(entitlements.can_use_qbo_integration || entitlements.can_use_google_sheets_integration)
+      }
+      if (!mapping[key]) {
+        res.status(402).json({ error: 'Feature requires an upgraded workspace subscription.' })
+        return false
+      }
+      return true
+    } catch (e) {
+      res.status(500).json({ error: e instanceof Error ? e.message : 'Could not evaluate workspace entitlements' })
+      return false
     }
   }
 
@@ -799,6 +818,17 @@ export function createPortalRouter (pool) {
     }
   })
 
+  r.get('/v1/accounting/onboarding-status', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const onboarding = await getOnboardingStatusForUser(pool, session.userId)
+      res.json({ onboarding })
+    } catch (e) {
+      res.status(500).json({ error: e instanceof Error ? e.message : 'Could not load onboarding status' })
+    }
+  })
+
   r.post('/v1/accounting/workspaces', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
@@ -960,6 +990,7 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
+    if (!(await hasEntitlement(res, scope.workspace.id, 'workingPapers'))) return
     try {
       const engagements = await listEngagements(pool, scope.workspaceUserId, {
         status: req.query.status || null,
@@ -979,6 +1010,7 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
+    if (!(await hasEntitlement(res, scope.workspace.id, 'workingPapers'))) return
     try {
       const engagement = await createEngagement(pool, scope.workspaceUserId, scope.actorUserId, req.body || {})
       res.json({ engagement })
@@ -1352,6 +1384,7 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
+    if (!(await hasEntitlement(res, scope.workspace.id, 'integrations'))) return
     await ensureStandardMappingGroups(pool, scope.workspaceUserId)
     const connections = await listIntegrations(pool, scope.workspaceUserId, scope.organizationId)
     const qboEnv = QuickBooksOnlineProvider.envRequirements()
@@ -1414,6 +1447,7 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
+    if (!(await hasEntitlement(res, scope.workspace.id, 'integrations'))) return
     const provider = String(req.params.provider || '')
     try {
       const stateToken = createSignedIntegrationState({
@@ -1488,6 +1522,7 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
+    if (!(await hasEntitlement(res, scope.workspace.id, 'integrations'))) return
     try {
       const connection = await upsertIntegrationConnection(pool, scope.workspaceUserId, scope.actorUserId, {
         ...(req.body || {}),

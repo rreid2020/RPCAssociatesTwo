@@ -19,12 +19,12 @@ const UpgradePrompt: FC<UpgradePromptProps> = ({ feature }) => {
       <p className="text-text-light mb-4">
         {feature} is available with a paid subscription plan.
       </p>
-      {currentPlan.id === 'free' && (
+      {currentPlan.id === 'FREE' && (
         <div className="space-y-3">
           <p className="text-sm text-text-light">
             You're currently on the <strong>{currentPlan.name}</strong>. Upgrade to unlock this feature.
           </p>
-          <Link to="/portal/subscription" className="btn btn--primary inline-block">
+          <Link to="/portal/billing/subscription" className="btn btn--primary inline-block">
             View Subscription Plans
           </Link>
         </div>

@@ -187,6 +187,15 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
         </svg>
       ),
     },
+    {
+      to: '/portal/billing/subscription',
+      label: 'Billing',
+      icon: (
+        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a5 5 0 00-10 0v2m-2 0h14a1 1 0 011 1v8a1 1 0 01-1 1H5a1 1 0 01-1-1v-8a1 1 0 011-1z" />
+        </svg>
+      ),
+    },
   ]
 
   const isActive = (path: string) => {

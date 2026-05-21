@@ -1,4 +1,6 @@
-export type SubscriptionPlan = 'free' | 'basic' | 'professional' | 'enterprise'
+import { BILLING_PLANS } from '../../services/billing/plans'
+
+export type SubscriptionPlan = 'FREE' | 'PROFESSIONAL' | 'TAX_INTELLIGENCE' | 'ENTERPRISE'
 
 export interface SubscriptionFeatures {
   dashboard: boolean
@@ -7,71 +9,113 @@ export interface SubscriptionFeatures {
   fileRepository: boolean
   workingPapers: boolean
   integrations: boolean
+  canInviteUsers: boolean
+  maxStorageMb: number
+  maxUsers: number
+  aiMonthlyCredits: number
 }
+
+export type FeatureAccessKey =
+  | 'dashboard'
+  | 'taxgpt'
+  | 'taxgptPremium'
+  | 'fileRepository'
+  | 'workingPapers'
+  | 'integrations'
+  | 'canInviteUsers'
 
 export interface SubscriptionPlanConfig {
   id: SubscriptionPlan
   name: string
   description: string
-  price: number | null // null for free
+  monthlyPrice: number
+  annualPrice: number
   features: SubscriptionFeatures
 }
 
 export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, SubscriptionPlanConfig> = {
-  free: {
-    id: 'free',
-    name: 'Free Plan',
-    description: 'Basic access to the client portal, including secure file storage',
-    price: null,
+  FREE: {
+    id: 'FREE',
+    name: 'Free',
+    description: 'Freemium workspace access with onboarding and dashboard included.',
+    monthlyPrice: BILLING_PLANS.FREE.monthlyPrice,
+    annualPrice: BILLING_PLANS.FREE.annualPrice,
     features: {
       dashboard: true,
-      taxgpt: true,
+      taxgpt: BILLING_PLANS.FREE.entitlements.canAccessTaxGPT,
       taxgptPremium: false,
       fileRepository: true,
-      workingPapers: false,
-      integrations: false,
-    },
+      workingPapers: BILLING_PLANS.FREE.entitlements.canAccessWorkingPapers,
+      integrations:
+        BILLING_PLANS.FREE.entitlements.canUseQBOIntegration ||
+        BILLING_PLANS.FREE.entitlements.canUseGoogleSheetsIntegration,
+      canInviteUsers: BILLING_PLANS.FREE.entitlements.canInviteUsers,
+      maxStorageMb: BILLING_PLANS.FREE.entitlements.maxStorageMb,
+      maxUsers: BILLING_PLANS.FREE.entitlements.maxUsers,
+      aiMonthlyCredits: BILLING_PLANS.FREE.entitlements.aiMonthlyCredits
+    }
   },
-  basic: {
-    id: 'basic',
-    name: 'Basic Plan',
-    description: 'Essential features for individuals',
-    price: 29.99,
+  PROFESSIONAL: {
+    id: 'PROFESSIONAL',
+    name: 'Professional',
+    description: 'Working papers and operational integrations for growing teams.',
+    monthlyPrice: BILLING_PLANS.PROFESSIONAL.monthlyPrice,
+    annualPrice: BILLING_PLANS.PROFESSIONAL.annualPrice,
     features: {
       dashboard: true,
-      taxgpt: true,
+      taxgpt: BILLING_PLANS.PROFESSIONAL.entitlements.canAccessTaxGPT,
       taxgptPremium: true,
       fileRepository: true,
-      workingPapers: false,
-      integrations: false,
-    },
+      workingPapers: BILLING_PLANS.PROFESSIONAL.entitlements.canAccessWorkingPapers,
+      integrations:
+        BILLING_PLANS.PROFESSIONAL.entitlements.canUseQBOIntegration ||
+        BILLING_PLANS.PROFESSIONAL.entitlements.canUseGoogleSheetsIntegration,
+      canInviteUsers: BILLING_PLANS.PROFESSIONAL.entitlements.canInviteUsers,
+      maxStorageMb: BILLING_PLANS.PROFESSIONAL.entitlements.maxStorageMb,
+      maxUsers: BILLING_PLANS.PROFESSIONAL.entitlements.maxUsers,
+      aiMonthlyCredits: BILLING_PLANS.PROFESSIONAL.entitlements.aiMonthlyCredits
+    }
   },
-  professional: {
-    id: 'professional',
-    name: 'Professional Plan',
-    description: 'Full features for small businesses',
-    price: 99.99,
+  TAX_INTELLIGENCE: {
+    id: 'TAX_INTELLIGENCE',
+    name: 'Tax Intelligence',
+    description: 'Higher AI capacity and advanced tax intelligence workflows.',
+    monthlyPrice: BILLING_PLANS.TAX_INTELLIGENCE.monthlyPrice,
+    annualPrice: BILLING_PLANS.TAX_INTELLIGENCE.annualPrice,
     features: {
       dashboard: true,
-      taxgpt: true,
+      taxgpt: BILLING_PLANS.TAX_INTELLIGENCE.entitlements.canAccessTaxGPT,
       taxgptPremium: true,
       fileRepository: true,
-      workingPapers: true,
-      integrations: true,
-    },
+      workingPapers: BILLING_PLANS.TAX_INTELLIGENCE.entitlements.canAccessWorkingPapers,
+      integrations:
+        BILLING_PLANS.TAX_INTELLIGENCE.entitlements.canUseQBOIntegration ||
+        BILLING_PLANS.TAX_INTELLIGENCE.entitlements.canUseGoogleSheetsIntegration,
+      canInviteUsers: BILLING_PLANS.TAX_INTELLIGENCE.entitlements.canInviteUsers,
+      maxStorageMb: BILLING_PLANS.TAX_INTELLIGENCE.entitlements.maxStorageMb,
+      maxUsers: BILLING_PLANS.TAX_INTELLIGENCE.entitlements.maxUsers,
+      aiMonthlyCredits: BILLING_PLANS.TAX_INTELLIGENCE.entitlements.aiMonthlyCredits
+    }
   },
-  enterprise: {
-    id: 'enterprise',
-    name: 'Enterprise Plan',
-    description: 'Custom solutions for large organizations',
-    price: null, // Custom pricing
+  ENTERPRISE: {
+    id: 'ENTERPRISE',
+    name: 'Enterprise',
+    description: 'Maximum limits, advanced controls, and enterprise readiness.',
+    monthlyPrice: BILLING_PLANS.ENTERPRISE.monthlyPrice,
+    annualPrice: BILLING_PLANS.ENTERPRISE.annualPrice,
     features: {
       dashboard: true,
-      taxgpt: true,
+      taxgpt: BILLING_PLANS.ENTERPRISE.entitlements.canAccessTaxGPT,
       taxgptPremium: true,
       fileRepository: true,
-      workingPapers: true,
-      integrations: true,
-    },
-  },
+      workingPapers: BILLING_PLANS.ENTERPRISE.entitlements.canAccessWorkingPapers,
+      integrations:
+        BILLING_PLANS.ENTERPRISE.entitlements.canUseQBOIntegration ||
+        BILLING_PLANS.ENTERPRISE.entitlements.canUseGoogleSheetsIntegration,
+      canInviteUsers: BILLING_PLANS.ENTERPRISE.entitlements.canInviteUsers,
+      maxStorageMb: BILLING_PLANS.ENTERPRISE.entitlements.maxStorageMb,
+      maxUsers: BILLING_PLANS.ENTERPRISE.entitlements.maxUsers,
+      aiMonthlyCredits: BILLING_PLANS.ENTERPRISE.entitlements.aiMonthlyCredits
+    }
+  }
 }

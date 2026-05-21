@@ -18,12 +18,12 @@ const SignIn: FC = () => {
 
   useEffect(() => {
     if (isAuthLoaded && isSignedIn) {
-      navigate('/portal/dashboard')
+      navigate('/portal/post-auth')
     }
   }, [isAuthLoaded, isSignedIn, navigate])
 
-  const goDashboard = () => {
-    navigate('/portal/dashboard')
+  const goPostAuth = () => {
+    navigate('/portal/post-auth')
   }
 
   const handleOAuthSignIn = async (strategy: 'oauth_github' | 'oauth_google') => {
@@ -34,7 +34,7 @@ const SignIn: FC = () => {
 
     const origin = window.location.origin
     const ssoCallback = `${origin}/sso-callback`
-    const afterAuth = `${origin}/portal/dashboard`
+    const afterAuth = `${origin}/portal/post-auth`
 
     try {
       await signIn.authenticateWithRedirect({
@@ -61,7 +61,8 @@ const SignIn: FC = () => {
         code
       })
       if (res.status === 'complete' && res.createdSessionId) {
-        await setActive({ session: res.createdSessionId, navigate: goDashboard })
+        await setActive({ session: res.createdSessionId })
+        goPostAuth()
         return
       }
       setError('Verification incomplete. Please try again.')
@@ -97,7 +98,8 @@ const SignIn: FC = () => {
       })
 
       if (result.status === 'complete' && result.createdSessionId) {
-        await setActive({ session: result.createdSessionId, navigate: goDashboard })
+        await setActive({ session: result.createdSessionId })
+        goPostAuth()
         return
       }
 

@@ -1,16 +1,11 @@
 import { FC, ReactNode, useEffect, useMemo, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { SignedIn, SignedOut, useAuth } from '@clerk/clerk-react'
-import { portalFetch } from '../lib/portalApi'
+import { getOnboardingStatus, ONBOARDING_REQUIRED_PATH, shouldBypassOnboardingGate } from '../lib/onboarding/state'
 
 interface ProtectedRouteProps {
   children: ReactNode
 }
-
-const onboardingBypassPaths = new Set([
-  '/portal/subscription',
-  '/portal/accounting/join'
-])
 
 const OnboardingGate: FC<ProtectedRouteProps> = ({ children }) => {
   const { getToken } = useAuth()
@@ -18,7 +13,7 @@ const OnboardingGate: FC<ProtectedRouteProps> = ({ children }) => {
   const navigate = useNavigate()
   const [checking, setChecking] = useState(true)
 
-  const shouldBypass = useMemo(() => onboardingBypassPaths.has(location.pathname), [location.pathname])
+  const shouldBypass = useMemo(() => shouldBypassOnboardingGate(location.pathname), [location.pathname])
 
   useEffect(() => {
     let mounted = true
@@ -28,16 +23,14 @@ const OnboardingGate: FC<ProtectedRouteProps> = ({ children }) => {
         return
       }
       try {
-        const data = await portalFetch<{ workspaces: any[] }>('/v1/accounting/workspaces', getToken)
-        const rows = data.workspaces || []
-        const hasWorkspace = rows.length > 0
-        const hasCompletedProfile = rows.some((workspace) => Boolean(workspace.profile_onboarding_completed_at))
-        if (!hasWorkspace || !hasCompletedProfile) {
-          navigate('/portal/subscription?onboarding=1', { replace: true })
+        const status = await getOnboardingStatus(getToken)
+        if (status.required) {
+          navigate(ONBOARDING_REQUIRED_PATH, { replace: true })
           return
         }
       } catch {
-        // Don't block protected routes if onboarding check fails.
+        navigate(ONBOARDING_REQUIRED_PATH, { replace: true })
+        return
       } finally {
         if (mounted) setChecking(false)
       }

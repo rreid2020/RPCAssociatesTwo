@@ -21,12 +21,12 @@ const SignUp: FC = () => {
 
   useEffect(() => {
     if (isAuthLoaded && isSignedIn) {
-      navigate('/portal/dashboard')
+      navigate('/portal/post-auth')
     }
   }, [isAuthLoaded, isSignedIn, navigate])
 
-  const goDashboard = () => {
-    navigate('/portal/dashboard')
+  const goPostAuth = () => {
+    navigate('/portal/post-auth')
   }
 
   const normalizeCode = (value: string) => value.replace(/\D/g, '').slice(0, 6)
@@ -54,7 +54,7 @@ const SignUp: FC = () => {
 
   const activateSession = async (sessionId: string) => {
     await setActive({ session: sessionId })
-    goDashboard()
+    goPostAuth()
   }
 
   const recoverIfVerificationAlreadyComplete = async () => {
@@ -62,7 +62,8 @@ const SignUp: FC = () => {
     try {
       await signUp.reload()
       if (signUp.status === 'complete' && signUp.createdSessionId) {
-        await setActive({ session: signUp.createdSessionId, navigate: goDashboard })
+        await setActive({ session: signUp.createdSessionId })
+        goPostAuth()
         return true
       }
       if (signUp.status === 'complete') {
@@ -82,7 +83,7 @@ const SignUp: FC = () => {
 
     const origin = window.location.origin
     const ssoCallback = `${origin}/sso-callback`
-    const afterAuth = `${origin}/portal/dashboard`
+    const afterAuth = `${origin}/portal/post-auth`
 
     try {
       await signUp.authenticateWithRedirect({

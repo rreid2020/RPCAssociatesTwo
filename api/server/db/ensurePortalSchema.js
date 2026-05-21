@@ -703,7 +703,73 @@ const STATEMENTS = [
   created_at TIMESTAMP NOT NULL DEFAULT now(),
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 )`,
-  'CREATE INDEX IF NOT EXISTS accounting_workspace_profiles_contact_email_idx ON taxgpt.accounting_workspace_profiles(primary_contact_email)'
+  'CREATE INDEX IF NOT EXISTS accounting_workspace_profiles_contact_email_idx ON taxgpt.accounting_workspace_profiles(primary_contact_email)',
+  `CREATE TABLE IF NOT EXISTS taxgpt.workspace_stripe_customer_mappings (
+  workspace_id UUID PRIMARY KEY REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,
+  clerk_user_id TEXT NOT NULL,
+  stripe_customer_id TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+)`,
+  'CREATE INDEX IF NOT EXISTS workspace_stripe_customer_mappings_user_idx ON taxgpt.workspace_stripe_customer_mappings(clerk_user_id)',
+  `CREATE TABLE IF NOT EXISTS taxgpt.subscription_plans (
+  id TEXT PRIMARY KEY,
+  display_name TEXT NOT NULL,
+  stripe_product_id TEXT NOT NULL,
+  stripe_price_monthly_id TEXT NOT NULL,
+  stripe_price_annual_id TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+)`,
+  `CREATE TABLE IF NOT EXISTS taxgpt.workspace_subscriptions (
+  workspace_id UUID PRIMARY KEY REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,
+  plan_id TEXT NOT NULL DEFAULT 'FREE',
+  status VARCHAR(32) NOT NULL DEFAULT 'none',
+  interval VARCHAR(16) NOT NULL DEFAULT 'monthly',
+  stripe_customer_id TEXT,
+  stripe_subscription_id TEXT,
+  cancel_at_period_end BOOLEAN NOT NULL DEFAULT false,
+  current_period_start TIMESTAMP,
+  current_period_end TIMESTAMP,
+  trial_ends_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+)`,
+  'CREATE INDEX IF NOT EXISTS workspace_subscriptions_status_idx ON taxgpt.workspace_subscriptions(status, current_period_end)',
+  `CREATE TABLE IF NOT EXISTS taxgpt.workspace_entitlements (
+  workspace_id UUID PRIMARY KEY REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,
+  can_access_working_papers BOOLEAN NOT NULL DEFAULT false,
+  can_access_taxgpt BOOLEAN NOT NULL DEFAULT true,
+  can_use_qbo_integration BOOLEAN NOT NULL DEFAULT false,
+  can_use_google_sheets_integration BOOLEAN NOT NULL DEFAULT false,
+  can_invite_users BOOLEAN NOT NULL DEFAULT true,
+  max_storage_mb INTEGER NOT NULL DEFAULT 512,
+  max_users INTEGER NOT NULL DEFAULT 3,
+  ai_monthly_credits INTEGER NOT NULL DEFAULT 100,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+)`,
+  `CREATE TABLE IF NOT EXISTS taxgpt.workspace_usage_tracking (
+  workspace_id UUID PRIMARY KEY REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,
+  storage_mb_used INTEGER NOT NULL DEFAULT 0,
+  active_users INTEGER NOT NULL DEFAULT 1,
+  ai_credits_used_this_month INTEGER NOT NULL DEFAULT 0,
+  billing_cycle_month VARCHAR(7) NOT NULL DEFAULT to_char(now(), 'YYYY-MM'),
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+)`,
+  `CREATE TABLE IF NOT EXISTS taxgpt.workspace_billing_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,
+  source TEXT NOT NULL,
+  source_event_id TEXT,
+  event_type TEXT NOT NULL,
+  idempotency_key TEXT NOT NULL UNIQUE,
+  payload_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+  processed_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT now()
+)`,
+  'CREATE INDEX IF NOT EXISTS workspace_billing_events_workspace_idx ON taxgpt.workspace_billing_events(workspace_id, created_at DESC)'
 ]
 
 export async function ensurePortalSchema (pool) {

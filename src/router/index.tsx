@@ -5,6 +5,7 @@ import { getPortalRoutes } from '../modules/portal/routes'
 import { getAccountingRoutes } from '../modules/accounting/routes'
 import { getTaxRoutes } from '../modules/tax-intelligence/routes'
 import { getMarketingRoutes } from '../modules/marketing/routes'
+import { getBillingRoutes } from '../modules/billing/routes'
 
 const AppRoutes: FC = () => {
   return (
@@ -12,6 +13,7 @@ const AppRoutes: FC = () => {
       {getAuthRoutes()}
       {getPortalRoutes()}
       {getAccountingRoutes()}
+      {getBillingRoutes()}
       {getTaxRoutes()}
       {getMarketingRoutes()}
     </Routes>

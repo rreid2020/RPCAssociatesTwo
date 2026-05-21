@@ -4,6 +4,9 @@ const ROLE_PERMISSIONS: Record<PlatformRole, PermissionKey[]> = {
   super_admin: [
     'workspace.manage',
     'workspace.invite',
+    'billing.read',
+    'billing.manage',
+    'subscription.change',
     'engagement.read',
     'engagement.manage',
     'working_papers.read',
@@ -16,6 +19,9 @@ const ROLE_PERMISSIONS: Record<PlatformRole, PermissionKey[]> = {
   firm_admin: [
     'workspace.manage',
     'workspace.invite',
+    'billing.read',
+    'billing.manage',
+    'subscription.change',
     'engagement.read',
     'engagement.manage',
     'working_papers.read',
@@ -28,6 +34,7 @@ const ROLE_PERMISSIONS: Record<PlatformRole, PermissionKey[]> = {
   manager: [
     'engagement.read',
     'engagement.manage',
+    'billing.read',
     'working_papers.read',
     'working_papers.manage',
     'review_notes.manage',
@@ -36,6 +43,7 @@ const ROLE_PERMISSIONS: Record<PlatformRole, PermissionKey[]> = {
   ],
   reviewer: [
     'engagement.read',
+    'billing.read',
     'working_papers.read',
     'review_notes.manage',
     'signoff.perform',
@@ -49,10 +57,12 @@ const ROLE_PERMISSIONS: Record<PlatformRole, PermissionKey[]> = {
   ],
   client: [
     'engagement.read',
+    'billing.read',
     'working_papers.read'
   ],
   external_read_only: [
     'engagement.read',
+    'billing.read',
     'working_papers.read'
   ]
 }

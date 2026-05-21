@@ -13,6 +13,9 @@ export type PlatformRole = typeof ROLE_HIERARCHY[number]
 export const PERMISSIONS = [
   'workspace.manage',
   'workspace.invite',
+  'billing.read',
+  'billing.manage',
+  'subscription.change',
   'engagement.read',
   'engagement.manage',
   'working_papers.read',

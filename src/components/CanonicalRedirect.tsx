@@ -9,8 +9,10 @@ const CanonicalRedirect: FC = () => {
   const location = useLocation()
 
   useEffect(() => {
+    const isPortalRoute = location.pathname.startsWith('/portal') || location.pathname.startsWith('/app')
+
     // If there are query parameters, redirect to clean URL
-    if (location.search) {
+    if (location.search && !isPortalRoute) {
       const cleanUrl = location.pathname
       // Only redirect if we're not on the homepage with tracking parameters
       // Allow certain query parameters that might be needed

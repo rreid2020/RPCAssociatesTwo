@@ -15,7 +15,7 @@ function billingRoute (path: string, element: JSX.Element, permission: string) {
       path={path}
       element={
         <ProtectedRoute>
-          <PermissionGuard permission={permission} permissionLabel={permission}>
+          <PermissionGuard permission={permission} permissionLabel={permission} allowRolloutBypass>
             <RouteSuspense>{element}</RouteSuspense>
           </PermissionGuard>
         </ProtectedRoute>

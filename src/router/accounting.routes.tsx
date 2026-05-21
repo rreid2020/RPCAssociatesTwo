@@ -26,7 +26,7 @@ function accountingViewRoute (
     : content
   const gatedContent = permission
     ? (
-      <PermissionGuard permission={permission} permissionLabel={permission}>
+      <PermissionGuard permission={permission} permissionLabel={permission} allowRolloutBypass>
         {entitlementContent}
       </PermissionGuard>
       )

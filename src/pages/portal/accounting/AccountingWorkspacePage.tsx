@@ -304,11 +304,16 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
           await loadWorkspaces()
           return
         }
+        // Always refresh workspace selection first so downstream API calls
+        // use a valid workspace header (avoids stale workspaceId lockout).
+        await loadWorkspaces()
+        if (view === 'workspaceAdmin') {
+          return
+        }
         await loadClients()
         if (['workingPapersDashboard', 'engagementList', 'newEngagement', 'landing'].includes(view)) {
           await Promise.all([loadEngagements(), loadStatusSummary()])
         }
-        await loadWorkspaces()
         if (view === 'engagementDashboard') await loadEngagementDashboard()
         if (view === 'trialBalance') await loadTrialBalance()
         if (view === 'leadSheets') await loadLeadSheets()

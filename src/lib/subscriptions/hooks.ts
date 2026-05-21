@@ -51,8 +51,13 @@ export function useFeatureAccess(feature: FeatureAccessKey): boolean {
   const plan = useSubscription()
   const { getToken } = useAuth()
   const [entitlements, setEntitlements] = useState<WorkspaceEntitlements | null>(null)
+  const rolloutBypass = forceEnterpriseAccess()
 
   useEffect(() => {
+    if (rolloutBypass) {
+      setEntitlements(null)
+      return
+    }
     let mounted = true
     const run = async () => {
       try {
@@ -70,9 +75,12 @@ export function useFeatureAccess(feature: FeatureAccessKey): boolean {
     return () => {
       mounted = false
     }
-  }, [getToken])
+  }, [getToken, rolloutBypass])
 
   const planConfig = SUBSCRIPTION_PLANS[plan]
+  if (rolloutBypass) {
+    return true
+  }
 
   if (entitlements) {
     if (feature === 'workingPapers') {

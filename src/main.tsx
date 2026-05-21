@@ -5,6 +5,7 @@ import App from './App.tsx'
 import './styles/global.css'
 import { getFrontendEnvConfig } from './config/env'
 import ObservabilityProvider from './providers/ObservabilityProvider'
+import { WorkspaceContextProvider } from './domains/Workspace'
 
 const env = getFrontendEnvConfig()
 const clerkPubKey = env.clerkPublishableKey
@@ -18,12 +19,16 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     {clerkPubKey ? (
       <ClerkProvider publishableKey={clerkPubKey}>
         <ObservabilityProvider>
-          <App />
+          <WorkspaceContextProvider>
+            <App />
+          </WorkspaceContextProvider>
         </ObservabilityProvider>
       </ClerkProvider>
     ) : (
       <ObservabilityProvider>
-        <App />
+        <WorkspaceContextProvider>
+          <App />
+        </WorkspaceContextProvider>
       </ObservabilityProvider>
     )}
   </React.StrictMode>,

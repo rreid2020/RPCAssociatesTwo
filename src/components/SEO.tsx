@@ -58,11 +58,26 @@ const SEO: FC<SEOProps> = ({
   const fullTitle = title.includes(BRAND.name) ? title : `${title} | ${BRAND.name}`
   // Always use non-www canonical URL, strip query parameters
   const baseUrl = siteUrl.replace(/\/$/, '')
+  const normalizeCanonicalUrl = (url: string): string => {
+    try {
+      const parsed = new URL(url)
+      parsed.protocol = 'https:'
+      if (parsed.hostname.startsWith('www.')) {
+        parsed.hostname = parsed.hostname.slice(4)
+      }
+      parsed.search = ''
+      parsed.hash = ''
+      return parsed.toString()
+    } catch {
+      return `${baseUrl}/`
+    }
+  }
   let fullCanonical: string
   if (canonical.startsWith('http')) {
-    fullCanonical = canonical.replace(/^https?:\/\/(www\.)?/, 'https://').split('?')[0]
+    fullCanonical = normalizeCanonicalUrl(canonical)
   } else {
-    fullCanonical = `${baseUrl}${canonical.split('?')[0]}`
+    const relativePath = canonical.startsWith('/') ? canonical : `/${canonical}`
+    fullCanonical = normalizeCanonicalUrl(`${baseUrl}${relativePath}`)
   }
   
   const keywordsString = Array.isArray(keywords) ? keywords.join(', ') : keywords

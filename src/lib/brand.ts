@@ -11,8 +11,24 @@ export const BRAND = {
 } as const
 
 /** Public site origin (no trailing slash). Update when DNS moves. */
-export const siteUrl =
+function normalizePublicSiteUrl (rawUrl: string): string {
+  const fallback = 'https://axiomft.ca'
+  const value = String(rawUrl || '').trim() || fallback
+  try {
+    const parsed = new URL(value.startsWith('http') ? value : `https://${value}`)
+    parsed.protocol = 'https:'
+    if (parsed.hostname.startsWith('www.')) {
+      parsed.hostname = parsed.hostname.slice(4)
+    }
+    return parsed.origin
+  } catch {
+    return fallback
+  }
+}
+
+export const siteUrl = normalizePublicSiteUrl(
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SITE_URL) || 'https://axiomft.ca'
+)
 
 export const contactEmail =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CONTACT_EMAIL) || 'roger.reid@axiomft.ca'

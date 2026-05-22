@@ -164,10 +164,8 @@ services:
     routes:
       - path: /api
     envs:
-      - key: DB_HOST
-        value: ${db.HOSTNAME}
-      - key: DB_NAME
-        value: ${db.DATABASE}
+      - key: DATABASE_URL
+        value: ${db.DATABASE_URL}
       # ... other env vars
 ```
 

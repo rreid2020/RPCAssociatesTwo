@@ -18,6 +18,6 @@ Use this value in:
 - Eliminates split-brain between `axiomft` and `defaultdb`.
 - Makes local and deployed behavior consistent.
 
-## Backward Compatibility
+## Enforcement
 
-`api/server` still supports legacy `DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD` only when `DATABASE_URL` is not set.
+`api/server` requires `DATABASE_URL`. Legacy `DB_*` values are not read by runtime connection code.

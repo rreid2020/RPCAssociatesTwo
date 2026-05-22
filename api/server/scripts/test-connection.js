@@ -1,18 +1,26 @@
 import dotenv from 'dotenv'
-import { createPool } from '../db/pool.js'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import { createPool, getDatabaseConnectionSummary } from '../db/pool.js'
 
-dotenv.config()
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const apiEnvPath = path.resolve(__dirname, '../.env')
+
+dotenv.config({ path: apiEnvPath })
 
 async function testConnection() {
   const pool = createPool()
   
   try {
+    const summary = getDatabaseConnectionSummary()
     console.log('Testing database connection...')
-    console.log(`Host: ${process.env.DB_HOST}`)
-    console.log(`Port: ${process.env.DB_PORT}`)
-    console.log(`Database: ${process.env.DB_NAME}`)
-    console.log(`User: ${process.env.DB_USER}`)
-    console.log(`SSL: ${process.env.DB_SSL}`)
+    console.log(`Mode: ${summary.mode}`)
+    console.log(`Host: ${summary.host}`)
+    console.log(`Port: ${summary.port}`)
+    console.log(`Database: ${summary.database}`)
+    console.log(`User: ${summary.user}`)
+    console.log(`SSL: ${summary.ssl}`)
     
     const result = await pool.query('SELECT NOW() as current_time, version() as pg_version')
     
@@ -31,13 +39,13 @@ async function testConnection() {
   } catch (error) {
     console.error('❌ Connection failed:', error.message)
     if (error.code === 'ENOTFOUND') {
-      console.error('   → Check that DB_HOST is correct')
+      console.error('   → Check that DATABASE_URL host is correct')
     } else if (error.code === 'ECONNREFUSED') {
-      console.error('   → Check that DB_PORT is correct and database is accessible')
+      console.error('   → Check that DATABASE_URL port is correct and database is accessible')
     } else if (error.code === '28P01') {
-      console.error('   → Check that DB_USER and DB_PASSWORD are correct')
+      console.error('   → Check DATABASE_URL username/password credentials')
     } else if (error.code === '3D000') {
-      console.error('   → Check that DB_NAME exists')
+      console.error('   → Check that the DATABASE_URL database exists')
     }
     process.exit(1)
   } finally {

@@ -1,6 +1,14 @@
 import pg from 'pg'
 const { Pool } = pg
 
+function getRequiredDatabaseUrl () {
+  const databaseUrl = String(process.env.DATABASE_URL || '').trim()
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL is required. DB_* fallback is no longer supported.')
+  }
+  return databaseUrl
+}
+
 function normalizeSslFromUrl (urlValue) {
   const parsed = new URL(urlValue)
   const mode = (parsed.searchParams.get('sslmode') || '').toLowerCase()
@@ -15,10 +23,8 @@ function sanitizeConnectionString (urlValue) {
 }
 
 function getConnectionConfig () {
-  const databaseUrl = process.env.DATABASE_URL
-  const sslEnabledByEnv = process.env.DB_SSL === 'true'
-  const sslEnabledByUrl = databaseUrl ? normalizeSslFromUrl(databaseUrl) : false
-  const useSsl = sslEnabledByEnv || sslEnabledByUrl
+  const databaseUrl = getRequiredDatabaseUrl()
+  const useSsl = normalizeSslFromUrl(databaseUrl)
 
   const common = {
     ssl: useSsl
@@ -34,43 +40,22 @@ function getConnectionConfig () {
     keepAliveInitialDelayMillis: 10000
   }
 
-  if (databaseUrl) {
-    return {
-      ...common,
-      connectionString: sanitizeConnectionString(databaseUrl)
-    }
-  }
-
   return {
     ...common,
-    host: process.env.DB_HOST,
-    port: parseInt(process.env.DB_PORT || '5432'),
-    database: process.env.DB_NAME,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD
+    connectionString: sanitizeConnectionString(databaseUrl)
   }
 }
 
 export function getDatabaseConnectionSummary () {
-  const databaseUrl = process.env.DATABASE_URL
-  if (databaseUrl) {
-    const parsed = new URL(databaseUrl)
-    return {
-      mode: 'DATABASE_URL',
-      host: parsed.hostname,
-      port: parsed.port || '5432',
-      database: (parsed.pathname || '').replace(/^\//, ''),
-      user: parsed.username || '(not set)',
-      ssl: process.env.DB_SSL === 'true' || normalizeSslFromUrl(databaseUrl)
-    }
-  }
+  const databaseUrl = getRequiredDatabaseUrl()
+  const parsed = new URL(databaseUrl)
   return {
-    mode: 'DB_*',
-    host: process.env.DB_HOST || '(not set)',
-    port: process.env.DB_PORT || '5432',
-    database: process.env.DB_NAME || '(not set)',
-    user: process.env.DB_USER || '(not set)',
-    ssl: process.env.DB_SSL === 'true'
+    mode: 'DATABASE_URL',
+    host: parsed.hostname,
+    port: parsed.port || '5432',
+    database: (parsed.pathname || '').replace(/^\//, ''),
+    user: parsed.username || '(not set)',
+    ssl: normalizeSslFromUrl(databaseUrl)
   }
 }
 

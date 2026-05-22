@@ -2,15 +2,10 @@
 
 ## ✅ Database Configuration (COMPLETE)
 
-Your PostgreSQL database credentials have been configured and tested successfully:
+Your PostgreSQL connection is configured via one canonical variable:
 
-```
-DB_HOST=db-postgresql-tor1-60715-do-user-20752759-0.e.db.ondigitalocean.com
-DB_PORT=25060
-DB_NAME=defaultdb
-DB_USER=doadmin
-DB_PASSWORD=your-database-password
-DB_SSL=true
+```env
+DATABASE_URL=postgres://USER:PASSWORD@HOST:PORT/DBNAME?sslmode=require
 ```
 
 **Note:** The actual password is stored in `api/server/.env` (which is in `.gitignore` and not committed to Git).

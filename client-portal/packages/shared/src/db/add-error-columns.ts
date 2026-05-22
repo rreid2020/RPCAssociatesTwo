@@ -4,11 +4,10 @@ import { fileURLToPath } from 'url';
 import postgres from 'postgres';
 import { getDatabaseConfig } from '../config';
 
-// Load .env from project root
+// Load DATABASE_URL from api/server/.env (single canonical DB source)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const rootPath = resolve(__dirname, '../../../..');
-const envPath = resolve(rootPath, '.env');
+const envPath = resolve(__dirname, '../../../../../api/server/.env');
 config({ path: envPath });
 
 async function addErrorColumns() {

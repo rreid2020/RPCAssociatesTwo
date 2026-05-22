@@ -4,15 +4,11 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { getDb } from './client';
 
-// Load .env from project root
-// Get the directory of this file, then go up to project root
+// Load DATABASE_URL from api/server/.env (single canonical DB source)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-// From packages/shared/src/db/migrate.ts, go up 4 levels to project root
-// packages/shared/src/db -> packages/shared/src -> packages/shared -> packages -> root
-const rootPath = resolve(__dirname, '../../../..');
-const envPath = resolve(rootPath, '.env');
-console.log('Loading .env from:', envPath);
+const envPath = resolve(__dirname, '../../../../../api/server/.env');
+console.log('Loading DATABASE_URL from:', envPath);
 config({ path: envPath });
 
 async function runMigrations() {

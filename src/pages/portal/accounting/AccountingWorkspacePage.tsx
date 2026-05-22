@@ -68,6 +68,10 @@ const quickLinks = [
   { to: '/portal/accounting/integrations', label: 'Integrations' },
 ]
 
+const workspaceAdminQuickLinks = [
+  { to: '/portal/accounting/workspaces', label: 'Workspace Admin' }
+]
+
 type Client = {
   id: string
   name: string
@@ -175,12 +179,17 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [workspaces, setWorkspaces] = useState<any[]>([])
   const [workspaceMembers, setWorkspaceMembers] = useState<any[]>([])
   const [workspaceInvites, setWorkspaceInvites] = useState<any[]>([])
+  const [organizationSnapshot, setOrganizationSnapshot] = useState<any | null>(null)
   const selectedWorkspaceId = workspaceId || ''
   const [newWorkspaceName, setNewWorkspaceName] = useState('')
   const [newWorkspaceType, setNewWorkspaceType] = useState<'business' | 'firm'>('business')
   const [showWorkspaceTools, setShowWorkspaceTools] = useState(false)
   const [newMemberClerkUserId, setNewMemberClerkUserId] = useState('')
   const [newMemberRole, setNewMemberRole] = useState('preparer')
+  const [assignmentUserId, setAssignmentUserId] = useState('')
+  const [assignmentWorkspaceRole, setAssignmentWorkspaceRole] = useState('member')
+  const [assignmentEngagementId, setAssignmentEngagementId] = useState('')
+  const [assignmentLeadSheetId, setAssignmentLeadSheetId] = useState('')
   const [newInviteEmail, setNewInviteEmail] = useState('')
   const [newInviteRole, setNewInviteRole] = useState('preparer')
   const [trialBalanceAccounts, setTrialBalanceAccounts] = useState<any[]>([])
@@ -293,6 +302,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setWorkspaceInvites(data.invites || [])
   }, [getToken, selectedWorkspaceId])
 
+  const loadOrganizationSnapshot = useCallback(async () => {
+    if (!selectedWorkspaceId) return
+    const data = await portalFetch<any>(`/v1/accounting/workspaces/${selectedWorkspaceId}/organization`, getToken)
+    setOrganizationSnapshot(data)
+  }, [getToken, selectedWorkspaceId])
+
   useEffect(() => {
     let mounted = true
     const run = async () => {
@@ -370,7 +385,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     if (!showWorkspaceTools || !selectedWorkspaceId) return
     void loadWorkspaceMembers()
     void loadWorkspaceInvites()
-  }, [loadWorkspaceInvites, loadWorkspaceMembers, selectedWorkspaceId, showWorkspaceTools])
+    void loadOrganizationSnapshot()
+  }, [loadOrganizationSnapshot, loadWorkspaceInvites, loadWorkspaceMembers, selectedWorkspaceId, showWorkspaceTools])
 
   const onCreateClient = async () => {
     const name = newClientName.trim()
@@ -647,6 +663,94 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       setNotice('Workspace member added')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not add workspace member')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onAssignWorkspaceEmployee = async () => {
+    if (!selectedWorkspaceId) {
+      setError('Select a workspace before assigning an employee.')
+      return
+    }
+    if (!assignmentUserId.trim()) {
+      setError('Employee Clerk user ID is required.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      await portalFetch(
+        `/v1/accounting/workspaces/${selectedWorkspaceId}/assignments/workspace`,
+        getToken,
+        {
+          method: 'PUT',
+          body: JSON.stringify({
+            clerkUserId: assignmentUserId.trim(),
+            assignmentRole: assignmentWorkspaceRole
+          })
+        }
+      )
+      await Promise.all([loadWorkspaceMembers(), loadOrganizationSnapshot()])
+      setNotice('Workspace assignment saved.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not update workspace assignment')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onAssignEngagementEmployee = async () => {
+    if (!assignmentEngagementId.trim() || !assignmentUserId.trim()) {
+      setError('Both engagement ID and Clerk user ID are required.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      await portalFetch(
+        `/v1/accounting/engagements/${assignmentEngagementId.trim()}/assignments`,
+        getToken,
+        {
+          method: 'PUT',
+          body: JSON.stringify({
+            workspaceId: selectedWorkspaceId,
+            clerkUserId: assignmentUserId.trim()
+          })
+        }
+      )
+      await loadOrganizationSnapshot()
+      setNotice('Engagement assignment saved.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not update engagement assignment')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onAssignWorkingPaperEmployee = async () => {
+    if (!assignmentLeadSheetId.trim() || !assignmentUserId.trim()) {
+      setError('Both working paper (lead sheet) ID and Clerk user ID are required.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      await portalFetch(
+        `/v1/accounting/lead-sheets/${assignmentLeadSheetId.trim()}/assignments`,
+        getToken,
+        {
+          method: 'PUT',
+          body: JSON.stringify({
+            workspaceId: selectedWorkspaceId,
+            clerkUserId: assignmentUserId.trim()
+          })
+        }
+      )
+      await loadOrganizationSnapshot()
+      setNotice('Working paper assignment saved.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not update working paper assignment')
     } finally {
       setSaving(false)
     }
@@ -955,6 +1059,75 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               </tbody>
                             </table>
                           </div>
+                          <div className="rounded-md border border-border p-3 space-y-3">
+                            <h4 className="text-sm font-semibold text-primary-dark">Explicit assignment controls</h4>
+                            <p className="text-xs text-text-light">
+                              Assign employees at workspace, engagement, and working-paper (lead sheet) levels.
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <input
+                                className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
+                                placeholder="Employee Clerk User ID (user_...)"
+                                value={assignmentUserId}
+                                onChange={(e) => setAssignmentUserId(e.target.value)}
+                              />
+                              <select
+                                className="border border-border rounded-md px-3 py-2 text-sm"
+                                value={assignmentWorkspaceRole}
+                                onChange={(e) => setAssignmentWorkspaceRole(e.target.value)}
+                              >
+                                <option value="member">member</option>
+                                <option value="admin">admin</option>
+                              </select>
+                              <button
+                                type="button"
+                                className="btn btn--primary text-sm py-2 px-4"
+                                disabled={saving || !canManageWorkspaceMembers}
+                                onClick={() => { void onAssignWorkspaceEmployee() }}
+                              >
+                                Assign Workspace
+                              </button>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <input
+                                className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
+                                placeholder="Engagement ID"
+                                value={assignmentEngagementId}
+                                onChange={(e) => setAssignmentEngagementId(e.target.value)}
+                              />
+                              <button
+                                type="button"
+                                className="btn btn--secondary text-sm py-2 px-4"
+                                disabled={saving || !canManageWorkspaceMembers}
+                                onClick={() => { void onAssignEngagementEmployee() }}
+                              >
+                                Assign Engagement
+                              </button>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <input
+                                className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
+                                placeholder="Working Paper Lead Sheet ID"
+                                value={assignmentLeadSheetId}
+                                onChange={(e) => setAssignmentLeadSheetId(e.target.value)}
+                              />
+                              <button
+                                type="button"
+                                className="btn btn--secondary text-sm py-2 px-4"
+                                disabled={saving || !canManageWorkspaceMembers}
+                                onClick={() => { void onAssignWorkingPaperEmployee() }}
+                              >
+                                Assign Working Paper
+                              </button>
+                            </div>
+                            {organizationSnapshot && (
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-text-light">
+                                <p>Workspace assignments: {organizationSnapshot.workspaceCounts?.reduce((sum: number, row: any) => sum + Number(row.c || 0), 0) || 0}</p>
+                                <p>Engagement assignments: {organizationSnapshot.engagementCounts?.reduce((sum: number, row: any) => sum + Number(row.c || 0), 0) || 0}</p>
+                                <p>Working paper assignments: {organizationSnapshot.paperCounts?.reduce((sum: number, row: any) => sum + Number(row.c || 0), 0) || 0}</p>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )}
@@ -1014,7 +1187,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         <div className="rounded-lg border border-border p-4">
                           <h3 className="font-semibold text-primary-dark mb-2">Hierarchy</h3>
                           <p className="text-sm text-text-light">
-                            Organization (business or firm) → workspace(s) → employee assignments → engagements → working papers.
+                            Organization (business or firm) → workspace(s) → employee assignments and role access.
                           </p>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -1030,17 +1203,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             <p className="text-xs text-text-light">Invites in active workspace</p>
                             <p className="text-2xl font-bold text-primary-dark">{workspaceInvites.length}</p>
                           </div>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Link to="/portal/accounting/working-papers/engagements" className="btn btn--primary text-sm py-2 px-4">
-                            Open Engagements
-                          </Link>
-                          <Link to="/portal/accounting/working-papers" className="btn btn--primary text-sm py-2 px-4">
-                            Open Working Papers
-                          </Link>
-                          <Link to="/portal/accounting/integrations" className="btn btn--primary text-sm py-2 px-4">
-                            Open Integrations
-                          </Link>
                         </div>
                       </div>
                     )}
@@ -1556,7 +1718,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                {quickLinks.map((item) => (
+                {(view === 'workspaceAdmin' ? workspaceAdminQuickLinks : quickLinks).map((item) => (
                   <Link
                     key={item.to}
                     to={item.to}

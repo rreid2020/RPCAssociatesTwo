@@ -138,8 +138,47 @@ async function writeWorkspaceAuditEvent (pool, workspaceId, actorUserId, action,
 
 export async function ensureWorkspaceTables (pool) {
   await pool.query(
+    `CREATE TABLE IF NOT EXISTS taxgpt.accounting_organizations (
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       owner_user_id TEXT NOT NULL,
+       name TEXT NOT NULL,
+       slug TEXT NOT NULL UNIQUE,
+       organization_type VARCHAR(16) NOT NULL DEFAULT 'business',
+       clerk_org_id TEXT UNIQUE,
+       created_at TIMESTAMP NOT NULL DEFAULT now(),
+       updated_at TIMESTAMP NOT NULL DEFAULT now()
+     )`
+  )
+  await pool.query(
+    `DO $$
+     BEGIN
+       IF NOT EXISTS (
+         SELECT 1 FROM pg_constraint WHERE conname = 'accounting_organizations_org_type_chk'
+       ) THEN
+         ALTER TABLE taxgpt.accounting_organizations
+           ADD CONSTRAINT accounting_organizations_org_type_chk
+           CHECK (organization_type IN ('business', 'firm'));
+       END IF;
+     END $$`
+  )
+  await pool.query(
+    `CREATE TABLE IF NOT EXISTS taxgpt.accounting_organization_members (
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       organization_id UUID NOT NULL REFERENCES taxgpt.accounting_organizations(id) ON DELETE CASCADE,
+       clerk_user_id TEXT NOT NULL,
+       role VARCHAR(24) NOT NULL DEFAULT 'member',
+       status VARCHAR(24) NOT NULL DEFAULT 'active',
+       invited_by TEXT,
+       created_at TIMESTAMP NOT NULL DEFAULT now(),
+       updated_at TIMESTAMP NOT NULL DEFAULT now(),
+       UNIQUE (organization_id, clerk_user_id)
+     )`
+  )
+  await pool.query('CREATE INDEX IF NOT EXISTS accounting_org_members_user_idx ON taxgpt.accounting_organization_members(clerk_user_id, status)')
+  await pool.query(
     `CREATE TABLE IF NOT EXISTS taxgpt.accounting_workspaces (
        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       organization_id UUID REFERENCES taxgpt.accounting_organizations(id) ON DELETE SET NULL,
        owner_user_id TEXT NOT NULL,
        name TEXT NOT NULL,
        slug TEXT NOT NULL UNIQUE,
@@ -159,6 +198,8 @@ export async function ensureWorkspaceTables (pool) {
   await pool.query('ALTER TABLE taxgpt.accounting_workspaces ALTER COLUMN org_sync_status SET NOT NULL')
   await pool.query('ALTER TABLE taxgpt.accounting_workspaces ADD COLUMN IF NOT EXISTS org_synced_at TIMESTAMP')
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS accounting_workspaces_clerk_org_id_ux ON taxgpt.accounting_workspaces(clerk_org_id) WHERE clerk_org_id IS NOT NULL')
+  await pool.query('ALTER TABLE taxgpt.accounting_workspaces ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES taxgpt.accounting_organizations(id) ON DELETE SET NULL')
+  await pool.query('CREATE INDEX IF NOT EXISTS accounting_workspaces_org_idx ON taxgpt.accounting_workspaces(organization_id, created_at DESC)')
   await pool.query('ALTER TABLE taxgpt.accounting_workspaces ADD COLUMN IF NOT EXISTS workspace_type VARCHAR(16)')
   await pool.query("UPDATE taxgpt.accounting_workspaces SET workspace_type = 'business' WHERE workspace_type IS NULL")
   await pool.query("ALTER TABLE taxgpt.accounting_workspaces ALTER COLUMN workspace_type SET DEFAULT 'business'")
@@ -313,6 +354,56 @@ export async function ensureWorkspaceTables (pool) {
        created_at TIMESTAMP NOT NULL DEFAULT now()
      )`
   )
+  await pool.query(
+    `CREATE TABLE IF NOT EXISTS taxgpt.workspace_employee_assignments (
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       organization_id UUID NOT NULL REFERENCES taxgpt.accounting_organizations(id) ON DELETE CASCADE,
+       workspace_id UUID NOT NULL REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,
+       clerk_user_id TEXT NOT NULL,
+       assignment_role VARCHAR(24) NOT NULL DEFAULT 'member',
+       status VARCHAR(24) NOT NULL DEFAULT 'active',
+       assigned_by TEXT NOT NULL,
+       created_at TIMESTAMP NOT NULL DEFAULT now(),
+       updated_at TIMESTAMP NOT NULL DEFAULT now(),
+       UNIQUE (workspace_id, clerk_user_id)
+     )`
+  )
+  await pool.query('CREATE INDEX IF NOT EXISTS workspace_employee_assignments_user_idx ON taxgpt.workspace_employee_assignments(clerk_user_id, status)')
+  await pool.query('ALTER TABLE taxgpt.accounting_engagements ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES taxgpt.accounting_workspaces(id) ON DELETE SET NULL')
+  await pool.query('CREATE INDEX IF NOT EXISTS accounting_engagements_workspace_idx ON taxgpt.accounting_engagements(workspace_id, status)')
+  await pool.query(
+    `CREATE TABLE IF NOT EXISTS taxgpt.engagement_employee_assignments (
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       organization_id UUID NOT NULL REFERENCES taxgpt.accounting_organizations(id) ON DELETE CASCADE,
+       workspace_id UUID NOT NULL REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,
+       engagement_id UUID NOT NULL REFERENCES taxgpt.accounting_engagements(id) ON DELETE CASCADE,
+       clerk_user_id TEXT NOT NULL,
+       assignment_role VARCHAR(24) NOT NULL DEFAULT 'member',
+       status VARCHAR(24) NOT NULL DEFAULT 'active',
+       assigned_by TEXT NOT NULL,
+       created_at TIMESTAMP NOT NULL DEFAULT now(),
+       updated_at TIMESTAMP NOT NULL DEFAULT now(),
+       UNIQUE (engagement_id, clerk_user_id)
+     )`
+  )
+  await pool.query('CREATE INDEX IF NOT EXISTS engagement_employee_assignments_user_idx ON taxgpt.engagement_employee_assignments(clerk_user_id, status)')
+  await pool.query(
+    `CREATE TABLE IF NOT EXISTS taxgpt.working_paper_employee_assignments (
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       organization_id UUID NOT NULL REFERENCES taxgpt.accounting_organizations(id) ON DELETE CASCADE,
+       workspace_id UUID NOT NULL REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,
+       engagement_id UUID NOT NULL REFERENCES taxgpt.accounting_engagements(id) ON DELETE CASCADE,
+       lead_sheet_id UUID NOT NULL REFERENCES taxgpt.lead_sheets(id) ON DELETE CASCADE,
+       clerk_user_id TEXT NOT NULL,
+       assignment_role VARCHAR(24) NOT NULL DEFAULT 'member',
+       status VARCHAR(24) NOT NULL DEFAULT 'active',
+       assigned_by TEXT NOT NULL,
+       created_at TIMESTAMP NOT NULL DEFAULT now(),
+       updated_at TIMESTAMP NOT NULL DEFAULT now(),
+       UNIQUE (lead_sheet_id, clerk_user_id)
+     )`
+  )
+  await pool.query('CREATE INDEX IF NOT EXISTS working_paper_assignments_user_idx ON taxgpt.working_paper_employee_assignments(clerk_user_id, status)')
   await ensureWorkspaceRbacTables(pool)
 }
 
@@ -329,7 +420,10 @@ export async function ensurePersonalWorkspace (pool, clerkUserId) {
      LIMIT 1`,
     [clerkUserId]
   )
-  if (existing[0]) return existing[0]
+  if (existing[0]) {
+    const linked = await ensureHierarchyMembershipForWorkspaceUser(pool, existing[0], clerkUserId, clerkUserId)
+    return linked
+  }
 
   const baseSlug = `personal-${slugifyWorkspaceName(clerkUserId)}`
   const slug = `${baseSlug}-${Date.now().toString(36)}`
@@ -349,7 +443,9 @@ export async function ensurePersonalWorkspace (pool, clerkUserId) {
      DO UPDATE SET role = 'owner', status = 'active', updated_at = now()`,
     [workspace.id, clerkUserId]
   )
-  return workspace
+  const linked = await ensureHierarchyMembershipForWorkspaceUser(pool, workspace, clerkUserId, clerkUserId)
+  await ensureLegacyAssignmentsForWorkspaceUser(pool, linked, clerkUserId, clerkUserId)
+  return linked
 }
 
 export async function ensureWorkspaceClerkOrganization (pool, workspace, actorUserId) {
@@ -396,6 +492,123 @@ async function safeEnsureWorkspaceClerkOrganization (pool, workspace, actorUserI
   }
 }
 
+function mapWorkspaceRoleToOrganizationMemberRole (workspaceRole) {
+  return ['owner', 'admin', 'manager'].includes(String(workspaceRole || '').toLowerCase()) ? 'admin' : 'member'
+}
+
+async function ensureOrganizationLinkForWorkspace (pool, workspace) {
+  if (!workspace) throw new Error('Workspace is required')
+  if (workspace.organization_id) return workspace
+  const orgSlug = `org-${slugifyWorkspaceName(workspace.name)}-${String(workspace.id).slice(0, 8)}`
+  const { rows: inserted } = await pool.query(
+    `INSERT INTO taxgpt.accounting_organizations
+     (owner_user_id, name, slug, organization_type, clerk_org_id, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, now(), now())
+     ON CONFLICT (slug) DO UPDATE SET
+      name = EXCLUDED.name,
+      organization_type = EXCLUDED.organization_type,
+      clerk_org_id = COALESCE(EXCLUDED.clerk_org_id, taxgpt.accounting_organizations.clerk_org_id),
+      updated_at = now()
+     RETURNING *`,
+    [
+      workspace.owner_user_id,
+      workspace.name,
+      orgSlug,
+      workspace.workspace_type || 'business',
+      workspace.clerk_org_id || null
+    ]
+  )
+  const organization = inserted[0]
+  const { rows: linked } = await pool.query(
+    `UPDATE taxgpt.accounting_workspaces
+     SET organization_id = $1::uuid, updated_at = now()
+     WHERE id = $2::uuid
+     RETURNING *`,
+    [organization.id, workspace.id]
+  )
+  return linked[0] || workspace
+}
+
+async function ensureOrganizationMember (pool, organizationId, clerkUserId, role = 'member', invitedBy = null) {
+  await pool.query(
+    `INSERT INTO taxgpt.accounting_organization_members
+     (organization_id, clerk_user_id, role, status, invited_by, created_at, updated_at)
+     VALUES ($1::uuid, $2, $3, 'active', $4, now(), now())
+     ON CONFLICT (organization_id, clerk_user_id)
+     DO UPDATE SET role = EXCLUDED.role, status = 'active', invited_by = COALESCE(EXCLUDED.invited_by, taxgpt.accounting_organization_members.invited_by), updated_at = now()`,
+    [organizationId, clerkUserId, role, invitedBy]
+  )
+}
+
+async function ensureWorkspaceEmployeeAssignment (pool, workspace, clerkUserId, assignedBy, assignmentRole = 'member') {
+  if (!workspace.organization_id) return
+  await pool.query(
+    `INSERT INTO taxgpt.workspace_employee_assignments
+     (organization_id, workspace_id, clerk_user_id, assignment_role, status, assigned_by, created_at, updated_at)
+     VALUES ($1::uuid, $2::uuid, $3, $4, 'active', $5, now(), now())
+     ON CONFLICT (workspace_id, clerk_user_id)
+     DO UPDATE SET assignment_role = EXCLUDED.assignment_role, status = 'active', updated_at = now()`,
+    [workspace.organization_id, workspace.id, clerkUserId, assignmentRole, assignedBy]
+  )
+}
+
+async function ensureEngagementAssignmentsForWorkspaceMember (pool, workspace, clerkUserId, assignedBy) {
+  if (!workspace.organization_id) return
+  const { rows: engagements } = await pool.query(
+    `SELECT id
+     FROM taxgpt.accounting_engagements
+     WHERE (workspace_id = $1::uuid)
+        OR (workspace_id IS NULL AND organization_id = $2::uuid)`,
+    [workspace.id, workspace.organization_id]
+  )
+  for (const engagement of engagements) {
+    await pool.query(
+      `INSERT INTO taxgpt.engagement_employee_assignments
+       (organization_id, workspace_id, engagement_id, clerk_user_id, assignment_role, status, assigned_by, created_at, updated_at)
+       VALUES ($1::uuid, $2::uuid, $3::uuid, $4, 'member', 'active', $5, now(), now())
+       ON CONFLICT (engagement_id, clerk_user_id)
+       DO UPDATE SET status = 'active', updated_at = now()`,
+      [workspace.organization_id, workspace.id, engagement.id, clerkUserId, assignedBy]
+    )
+  }
+}
+
+async function ensureWorkingPaperAssignmentsForWorkspaceMember (pool, workspace, clerkUserId, assignedBy) {
+  if (!workspace.organization_id) return
+  const { rows: leadSheets } = await pool.query(
+    `SELECT ls.id AS lead_sheet_id, e.id AS engagement_id
+     FROM taxgpt.lead_sheets ls
+     INNER JOIN taxgpt.accounting_engagements e ON e.id = ls.engagement_id
+     WHERE (e.workspace_id = $1::uuid)
+        OR (e.workspace_id IS NULL AND e.organization_id = $2::uuid)`,
+    [workspace.id, workspace.organization_id]
+  )
+  for (const row of leadSheets) {
+    await pool.query(
+      `INSERT INTO taxgpt.working_paper_employee_assignments
+       (organization_id, workspace_id, engagement_id, lead_sheet_id, clerk_user_id, assignment_role, status, assigned_by, created_at, updated_at)
+       VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, 'member', 'active', $6, now(), now())
+       ON CONFLICT (lead_sheet_id, clerk_user_id)
+       DO UPDATE SET status = 'active', updated_at = now()`,
+      [workspace.organization_id, workspace.id, row.engagement_id, row.lead_sheet_id, clerkUserId, assignedBy]
+    )
+  }
+}
+
+async function ensureHierarchyMembershipForWorkspaceUser (pool, workspace, clerkUserId, invitedBy = null) {
+  const linkedWorkspace = await ensureOrganizationLinkForWorkspace(pool, workspace)
+  if (!linkedWorkspace.organization_id) return linkedWorkspace
+  const orgRole = mapWorkspaceRoleToOrganizationMemberRole(linkedWorkspace.role)
+  await ensureOrganizationMember(pool, linkedWorkspace.organization_id, clerkUserId, orgRole, invitedBy || clerkUserId)
+  await ensureWorkspaceEmployeeAssignment(pool, linkedWorkspace, clerkUserId, invitedBy || clerkUserId, orgRole)
+  return linkedWorkspace
+}
+
+async function ensureLegacyAssignmentsForWorkspaceUser (pool, workspace, clerkUserId, assignedBy) {
+  await ensureEngagementAssignmentsForWorkspaceMember(pool, workspace, clerkUserId, assignedBy)
+  await ensureWorkingPaperAssignmentsForWorkspaceMember(pool, workspace, clerkUserId, assignedBy)
+}
+
 export async function getWorkspaceAuthorizationContext (pool, workspace, actorUserId) {
   const resolved = await resolveEffectiveWorkspacePermissions(pool, workspace.id, workspace.role, actorUserId)
   return {
@@ -421,7 +634,9 @@ export async function getWorkspaceContext (pool, clerkUserId, requestedWorkspace
       [requestedWorkspaceId, clerkUserId]
     )
     if (!rows[0]) throw new Error('Workspace access denied')
-    const workspace = rows[0]
+    let workspace = rows[0]
+    workspace = await ensureHierarchyMembershipForWorkspaceUser(pool, workspace, clerkUserId, clerkUserId)
+    await ensureLegacyAssignmentsForWorkspaceUser(pool, workspace, clerkUserId, clerkUserId)
     if (!workspace.clerk_org_id && canManageWorkspace(workspace)) {
       return await safeEnsureWorkspaceClerkOrganization(pool, workspace, clerkUserId)
     }
@@ -439,7 +654,9 @@ export async function getWorkspaceContext (pool, clerkUserId, requestedWorkspace
     [clerkUserId]
   )
   if (!rows[0]) throw new Error('Workspace not found')
-  const workspace = rows[0]
+  let workspace = rows[0]
+  workspace = await ensureHierarchyMembershipForWorkspaceUser(pool, workspace, clerkUserId, clerkUserId)
+  await ensureLegacyAssignmentsForWorkspaceUser(pool, workspace, clerkUserId, clerkUserId)
   if (!workspace.clerk_org_id && canManageWorkspace(workspace)) {
     return await safeEnsureWorkspaceClerkOrganization(pool, workspace, clerkUserId)
   }
@@ -460,7 +677,12 @@ export async function listWorkspacesForUser (pool, clerkUserId) {
      ORDER BY w.created_at ASC`,
     [clerkUserId]
   )
-  return rows
+  const normalized = []
+  for (const workspace of rows) {
+    const linked = await ensureHierarchyMembershipForWorkspaceUser(pool, workspace, clerkUserId, clerkUserId)
+    normalized.push(linked)
+  }
+  return normalized
 }
 
 export async function getOnboardingStatusForUser (pool, clerkUserId) {
@@ -489,14 +711,16 @@ export async function createWorkspace (pool, clerkUserId, payload) {
      RETURNING *`,
     [clerkUserId, name, slug, workspaceType]
   )
-  const workspace = rows[0]
+  let workspace = rows[0]
   await pool.query(
     `INSERT INTO taxgpt.accounting_workspace_members
      (workspace_id, clerk_user_id, role, status, invited_by, created_at, updated_at)
      VALUES ($1::uuid, $2, 'owner', 'active', $2, now(), now())`,
     [workspace.id, clerkUserId]
   )
+  workspace = await ensureHierarchyMembershipForWorkspaceUser(pool, workspace, clerkUserId, clerkUserId)
   const linkedWorkspace = await safeEnsureWorkspaceClerkOrganization(pool, workspace, clerkUserId)
+  await ensureLegacyAssignmentsForWorkspaceUser(pool, linkedWorkspace, clerkUserId, clerkUserId)
   if (payload?.profile) {
     await upsertWorkspaceProfile(pool, clerkUserId, linkedWorkspace.id, payload.profile)
   }
@@ -623,6 +847,21 @@ export async function addWorkspaceMember (pool, actorUserId, workspaceId, payloa
      RETURNING workspace_id, clerk_user_id, role, status, invited_by, created_at, updated_at`,
     [workspace.id, clerkUserId, role, actorUserId]
   )
+  await ensureOrganizationMember(
+    pool,
+    workspace.organization_id,
+    clerkUserId,
+    mapWorkspaceRoleToOrganizationMemberRole(role),
+    actorUserId
+  )
+  await ensureWorkspaceEmployeeAssignment(
+    pool,
+    workspace,
+    clerkUserId,
+    actorUserId,
+    mapWorkspaceRoleToOrganizationMemberRole(role)
+  )
+  await ensureLegacyAssignmentsForWorkspaceUser(pool, workspace, clerkUserId, actorUserId)
   await writeWorkspaceAuditEvent(pool, workspace.id, actorUserId, 'workspace.member_added', 'workspace_member', clerkUserId, null, rows[0])
   return rows[0]
 }
@@ -731,6 +970,83 @@ export async function createWorkspaceInvite (pool, actorUserId, workspaceId, pay
   }
 }
 
+export async function createOrganizationEmployeeInvite (pool, actorUserId, workspaceId, payload = {}) {
+  const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
+  await assertWorkspacePermissionWithCustomRoles(pool, {
+    workspaceId: workspace.id,
+    workspaceRole: workspace.role,
+    clerkUserId: actorUserId,
+    permission: 'workspace.invite'
+  })
+  const inviteEmail = normalizeInviteEmail(payload?.email)
+  const memberRole = String(payload?.role || 'member').trim().toLowerCase() || 'member'
+  const linkedWorkspace = await safeEnsureWorkspaceClerkOrganization(pool, workspace, actorUserId)
+  let clerkInvitation = null
+  if (linkedWorkspace.clerk_org_id) {
+    clerkInvitation = await createClerkOrganizationInvitation({
+      organizationId: linkedWorkspace.clerk_org_id,
+      emailAddress: inviteEmail,
+      role: memberRole === 'admin' ? 'org:admin' : 'org:member',
+      inviterUserId: actorUserId,
+      redirectUrl: getInviteRedirectUrl(),
+      publicMetadata: {
+        invite_type: 'organization_employee',
+        organization_id: linkedWorkspace.organization_id,
+        workspace_id: linkedWorkspace.id,
+        invited_by: actorUserId
+      }
+    })
+  } else {
+    clerkInvitation = await createClerkEmailInvite({
+      emailAddress: inviteEmail,
+      redirectUrl: getInviteRedirectUrl(),
+      publicMetadata: {
+        invite_type: 'organization_employee',
+        organization_id: linkedWorkspace.organization_id,
+        workspace_id: linkedWorkspace.id,
+        invited_by: actorUserId
+      }
+    })
+  }
+  await pool.query(
+    `INSERT INTO taxgpt.accounting_organization_members
+     (organization_id, clerk_user_id, role, status, invited_by, created_at, updated_at)
+     VALUES ($1::uuid, $2, $3, 'invited', $4, now(), now())
+     ON CONFLICT (organization_id, clerk_user_id)
+     DO UPDATE SET role = EXCLUDED.role, status = 'invited', invited_by = EXCLUDED.invited_by, updated_at = now()`,
+    [linkedWorkspace.organization_id, `invite:${inviteEmail}`, memberRole, actorUserId]
+  )
+  return {
+    organizationId: linkedWorkspace.organization_id,
+    inviteEmail,
+    role: memberRole,
+    clerkInvitationId: clerkInvitation.id,
+    clerkInvitationStatus: clerkInvitation.status || 'pending'
+  }
+}
+
+export async function updateOrganizationMember (pool, actorUserId, workspaceId, memberUserId, payload = {}) {
+  const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
+  if (!canManageWorkspace(workspace)) {
+    throw new Error('Only owner/admin can update organization members')
+  }
+  const role = payload?.role ? String(payload.role).trim().toLowerCase() : null
+  const status = payload?.status ? String(payload.status).trim().toLowerCase() : null
+  if (status && !['active', 'inactive', 'invited'].includes(status)) throw new Error('Invalid organization member status')
+  const { rows } = await pool.query(
+    `UPDATE taxgpt.accounting_organization_members
+     SET role = COALESCE($1, role),
+         status = COALESCE($2, status),
+         updated_at = now()
+     WHERE organization_id = $3::uuid
+       AND clerk_user_id = $4
+     RETURNING organization_id, clerk_user_id, role, status, invited_by, created_at, updated_at`,
+    [role, status, workspace.organization_id, memberUserId]
+  )
+  if (!rows[0]) throw new Error('Organization member not found')
+  return rows[0]
+}
+
 export async function acceptWorkspaceInvite (pool, actorUserId, actorEmail, inviteToken) {
   const token = String(inviteToken || '').trim()
   if (!token) throw new Error('Invite token is required')
@@ -772,6 +1088,21 @@ export async function acceptWorkspaceInvite (pool, actorUserId, actorEmail, invi
   )
 
   const workspace = await getWorkspaceContext(pool, actorUserId, invite.workspace_id)
+  await ensureOrganizationMember(
+    pool,
+    workspace.organization_id,
+    actorUserId,
+    mapWorkspaceRoleToOrganizationMemberRole(invite.role),
+    invite.invited_by
+  )
+  await ensureWorkspaceEmployeeAssignment(
+    pool,
+    workspace,
+    actorUserId,
+    invite.invited_by || actorUserId,
+    mapWorkspaceRoleToOrganizationMemberRole(invite.role)
+  )
+  await ensureLegacyAssignmentsForWorkspaceUser(pool, workspace, actorUserId, invite.invited_by || actorUserId)
   return { invite: updatedInvite[0], workspace }
 }
 
@@ -811,6 +1142,21 @@ export async function acceptPendingWorkspaceInvites (pool, actorUserId, actorEma
          WHERE id = $2::uuid`,
         [actorUserId, invite.id]
       )
+      const workspace = await getWorkspaceContext(pool, actorUserId, invite.workspace_id)
+      await ensureOrganizationMember(
+        client,
+        workspace.organization_id,
+        actorUserId,
+        mapWorkspaceRoleToOrganizationMemberRole(invite.role),
+        invite.invited_by
+      )
+      await ensureWorkspaceEmployeeAssignment(
+        client,
+        workspace,
+        actorUserId,
+        invite.invited_by || actorUserId,
+        mapWorkspaceRoleToOrganizationMemberRole(invite.role)
+      )
       acceptedInvites.push({
         inviteId: invite.id,
         workspaceId: invite.workspace_id,
@@ -834,14 +1180,205 @@ export async function getWorkspacePermissionSnapshot (pool, actorUserId, workspa
   return { workspace, authorization: authz }
 }
 
+export async function assertWorkspaceAssignment (pool, workspace, clerkUserId, options = {}) {
+  await ensureWorkspaceEmployeeAssignment(pool, workspace, clerkUserId, options.assignedBy || clerkUserId, options.assignmentRole || 'member')
+  const { rows } = await pool.query(
+    `SELECT id
+     FROM taxgpt.workspace_employee_assignments
+     WHERE workspace_id = $1::uuid
+       AND clerk_user_id = $2
+       AND status = 'active'
+     LIMIT 1`,
+    [workspace.id, clerkUserId]
+  )
+  if (!rows[0]) {
+    const error = new Error('Assignment denied: workspace')
+    error.code = 'ASSIGNMENT_DENIED_WORKSPACE'
+    throw error
+  }
+}
+
+export async function assertEngagementAssignment (pool, workspace, engagementId, clerkUserId, options = {}) {
+  const { rows: engagementRows } = await pool.query(
+    `SELECT id, workspace_id
+     FROM taxgpt.accounting_engagements
+     WHERE id = $1::uuid
+     LIMIT 1`,
+    [engagementId]
+  )
+  const engagement = engagementRows[0]
+  if (!engagement) {
+    const error = new Error('Engagement not found')
+    error.code = 'ENGAGEMENT_NOT_FOUND'
+    throw error
+  }
+  if (!engagement.workspace_id) {
+    await pool.query(
+      `UPDATE taxgpt.accounting_engagements
+       SET workspace_id = $1::uuid,
+           organization_id = COALESCE(organization_id, $2::uuid),
+           updated_at = now()
+       WHERE id = $3::uuid`,
+      [workspace.id, workspace.organization_id, engagementId]
+    )
+  }
+  await pool.query(
+    `INSERT INTO taxgpt.engagement_employee_assignments
+     (organization_id, workspace_id, engagement_id, clerk_user_id, assignment_role, status, assigned_by, created_at, updated_at)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, $4, 'member', 'active', $5, now(), now())
+     ON CONFLICT (engagement_id, clerk_user_id)
+     DO UPDATE SET status = 'active', updated_at = now()`,
+    [workspace.organization_id, workspace.id, engagementId, clerkUserId, options.assignedBy || clerkUserId]
+  )
+  const { rows } = await pool.query(
+    `SELECT id
+     FROM taxgpt.engagement_employee_assignments
+     WHERE engagement_id = $1::uuid
+       AND clerk_user_id = $2
+       AND status = 'active'
+     LIMIT 1`,
+    [engagementId, clerkUserId]
+  )
+  if (!rows[0]) {
+    const error = new Error('Assignment denied: engagement')
+    error.code = 'ASSIGNMENT_DENIED_ENGAGEMENT'
+    throw error
+  }
+}
+
+export async function assertWorkingPaperAssignment (pool, workspace, leadSheetId, clerkUserId, options = {}) {
+  const { rows: leadRows } = await pool.query(
+    `SELECT ls.id, ls.engagement_id
+     FROM taxgpt.lead_sheets ls
+     WHERE ls.id = $1::uuid
+     LIMIT 1`,
+    [leadSheetId]
+  )
+  const leadSheet = leadRows[0]
+  if (!leadSheet) {
+    const error = new Error('Lead sheet not found')
+    error.code = 'WORKING_PAPER_NOT_FOUND'
+    throw error
+  }
+  await assertEngagementAssignment(pool, workspace, leadSheet.engagement_id, clerkUserId, options)
+  await pool.query(
+    `INSERT INTO taxgpt.working_paper_employee_assignments
+     (organization_id, workspace_id, engagement_id, lead_sheet_id, clerk_user_id, assignment_role, status, assigned_by, created_at, updated_at)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, 'member', 'active', $6, now(), now())
+     ON CONFLICT (lead_sheet_id, clerk_user_id)
+     DO UPDATE SET status = 'active', updated_at = now()`,
+    [workspace.organization_id, workspace.id, leadSheet.engagement_id, leadSheet.id, clerkUserId, options.assignedBy || clerkUserId]
+  )
+}
+
+export async function getOrganizationAdminSnapshot (pool, actorUserId, workspaceId) {
+  const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
+  const { rows: organizationRows } = await pool.query(
+    `SELECT *
+     FROM taxgpt.accounting_organizations
+     WHERE id = $1::uuid
+     LIMIT 1`,
+    [workspace.organization_id]
+  )
+  const organization = organizationRows[0] || null
+  const { rows: employees } = await pool.query(
+    `SELECT organization_id, clerk_user_id, role, status, invited_by, created_at, updated_at
+     FROM taxgpt.accounting_organization_members
+     WHERE organization_id = $1::uuid
+     ORDER BY created_at ASC`,
+    [workspace.organization_id]
+  )
+  const [{ rows: workspaceCounts }, { rows: engagementCounts }, { rows: paperCounts }] = await Promise.all([
+    pool.query(
+      `SELECT clerk_user_id, count(*)::int AS c
+       FROM taxgpt.workspace_employee_assignments
+       WHERE organization_id = $1::uuid AND status = 'active'
+       GROUP BY clerk_user_id`,
+      [workspace.organization_id]
+    ),
+    pool.query(
+      `SELECT clerk_user_id, count(*)::int AS c
+       FROM taxgpt.engagement_employee_assignments
+       WHERE organization_id = $1::uuid AND status = 'active'
+       GROUP BY clerk_user_id`,
+      [workspace.organization_id]
+    ),
+    pool.query(
+      `SELECT clerk_user_id, count(*)::int AS c
+       FROM taxgpt.working_paper_employee_assignments
+       WHERE organization_id = $1::uuid AND status = 'active'
+       GROUP BY clerk_user_id`,
+      [workspace.organization_id]
+    )
+  ])
+  return { workspace, organization, employees, workspaceCounts, engagementCounts, paperCounts }
+}
+
+export async function upsertWorkspaceEmployeeAssignment (pool, actorUserId, workspaceId, payload = {}) {
+  const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
+  const clerkUserId = String(payload.clerkUserId || '').trim()
+  if (!clerkUserId) throw new Error('clerkUserId is required')
+  const assignmentRole = String(payload.assignmentRole || 'member').trim().toLowerCase()
+  await ensureOrganizationMember(pool, workspace.organization_id, clerkUserId, assignmentRole, actorUserId)
+  await ensureWorkspaceEmployeeAssignment(pool, workspace, clerkUserId, actorUserId, assignmentRole)
+  return { workspaceId: workspace.id, clerkUserId, assignmentRole, status: 'active' }
+}
+
+export async function upsertEngagementEmployeeAssignment (pool, actorUserId, engagementId, payload = {}) {
+  const clerkUserId = String(payload.clerkUserId || '').trim()
+  if (!clerkUserId) throw new Error('clerkUserId is required')
+  const workspace = await getWorkspaceContext(pool, actorUserId, payload.workspaceId || null)
+  await ensureWorkspaceEmployeeAssignment(pool, workspace, clerkUserId, actorUserId)
+  await assertEngagementAssignment(pool, workspace, engagementId, clerkUserId, { assignedBy: actorUserId })
+  return { engagementId, clerkUserId, status: 'active' }
+}
+
+export async function upsertWorkingPaperEmployeeAssignment (pool, actorUserId, leadSheetId, payload = {}) {
+  const clerkUserId = String(payload.clerkUserId || '').trim()
+  if (!clerkUserId) throw new Error('clerkUserId is required')
+  const workspace = await getWorkspaceContext(pool, actorUserId, payload.workspaceId || null)
+  await ensureWorkspaceEmployeeAssignment(pool, workspace, clerkUserId, actorUserId)
+  await assertWorkingPaperAssignment(pool, workspace, leadSheetId, clerkUserId, { assignedBy: actorUserId })
+  return { leadSheetId, clerkUserId, status: 'active' }
+}
+
 export async function getWorkspaceOrgMigrationHealth (pool) {
   await ensureWorkspaceTables(pool)
   const { rows: summaryRows } = await pool.query(
     `SELECT
        count(*)::int AS total_workspaces,
        count(*) FILTER (WHERE clerk_org_id IS NOT NULL)::int AS mapped_workspaces,
-       count(*) FILTER (WHERE clerk_org_id IS NULL)::int AS unmapped_workspaces
+       count(*) FILTER (WHERE clerk_org_id IS NULL)::int AS unmapped_workspaces,
+       count(*) FILTER (WHERE organization_id IS NULL)::int AS unlinked_organizations
      FROM taxgpt.accounting_workspaces`
+  )
+  const { rows: orgMembershipRows } = await pool.query(
+    `SELECT count(*)::int AS c
+     FROM taxgpt.accounting_workspace_members wm
+     LEFT JOIN taxgpt.accounting_workspaces w ON w.id = wm.workspace_id
+     LEFT JOIN taxgpt.accounting_organization_members om
+       ON om.organization_id = w.organization_id
+      AND om.clerk_user_id = wm.clerk_user_id
+     WHERE wm.status = 'active'
+       AND w.organization_id IS NOT NULL
+       AND om.id IS NULL`
+  )
+  const { rows: engagementAssignmentRows } = await pool.query(
+    `SELECT count(*)::int AS c
+     FROM taxgpt.accounting_engagements e
+     LEFT JOIN taxgpt.engagement_employee_assignments ea
+       ON ea.engagement_id = e.id
+      AND ea.status = 'active'
+     WHERE e.workspace_id IS NOT NULL
+       AND ea.id IS NULL`
+  )
+  const { rows: paperAssignmentRows } = await pool.query(
+    `SELECT count(*)::int AS c
+     FROM taxgpt.lead_sheets ls
+     LEFT JOIN taxgpt.working_paper_employee_assignments wa
+       ON wa.lead_sheet_id = ls.id
+      AND wa.status = 'active'
+     WHERE wa.id IS NULL`
   )
   const { rows: unmappedRows } = await pool.query(
     `SELECT id, name, owner_user_id, workspace_type, created_at
@@ -854,7 +1391,13 @@ export async function getWorkspaceOrgMigrationHealth (pool) {
     summary: summaryRows[0] || {
       total_workspaces: 0,
       mapped_workspaces: 0,
-      unmapped_workspaces: 0
+      unmapped_workspaces: 0,
+      unlinked_organizations: 0
+    },
+    gaps: {
+      missingOrganizationMemberships: Number(orgMembershipRows[0]?.c || 0),
+      missingEngagementAssignments: Number(engagementAssignmentRows[0]?.c || 0),
+      missingWorkingPaperAssignments: Number(paperAssignmentRows[0]?.c || 0)
     },
     sampleUnmappedWorkspaces: unmappedRows
   }

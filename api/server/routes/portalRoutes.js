@@ -44,10 +44,15 @@ import { GoogleSheetsProvider, QuickBooksOnlineProvider, createAccountingProvide
 import { AIReviewService } from '../services/aiReviewService.js'
 import {
   addWorkspaceMember,
+  assertEngagementAssignment,
+  assertWorkingPaperAssignment,
+  assertWorkspaceAssignment,
   acceptWorkspaceInvite,
   acceptPendingWorkspaceInvites,
+  createOrganizationEmployeeInvite,
   createWorkspaceInvite,
   createWorkspace,
+  getOrganizationAdminSnapshot,
   getWorkspaceProfile,
   getWorkspaceContext,
   getOnboardingStatusForUser,
@@ -55,9 +60,13 @@ import {
   getWorkspacePermissionSnapshot,
   listWorkspaceInvites,
   listWorkspaceMembers,
+  upsertEngagementEmployeeAssignment,
+  upsertWorkingPaperEmployeeAssignment,
+  upsertWorkspaceEmployeeAssignment,
   listWorkspacesForUser,
   upsertWorkspaceProfile,
-  updateWorkspaceMember
+  updateWorkspaceMember,
+  updateOrganizationMember
 } from '../services/accountingWorkspaceService.js'
 import {
   assignWorkspaceMemberRole,
@@ -171,17 +180,39 @@ export async function ensureUserHomeFolder (pool, userId) {
 
 export function createPortalRouter (pool) {
   const r = Router()
+  const handleAssignmentError = (res, error, fallbackMessage) => {
+    const code = error?.code || ''
+    if (String(code).startsWith('ASSIGNMENT_DENIED')) {
+      void pool.query(
+        `INSERT INTO taxgpt.accounting_audit_log
+         (organization_id, clerk_user_id, entity_type, entity_id, action, actor_id, after_value, created_at)
+         VALUES (NULL, NULL, 'authorization', $1, 'authz.assignment_denied', NULL, $2::jsonb, now())`,
+        [
+          String(code),
+          JSON.stringify({
+            code: String(code),
+            message: error instanceof Error ? error.message : String(error)
+          })
+        ]
+      ).catch(() => {})
+      res.status(403).json({ error: fallbackMessage, reason: 'assignment' })
+      return true
+    }
+    return false
+  }
   const resolveAccountingScope = async (req, res, session) => {
     try {
       const requestedWorkspaceId = req.headers['x-accounting-workspace-id'] || req.query.workspaceId || null
       const workspace = await getWorkspaceContext(pool, session.userId, requestedWorkspaceId)
+      await assertWorkspaceAssignment(pool, workspace, session.userId, { assignedBy: session.userId })
       return {
         workspace,
-        organizationId: workspace.id,
+        organizationId: workspace.organization_id || workspace.id,
         workspaceUserId: workspace.owner_user_id,
         actorUserId: session.userId
       }
     } catch (e) {
+      if (handleAssignmentError(res, e, 'Workspace assignment required')) return null
       res.status(403).json({ error: e instanceof Error ? e.message : 'Workspace access denied' })
       return null
     }
@@ -201,6 +232,30 @@ export function createPortalRouter (pool) {
     } catch (e) {
       res.status(500).json({ error: e instanceof Error ? e.message : 'Could not evaluate workspace entitlements' })
       return false
+    }
+  }
+  const resolveEngagementScope = async (req, res, session) => {
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return null
+    try {
+      await assertEngagementAssignment(pool, scope.workspace, req.params.engagementId, session.userId, { assignedBy: scope.actorUserId })
+      return scope
+    } catch (e) {
+      if (handleAssignmentError(res, e, 'Engagement assignment required')) return null
+      res.status(403).json({ error: e instanceof Error ? e.message : 'Engagement access denied' })
+      return null
+    }
+  }
+  const resolveWorkingPaperScope = async (req, res, session) => {
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return null
+    try {
+      await assertWorkingPaperAssignment(pool, scope.workspace, req.params.leadSheetId, session.userId, { assignedBy: scope.actorUserId })
+      return scope
+    } catch (e) {
+      if (handleAssignmentError(res, e, 'Working paper assignment required')) return null
+      res.status(403).json({ error: e instanceof Error ? e.message : 'Working paper access denied' })
+      return null
     }
   }
 
@@ -929,6 +984,78 @@ export function createPortalRouter (pool) {
     }
   })
 
+  r.get('/v1/accounting/workspaces/:workspaceId/organization', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const snapshot = await getOrganizationAdminSnapshot(pool, session.userId, req.params.workspaceId)
+      res.json(snapshot)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load organization snapshot' })
+    }
+  })
+
+  r.post('/v1/accounting/workspaces/:workspaceId/organization/invites', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const invite = await createOrganizationEmployeeInvite(pool, session.userId, req.params.workspaceId, req.body || {})
+      res.json({ invite })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create organization employee invite' })
+    }
+  })
+
+  r.patch('/v1/accounting/workspaces/:workspaceId/organization/members/:memberUserId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const member = await updateOrganizationMember(
+        pool,
+        session.userId,
+        req.params.workspaceId,
+        req.params.memberUserId,
+        req.body || {}
+      )
+      res.json({ member })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update organization member' })
+    }
+  })
+
+  r.put('/v1/accounting/workspaces/:workspaceId/assignments/workspace', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const assignment = await upsertWorkspaceEmployeeAssignment(pool, session.userId, req.params.workspaceId, req.body || {})
+      res.json({ assignment })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update workspace assignment' })
+    }
+  })
+
+  r.put('/v1/accounting/engagements/:engagementId/assignments', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const assignment = await upsertEngagementEmployeeAssignment(pool, session.userId, req.params.engagementId, req.body || {})
+      res.json({ assignment })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update engagement assignment' })
+    }
+  })
+
+  r.put('/v1/accounting/lead-sheets/:leadSheetId/assignments', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const assignment = await upsertWorkingPaperEmployeeAssignment(pool, session.userId, req.params.leadSheetId, req.body || {})
+      res.json({ assignment })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update working paper assignment' })
+    }
+  })
+
   r.get('/v1/accounting/workspaces/:workspaceId/roles', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
@@ -1100,7 +1227,8 @@ export function createPortalRouter (pool) {
         status: req.query.status || null,
         clientId: req.query.clientId || null,
         engagementType: req.query.engagementType || null,
-        search: req.query.search || null
+        search: req.query.search || null,
+        workspaceId: scope.workspace.id
       })
       res.json({ engagements })
     } catch (e) {
@@ -1116,7 +1244,15 @@ export function createPortalRouter (pool) {
     if (!scope) return
     if (!(await hasEntitlement(res, scope.workspace.id, 'workingPapers'))) return
     try {
-      const engagement = await createEngagement(pool, scope.workspaceUserId, scope.actorUserId, req.body || {})
+      const engagement = await createEngagement(pool, scope.workspaceUserId, scope.actorUserId, {
+        ...(req.body || {}),
+        workspaceId: scope.workspace.id,
+        organizationId: scope.organizationId
+      })
+      await upsertEngagementEmployeeAssignment(pool, scope.actorUserId, engagement.id, {
+        workspaceId: scope.workspace.id,
+        clerkUserId: scope.actorUserId
+      })
       res.json({ engagement })
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create engagement' })
@@ -1126,7 +1262,7 @@ export function createPortalRouter (pool) {
   r.patch('/v1/accounting/engagements/:engagementId', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
+    const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
     try {
       const engagement = await updateEngagement(pool, scope.workspaceUserId, scope.actorUserId, req.params.engagementId, req.body || {})
@@ -1140,7 +1276,7 @@ export function createPortalRouter (pool) {
   r.post('/v1/accounting/engagements/:engagementId/archive', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
+    const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
     const canArchive = isStaff(session.userId) || scope.workspace.role === 'owner' || scope.workspace.role === 'admin'
     if (!canArchive) return res.status(403).json({ error: 'Forbidden' })
@@ -1161,7 +1297,7 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/engagements/:engagementId/dashboard', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
+    const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
     const dashboard = await getEngagementDashboard(pool, scope.workspaceUserId, req.params.engagementId)
     if (!dashboard) return res.status(404).json({ error: 'Engagement not found' })
@@ -1171,7 +1307,7 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/engagements/:engagementId/trial-balance/accounts', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
+    const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
     const accounts = await listTrialBalanceAccounts(pool, scope.workspaceUserId, req.params.engagementId)
     if (!accounts) return res.status(404).json({ error: 'Engagement not found' })
@@ -1182,6 +1318,8 @@ export function createPortalRouter (pool) {
     const session = await getClerkUser(req, res)
     if (!session) return
     try {
+      const scope = await resolveEngagementScope(req, res, session)
+      if (!scope) return
       const parsed = parseTrialBalanceFile({
         fileName: req.body?.fileName,
         base64Content: req.body?.base64Content
@@ -1205,7 +1343,7 @@ export function createPortalRouter (pool) {
   r.post('/v1/accounting/engagements/:engagementId/trial-balance/import', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
+    const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
     try {
       const result = await saveTrialBalanceImport(pool, scope.workspaceUserId, scope.actorUserId, req.params.engagementId, req.body || {})
@@ -1233,7 +1371,7 @@ export function createPortalRouter (pool) {
   r.post('/v1/accounting/engagements/:engagementId/trial-balance/recalculate-variances', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
+    const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
     const result = await calculateTrialBalanceVariances(
       pool,
@@ -1249,7 +1387,7 @@ export function createPortalRouter (pool) {
   r.post('/v1/accounting/engagements/:engagementId/lead-sheets/generate', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
+    const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
     const leadSheets = await generateLeadSheets(pool, scope.workspaceUserId, scope.actorUserId, req.params.engagementId)
     if (!leadSheets) return res.status(404).json({ error: 'Engagement not found' })
@@ -1259,7 +1397,7 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/engagements/:engagementId/lead-sheets', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
+    const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
     const leadSheets = await listLeadSheets(pool, scope.workspaceUserId, req.params.engagementId)
     res.json({ leadSheets })
@@ -1268,7 +1406,7 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/engagements/:engagementId/lead-sheets/:leadSheetId', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
+    const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
     const detail = await getLeadSheetDetail(pool, scope.workspaceUserId, req.params.engagementId, req.params.leadSheetId)
     if (!detail) return res.status(404).json({ error: 'Lead sheet not found' })
@@ -1278,7 +1416,7 @@ export function createPortalRouter (pool) {
   r.patch('/v1/accounting/lead-sheets/:leadSheetId/conclusion', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
+    const scope = await resolveWorkingPaperScope(req, res, session)
     if (!scope) return
     const leadSheet = await updateLeadSheetConclusion(pool, scope.workspaceUserId, scope.actorUserId, req.params.leadSheetId, req.body?.conclusionText || null)
     if (!leadSheet) return res.status(404).json({ error: 'Lead sheet not found' })
@@ -1288,7 +1426,7 @@ export function createPortalRouter (pool) {
   r.patch('/v1/accounting/lead-sheets/:leadSheetId/status', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
+    const scope = await resolveWorkingPaperScope(req, res, session)
     if (!scope) return
     try {
       const leadSheet = await updateLeadSheetStatus(pool, scope.workspaceUserId, scope.actorUserId, req.params.leadSheetId, req.body?.status)
@@ -1302,7 +1440,7 @@ export function createPortalRouter (pool) {
   r.post('/v1/accounting/lead-sheets/:leadSheetId/preparer-signoff', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
+    const scope = await resolveWorkingPaperScope(req, res, session)
     if (!scope) return
     const leadSheet = await preparerSignoff(pool, scope.workspaceUserId, scope.actorUserId, req.params.leadSheetId)
     if (!leadSheet) return res.status(404).json({ error: 'Lead sheet not found' })
@@ -1312,7 +1450,7 @@ export function createPortalRouter (pool) {
   r.post('/v1/accounting/lead-sheets/:leadSheetId/reviewer-signoff', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
+    const scope = await resolveWorkingPaperScope(req, res, session)
     if (!scope) return
     const canOverride = isStaff(session.userId) ||
       scope.workspace.role === 'manager' ||
@@ -1331,7 +1469,7 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/engagements/:engagementId/documents', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
+    const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
     const documents = await listDocumentsByEngagement(pool, scope.workspaceUserId, req.params.engagementId, req.query.leadSheetId || null)
     res.json({ documents })
@@ -1343,9 +1481,14 @@ export function createPortalRouter (pool) {
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
     try {
+      await assertEngagementAssignment(pool, scope.workspace, req.body?.engagementId, session.userId, { assignedBy: scope.actorUserId })
+      if (req.body?.leadSheetId) {
+        await assertWorkingPaperAssignment(pool, scope.workspace, req.body.leadSheetId, session.userId, { assignedBy: scope.actorUserId })
+      }
       const document = await attachExistingDocument(pool, scope.workspaceUserId, scope.actorUserId, req.body || {})
       res.json({ document })
     } catch (e) {
+      if (handleAssignmentError(res, e, 'Assignment required to link this document')) return
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not link document' })
     }
   })
@@ -1363,7 +1506,7 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/engagements/:engagementId/review-notes', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
+    const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
     const notes = await listReviewNotes(pool, scope.workspaceUserId, req.params.engagementId, {
       status: req.query.status || null,
@@ -1378,9 +1521,14 @@ export function createPortalRouter (pool) {
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
     try {
+      await assertEngagementAssignment(pool, scope.workspace, req.body?.engagementId, session.userId, { assignedBy: scope.actorUserId })
+      if (req.body?.leadSheetId) {
+        await assertWorkingPaperAssignment(pool, scope.workspace, req.body.leadSheetId, session.userId, { assignedBy: scope.actorUserId })
+      }
       const note = await createReviewNote(pool, scope.workspaceUserId, scope.actorUserId, req.body || {})
       res.json({ note })
     } catch (e) {
+      if (handleAssignmentError(res, e, 'Assignment required to create review notes')) return
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create note' })
     }
   })
@@ -1402,7 +1550,7 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/engagements/:engagementId/tasks', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
+    const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
     const tasks = await listTasks(pool, scope.workspaceUserId, req.params.engagementId)
     res.json({ tasks })
@@ -1414,9 +1562,14 @@ export function createPortalRouter (pool) {
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
     try {
+      await assertEngagementAssignment(pool, scope.workspace, req.body?.engagementId, session.userId, { assignedBy: scope.actorUserId })
+      if (req.body?.leadSheetId) {
+        await assertWorkingPaperAssignment(pool, scope.workspace, req.body.leadSheetId, session.userId, { assignedBy: scope.actorUserId })
+      }
       const task = await createTask(pool, scope.workspaceUserId, scope.actorUserId, req.body || {})
       res.json({ task })
     } catch (e) {
+      if (handleAssignmentError(res, e, 'Assignment required to create tasks')) return
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create task' })
     }
   })
@@ -1438,7 +1591,7 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/engagements/:engagementId/adjustments', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
+    const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
     const entries = await listAdjustmentEntries(pool, scope.workspaceUserId, req.params.engagementId)
     res.json({ entries })
@@ -1450,9 +1603,11 @@ export function createPortalRouter (pool) {
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
     try {
+      await assertEngagementAssignment(pool, scope.workspace, req.body?.engagementId, session.userId, { assignedBy: scope.actorUserId })
       const entry = await createAdjustmentEntry(pool, scope.workspaceUserId, scope.actorUserId, req.body || {})
       res.json({ entry })
     } catch (e) {
+      if (handleAssignmentError(res, e, 'Assignment required to create adjustment entries')) return
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create adjustment entry' })
     }
   })

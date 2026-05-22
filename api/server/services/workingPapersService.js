@@ -227,6 +227,10 @@ export async function listEngagements (pool, clerkUserId, query = {}) {
     values.push(`%${String(query.search).trim().toLowerCase()}%`)
     where.push(`(lower(e.name) LIKE $${values.length} OR lower(c.name) LIKE $${values.length})`)
   }
+  if (query.workspaceId) {
+    values.push(query.workspaceId)
+    where.push(`e.workspace_id = $${values.length}::uuid`)
+  }
 
   const { rows } = await pool.query(
     `SELECT e.*, c.name AS client_name
@@ -250,10 +254,12 @@ export async function createEngagement (pool, clerkUserId, actorId, payload) {
 
   const { rows } = await pool.query(
     `INSERT INTO taxgpt.accounting_engagements
-     (clerk_user_id, client_id, name, engagement_type, fiscal_year, period_start, period_end, status, source_type, materiality_amount, reporting_currency, created_by, assigned_preparer_id, assigned_reviewer_id, created_at, updated_at)
-     VALUES ($1, $2::uuid, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, now(), now())
+     (organization_id, workspace_id, clerk_user_id, client_id, name, engagement_type, fiscal_year, period_start, period_end, status, source_type, materiality_amount, reporting_currency, created_by, assigned_preparer_id, assigned_reviewer_id, created_at, updated_at)
+     VALUES ($1::uuid, $2::uuid, $3, $4::uuid, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, now(), now())
      RETURNING *`,
     [
+      payload.organizationId || null,
+      payload.workspaceId || null,
       clerkUserId,
       payload.clientId,
       name,

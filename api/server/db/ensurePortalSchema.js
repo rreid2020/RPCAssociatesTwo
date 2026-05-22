@@ -390,6 +390,7 @@ const STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS taxgpt.accounting_engagements (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id UUID,
+  workspace_id UUID,
   clerk_user_id TEXT NOT NULL,
   client_id UUID NOT NULL REFERENCES taxgpt.accounting_clients(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -408,9 +409,11 @@ const STATEMENTS = [
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 )`,
   'ALTER TABLE taxgpt.accounting_engagements ADD COLUMN IF NOT EXISTS organization_id UUID',
+  'ALTER TABLE taxgpt.accounting_engagements ADD COLUMN IF NOT EXISTS workspace_id UUID',
   'CREATE INDEX IF NOT EXISTS accounting_engagements_user_idx ON taxgpt.accounting_engagements(clerk_user_id, status)',
   'CREATE INDEX IF NOT EXISTS accounting_engagements_client_idx ON taxgpt.accounting_engagements(client_id)',
   'CREATE INDEX IF NOT EXISTS accounting_engagements_org_idx ON taxgpt.accounting_engagements(organization_id, status)',
+  'CREATE INDEX IF NOT EXISTS accounting_engagements_workspace_idx ON taxgpt.accounting_engagements(workspace_id, status)',
 
   `CREATE TABLE IF NOT EXISTS taxgpt.source_connections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -625,8 +628,41 @@ const STATEMENTS = [
   'CREATE INDEX IF NOT EXISTS accounting_audit_log_user_idx ON taxgpt.accounting_audit_log(clerk_user_id, created_at DESC)',
   'CREATE INDEX IF NOT EXISTS accounting_audit_log_org_idx ON taxgpt.accounting_audit_log(organization_id, created_at DESC)',
 
+  `CREATE TABLE IF NOT EXISTS taxgpt.accounting_organizations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  owner_user_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  organization_type VARCHAR(16) NOT NULL DEFAULT 'business',
+  clerk_org_id TEXT UNIQUE,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+)`,
+  `DO $$
+   BEGIN
+     IF NOT EXISTS (
+       SELECT 1 FROM pg_constraint WHERE conname = 'accounting_organizations_org_type_chk'
+     ) THEN
+       ALTER TABLE taxgpt.accounting_organizations
+         ADD CONSTRAINT accounting_organizations_org_type_chk
+         CHECK (organization_type IN ('business', 'firm'));
+     END IF;
+   END $$`,
+  `CREATE TABLE IF NOT EXISTS taxgpt.accounting_organization_members (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES taxgpt.accounting_organizations(id) ON DELETE CASCADE,
+  clerk_user_id TEXT NOT NULL,
+  role VARCHAR(24) NOT NULL DEFAULT 'member',
+  status VARCHAR(24) NOT NULL DEFAULT 'active',
+  invited_by TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now(),
+  UNIQUE (organization_id, clerk_user_id)
+)`,
+  'CREATE INDEX IF NOT EXISTS accounting_org_members_user_idx ON taxgpt.accounting_organization_members(clerk_user_id, status)',
   `CREATE TABLE IF NOT EXISTS taxgpt.accounting_workspaces (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID REFERENCES taxgpt.accounting_organizations(id) ON DELETE SET NULL,
   owner_user_id TEXT NOT NULL,
   name TEXT NOT NULL,
   slug TEXT NOT NULL UNIQUE,
@@ -649,6 +685,26 @@ const STATEMENTS = [
    ALTER COLUMN org_sync_status SET NOT NULL`,
   'ALTER TABLE taxgpt.accounting_workspaces ADD COLUMN IF NOT EXISTS org_synced_at TIMESTAMP',
   'CREATE UNIQUE INDEX IF NOT EXISTS accounting_workspaces_clerk_org_id_ux ON taxgpt.accounting_workspaces(clerk_org_id) WHERE clerk_org_id IS NOT NULL',
+  'ALTER TABLE taxgpt.accounting_workspaces ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES taxgpt.accounting_organizations(id) ON DELETE SET NULL',
+  'CREATE INDEX IF NOT EXISTS accounting_workspaces_org_idx ON taxgpt.accounting_workspaces(organization_id, created_at DESC)',
+  `DO $$
+   BEGIN
+     IF EXISTS (
+       SELECT 1
+       FROM information_schema.columns
+       WHERE table_schema = 'taxgpt'
+         AND table_name = 'accounting_engagements'
+         AND column_name = 'workspace_id'
+     ) AND NOT EXISTS (
+       SELECT 1 FROM pg_constraint WHERE conname = 'accounting_engagements_workspace_fk'
+     ) THEN
+       ALTER TABLE taxgpt.accounting_engagements
+         ADD CONSTRAINT accounting_engagements_workspace_fk
+         FOREIGN KEY (workspace_id)
+         REFERENCES taxgpt.accounting_workspaces(id)
+         ON DELETE SET NULL;
+     END IF;
+   END $$`,
   `ALTER TABLE taxgpt.accounting_workspaces
    ADD COLUMN IF NOT EXISTS workspace_type VARCHAR(16)`,
   `UPDATE taxgpt.accounting_workspaces
@@ -826,6 +882,48 @@ const STATEMENTS = [
   processed_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL DEFAULT now()
 )`,
+  `CREATE TABLE IF NOT EXISTS taxgpt.workspace_employee_assignments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES taxgpt.accounting_organizations(id) ON DELETE CASCADE,
+  workspace_id UUID NOT NULL REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,
+  clerk_user_id TEXT NOT NULL,
+  assignment_role VARCHAR(24) NOT NULL DEFAULT 'member',
+  status VARCHAR(24) NOT NULL DEFAULT 'active',
+  assigned_by TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now(),
+  UNIQUE (workspace_id, clerk_user_id)
+)`,
+  'CREATE INDEX IF NOT EXISTS workspace_employee_assignments_user_idx ON taxgpt.workspace_employee_assignments(clerk_user_id, status)',
+  `CREATE TABLE IF NOT EXISTS taxgpt.engagement_employee_assignments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES taxgpt.accounting_organizations(id) ON DELETE CASCADE,
+  workspace_id UUID NOT NULL REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,
+  engagement_id UUID NOT NULL REFERENCES taxgpt.accounting_engagements(id) ON DELETE CASCADE,
+  clerk_user_id TEXT NOT NULL,
+  assignment_role VARCHAR(24) NOT NULL DEFAULT 'member',
+  status VARCHAR(24) NOT NULL DEFAULT 'active',
+  assigned_by TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now(),
+  UNIQUE (engagement_id, clerk_user_id)
+)`,
+  'CREATE INDEX IF NOT EXISTS engagement_employee_assignments_user_idx ON taxgpt.engagement_employee_assignments(clerk_user_id, status)',
+  `CREATE TABLE IF NOT EXISTS taxgpt.working_paper_employee_assignments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES taxgpt.accounting_organizations(id) ON DELETE CASCADE,
+  workspace_id UUID NOT NULL REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,
+  engagement_id UUID NOT NULL REFERENCES taxgpt.accounting_engagements(id) ON DELETE CASCADE,
+  lead_sheet_id UUID NOT NULL REFERENCES taxgpt.lead_sheets(id) ON DELETE CASCADE,
+  clerk_user_id TEXT NOT NULL,
+  assignment_role VARCHAR(24) NOT NULL DEFAULT 'member',
+  status VARCHAR(24) NOT NULL DEFAULT 'active',
+  assigned_by TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now(),
+  UNIQUE (lead_sheet_id, clerk_user_id)
+)`,
+  'CREATE INDEX IF NOT EXISTS working_paper_assignments_user_idx ON taxgpt.working_paper_employee_assignments(clerk_user_id, status)',
   'CREATE INDEX IF NOT EXISTS workspace_billing_events_workspace_idx ON taxgpt.workspace_billing_events(workspace_id, created_at DESC)'
 ]
 

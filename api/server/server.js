@@ -21,11 +21,8 @@ import { escapeHtml, singleLine } from './utils/html.js'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const apiEnvPath = path.resolve(__dirname, '.env')
-const portalEnvPath = path.resolve(__dirname, '../../client-portal/.env')
 
 dotenv.config({ path: apiEnvPath })
-// Fallback load so migrations + runtime can share DATABASE_URL when not set in api/server/.env.
-dotenv.config({ path: portalEnvPath, override: false })
 logServerEnvSummary()
 
 const app = express()

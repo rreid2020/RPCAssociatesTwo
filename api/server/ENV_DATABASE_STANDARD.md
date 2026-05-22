@@ -1,14 +1,12 @@
 # Database Environment Standard
 
-Use one canonical connection string across runtime and migrations:
+Use one canonical connection string:
 
 - `api/server` runtime: `DATABASE_URL`
-- `client-portal` migrations: `DATABASE_URL`
 
-Use the exact same value in:
+Use this value in:
 
 - `api/server/.env`
-- `client-portal/.env`
 
 ## Recommended Format
 
@@ -16,7 +14,7 @@ Use the exact same value in:
 
 ## Why
 
-- Prevents API pointing at one database while migrations run on another.
+- Prevents API and scripts from pointing at different databases.
 - Eliminates split-brain between `axiomft` and `defaultdb`.
 - Makes local and deployed behavior consistent.
 

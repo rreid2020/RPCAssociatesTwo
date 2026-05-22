@@ -1,3 +1,5 @@
+import { trackAnalyticsEvent } from './analytics/events'
+
 /**
  * JSON API for the Express `/api/portal` routes. Uses Clerk session token.
  *
@@ -20,6 +22,25 @@ function getSelectedAccountingWorkspaceId (): string | null {
   if (typeof window === 'undefined') return null
   const id = window.localStorage.getItem(ACCOUNTING_WORKSPACE_STORAGE_KEY)
   return id && id.trim() ? id.trim() : null
+}
+
+function clearSelectedAccountingWorkspaceId () {
+  if (typeof window === 'undefined') return
+  window.localStorage.removeItem(ACCOUNTING_WORKSPACE_STORAGE_KEY)
+}
+
+function emitWorkspaceRecoveryTelemetry (reason: string, workspaceId: string | null) {
+  trackAnalyticsEvent({
+    name: 'workspace_context_recovered',
+    domain: 'portal',
+    workspaceId: workspaceId || undefined,
+    metadata: { reason }
+  })
+}
+
+function shouldRetryWithoutWorkspaceHeader (errorMessage: string): boolean {
+  const message = String(errorMessage || '').toLowerCase()
+  return message.includes('workspace access denied') || message.includes('workspace not found')
 }
 
 function parseJsonBody<T> (text: string, allowEmpty: boolean): T {
@@ -47,30 +68,45 @@ export async function portalFetch<T> (
   if (!token) {
     throw new Error('Not signed in')
   }
-  const res = await fetch(`${getApiPrefix()}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-      ...(getSelectedAccountingWorkspaceId() ? { 'x-accounting-workspace-id': getSelectedAccountingWorkspaceId() as string } : {}),
-      ...init.headers
+  const run = async (workspaceId: string | null): Promise<T> => {
+    const res = await fetch(`${getApiPrefix()}${path}`, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        ...(workspaceId ? { 'x-accounting-workspace-id': workspaceId } : {}),
+        ...init.headers
+      }
+    })
+    const text = await res.text()
+    if (!res.ok) {
+      let err = res.statusText
+      try {
+        const j = parseJsonBody<{ error?: string }>(text, false)
+        if (j.error) err = j.error
+      } catch (e) {
+        if (e instanceof Error && e.message === htmlInsteadOfJsonHint) err = e.message
+      }
+      throw new Error(err)
     }
-  })
-  const text = await res.text()
-  if (!res.ok) {
-    let err = res.statusText
-    try {
-      const j = parseJsonBody<{ error?: string }>(text, false)
-      if (j.error) err = j.error
-    } catch (e) {
-      if (e instanceof Error && e.message === htmlInsteadOfJsonHint) err = e.message
+    if (res.status === 204) {
+      return undefined as T
     }
-    throw new Error(err)
+    return parseJsonBody<T>(text, false)
   }
-  if (res.status === 204) {
-    return undefined as T
+
+  const selectedWorkspaceId = getSelectedAccountingWorkspaceId()
+  try {
+    return await run(selectedWorkspaceId)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (selectedWorkspaceId && shouldRetryWithoutWorkspaceHeader(message)) {
+      emitWorkspaceRecoveryTelemetry(message, selectedWorkspaceId)
+      clearSelectedAccountingWorkspaceId()
+      return await run(null)
+    }
+    throw error
   }
-  return parseJsonBody<T>(text, false)
 }
 
 export type PortalDashboard = {

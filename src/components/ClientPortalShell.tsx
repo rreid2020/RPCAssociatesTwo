@@ -6,6 +6,7 @@ import AxiomWordmark from './AxiomWordmark'
 import { useWorkspaceAuthorization } from '../platform/permissions/WorkspaceAuthorizationProvider'
 import { useWorkspaceState } from '../platform/workspace/useWorkspaceState'
 import { buildNavigationSections, type NavigationItem } from '../platform/navigation/navigationRegistry'
+import { ACCOUNTING_WORKSPACE_STORAGE_KEY } from '../lib/portalApi'
 
 interface ClientPortalShellProps {
   children: ReactNode
@@ -17,12 +18,16 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
   const { user } = useUser()
   const { signOut } = useClerk()
   const { permissions } = useWorkspaceAuthorization()
-  const { workspaceId } = useWorkspaceState()
+  const { workspaceId, setWorkspaceId } = useWorkspaceState()
   const handleSignOut = useCallback(() => {
+    setWorkspaceId(null)
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(ACCOUNTING_WORKSPACE_STORAGE_KEY)
+    }
     const ts = Date.now()
     const redirectUrl = `${window.location.origin}/portal/sign-in?fresh=${ts}`
     void signOut({ redirectUrl })
-  }, [signOut])
+  }, [setWorkspaceId, signOut])
 
   const workingPapers = useFeatureAccess('workingPapers')
   const integrations = useFeatureAccess('integrations')

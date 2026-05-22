@@ -16,8 +16,8 @@ type WorkspaceAuthorizationState = {
 const WorkspaceAuthorizationContext = createContext<WorkspaceAuthorizationState | null>(null)
 
 export const WorkspaceAuthorizationProvider: FC<{ children: ReactNode }> = ({ children }) => {
-  const { getToken } = useAuth()
-  const { workspaceId } = useWorkspaceState()
+  const { getToken, isLoaded, isSignedIn } = useAuth()
+  const { workspaceId, setWorkspaceId } = useWorkspaceState()
   const [workspaceRole, setWorkspaceRole] = useState<string | null>(null)
   const [platformRole, setPlatformRole] = useState<string | null>(null)
   const [customRoles, setCustomRoles] = useState<string[]>([])
@@ -55,6 +55,31 @@ export const WorkspaceAuthorizationProvider: FC<{ children: ReactNode }> = ({ ch
   useEffect(() => {
     void refresh()
   }, [refresh])
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) return
+    let mounted = true
+    const validateWorkspaceSelection = async () => {
+      try {
+        const data = await portalFetch<{ workspaces: Array<{ id: string }> }>('/v1/accounting/workspaces', getToken)
+        if (!mounted) return
+        const workspaceIds = (data.workspaces || []).map((workspace) => String(workspace.id))
+        if (workspaceIds.length === 0) {
+          if (workspaceId) setWorkspaceId(null)
+          return
+        }
+        if (!workspaceId || !workspaceIds.includes(workspaceId)) {
+          setWorkspaceId(workspaceIds[0])
+        }
+      } catch {
+        // Keep current selection when workspace list cannot be loaded.
+      }
+    }
+    void validateWorkspaceSelection()
+    return () => {
+      mounted = false
+    }
+  }, [getToken, isLoaded, isSignedIn, setWorkspaceId, workspaceId])
 
   const value = useMemo(() => ({
     workspaceId,

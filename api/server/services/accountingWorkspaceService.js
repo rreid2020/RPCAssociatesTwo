@@ -56,10 +56,38 @@ function normalizeInviteEmail (value) {
   return inviteEmail
 }
 
+function pickPublicPortalOrigin () {
+  const fromExplicit = String(
+    process.env.PORTAL_APP_URL ||
+    process.env.APP_URL ||
+    process.env.VITE_SITE_URL ||
+    ''
+  ).trim()
+  if (fromExplicit) {
+    return fromExplicit.replace(/\/$/, '')
+  }
+
+  const allowList = String(process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+
+  const publicOrigin = allowList.find((origin) => /^https?:\/\//i.test(origin) && !/localhost|127\.0\.0\.1/i.test(origin))
+  if (publicOrigin) {
+    return publicOrigin.replace(/\/$/, '')
+  }
+
+  return ''
+}
+
 function getInviteRedirectUrl () {
-  const configuredBaseUrl = String(process.env.PORTAL_APP_URL || process.env.VITE_SITE_URL || '').trim().replace(/\/$/, '')
-  const appBaseUrl = configuredBaseUrl || 'http://localhost:5173'
-  return `${appBaseUrl}/portal/post-auth`
+  const origin = pickPublicPortalOrigin()
+  if (origin) return `${origin}/portal/post-auth`
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Portal invite redirect URL is not configured. Set PORTAL_APP_URL (preferred) or APP_URL to your public site origin.')
+  }
+  return 'http://localhost:5173/portal/post-auth'
 }
 
 function mapWorkspaceRoleToClerkOrgRole (workspaceRole) {

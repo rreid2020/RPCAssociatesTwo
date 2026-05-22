@@ -14,6 +14,11 @@ type InviteDraft = {
   role: string
 }
 
+type InviteSendSummary = {
+  sentAt: string
+  emails: string[]
+} | null
+
 type WorkspaceProfileDraft = {
   companyLegalName: string
   companyOperatingName: string
@@ -66,6 +71,7 @@ const Subscription: FC = () => {
   const [newWorkspaceName, setNewWorkspaceName] = useState('')
   const [profileDraft, setProfileDraft] = useState<WorkspaceProfileDraft>(defaultProfileDraft)
   const [inviteDrafts, setInviteDrafts] = useState<InviteDraft[]>([{ email: '', role: 'manager' }])
+  const [inviteSendSummary, setInviteSendSummary] = useState<InviteSendSummary>(null)
   const [onboardingStep, setOnboardingStep] = useState(1)
   const workspaceNameInputRef = useRef<HTMLInputElement | null>(null)
   const companyLegalNameInputRef = useRef<HTMLInputElement | null>(null)
@@ -213,6 +219,7 @@ const Subscription: FC = () => {
     setError(null)
     setNotice(null)
     try {
+      const sentEmails: string[] = []
       for (const invite of validInvites) {
         await portalFetch<{ invite: any }>(
           `/v1/accounting/workspaces/${selectedWorkspaceId}/invites`,
@@ -222,9 +229,14 @@ const Subscription: FC = () => {
             body: JSON.stringify(invite)
           }
         )
+        sentEmails.push(invite.email)
       }
       setOnboardingStep(3)
       setNotice('Clerk invite emails sent. Employees will be added automatically after they create/sign in to their account.')
+      setInviteSendSummary({
+        sentAt: new Date().toISOString(),
+        emails: sentEmails
+      })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not send one or more employee invites')
     } finally {
@@ -524,6 +536,14 @@ const Subscription: FC = () => {
                     >
                       {saving ? 'Sending...' : 'Send Invite Emails'}
                     </button>
+                    {inviteSendSummary && (
+                      <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+                        <p className="font-medium">
+                          {inviteSendSummary.emails.length} invite{inviteSendSummary.emails.length === 1 ? '' : 's'} sent successfully.
+                        </p>
+                        <p className="mt-1 break-words">{inviteSendSummary.emails.join(', ')}</p>
+                      </div>
+                    )}
                     <p className="text-xs text-text-light">
                       Clerk will email each invited employee with a secure account-setup link.
                     </p>

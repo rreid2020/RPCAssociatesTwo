@@ -1,32 +1,50 @@
-import { BILLING_PLANS } from '../billing/planCatalog.js'
+import { resolvePlanById } from '../billing/planCatalog.js'
 
-const FREE_PLAN_ID = 'FREE'
+const AUTO_PROVISION_ENTERPRISE_ACCESS = process.env.AUTO_PROVISION_ENTERPRISE_ACCESS !== 'false'
+const DEFAULT_PLAN_ID = AUTO_PROVISION_ENTERPRISE_ACCESS ? 'ENTERPRISE' : 'FREE'
 
 export async function ensureWorkspaceBillingRows (pool, workspaceId) {
-  const freePlan = BILLING_PLANS[FREE_PLAN_ID]
+  const defaultPlan = resolvePlanById(DEFAULT_PLAN_ID)
+  const subscriptionConflictClause = AUTO_PROVISION_ENTERPRISE_ACCESS
+    ? `ON CONFLICT (workspace_id) DO UPDATE SET
+      plan_id = EXCLUDED.plan_id,
+      updated_at = now()`
+    : 'ON CONFLICT (workspace_id) DO NOTHING'
+  const entitlementConflictClause = AUTO_PROVISION_ENTERPRISE_ACCESS
+    ? `ON CONFLICT (workspace_id) DO UPDATE SET
+      can_access_working_papers = EXCLUDED.can_access_working_papers,
+      can_access_taxgpt = EXCLUDED.can_access_taxgpt,
+      can_use_qbo_integration = EXCLUDED.can_use_qbo_integration,
+      can_use_google_sheets_integration = EXCLUDED.can_use_google_sheets_integration,
+      can_invite_users = EXCLUDED.can_invite_users,
+      max_storage_mb = EXCLUDED.max_storage_mb,
+      max_users = EXCLUDED.max_users,
+      ai_monthly_credits = EXCLUDED.ai_monthly_credits,
+      updated_at = now()`
+    : 'ON CONFLICT (workspace_id) DO NOTHING'
   await pool.query(
     `INSERT INTO taxgpt.workspace_subscriptions
      (workspace_id, plan_id, status, interval, cancel_at_period_end, created_at, updated_at)
      VALUES ($1::uuid, $2, 'none', 'monthly', false, now(), now())
-     ON CONFLICT (workspace_id) DO NOTHING`,
-    [workspaceId, FREE_PLAN_ID]
+     ${subscriptionConflictClause}`,
+    [workspaceId, defaultPlan.id]
   )
   await pool.query(
     `INSERT INTO taxgpt.workspace_entitlements
      (workspace_id, can_access_working_papers, can_access_taxgpt, can_use_qbo_integration, can_use_google_sheets_integration,
       can_invite_users, max_storage_mb, max_users, ai_monthly_credits, created_at, updated_at)
      VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())
-     ON CONFLICT (workspace_id) DO NOTHING`,
+     ${entitlementConflictClause}`,
     [
       workspaceId,
-      freePlan.entitlements.canAccessWorkingPapers,
-      freePlan.entitlements.canAccessTaxGPT,
-      freePlan.entitlements.canUseQBOIntegration,
-      freePlan.entitlements.canUseGoogleSheetsIntegration,
-      freePlan.entitlements.canInviteUsers,
-      freePlan.entitlements.maxStorageMb,
-      freePlan.entitlements.maxUsers,
-      freePlan.entitlements.aiMonthlyCredits
+      defaultPlan.entitlements.canAccessWorkingPapers,
+      defaultPlan.entitlements.canAccessTaxGPT,
+      defaultPlan.entitlements.canUseQBOIntegration,
+      defaultPlan.entitlements.canUseGoogleSheetsIntegration,
+      defaultPlan.entitlements.canInviteUsers,
+      defaultPlan.entitlements.maxStorageMb,
+      defaultPlan.entitlements.maxUsers,
+      defaultPlan.entitlements.aiMonthlyCredits
     ]
   )
   await pool.query(

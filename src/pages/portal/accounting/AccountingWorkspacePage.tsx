@@ -374,7 +374,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
   const onCreateClient = async () => {
     const name = newClientName.trim()
-    if (!name) return
+    if (!name) {
+      setError(`${clientLabel} name is required.`)
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -414,7 +417,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }
 
   const onGenerateLeadSheets = async () => {
-    if (!engagementId) return
+    if (!engagementId) {
+      setError('Select an engagement before generating lead sheets.')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -429,7 +435,14 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }
 
   const onPreviewImport = async () => {
-    if (!engagementId || !importFile) return
+    if (!engagementId) {
+      setError('Select an engagement before previewing trial balance import.')
+      return
+    }
+    if (!importFile) {
+      setError('Choose a file first to preview trial balance import.')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -456,7 +469,14 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }
 
   const onImportTrialBalance = async () => {
-    if (!engagementId || !importPayload) return
+    if (!engagementId) {
+      setError('Select an engagement before importing trial balance.')
+      return
+    }
+    if (!importPayload) {
+      setError('Generate an import preview first, then import the trial balance.')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -481,7 +501,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }
 
   const onAttachExistingDocument = async (existingDocumentId: string) => {
-    if (!engagementId) return
+    if (!engagementId) {
+      setError('Select an engagement before attaching supporting documents.')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -520,7 +543,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }
 
   const onPreparerSignoff = async () => {
-    if (!leadSheetId) return
+    if (!leadSheetId) {
+      setError('Open a lead sheet before preparer signoff.')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -535,7 +561,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }
 
   const onReviewerSignoff = async () => {
-    if (!leadSheetId) return
+    if (!leadSheetId) {
+      setError('Open a lead sheet before reviewer signoff.')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -553,7 +582,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }
 
   const onArchiveEngagement = async () => {
-    if (!engagementId) return
+    if (!engagementId) {
+      setError('Select an engagement before archiving.')
+      return
+    }
     if (!window.confirm('Archive this engagement? You can restore it later only through admin actions.')) return
     setSaving(true)
     setError(null)
@@ -569,7 +601,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }
 
   const onCreateWorkspace = async () => {
-    if (!newWorkspaceName.trim()) return
+    if (!newWorkspaceName.trim()) {
+      setError('Workspace name is required.')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -589,7 +624,14 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }
 
   const onAddWorkspaceMember = async () => {
-    if (!selectedWorkspaceId || !newMemberClerkUserId.trim()) return
+    if (!selectedWorkspaceId) {
+      setError('Select a workspace before adding a member.')
+      return
+    }
+    if (!newMemberClerkUserId.trim()) {
+      setError('Clerk user ID is required to add a workspace member.')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -611,7 +653,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }
 
   const onCreateWorkspaceInvite = async () => {
-    if (!selectedWorkspaceId) return
+    if (!selectedWorkspaceId) {
+      setError('Select a workspace before sending an invite.')
+      return
+    }
     const inviteEmail = newInviteEmail.trim().toLowerCase()
     if (!inviteEmail) {
       setError('Employee email is required to send a Clerk invite.')
@@ -778,7 +823,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             <button
                               type="button"
                               className="btn btn--primary text-sm py-2 px-4"
-                              disabled={saving || !newWorkspaceName.trim()}
+                              disabled={saving}
                               onClick={() => { void onCreateWorkspace() }}
                             >
                               Create Workspace
@@ -813,7 +858,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               <button
                                 type="button"
                                 className="btn btn--primary text-sm py-2 px-4"
-                                disabled={saving || !selectedWorkspaceId || !newInviteEmail.trim() || !canManageWorkspaceMembers}
+                                disabled={saving || !canManageWorkspaceMembers}
                                 onClick={() => { void onCreateWorkspaceInvite() }}
                               >
                                 Send Invite Email
@@ -866,7 +911,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             <button
                               type="button"
                               className="btn btn--primary text-sm py-2 px-4"
-                              disabled={saving || !selectedWorkspaceId || !newMemberClerkUserId.trim() || !canManageWorkspaceMembers}
+                              disabled={saving || !canManageWorkspaceMembers}
                               onClick={() => { void onAddWorkspaceMember() }}
                             >
                               Add Employee

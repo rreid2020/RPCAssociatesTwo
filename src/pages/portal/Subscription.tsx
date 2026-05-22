@@ -1,4 +1,4 @@
-import { FC, useCallback, useEffect, useMemo, useState } from 'react'
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../components/SEO'
@@ -67,6 +67,8 @@ const Subscription: FC = () => {
   const [profileDraft, setProfileDraft] = useState<WorkspaceProfileDraft>(defaultProfileDraft)
   const [inviteDrafts, setInviteDrafts] = useState<InviteDraft[]>([{ email: '', role: 'manager' }])
   const [onboardingStep, setOnboardingStep] = useState(1)
+  const workspaceNameInputRef = useRef<HTMLInputElement | null>(null)
+  const companyLegalNameInputRef = useRef<HTMLInputElement | null>(null)
 
   const loadWorkspaces = useCallback(async () => {
     setLoadingWorkspaces(true)
@@ -153,10 +155,23 @@ const Subscription: FC = () => {
   }
 
   const onCreateWorkspace = async () => {
-    if (!newWorkspaceName.trim()) return
-    if (!profileDraft.companyLegalName.trim()) {
+    // Browser autofill can update DOM inputs without triggering React change events.
+    const resolvedWorkspaceName = String(newWorkspaceName || workspaceNameInputRef.current?.value || '').trim()
+    const resolvedCompanyLegalName = String(profileDraft.companyLegalName || companyLegalNameInputRef.current?.value || '').trim()
+
+    if (!resolvedWorkspaceName) {
+      setError('Workspace name is required.')
+      return
+    }
+    if (!resolvedCompanyLegalName) {
       setError('Company/Firm legal name is required.')
       return
+    }
+    if (resolvedWorkspaceName !== newWorkspaceName) {
+      setNewWorkspaceName(resolvedWorkspaceName)
+    }
+    if (resolvedCompanyLegalName !== profileDraft.companyLegalName) {
+      setProfileDraft((current) => ({ ...current, companyLegalName: resolvedCompanyLegalName }))
     }
     setSaving(true)
     setError(null)
@@ -165,7 +180,7 @@ const Subscription: FC = () => {
       const created = await portalFetch<{ workspace: any }>('/v1/accounting/workspaces', getToken, {
         method: 'POST',
         body: JSON.stringify({
-          name: newWorkspaceName.trim(),
+          name: resolvedWorkspaceName,
           workspaceType: newWorkspaceType
         })
       })
@@ -311,6 +326,7 @@ const Subscription: FC = () => {
                       <label className="text-sm text-text-light">
                         Workspace name
                         <input
+                          ref={workspaceNameInputRef}
                           className="mt-1 w-full border border-border rounded-md px-3 py-2 text-sm"
                           placeholder={newWorkspaceType === 'firm' ? 'Example: NorthPoint CPA Firm' : 'Example: Maple Manufacturing Ltd'}
                           value={newWorkspaceName}
@@ -320,6 +336,7 @@ const Subscription: FC = () => {
                       <label className="text-sm text-text-light">
                         Company/Firm legal name
                         <input
+                          ref={companyLegalNameInputRef}
                           className="mt-1 w-full border border-border rounded-md px-3 py-2 text-sm"
                           placeholder="Legal registered name"
                           value={profileDraft.companyLegalName}
@@ -438,7 +455,7 @@ const Subscription: FC = () => {
                     <button
                       type="button"
                       className="btn btn--primary text-sm py-2 px-4"
-                      disabled={saving || !newWorkspaceName.trim() || !profileDraft.companyLegalName.trim()}
+                      disabled={saving}
                       onClick={() => { void onCreateWorkspace() }}
                     >
                       {saving ? 'Saving...' : 'Create Workspace'}

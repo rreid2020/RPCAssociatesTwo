@@ -1,7 +1,12 @@
 import { FC, ReactNode, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
-import { getOnboardingStatus, ONBOARDING_REQUIRED_PATH, shouldBypassOnboardingGate } from '../../../lib/onboarding/state'
+import {
+  getOnboardingStatus,
+  ONBOARDING_REQUIRED_PATH,
+  ROLLOUT_BYPASS_ENABLED,
+  shouldBypassOnboardingGate
+} from '../../../lib/onboarding/state'
 
 type Props = {
   children: ReactNode
@@ -18,7 +23,7 @@ const OnboardingGuard: FC<Props> = ({ children }) => {
   useEffect(() => {
     let mounted = true
     const run = async () => {
-      if (shouldBypass) {
+      if (shouldBypass || ROLLOUT_BYPASS_ENABLED) {
         if (mounted) setChecking(false)
         return
       }

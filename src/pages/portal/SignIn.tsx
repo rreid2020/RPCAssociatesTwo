@@ -1,6 +1,6 @@
 import { FC, useEffect, useState } from 'react'
 import { useSignIn, useClerk, useAuth } from '@clerk/clerk-react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
 import SEO from '../../components/SEO'
 import AxiomWordmark from '../../components/AxiomWordmark'
 
@@ -9,6 +9,7 @@ const SignIn: FC = () => {
   const { isSignedIn, isLoaded: isAuthLoaded } = useAuth()
   const { setActive } = useClerk()
   const navigate = useNavigate()
+  const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [code, setCode] = useState('')
@@ -17,10 +18,16 @@ const SignIn: FC = () => {
   const [awaitingEmailCode, setAwaitingEmailCode] = useState(false)
 
   useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const inviteTicket = params.get('__clerk_ticket') || params.get('ticket')
+    if (inviteTicket) {
+      navigate(`/portal/sign-up${location.search || ''}`, { replace: true })
+      return
+    }
     if (isAuthLoaded && isSignedIn) {
       navigate('/portal/post-auth')
     }
-  }, [isAuthLoaded, isSignedIn, navigate])
+  }, [isAuthLoaded, isSignedIn, location.search, navigate])
 
   const goPostAuth = () => {
     navigate('/portal/post-auth')

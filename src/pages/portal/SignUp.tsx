@@ -1,6 +1,6 @@
 import { FC, useEffect, useState } from 'react'
 import { useSignUp, useClerk, useAuth } from '@clerk/clerk-react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import SEO from '../../components/SEO'
 import AxiomWordmark from '../../components/AxiomWordmark'
 
@@ -9,6 +9,7 @@ const SignUp: FC = () => {
   const { isSignedIn, isLoaded: isAuthLoaded } = useAuth()
   const { setActive } = useClerk()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [firstName, setFirstName] = useState('')
@@ -18,6 +19,8 @@ const SignUp: FC = () => {
   const [notice, setNotice] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [verifying, setVerifying] = useState(false)
+  const inviteTicket = searchParams.get('__clerk_ticket') || searchParams.get('ticket')
+  const inviteFlow = Boolean(inviteTicket)
 
   useEffect(() => {
     if (isAuthLoaded && isSignedIn) {
@@ -155,7 +158,19 @@ const SignUp: FC = () => {
     setNotice('')
 
     if (!email || !password || !firstName || !lastName) {
-      setError('Please fill in all required fields')
+      if (inviteFlow) {
+        if (!password || !firstName || !lastName) {
+          setError('Please fill in all required fields')
+          return
+        }
+      } else {
+        setError('Please fill in all required fields')
+        return
+      }
+    }
+
+    if (inviteFlow && !inviteTicket) {
+      setError('Invitation ticket missing. Please reopen the invite email link.')
       return
     }
 
@@ -167,22 +182,35 @@ const SignUp: FC = () => {
     setIsLoading(true)
 
     try {
-      const result = await signUp.create({
-        emailAddress: email,
-        password,
-        firstName,
-        lastName,
-        username: buildUsernameCandidate(email)
-      })
+      const result = inviteFlow
+        ? await signUp.create({
+            strategy: 'ticket',
+            ticket: inviteTicket as string,
+            password,
+            firstName,
+            lastName,
+            username: buildUsernameCandidate(email || 'invited')
+          })
+        : await signUp.create({
+            emailAddress: email,
+            password,
+            firstName,
+            lastName,
+            username: buildUsernameCandidate(email)
+          })
 
       if (result.status === 'complete' && result.createdSessionId) {
         await activateSession(result.createdSessionId)
         return
       }
 
-      // Email verification required (Clerk default for new accounts)
-      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' })
-      setVerifying(true)
+      if (!inviteFlow) {
+        // Email verification required (Clerk default for new accounts)
+        await signUp.prepareEmailAddressVerification({ strategy: 'email_code' })
+        setVerifying(true)
+      } else {
+        setError(`Invitation signup is not complete yet (status: ${result.status}). Please retry from the invite email.`)
+      }
     } catch (err: unknown) {
       setError(getClerkErrorMessage(err, 'Failed to create account. Please try again.'))
     } finally {
@@ -201,8 +229,14 @@ const SignUp: FC = () => {
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <AxiomWordmark size="lg" centered blendOnBackground className="mb-4" />
-            <h1 className="text-3xl font-bold text-primary-dark mb-2">Create Account</h1>
-            <p className="text-text-light">Get started with the client portal</p>
+            <h1 className="text-3xl font-bold text-primary-dark mb-2">
+              {inviteFlow ? 'Accept Workspace Invite' : 'Create Account'}
+            </h1>
+            <p className="text-text-light">
+              {inviteFlow
+                ? 'Set your password to join the invited workspace.'
+                : 'Get started with the client portal'}
+            </p>
           </div>
 
           <div className="bg-white p-8 rounded-lg border border-border shadow-sm">
@@ -214,6 +248,11 @@ const SignUp: FC = () => {
             {notice && (
               <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-800" role="status">
                 {notice}
+              </div>
+            )}
+            {inviteFlow && (
+              <div className="mb-4 p-3 bg-accent/10 border border-accent/30 rounded-md text-sm text-accent">
+                You are completing an email invitation. Use your real name and choose a password to continue.
               </div>
             )}
 
@@ -269,7 +308,8 @@ const SignUp: FC = () => {
               </form>
             ) : (
               <>
-                <div className="space-y-3 mb-6">
+                {!inviteFlow && (
+                  <div className="space-y-3 mb-6">
                   <button
                     type="button"
                     onClick={() => { void handleOAuthSignUp('oauth_github') }}
@@ -295,16 +335,19 @@ const SignUp: FC = () => {
                     </svg>
                     Continue with Google
                   </button>
-                </div>
+                  </div>
+                )}
 
-                <div className="relative mb-6">
+                {!inviteFlow && (
+                  <div className="relative mb-6">
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-border" />
                   </div>
                   <div className="relative flex justify-center text-sm">
                     <span className="px-2 bg-white text-text-light">or</span>
                   </div>
-                </div>
+                  </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -336,7 +379,8 @@ const SignUp: FC = () => {
                     </div>
                   </div>
 
-                  <div>
+                  {!inviteFlow && (
+                    <div>
                     <label htmlFor="email" className="block text-sm font-medium text-text mb-1">
                       Email
                     </label>
@@ -349,7 +393,8 @@ const SignUp: FC = () => {
                       className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                       placeholder="you@example.com"
                     />
-                  </div>
+                    </div>
+                  )}
 
                   <div>
                     <label htmlFor="password" className="block text-sm font-medium text-text mb-1">
@@ -373,7 +418,9 @@ const SignUp: FC = () => {
                     disabled={isLoading || !isLoaded}
                     className="w-full btn btn--primary"
                   >
-                    {isLoading ? 'Creating account...' : 'Create Account'}
+                    {isLoading
+                      ? (inviteFlow ? 'Completing invite...' : 'Creating account...')
+                      : (inviteFlow ? 'Set password and continue' : 'Create Account')}
                   </button>
                 </form>
               </>

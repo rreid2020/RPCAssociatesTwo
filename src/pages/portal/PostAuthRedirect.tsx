@@ -1,11 +1,12 @@
 import { FC, useEffect } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import { getOnboardingStatus, resolvePostAuthPath } from '../../lib/onboarding/state'
 import { portalFetch } from '../../lib/portalApi'
 
 const PostAuthRedirect: FC = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const { isLoaded, isSignedIn, getToken } = useAuth()
 
   useEffect(() => {
@@ -31,6 +32,11 @@ const PostAuthRedirect: FC = () => {
   }
 
   if (!isSignedIn) {
+    const params = new URLSearchParams(location.search)
+    const inviteTicket = params.get('__clerk_ticket') || params.get('ticket')
+    if (inviteTicket) {
+      return <Navigate to={`/portal/sign-up${location.search || ''}`} replace />
+    }
     return <Navigate to="/portal/sign-in" replace />
   }
 

@@ -10,6 +10,7 @@ export type OnboardingStatus = {
 
 export const ONBOARDING_REQUIRED_PATH = '/portal/subscription?onboarding=1'
 export const POST_AUTH_PATH = '/portal/post-auth'
+export const ROLLOUT_BYPASS_ENABLED = import.meta.env.VITE_FORCE_ENTERPRISE_ACCESS !== 'false'
 
 const ONBOARDING_BYPASS_PATHS = new Set([
   '/portal/subscription',
@@ -46,6 +47,7 @@ export async function getOnboardingStatus (
 }
 
 export function resolvePostAuthPath (status: OnboardingStatus): string {
+  if (ROLLOUT_BYPASS_ENABLED) return '/portal/dashboard'
   return status.required ? ONBOARDING_REQUIRED_PATH : '/portal/dashboard'
 }
 

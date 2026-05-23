@@ -345,6 +345,17 @@ export async function archiveEngagement (pool, clerkUserId, actorId, engagementI
   return rows[0]
 }
 
+export async function deleteEngagement (pool, clerkUserId, actorId, engagementId) {
+  const { rows: beforeRows } = await pool.query(
+    'SELECT * FROM taxgpt.accounting_engagements WHERE id = $1::uuid AND clerk_user_id = $2',
+    [engagementId, clerkUserId]
+  )
+  if (!beforeRows[0]) return false
+  await pool.query('DELETE FROM taxgpt.accounting_engagements WHERE id = $1::uuid AND clerk_user_id = $2', [engagementId, clerkUserId])
+  await logAccountingAudit(pool, clerkUserId, actorId, 'engagement', engagementId, 'deleted', beforeRows[0], null)
+  return true
+}
+
 export async function getEngagementDashboard (pool, clerkUserId, engagementId) {
   const { rows: engagementRows } = await pool.query(
     `SELECT e.*, c.name AS client_name
@@ -656,6 +667,20 @@ export async function reviewerSignoff (pool, clerkUserId, actorId, leadSheetId, 
   )
   await logAccountingAudit(pool, clerkUserId, actorId, 'lead_sheet', leadSheetId, 'reviewer_signoff', beforeRows[0], rows[0])
   return rows[0]
+}
+
+export async function deleteLeadSheet (pool, clerkUserId, actorId, leadSheetId) {
+  const { rows: beforeRows } = await pool.query(
+    `SELECT ls.*, e.clerk_user_id
+     FROM taxgpt.lead_sheets ls
+     INNER JOIN taxgpt.accounting_engagements e ON e.id = ls.engagement_id
+     WHERE ls.id = $1::uuid`,
+    [leadSheetId]
+  )
+  if (!beforeRows[0] || beforeRows[0].clerk_user_id !== clerkUserId) return false
+  await pool.query('DELETE FROM taxgpt.lead_sheets WHERE id = $1::uuid', [leadSheetId])
+  await logAccountingAudit(pool, clerkUserId, actorId, 'lead_sheet', leadSheetId, 'deleted', beforeRows[0], null)
+  return true
 }
 
 export async function listDocumentsByEngagement (pool, clerkUserId, engagementId, leadSheetId = null) {

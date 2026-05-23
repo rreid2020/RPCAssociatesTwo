@@ -8,7 +8,7 @@ const AccountingWorkspacePage = lazy(async () => await import('../pages/portal/a
 
 function accountingViewRoute (
   path: string,
-  view: 'landing' | 'workspaceAdmin' | 'joinWorkspaceInvite' | 'workingPapersDashboard' | 'engagementList' | 'newEngagement' | 'engagementDashboard' | 'trialBalance' | 'leadSheets' | 'leadSheetDetail' | 'documents' | 'review' | 'settings' | 'integrations',
+  view: 'landing' | 'workspaceAdmin' | 'companyProfile' | 'joinWorkspaceInvite' | 'workingPapersDashboard' | 'engagementList' | 'newEngagement' | 'engagementDashboard' | 'trialBalance' | 'leadSheets' | 'leadSheetDetail' | 'documents' | 'review' | 'settings' | 'integrations',
   feature: 'workingPapers' | 'integrations' | null = null,
   permission: string | null = null
 ) {
@@ -48,6 +48,7 @@ export function getAccountingRoutes () {
   return (
     <Fragment>
       {accountingViewRoute('/portal/accounting', 'landing')}
+      {accountingViewRoute('/portal/accounting/company-profile', 'companyProfile', null, 'workspace.manage')}
       {accountingViewRoute('/portal/accounting/workspaces', 'workspaceAdmin', null, 'workspace.manage')}
       {accountingViewRoute('/portal/accounting/join', 'joinWorkspaceInvite')}
       {accountingViewRoute('/portal/accounting/working-papers', 'workingPapersDashboard', 'workingPapers', 'working_papers.read')}

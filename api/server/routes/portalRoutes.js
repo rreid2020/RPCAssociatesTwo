@@ -10,6 +10,8 @@ import {
   createEngagement,
   createReviewNote,
   createTask,
+  deleteEngagement,
+  deleteLeadSheet,
   detachDocument,
   ensureStandardMappingGroups,
   generateLeadSheets,
@@ -52,6 +54,8 @@ import {
   createOrganizationEmployeeInvite,
   createWorkspaceInvite,
   createWorkspace,
+  deleteOrganizationMember,
+  deleteWorkspace,
   getOrganizationAdminSnapshot,
   getWorkspaceProfile,
   getWorkspaceContext,
@@ -64,6 +68,7 @@ import {
   upsertWorkingPaperEmployeeAssignment,
   upsertWorkspaceEmployeeAssignment,
   listWorkspacesForUser,
+  updateWorkspace,
   upsertWorkspaceProfile,
   updateWorkspaceMember,
   updateOrganizationMember
@@ -912,6 +917,28 @@ export function createPortalRouter (pool) {
     }
   })
 
+  r.patch('/v1/accounting/workspaces/:workspaceId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const workspace = await updateWorkspace(pool, session.userId, req.params.workspaceId, req.body || {})
+      res.json({ workspace })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update workspace' })
+    }
+  })
+
+  r.delete('/v1/accounting/workspaces/:workspaceId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const ok = await deleteWorkspace(pool, session.userId, req.params.workspaceId)
+      res.json({ ok })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not delete workspace' })
+    }
+  })
+
   r.get('/v1/accounting/workspaces/:workspaceId/profile', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
@@ -1020,6 +1047,17 @@ export function createPortalRouter (pool) {
       res.json({ member })
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update organization member' })
+    }
+  })
+
+  r.delete('/v1/accounting/workspaces/:workspaceId/organization/members/:memberUserId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const member = await deleteOrganizationMember(pool, session.userId, req.params.workspaceId, req.params.memberUserId)
+      res.json({ member })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not remove organization member' })
     }
   })
 
@@ -1285,6 +1323,20 @@ export function createPortalRouter (pool) {
     res.json({ engagement })
   })
 
+  r.delete('/v1/accounting/engagements/:engagementId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    try {
+      const ok = await deleteEngagement(pool, scope.workspaceUserId, scope.actorUserId, req.params.engagementId)
+      if (!ok) return res.status(404).json({ error: 'Engagement not found' })
+      res.json({ ok: true })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not delete engagement' })
+    }
+  })
+
   r.get('/v1/accounting/engagements/status-summary', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
@@ -1464,6 +1516,16 @@ export function createPortalRouter (pool) {
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not sign off' })
     }
+  })
+
+  r.delete('/v1/accounting/lead-sheets/:leadSheetId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveWorkingPaperScope(req, res, session)
+    if (!scope) return
+    const ok = await deleteLeadSheet(pool, scope.workspaceUserId, scope.actorUserId, req.params.leadSheetId)
+    if (!ok) return res.status(404).json({ error: 'Lead sheet not found' })
+    res.json({ ok: true })
   })
 
   r.get('/v1/accounting/engagements/:engagementId/documents', async (req, res) => {

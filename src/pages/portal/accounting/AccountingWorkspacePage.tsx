@@ -9,6 +9,7 @@ import { useWorkspaceState } from '../../../platform/workspace/useWorkspaceState
 type AccountingView =
   | 'landing'
   | 'workspaceAdmin'
+  | 'companyProfile'
   | 'workingPapersDashboard'
   | 'engagementList'
   | 'newEngagement'
@@ -29,6 +30,7 @@ interface AccountingWorkspacePageProps {
 const titleByView: Record<AccountingView, string> = {
   landing: 'Accounting Operations',
   workspaceAdmin: 'Workspace Administration',
+  companyProfile: 'Company Profile Setup',
   workingPapersDashboard: 'Working Papers',
   engagementList: 'Engagements',
   newEngagement: 'New Engagement',
@@ -46,6 +48,7 @@ const titleByView: Record<AccountingView, string> = {
 const descriptionByView: Record<AccountingView, string> = {
   landing: 'Manage workspace administration, engagements, working papers, and integrations from one place.',
   workspaceAdmin: 'Configure organization workspaces, employee onboarding, and role assignments.',
+  companyProfile: 'Set company profile details, invite employees, and confirm roster before assignments.',
   workingPapersDashboard: 'Track engagement progress, review items, and trial balance readiness.',
   engagementList: 'Search and manage accounting engagements.',
   newEngagement: 'Create a new accounting engagement.',
@@ -61,6 +64,7 @@ const descriptionByView: Record<AccountingView, string> = {
 }
 
 const quickLinks = [
+  { to: '/portal/accounting/company-profile', label: 'Company Profile' },
   { to: '/portal/accounting/workspaces', label: 'Workspace Admin' },
   { to: '/portal/accounting/working-papers/engagements', label: 'Engagements' },
   { to: '/portal/accounting/working-papers', label: 'Working Papers' },
@@ -69,6 +73,7 @@ const quickLinks = [
 ]
 
 const workspaceAdminQuickLinks = [
+  { to: '/portal/accounting/company-profile', label: 'Company Profile' },
   { to: '/portal/accounting/workspaces', label: 'Workspace Admin' }
 ]
 
@@ -183,9 +188,9 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const selectedWorkspaceId = workspaceId || ''
   const [newWorkspaceName, setNewWorkspaceName] = useState('')
   const [newWorkspaceType, setNewWorkspaceType] = useState<'business' | 'firm'>('business')
+  const [editWorkspaceName, setEditWorkspaceName] = useState('')
+  const [editWorkspaceType, setEditWorkspaceType] = useState<'business' | 'firm'>('business')
   const [showWorkspaceTools, setShowWorkspaceTools] = useState(false)
-  const [newMemberClerkUserId, setNewMemberClerkUserId] = useState('')
-  const [newMemberRole, setNewMemberRole] = useState('preparer')
   const [assignmentUserId, setAssignmentUserId] = useState('')
   const [assignmentWorkspaceRole, setAssignmentWorkspaceRole] = useState('member')
   const [assignmentEngagementId, setAssignmentEngagementId] = useState('')
@@ -380,6 +385,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const canManageWorkspaceMembers = activeWorkspace?.role === 'owner' || activeWorkspace?.role === 'admin'
   const clientLabel = isFirmWorkspace ? 'Accounting client' : 'Business entity'
   const clientLabelPlural = isFirmWorkspace ? 'Accounting clients' : 'Business entities'
+
+  useEffect(() => {
+    if (!activeWorkspace) return
+    setEditWorkspaceName(String(activeWorkspace.name || ''))
+    setEditWorkspaceType((activeWorkspace.workspace_type === 'firm' ? 'firm' : 'business'))
+  }, [activeWorkspace])
 
   useEffect(() => {
     if (!showWorkspaceTools || !selectedWorkspaceId) return
@@ -639,30 +650,47 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     }
   }
 
-  const onAddWorkspaceMember = async () => {
+  const onUpdateWorkspace = async () => {
     if (!selectedWorkspaceId) {
-      setError('Select a workspace before adding a member.')
+      setError('Select a workspace before editing.')
       return
     }
-    if (!newMemberClerkUserId.trim()) {
-      setError('Clerk user ID is required to add a workspace member.')
+    if (!editWorkspaceName.trim()) {
+      setError('Workspace name is required.')
       return
     }
     setSaving(true)
     setError(null)
     try {
-      await portalFetch(`/v1/accounting/workspaces/${selectedWorkspaceId}/members`, getToken, {
-        method: 'POST',
-        body: JSON.stringify({
-          clerkUserId: newMemberClerkUserId.trim(),
-          role: newMemberRole
-        })
+      await portalFetch(`/v1/accounting/workspaces/${selectedWorkspaceId}`, getToken, {
+        method: 'PATCH',
+        body: JSON.stringify({ name: editWorkspaceName.trim(), workspaceType: editWorkspaceType })
       })
-      setNewMemberClerkUserId('')
-      await loadWorkspaceMembers()
-      setNotice('Workspace member added')
+      await Promise.all([loadWorkspaces(), loadOrganizationSnapshot()])
+      setNotice('Workspace updated.')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not add workspace member')
+      setError(e instanceof Error ? e.message : 'Could not update workspace')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onDeleteWorkspace = async () => {
+    if (!selectedWorkspaceId) {
+      setError('Select a workspace before deleting.')
+      return
+    }
+    if (!window.confirm('Delete this workspace and all related records? This cannot be undone.')) return
+    setSaving(true)
+    setError(null)
+    try {
+      await portalFetch(`/v1/accounting/workspaces/${selectedWorkspaceId}`, getToken, { method: 'DELETE' })
+      setWorkspaceId(null)
+      await loadWorkspaces()
+      await loadOrganizationSnapshot()
+      setNotice('Workspace deleted.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete workspace')
     } finally {
       setSaving(false)
     }
@@ -770,7 +798,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setError(null)
     try {
       await portalFetch<{ invite: any }>(
-        `/v1/accounting/workspaces/${selectedWorkspaceId}/invites`,
+        `/v1/accounting/workspaces/${selectedWorkspaceId}/organization/invites`,
         getToken,
         {
           method: 'POST',
@@ -781,10 +809,76 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         }
       )
       setNewInviteEmail('')
-      await loadWorkspaceInvites()
-      setNotice('Clerk invite email sent. Once the employee creates/signs in to their account, they will be added to this workspace automatically.')
+      await loadOrganizationSnapshot()
+      setNotice('Organization invite sent. After invite acceptance/confirmation, assign this employee to workspaces, engagements, and working papers.')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not create workspace invite')
+      setError(e instanceof Error ? e.message : 'Could not create organization invite')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onUpdateOrganizationMember = async (memberUserId: string, role: string, status: string) => {
+    if (!selectedWorkspaceId) return
+    setSaving(true)
+    setError(null)
+    try {
+      await portalFetch(`/v1/accounting/workspaces/${selectedWorkspaceId}/organization/members/${encodeURIComponent(memberUserId)}`, getToken, {
+        method: 'PATCH',
+        body: JSON.stringify({ role, status })
+      })
+      await loadOrganizationSnapshot()
+      setNotice('Employee updated.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not update employee')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onDeleteOrganizationMember = async (memberUserId: string) => {
+    if (!selectedWorkspaceId) return
+    if (!window.confirm('Remove this employee from organization assignments?')) return
+    setSaving(true)
+    setError(null)
+    try {
+      await portalFetch(`/v1/accounting/workspaces/${selectedWorkspaceId}/organization/members/${encodeURIComponent(memberUserId)}`, getToken, {
+        method: 'DELETE'
+      })
+      await Promise.all([loadOrganizationSnapshot(), loadWorkspaceMembers()])
+      setNotice('Employee removed.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not remove employee')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onDeleteEngagement = async (id: string) => {
+    if (!window.confirm('Delete this engagement and all related working papers?')) return
+    setSaving(true)
+    setError(null)
+    try {
+      await portalFetch(`/v1/accounting/engagements/${id}`, getToken, { method: 'DELETE' })
+      await Promise.all([loadEngagements(), loadStatusSummary()])
+      setNotice('Engagement deleted.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete engagement')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onDeleteLeadSheet = async (id: string) => {
+    if (!window.confirm('Delete this working paper (lead sheet)?')) return
+    setSaving(true)
+    setError(null)
+    try {
+      await portalFetch(`/v1/accounting/lead-sheets/${id}`, getToken, { method: 'DELETE' })
+      await loadLeadSheets()
+      setNotice('Working paper deleted.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete working paper')
     } finally {
       setSaving(false)
     }
@@ -851,6 +945,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
             ? '/portal/accounting'
             : view === 'workspaceAdmin'
               ? '/portal/accounting/workspaces'
+              : view === 'companyProfile'
+                ? '/portal/accounting/company-profile'
               : view === 'joinWorkspaceInvite'
                 ? '/portal/accounting/join'
             : view === 'integrations'
@@ -876,7 +972,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                   {notice}
                 </div>
               )}
-              {workspaces.length > 0 && (view === 'landing' || view === 'workspaceAdmin') && (
+              {workspaces.length > 0 && (view === 'landing' || view === 'workspaceAdmin' || view === 'companyProfile') && (
                 <div className="bg-white p-4 rounded-lg border border-border shadow-sm">
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-3">
@@ -933,103 +1029,81 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               Create Workspace
                             </button>
                           </div>
-                        </div>
-                        <div className="rounded-lg border border-border p-3 space-y-3">
-                          <h4 className="text-sm font-semibold text-primary-dark">Employee onboarding</h4>
-                          <ol className="text-xs text-text-light space-y-1 list-decimal pl-4">
-                            <li>Select the workspace where the employee should work.</li>
-                            <li>Send a Clerk invite email to the employee with the role they should receive.</li>
-                            <li>Employee creates/signs into Clerk using that email and is auto-added to the workspace.</li>
-                          </ol>
                           <div className="rounded-md border border-border p-2 space-y-2">
-                            <p className="text-xs text-text-light">Step 1: Send employee invite email (Clerk)</p>
+                            <p className="text-xs text-text-light">Edit or delete selected workspace</p>
                             <div className="flex flex-wrap items-center gap-2">
                               <input
                                 className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
-                                placeholder="Employee email"
-                                value={newInviteEmail}
-                                onChange={(e) => setNewInviteEmail(e.target.value)}
+                                placeholder="Workspace name"
+                                value={editWorkspaceName}
+                                onChange={(e) => setEditWorkspaceName(e.target.value)}
                               />
                               <select
                                 className="border border-border rounded-md px-3 py-2 text-sm"
-                                value={newInviteRole}
-                                onChange={(e) => setNewInviteRole(e.target.value)}
+                                value={editWorkspaceType}
+                                onChange={(e) => setEditWorkspaceType((e.target.value as 'business' | 'firm'))}
                               >
-                                {['admin', 'manager', 'reviewer', 'preparer', 'read_only', 'client'].map((role) => (
-                                  <option key={role} value={role}>{role}</option>
-                                ))}
+                                <option value="business">Business workspace</option>
+                                <option value="firm">Firm workspace</option>
                               </select>
                               <button
                                 type="button"
-                                className="btn btn--primary text-sm py-2 px-4"
+                                className="btn btn--secondary text-sm py-2 px-4"
                                 disabled={saving || !canManageWorkspaceMembers}
-                                onClick={() => { void onCreateWorkspaceInvite() }}
+                                onClick={() => { void onUpdateWorkspace() }}
                               >
-                                Send Invite Email
+                                Save Workspace
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn--secondary text-sm py-2 px-4"
+                                disabled={saving || !canManageWorkspaceMembers}
+                                onClick={() => { void onDeleteWorkspace() }}
+                              >
+                                Delete Workspace
                               </button>
                             </div>
-                            {workspaceInvites.length > 0 && (
-                              <div className="max-h-32 overflow-auto rounded-md border border-border">
-                                <table className="w-full text-xs">
-                                  <thead>
-                                    <tr className="border-b border-border text-left text-text-light">
-                                      <th className="py-2 px-2">Email</th>
-                                      <th className="py-2 px-2">Role</th>
-                                      <th className="py-2 px-2">Status</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {workspaceInvites.map((invite) => (
-                                      <tr key={invite.id} className="border-b border-border/70">
-                                        <td className="py-2 px-2">{invite.invite_email || 'Any signed-in user with link'}</td>
-                                        <td className="py-2 px-2">{invite.role}</td>
-                                        <td className="py-2 px-2">{invite.status}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
+                          </div>
+                        </div>
+                        <div className="rounded-lg border border-border p-3 space-y-3">
+                          <h4 className="text-sm font-semibold text-primary-dark">
+                            {view === 'companyProfile' ? 'Company employee onboarding' : 'Employee assignments'}
+                          </h4>
+                          <ol className="text-xs text-text-light space-y-1 list-decimal pl-4">
+                            <li>Invite employees from Company Profile.</li>
+                            <li>Wait for invite acceptance/confirmation.</li>
+                            <li>Assign confirmed employees to workspace, engagements, and working papers.</li>
+                          </ol>
+                          {view === 'companyProfile' && (
+                            <div className="rounded-md border border-border p-2 space-y-2">
+                              <p className="text-xs text-text-light">Invite employee to company profile (Clerk)</p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <input
+                                  className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
+                                  placeholder="Employee email"
+                                  value={newInviteEmail}
+                                  onChange={(e) => setNewInviteEmail(e.target.value)}
+                                />
+                                <select
+                                  className="border border-border rounded-md px-3 py-2 text-sm"
+                                  value={newInviteRole}
+                                  onChange={(e) => setNewInviteRole(e.target.value)}
+                                >
+                                  {['admin', 'manager', 'reviewer', 'preparer', 'read_only', 'client'].map((role) => (
+                                    <option key={role} value={role}>{role}</option>
+                                  ))}
+                                </select>
+                                <button
+                                  type="button"
+                                  className="btn btn--primary text-sm py-2 px-4"
+                                  disabled={saving || !canManageWorkspaceMembers}
+                                  onClick={() => { void onCreateWorkspaceInvite() }}
+                                >
+                                  Send Invite Email
+                                </button>
                               </div>
-                            )}
-                            {workspaceInvites.length === 0 && (
-                              <p className="text-xs text-text-light">No pending workspace invites yet.</p>
-                            )}
-                          </div>
-                          <div className="rounded-md border border-border p-2 space-y-2">
-                            <p className="text-xs text-text-light">Step 2: Manual fallback (Clerk User ID)</p>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <input
-                              className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
-                              placeholder="Employee Clerk User ID (user_...)"
-                              value={newMemberClerkUserId}
-                              onChange={(e) => setNewMemberClerkUserId(e.target.value)}
-                            />
-                            <select
-                              className="border border-border rounded-md px-3 py-2 text-sm"
-                              value={newMemberRole}
-                              onChange={(e) => setNewMemberRole(e.target.value)}
-                            >
-                              {['admin', 'manager', 'reviewer', 'preparer', 'read_only', 'client'].map((role) => (
-                                <option key={role} value={role}>{role}</option>
-                              ))}
-                            </select>
-                            <button
-                              type="button"
-                              className="btn btn--primary text-sm py-2 px-4"
-                              disabled={saving || !canManageWorkspaceMembers}
-                              onClick={() => { void onAddWorkspaceMember() }}
-                            >
-                              Add Employee
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn--secondary text-sm py-2 px-4"
-                              disabled={!selectedWorkspaceId || saving}
-                              onClick={() => { void Promise.all([loadWorkspaceMembers(), loadWorkspaceInvites()]) }}
-                            >
-                              Refresh Workspace Team
-                            </button>
-                          </div>
-                          </div>
+                            </div>
+                          )}
                           {!canManageWorkspaceMembers && (
                             <p className="text-xs text-text-light">
                               Only workspace owners/admins can add employees.
@@ -1042,18 +1116,39 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                   <th className="py-2 px-2">User</th>
                                   <th className="py-2 px-2">Role</th>
                                   <th className="py-2 px-2">Status</th>
+                                  <th className="py-2 px-2">Actions</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {workspaceMembers.length === 0 ? (
                                   <tr>
-                                    <td className="py-2 px-2 text-text-light" colSpan={3}>No team members in this workspace yet.</td>
+                                    <td className="py-2 px-2 text-text-light" colSpan={4}>No team members in this workspace yet.</td>
                                   </tr>
                                 ) : workspaceMembers.map((member) => (
                                   <tr key={member.clerk_user_id} className="border-b border-border/70">
                                     <td className="py-2 px-2 font-mono">{member.clerk_user_id}</td>
                                     <td className="py-2 px-2">{member.role}</td>
                                     <td className="py-2 px-2">{member.status}</td>
+                                    <td className="py-2 px-2">
+                                      <div className="flex flex-wrap gap-2">
+                                        <button
+                                          type="button"
+                                          className="text-xs text-primary-dark underline"
+                                          disabled={saving || !canManageWorkspaceMembers}
+                                          onClick={() => { void onUpdateOrganizationMember(member.clerk_user_id, member.role, member.status === 'active' ? 'inactive' : 'active') }}
+                                        >
+                                          {member.status === 'active' ? 'Deactivate' : 'Activate'}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="text-xs text-primary-dark underline"
+                                          disabled={saving || !canManageWorkspaceMembers}
+                                          onClick={() => { void onDeleteOrganizationMember(member.clerk_user_id) }}
+                                        >
+                                          Delete
+                                        </button>
+                                      </div>
+                                    </td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -1152,6 +1247,13 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                     {view === 'landing' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="rounded-lg border border-border p-4">
+                          <h3 className="font-semibold text-primary-dark mb-1">Company Profile</h3>
+                          <p className="text-sm text-text-light mb-3">Set up company details and invite employees before assignment workflows.</p>
+                          <Link className="btn btn--primary text-sm py-2 px-4 inline-block" to="/portal/accounting/company-profile">
+                            Open Company Profile
+                          </Link>
+                        </div>
+                        <div className="rounded-lg border border-border p-4">
                           <h3 className="font-semibold text-primary-dark mb-1">Workspace Admin</h3>
                           <p className="text-sm text-text-light mb-3">Set workspace type, onboard employees, and manage access roles.</p>
                           <Link className="btn btn--primary text-sm py-2 px-4 inline-block" to="/portal/accounting/workspaces">
@@ -1202,6 +1304,77 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           <div className="rounded-lg border border-border p-4">
                             <p className="text-xs text-text-light">Invites in active workspace</p>
                             <p className="text-2xl font-bold text-primary-dark">{workspaceInvites.length}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {view === 'companyProfile' && (
+                      <div className="space-y-4">
+                        <div className="rounded-lg border border-border p-4">
+                          <h3 className="font-semibold text-primary-dark mb-2">Company profile</h3>
+                          <p className="text-sm text-text-light">
+                            Invite employees at the company level first. After they accept/confirm, assign them to workspaces, engagements, and working papers.
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div className="rounded-lg border border-border p-4">
+                            <p className="text-xs text-text-light">Organization</p>
+                            <p className="text-sm font-semibold text-primary-dark">{organizationSnapshot?.organization?.name || 'Not linked yet'}</p>
+                          </div>
+                          <div className="rounded-lg border border-border p-4">
+                            <p className="text-xs text-text-light">Employees</p>
+                            <p className="text-2xl font-bold text-primary-dark">{organizationSnapshot?.employees?.length || 0}</p>
+                          </div>
+                          <div className="rounded-lg border border-border p-4">
+                            <p className="text-xs text-text-light">Active workspace</p>
+                            <p className="text-sm font-semibold text-primary-dark">{activeWorkspace?.name || 'None selected'}</p>
+                          </div>
+                        </div>
+                        <div className="rounded-lg border border-border p-4">
+                          <h4 className="font-semibold text-primary-dark mb-2">Employee roster</h4>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b border-border text-left text-text-light">
+                                  <th className="py-2">Employee</th>
+                                  <th className="py-2">Role</th>
+                                  <th className="py-2">Status</th>
+                                  <th className="py-2">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(organizationSnapshot?.employees || []).length === 0 ? (
+                                  <tr>
+                                    <td className="py-3 text-text-light" colSpan={4}>No organization employees yet.</td>
+                                  </tr>
+                                ) : (organizationSnapshot?.employees || []).map((member: any) => (
+                                  <tr key={member.clerk_user_id} className="border-b border-border/70">
+                                    <td className="py-2 font-mono">{member.clerk_user_id}</td>
+                                    <td className="py-2">{member.role}</td>
+                                    <td className="py-2">{member.status}</td>
+                                    <td className="py-2">
+                                      <div className="flex gap-2">
+                                        <button
+                                          type="button"
+                                          className="text-xs text-primary-dark underline"
+                                          onClick={() => { void onUpdateOrganizationMember(member.clerk_user_id, member.role, member.status === 'active' ? 'inactive' : 'active') }}
+                                        >
+                                          {member.status === 'active' ? 'Deactivate' : 'Activate'}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="text-xs text-primary-dark underline"
+                                          onClick={() => { void onDeleteOrganizationMember(member.clerk_user_id) }}
+                                        >
+                                          Delete
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
                           </div>
                         </div>
                       </div>
@@ -1264,12 +1437,13 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                 <th className="py-2">Type</th>
                                 <th className="py-2">Status</th>
                                 <th className="py-2">Period End</th>
+                                <th className="py-2">Actions</th>
                               </tr>
                             </thead>
                             <tbody>
                               {engagements.length === 0 ? (
                                 <tr>
-                                  <td className="py-3 text-text-light" colSpan={5}>No engagements match the current filters.</td>
+                                  <td className="py-3 text-text-light" colSpan={6}>No engagements match the current filters.</td>
                                 </tr>
                               ) : engagements.map((engagement) => (
                                   <tr key={engagement.id} className="border-b border-border/70">
@@ -1282,6 +1456,15 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                     <td className="py-2">{engagement.engagement_type}</td>
                                     <td className="py-2">{engagement.status}</td>
                                     <td className="py-2">{new Date(engagement.period_end).toLocaleDateString()}</td>
+                                    <td className="py-2">
+                                      <button
+                                        type="button"
+                                        className="text-xs text-primary-dark underline"
+                                        onClick={() => { void onDeleteEngagement(engagement.id) }}
+                                      >
+                                        Delete
+                                      </button>
+                                    </td>
                                   </tr>
                                 ))}
                             </tbody>
@@ -1486,12 +1669,13 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                 <th className="py-2">Risk</th>
                                 <th className="py-2">Open notes</th>
                                 <th className="py-2">Docs</th>
+                                <th className="py-2">Actions</th>
                               </tr>
                             </thead>
                             <tbody>
                               {leadSheets.length === 0 ? (
                                 <tr>
-                                  <td className="py-3 text-text-light" colSpan={5}>No lead sheets generated yet.</td>
+                                  <td className="py-3 text-text-light" colSpan={6}>No lead sheets generated yet.</td>
                                 </tr>
                               ) : leadSheets.map((sheet) => (
                                   <tr key={sheet.id} className="border-b border-border/70">
@@ -1504,6 +1688,15 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                     <td className="py-2">{sheet.risk_level}</td>
                                     <td className="py-2">{sheet.open_note_count}</td>
                                     <td className="py-2">{sheet.document_count}</td>
+                                    <td className="py-2">
+                                      <button
+                                        type="button"
+                                        className="text-xs text-primary-dark underline"
+                                        onClick={() => { void onDeleteLeadSheet(sheet.id) }}
+                                      >
+                                        Delete
+                                      </button>
+                                    </td>
                                   </tr>
                                 ))}
                             </tbody>

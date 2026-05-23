@@ -727,6 +727,41 @@ export async function createWorkspace (pool, clerkUserId, payload) {
   return linkedWorkspace
 }
 
+export async function updateWorkspace (pool, actorUserId, workspaceId, payload = {}) {
+  const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
+  if (!canManageWorkspace(workspace)) {
+    throw new Error('Only owner/admin can update workspace settings')
+  }
+  const nextName = String(payload.name || workspace.name).trim()
+  if (!nextName) throw new Error('Workspace name is required')
+  const nextType = payload.workspaceType ? normalizeWorkspaceType(payload.workspaceType) : workspace.workspace_type
+  const { rows } = await pool.query(
+    `UPDATE taxgpt.accounting_workspaces
+     SET name = $1,
+         workspace_type = $2,
+         updated_at = now()
+     WHERE id = $3::uuid
+     RETURNING *`,
+    [nextName, nextType, workspace.id]
+  )
+  return rows[0]
+}
+
+export async function deleteWorkspace (pool, actorUserId, workspaceId) {
+  const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
+  if (workspace.role !== 'owner') {
+    throw new Error('Only workspace owner can delete workspace')
+  }
+  if (workspace.is_personal) {
+    throw new Error('Personal workspace cannot be deleted')
+  }
+  const { rowCount } = await pool.query(
+    'DELETE FROM taxgpt.accounting_workspaces WHERE id = $1::uuid',
+    [workspace.id]
+  )
+  return rowCount > 0
+}
+
 export async function getWorkspaceProfile (pool, actorUserId, workspaceId) {
   const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
   const { rows } = await pool.query(
@@ -1045,6 +1080,56 @@ export async function updateOrganizationMember (pool, actorUserId, workspaceId, 
   )
   if (!rows[0]) throw new Error('Organization member not found')
   return rows[0]
+}
+
+export async function deleteOrganizationMember (pool, actorUserId, workspaceId, memberUserId) {
+  const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
+  if (!canManageWorkspace(workspace)) {
+    throw new Error('Only owner/admin can remove organization members')
+  }
+  await pool.query(
+    `UPDATE taxgpt.accounting_organization_members
+     SET status = 'inactive',
+         updated_at = now()
+     WHERE organization_id = $1::uuid
+       AND clerk_user_id = $2`,
+    [workspace.organization_id, memberUserId]
+  )
+  await pool.query(
+    `UPDATE taxgpt.accounting_workspace_members
+     SET status = 'inactive',
+         updated_at = now()
+     WHERE workspace_id IN (
+       SELECT id FROM taxgpt.accounting_workspaces WHERE organization_id = $1::uuid
+     )
+       AND clerk_user_id = $2`,
+    [workspace.organization_id, memberUserId]
+  )
+  await pool.query(
+    `UPDATE taxgpt.workspace_employee_assignments
+     SET status = 'inactive',
+         updated_at = now()
+     WHERE organization_id = $1::uuid
+       AND clerk_user_id = $2`,
+    [workspace.organization_id, memberUserId]
+  )
+  await pool.query(
+    `UPDATE taxgpt.engagement_employee_assignments
+     SET status = 'inactive',
+         updated_at = now()
+     WHERE organization_id = $1::uuid
+       AND clerk_user_id = $2`,
+    [workspace.organization_id, memberUserId]
+  )
+  await pool.query(
+    `UPDATE taxgpt.working_paper_employee_assignments
+     SET status = 'inactive',
+         updated_at = now()
+     WHERE organization_id = $1::uuid
+       AND clerk_user_id = $2`,
+    [workspace.organization_id, memberUserId]
+  )
+  return { organizationId: workspace.organization_id, clerkUserId: memberUserId, status: 'inactive' }
 }
 
 export async function acceptWorkspaceInvite (pool, actorUserId, actorEmail, inviteToken) {

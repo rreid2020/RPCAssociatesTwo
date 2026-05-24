@@ -1376,20 +1376,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           </p>
                         </div>
                         <div className="rounded-lg border border-border p-4 space-y-3">
-                          <label className="text-xs text-text-light">Active workspace</label>
-                          <select
-                            className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
-                            value={selectedWorkspaceId}
-                            onChange={(e) => setWorkspaceId(e.target.value || null)}
-                          >
-                            {workspaces.map((workspace) => (
-                              <option key={workspace.id} value={workspace.id}>
-                                {workspace.name} ({workspace.workspace_type || 'business'} / {workspace.role})
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="rounded-lg border border-border p-4 space-y-3">
                           <h4 className="font-semibold text-primary-dark">Company details</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <input
@@ -2090,17 +2076,19 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                {(view === 'workspaceAdmin' ? workspaceAdminQuickLinks : quickLinks).map((item) => (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    className="bg-white rounded-lg border border-border shadow-sm px-4 py-3 text-sm font-medium text-primary-dark hover:bg-background transition-colors"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
+              {view !== 'companyProfile' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {(view === 'workspaceAdmin' ? workspaceAdminQuickLinks : quickLinks).map((item) => (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      className="bg-white rounded-lg border border-border shadow-sm px-4 py-3 text-sm font-medium text-primary-dark hover:bg-background transition-colors"
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
           </>
         </div>
       </ClientPortalShell>

@@ -341,23 +341,29 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     const run = async () => {
       setError(null)
       setNotice(null)
-      setLoading(true)
+      const blockWithLoadingState = view !== 'companyProfile'
+      if (blockWithLoadingState) setLoading(true)
       try {
         if (view === 'joinWorkspaceInvite') {
           await loadWorkspaces()
+          return
+        }
+        if (view === 'companyProfile') {
+          // Keep company profile interactive and avoid blocking paint;
+          // refresh workspace list in background and load selected scope only.
+          void loadWorkspaces()
+          if (selectedWorkspaceId) {
+            await Promise.all([
+              loadWorkspaceProfile(),
+              loadOrganizationSnapshot()
+            ])
+          }
           return
         }
         // Always refresh workspace selection first so downstream API calls
         // use a valid workspace header (avoids stale workspaceId lockout).
         await loadWorkspaces()
         if (view === 'workspaceAdmin') {
-          return
-        }
-        if (view === 'companyProfile') {
-          await Promise.all([
-            loadWorkspaceProfile(),
-            loadOrganizationSnapshot()
-          ])
           return
         }
         await loadClients()
@@ -379,7 +385,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       } catch (e) {
         if (mounted) setError(e instanceof Error ? e.message : 'Could not load data')
       } finally {
-        if (mounted) setLoading(false)
+        if (mounted && blockWithLoadingState) setLoading(false)
       }
     }
     void run()

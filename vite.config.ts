@@ -39,11 +39,18 @@ export default defineConfig({
     },
   },
   build: {
+    cssCodeSplit: false,
     rollupOptions: {
       output: {
-        // Keep a stable entry filename so auth-route refresh fallback can
-        // recover even if a stale HTML shell is served by an upstream cache.
+        // Serve deterministic JS/CSS filenames to avoid stale hashed-chunk
+        // mismatches across deploy windows and upstream cache propagation.
         entryFileNames: 'assets/main.js',
+        chunkFileNames: 'assets/[name].js',
+        assetFileNames: (assetInfo) => {
+          const name = String(assetInfo.name || '')
+          if (name.endsWith('.css')) return 'assets/index.css'
+          return 'assets/[name][extname]'
+        },
       },
     },
   },

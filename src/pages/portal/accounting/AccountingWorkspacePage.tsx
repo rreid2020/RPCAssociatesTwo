@@ -353,6 +353,13 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         if (view === 'workspaceAdmin') {
           return
         }
+        if (view === 'companyProfile') {
+          await Promise.all([
+            loadWorkspaceProfile(),
+            loadOrganizationSnapshot()
+          ])
+          return
+        }
         await loadClients()
         if (['workingPapersDashboard', 'engagementList', 'newEngagement', 'landing'].includes(view)) {
           await Promise.all([loadEngagements(), loadStatusSummary()])
@@ -387,11 +394,13 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     loadIntegrations,
     loadLeadSheetDetail,
     loadLeadSheets,
+    loadOrganizationSnapshot,
     loadRepositoryFiles,
     loadReviewNotes,
     loadStatusSummary,
     loadTasks,
     loadTrialBalance,
+    loadWorkspaceProfile,
     loadWorkspaceInvites,
     loadWorkspaceMembers,
     loadWorkspaces,

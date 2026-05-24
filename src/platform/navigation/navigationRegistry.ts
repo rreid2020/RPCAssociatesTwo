@@ -80,8 +80,8 @@ const SECTIONS: NavigationSection[] = [
 
 function isItemVisible (item: NavigationItem, context: NavigationContext) {
   if (!context.onboardingComplete && item.to.startsWith('/portal/accounting/working-papers')) return false
-  if (item.requiredFeature && !context.features[item.requiredFeature]) return true
-  if (item.requiredPermission && !context.permissions.includes(item.requiredPermission)) return true
+  if (item.requiredFeature && !context.features[item.requiredFeature]) return false
+  if (item.requiredPermission && !context.permissions.includes(item.requiredPermission)) return false
   return true
 }
 

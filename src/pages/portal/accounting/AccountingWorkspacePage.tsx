@@ -185,6 +185,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [workspaceMembers, setWorkspaceMembers] = useState<any[]>([])
   const [workspaceInvites, setWorkspaceInvites] = useState<any[]>([])
   const [organizationSnapshot, setOrganizationSnapshot] = useState<any | null>(null)
+  const [workspaceProfile, setWorkspaceProfile] = useState<any | null>(null)
   const selectedWorkspaceId = workspaceId || ''
   const [newWorkspaceName, setNewWorkspaceName] = useState('')
   const [newWorkspaceType, setNewWorkspaceType] = useState<'business' | 'firm'>('business')
@@ -197,6 +198,22 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [assignmentLeadSheetId, setAssignmentLeadSheetId] = useState('')
   const [newInviteEmail, setNewInviteEmail] = useState('')
   const [newInviteRole, setNewInviteRole] = useState('preparer')
+  const [companyProfileForm, setCompanyProfileForm] = useState({
+    companyLegalName: '',
+    companyOperatingName: '',
+    taxIdentifier: '',
+    websiteUrl: '',
+    industry: '',
+    primaryContactName: '',
+    primaryContactEmail: '',
+    primaryContactPhone: '',
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    provinceState: '',
+    postalCode: '',
+    countryCode: 'CA'
+  })
   const [trialBalanceAccounts, setTrialBalanceAccounts] = useState<any[]>([])
   const [trialBalancePreview, setTrialBalancePreview] = useState<TrialBalancePreview | null>(null)
   const [importFile, setImportFile] = useState<File | null>(null)
@@ -313,6 +330,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setOrganizationSnapshot(data)
   }, [getToken, selectedWorkspaceId])
 
+  const loadWorkspaceProfile = useCallback(async () => {
+    if (!selectedWorkspaceId) return
+    const data = await portalFetch<any>(`/v1/accounting/workspaces/${selectedWorkspaceId}/profile`, getToken)
+    setWorkspaceProfile(data.profile || null)
+  }, [getToken, selectedWorkspaceId])
+
   useEffect(() => {
     let mounted = true
     const run = async () => {
@@ -398,6 +421,32 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     void loadWorkspaceInvites()
     void loadOrganizationSnapshot()
   }, [loadOrganizationSnapshot, loadWorkspaceInvites, loadWorkspaceMembers, selectedWorkspaceId, showWorkspaceTools])
+
+  useEffect(() => {
+    if (view !== 'companyProfile' || !selectedWorkspaceId) return
+    void loadWorkspaceProfile()
+    void loadOrganizationSnapshot()
+  }, [loadOrganizationSnapshot, loadWorkspaceProfile, selectedWorkspaceId, view])
+
+  useEffect(() => {
+    if (!workspaceProfile) return
+    setCompanyProfileForm({
+      companyLegalName: workspaceProfile.company_legal_name || '',
+      companyOperatingName: workspaceProfile.company_operating_name || '',
+      taxIdentifier: workspaceProfile.tax_identifier || '',
+      websiteUrl: workspaceProfile.website_url || '',
+      industry: workspaceProfile.industry || '',
+      primaryContactName: workspaceProfile.primary_contact_name || '',
+      primaryContactEmail: workspaceProfile.primary_contact_email || '',
+      primaryContactPhone: workspaceProfile.primary_contact_phone || '',
+      addressLine1: workspaceProfile.address_line1 || '',
+      addressLine2: workspaceProfile.address_line2 || '',
+      city: workspaceProfile.city || '',
+      provinceState: workspaceProfile.province_state || '',
+      postalCode: workspaceProfile.postal_code || '',
+      countryCode: workspaceProfile.country_code || 'CA'
+    })
+  }, [workspaceProfile])
 
   const onCreateClient = async () => {
     const name = newClientName.trim()
@@ -818,6 +867,47 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     }
   }
 
+  const onSaveCompanyProfile = async () => {
+    if (!selectedWorkspaceId) {
+      setError('Select a workspace before saving company profile.')
+      return
+    }
+    if (!companyProfileForm.companyLegalName.trim()) {
+      setError('Company legal name is required.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      await portalFetch(`/v1/accounting/workspaces/${selectedWorkspaceId}/profile`, getToken, {
+        method: 'PUT',
+        body: JSON.stringify({
+          companyLegalName: companyProfileForm.companyLegalName.trim(),
+          companyOperatingName: companyProfileForm.companyOperatingName.trim() || null,
+          taxIdentifier: companyProfileForm.taxIdentifier.trim() || null,
+          websiteUrl: companyProfileForm.websiteUrl.trim() || null,
+          industry: companyProfileForm.industry.trim() || null,
+          primaryContactName: companyProfileForm.primaryContactName.trim() || null,
+          primaryContactEmail: companyProfileForm.primaryContactEmail.trim() || null,
+          primaryContactPhone: companyProfileForm.primaryContactPhone.trim() || null,
+          addressLine1: companyProfileForm.addressLine1.trim() || null,
+          addressLine2: companyProfileForm.addressLine2.trim() || null,
+          city: companyProfileForm.city.trim() || null,
+          provinceState: companyProfileForm.provinceState.trim() || null,
+          postalCode: companyProfileForm.postalCode.trim() || null,
+          countryCode: companyProfileForm.countryCode.trim() || 'CA',
+          onboardingCompleted: true
+        })
+      })
+      await loadWorkspaceProfile()
+      setNotice('Company profile saved.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save company profile')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const onUpdateOrganizationMember = async (memberUserId: string, role: string, status: string) => {
     if (!selectedWorkspaceId) return
     setSaving(true)
@@ -972,7 +1062,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                   {notice}
                 </div>
               )}
-              {workspaces.length > 0 && (view === 'landing' || view === 'workspaceAdmin' || view === 'companyProfile') && (
+              {workspaces.length > 0 && (view === 'landing' || view === 'workspaceAdmin') && (
                 <div className="bg-white p-4 rounded-lg border border-border shadow-sm">
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-3">
@@ -1066,44 +1156,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           </div>
                         </div>
                         <div className="rounded-lg border border-border p-3 space-y-3">
-                          <h4 className="text-sm font-semibold text-primary-dark">
-                            {view === 'companyProfile' ? 'Company employee onboarding' : 'Employee assignments'}
-                          </h4>
+                          <h4 className="text-sm font-semibold text-primary-dark">Employee assignments</h4>
                           <ol className="text-xs text-text-light space-y-1 list-decimal pl-4">
                             <li>Invite employees from Company Profile.</li>
                             <li>Wait for invite acceptance/confirmation.</li>
                             <li>Assign confirmed employees to workspace, engagements, and working papers.</li>
                           </ol>
-                          {view === 'companyProfile' && (
-                            <div className="rounded-md border border-border p-2 space-y-2">
-                              <p className="text-xs text-text-light">Invite employee to company profile (Clerk)</p>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <input
-                                  className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
-                                  placeholder="Employee email"
-                                  value={newInviteEmail}
-                                  onChange={(e) => setNewInviteEmail(e.target.value)}
-                                />
-                                <select
-                                  className="border border-border rounded-md px-3 py-2 text-sm"
-                                  value={newInviteRole}
-                                  onChange={(e) => setNewInviteRole(e.target.value)}
-                                >
-                                  {['admin', 'manager', 'reviewer', 'preparer', 'read_only', 'client'].map((role) => (
-                                    <option key={role} value={role}>{role}</option>
-                                  ))}
-                                </select>
-                                <button
-                                  type="button"
-                                  className="btn btn--primary text-sm py-2 px-4"
-                                  disabled={saving || !canManageWorkspaceMembers}
-                                  onClick={() => { void onCreateWorkspaceInvite() }}
-                                >
-                                  Send Invite Email
-                                </button>
-                              </div>
-                            </div>
-                          )}
                           {!canManageWorkspaceMembers && (
                             <p className="text-xs text-text-light">
                               Only workspace owners/admins can add employees.
@@ -1314,25 +1372,147 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         <div className="rounded-lg border border-border p-4">
                           <h3 className="font-semibold text-primary-dark mb-2">Company profile</h3>
                           <p className="text-sm text-text-light">
-                            Invite employees at the company level first. After they accept/confirm, assign them to workspaces, engagements, and working papers.
+                            Configure core company information, then invite employees at company level before assignment to workspace/engagement/working paper scopes.
                           </p>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          <div className="rounded-lg border border-border p-4">
-                            <p className="text-xs text-text-light">Organization</p>
-                            <p className="text-sm font-semibold text-primary-dark">{organizationSnapshot?.organization?.name || 'Not linked yet'}</p>
-                          </div>
-                          <div className="rounded-lg border border-border p-4">
-                            <p className="text-xs text-text-light">Employees</p>
-                            <p className="text-2xl font-bold text-primary-dark">{organizationSnapshot?.employees?.length || 0}</p>
-                          </div>
-                          <div className="rounded-lg border border-border p-4">
-                            <p className="text-xs text-text-light">Active workspace</p>
-                            <p className="text-sm font-semibold text-primary-dark">{activeWorkspace?.name || 'None selected'}</p>
-                          </div>
+                        <div className="rounded-lg border border-border p-4 space-y-3">
+                          <label className="text-xs text-text-light">Active workspace</label>
+                          <select
+                            className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
+                            value={selectedWorkspaceId}
+                            onChange={(e) => setWorkspaceId(e.target.value || null)}
+                          >
+                            {workspaces.map((workspace) => (
+                              <option key={workspace.id} value={workspace.id}>
+                                {workspace.name} ({workspace.workspace_type || 'business'} / {workspace.role})
+                              </option>
+                            ))}
+                          </select>
                         </div>
-                        <div className="rounded-lg border border-border p-4">
-                          <h4 className="font-semibold text-primary-dark mb-2">Employee roster</h4>
+                        <div className="rounded-lg border border-border p-4 space-y-3">
+                          <h4 className="font-semibold text-primary-dark">Company details</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              placeholder="Company legal name"
+                              value={companyProfileForm.companyLegalName}
+                              onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, companyLegalName: e.target.value }))}
+                            />
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              placeholder="Operating name"
+                              value={companyProfileForm.companyOperatingName}
+                              onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, companyOperatingName: e.target.value }))}
+                            />
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              placeholder="Business number"
+                              value={companyProfileForm.taxIdentifier}
+                              onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, taxIdentifier: e.target.value }))}
+                            />
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              placeholder="Website URL"
+                              value={companyProfileForm.websiteUrl}
+                              onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, websiteUrl: e.target.value }))}
+                            />
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              placeholder="Industry"
+                              value={companyProfileForm.industry}
+                              onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, industry: e.target.value }))}
+                            />
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              placeholder="Primary contact name"
+                              value={companyProfileForm.primaryContactName}
+                              onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, primaryContactName: e.target.value }))}
+                            />
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              placeholder="Primary contact email"
+                              value={companyProfileForm.primaryContactEmail}
+                              onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, primaryContactEmail: e.target.value }))}
+                            />
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              placeholder="Primary contact phone"
+                              value={companyProfileForm.primaryContactPhone}
+                              onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, primaryContactPhone: e.target.value }))}
+                            />
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm md:col-span-2"
+                              placeholder="Address line 1"
+                              value={companyProfileForm.addressLine1}
+                              onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, addressLine1: e.target.value }))}
+                            />
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm md:col-span-2"
+                              placeholder="Address line 2"
+                              value={companyProfileForm.addressLine2}
+                              onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, addressLine2: e.target.value }))}
+                            />
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              placeholder="City"
+                              value={companyProfileForm.city}
+                              onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, city: e.target.value }))}
+                            />
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              placeholder="Province/State"
+                              value={companyProfileForm.provinceState}
+                              onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, provinceState: e.target.value }))}
+                            />
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              placeholder="Postal code"
+                              value={companyProfileForm.postalCode}
+                              onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, postalCode: e.target.value }))}
+                            />
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              placeholder="Country code"
+                              value={companyProfileForm.countryCode}
+                              onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, countryCode: e.target.value.toUpperCase() }))}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            className="btn btn--primary text-sm py-2 px-4"
+                            disabled={saving}
+                            onClick={() => { void onSaveCompanyProfile() }}
+                          >
+                            Save Company Profile
+                          </button>
+                        </div>
+                        <div className="rounded-lg border border-border p-4 space-y-3">
+                          <h4 className="font-semibold text-primary-dark">Employee invite</h4>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
+                              placeholder="Employee email"
+                              value={newInviteEmail}
+                              onChange={(e) => setNewInviteEmail(e.target.value)}
+                            />
+                            <select
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              value={newInviteRole}
+                              onChange={(e) => setNewInviteRole(e.target.value)}
+                            >
+                              {['admin', 'manager', 'reviewer', 'preparer', 'read_only', 'client'].map((role) => (
+                                <option key={role} value={role}>{role}</option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              className="btn btn--primary text-sm py-2 px-4"
+                              disabled={saving || !canManageWorkspaceMembers}
+                              onClick={() => { void onCreateWorkspaceInvite() }}
+                            >
+                              Send Invite
+                            </button>
+                          </div>
                           <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                               <thead>

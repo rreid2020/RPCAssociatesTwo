@@ -10,7 +10,8 @@ function accountingViewRoute (
   path: string,
   view: 'landing' | 'workspaceAdmin' | 'companyProfile' | 'joinWorkspaceInvite' | 'workingPapersDashboard' | 'engagementList' | 'newEngagement' | 'engagementDashboard' | 'trialBalance' | 'leadSheets' | 'leadSheetDetail' | 'documents' | 'review' | 'settings' | 'integrations',
   feature: 'workingPapers' | 'integrations' | null = null,
-  permission: string | null = null
+  permission: string | null = null,
+  allowRolloutBypass = true
 ) {
   const content = (
     <RouteSuspense>
@@ -26,7 +27,7 @@ function accountingViewRoute (
     : content
   const gatedContent = permission
     ? (
-      <PermissionGuard permission={permission} permissionLabel={permission} allowRolloutBypass>
+      <PermissionGuard permission={permission} permissionLabel={permission} allowRolloutBypass={allowRolloutBypass}>
         {entitlementContent}
       </PermissionGuard>
       )
@@ -48,7 +49,7 @@ export function getAccountingRoutes () {
   return (
     <Fragment>
       {accountingViewRoute('/portal/accounting', 'landing')}
-      {accountingViewRoute('/portal/accounting/company-profile', 'companyProfile', null, 'workspace.manage')}
+      {accountingViewRoute('/portal/accounting/company-profile', 'companyProfile', null, 'workspace.manage', false)}
       {accountingViewRoute('/portal/accounting/workspaces', 'workspaceAdmin', null, 'workspace.manage')}
       {accountingViewRoute('/portal/accounting/join', 'joinWorkspaceInvite')}
       {accountingViewRoute('/portal/accounting/working-papers', 'workingPapersDashboard', 'workingPapers', 'working_papers.read')}

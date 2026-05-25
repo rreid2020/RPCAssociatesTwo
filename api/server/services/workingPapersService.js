@@ -10,6 +10,14 @@ const ENGAGEMENT_TYPES = new Set([
 ])
 
 const ENGAGEMENT_STATUSES = new Set(['draft', 'active', 'in_review', 'completed', 'archived'])
+const REVIEW_FLOW_STATUSES = new Set(['not_started', 'preparer_in_progress', 'reviewer_in_progress', 'review_notes_open', 'approved'])
+const REVIEW_FLOW_TRANSITIONS = {
+  not_started: new Set(['preparer_in_progress']),
+  preparer_in_progress: new Set(['reviewer_in_progress', 'review_notes_open']),
+  reviewer_in_progress: new Set(['review_notes_open', 'approved']),
+  review_notes_open: new Set(['preparer_in_progress', 'reviewer_in_progress', 'approved']),
+  approved: new Set(['review_notes_open'])
+}
 const SOURCE_TYPES = new Set(['qbo', 'excel', 'csv', 'google_sheets', 'manual'])
 const REVIEW_NOTE_STATUSES = new Set(['open', 'addressed', 'cleared', 'reopened'])
 const REVIEW_NOTE_PRIORITIES = new Set(['low', 'medium', 'high'])
@@ -53,6 +61,25 @@ function toNumber (value) {
   if (value == null) return null
   const n = Number(value)
   return Number.isFinite(n) ? n : null
+}
+
+function normalizeDeliverables (value) {
+  if (!Array.isArray(value)) return []
+  const cleaned = value
+    .map((entry) => String(entry || '').trim())
+    .filter(Boolean)
+    .slice(0, 50)
+  return [...new Set(cleaned)]
+}
+
+function assertReviewFlowTransition (fromStatus, toStatus) {
+  const from = String(fromStatus || 'not_started').trim().toLowerCase()
+  const to = String(toStatus || 'not_started').trim().toLowerCase()
+  if (from === to) return
+  const allowed = REVIEW_FLOW_TRANSITIONS[from]
+  if (!allowed || !allowed.has(to)) {
+    throw new Error(`Invalid review flow transition: ${from} -> ${to}`)
+  }
 }
 
 export function sanitizeFileName (name) {
@@ -249,13 +276,16 @@ export async function createEngagement (pool, clerkUserId, actorId, payload) {
   assertAllowed(payload.sourceType || 'manual', SOURCE_TYPES, 'source_type')
   const name = String(payload.name || '').trim()
   if (!name) throw new Error('Engagement name is required')
+  const reviewFlowStatus = String(payload.reviewFlowStatus || 'not_started').trim().toLowerCase()
+  assertAllowed(reviewFlowStatus, REVIEW_FLOW_STATUSES, 'review_flow_status')
+  const deliverables = normalizeDeliverables(payload.deliverables)
 
   await ensureStandardMappingGroups(pool, clerkUserId)
 
   const { rows } = await pool.query(
     `INSERT INTO taxgpt.accounting_engagements
-     (organization_id, workspace_id, clerk_user_id, client_id, name, engagement_type, fiscal_year, period_start, period_end, status, source_type, materiality_amount, reporting_currency, created_by, assigned_preparer_id, assigned_reviewer_id, created_at, updated_at)
-     VALUES ($1::uuid, $2::uuid, $3, $4::uuid, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, now(), now())
+     (organization_id, workspace_id, clerk_user_id, client_id, name, engagement_type, fiscal_year, period_start, period_end, due_date, status, source_type, review_flow_status, deliverables, materiality_amount, reporting_currency, created_by, assigned_preparer_id, assigned_reviewer_id, created_at, updated_at)
+     VALUES ($1::uuid, $2::uuid, $3, $4::uuid, $5, $6, $7, $8, $9, $10::date, $11, $12, $13, $14::jsonb, $15, $16, $17, $18, $19, now(), now())
      RETURNING *`,
     [
       payload.organizationId || null,
@@ -267,8 +297,11 @@ export async function createEngagement (pool, clerkUserId, actorId, payload) {
       payload.fiscalYear,
       payload.periodStart,
       payload.periodEnd,
+      payload.dueDate || null,
       payload.status || 'draft',
       payload.sourceType || 'manual',
+      reviewFlowStatus,
+      JSON.stringify(deliverables),
       payload.materialityAmount ?? null,
       payload.reportingCurrency || 'CAD',
       actorId,
@@ -289,8 +322,14 @@ export async function updateEngagement (pool, clerkUserId, actorId, engagementId
   const before = beforeRows[0]
   const status = payload.status || before.status
   const sourceType = payload.sourceType || before.source_type
+  const reviewFlowStatus = String(payload.reviewFlowStatus || before.review_flow_status || 'not_started').trim().toLowerCase()
   assertAllowed(status, ENGAGEMENT_STATUSES, 'status')
   assertAllowed(sourceType, SOURCE_TYPES, 'source_type')
+  assertAllowed(reviewFlowStatus, REVIEW_FLOW_STATUSES, 'review_flow_status')
+  assertReviewFlowTransition(before.review_flow_status || 'not_started', reviewFlowStatus)
+  const deliverables = payload.deliverables == null
+    ? (Array.isArray(before.deliverables) ? before.deliverables : [])
+    : normalizeDeliverables(payload.deliverables)
 
   const { rows } = await pool.query(
     `UPDATE taxgpt.accounting_engagements
@@ -299,14 +338,17 @@ export async function updateEngagement (pool, clerkUserId, actorId, engagementId
          fiscal_year = $3,
          period_start = $4,
          period_end = $5,
-         status = $6,
-         source_type = $7,
-         materiality_amount = $8,
-         reporting_currency = $9,
-         assigned_preparer_id = $10,
-         assigned_reviewer_id = $11,
+        due_date = $6,
+        status = $7,
+        source_type = $8,
+        review_flow_status = $9,
+        deliverables = $10::jsonb,
+        materiality_amount = $11,
+        reporting_currency = $12,
+        assigned_preparer_id = $13,
+        assigned_reviewer_id = $14,
          updated_at = now()
-     WHERE id = $12::uuid AND clerk_user_id = $13
+     WHERE id = $15::uuid AND clerk_user_id = $16
      RETURNING *`,
     [
       payload.name || before.name,
@@ -314,8 +356,11 @@ export async function updateEngagement (pool, clerkUserId, actorId, engagementId
       payload.fiscalYear || before.fiscal_year,
       payload.periodStart || before.period_start,
       payload.periodEnd || before.period_end,
+      payload.dueDate ?? before.due_date,
       status,
       sourceType,
+      reviewFlowStatus,
+      JSON.stringify(deliverables),
       payload.materialityAmount ?? before.materiality_amount,
       payload.reportingCurrency || before.reporting_currency,
       payload.assignedPreparerId ?? before.assigned_preparer_id,

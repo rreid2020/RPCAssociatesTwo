@@ -15,6 +15,7 @@ interface ClientPortalShellProps {
 }
 
 const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
+  const rolloutBypassEnabled = import.meta.env.VITE_FORCE_ENTERPRISE_ACCESS !== 'false'
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
   const { user } = useUser()
@@ -97,6 +98,7 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
   }
 
   const isLocked = (item: NavigationItem) => {
+    if (rolloutBypassEnabled) return false
     if (item.requiredFeature === 'workingPapers' && !workingPapers) return true
     if (item.requiredFeature === 'integrations' && !integrations) return true
     if (item.requiredPermission && !permissions.includes(item.requiredPermission)) return true

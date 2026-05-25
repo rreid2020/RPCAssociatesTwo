@@ -107,8 +107,11 @@ type Engagement = {
   fiscal_year: number
   period_start: string
   period_end: string
+  due_date?: string | null
   status: string
   source_type: string
+  review_flow_status?: string | null
+  deliverables?: string[] | null
   materiality_amount?: string | null
   assigned_preparer_id?: string | null
   assigned_reviewer_id?: string | null
@@ -126,6 +129,20 @@ const engagementTypeOptions = [
 
 const sourceTypeOptions = ['qbo', 'excel', 'csv', 'google_sheets', 'manual']
 const statusOptions = ['draft', 'active', 'in_review', 'completed', 'archived']
+const reviewFlowStatusOptions = [
+  'not_started',
+  'preparer_in_progress',
+  'reviewer_in_progress',
+  'review_notes_open',
+  'approved'
+]
+const reviewFlowTransitions: Record<string, string[]> = {
+  not_started: ['preparer_in_progress'],
+  preparer_in_progress: ['reviewer_in_progress', 'review_notes_open'],
+  reviewer_in_progress: ['review_notes_open', 'approved'],
+  review_notes_open: ['preparer_in_progress', 'reviewer_in_progress', 'approved'],
+  approved: ['review_notes_open']
+}
 
 type TrialBalancePreview = {
   columns: string[]
@@ -160,6 +177,21 @@ function fileToBase64 (file: File): Promise<string> {
   })
 }
 
+function parseDeliverablesText (value: string): string[] {
+  return Array.from(
+    new Set(
+      value
+        .split(/\r?\n|,/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+    )
+  ).slice(0, 50)
+}
+
+function formatWorkflowLabel (value: string): string {
+  return value.replace(/_/g, ' ')
+}
+
 const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => {
   const { getToken } = useAuth()
   const { workspaceId, setWorkspaceId } = useWorkspaceState()
@@ -184,9 +216,17 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     fiscalYear: new Date().getFullYear(),
     periodStart: `${new Date().getFullYear()}-01-01`,
     periodEnd: `${new Date().getFullYear()}-12-31`,
+    dueDate: '',
     sourceType: 'csv',
+    reviewFlowStatus: 'not_started',
+    deliverablesText: '',
     assignedPreparerId: '',
     assignedReviewerId: ''
+  })
+  const [engagementWorkflowForm, setEngagementWorkflowForm] = useState({
+    dueDate: '',
+    reviewFlowStatus: 'not_started',
+    deliverablesText: ''
   })
   const [dashboard, setDashboard] = useState<any | null>(null)
   const [leadSheets, setLeadSheets] = useState<any[]>([])
@@ -395,8 +435,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
           await loadRepositoryFiles()
         }
         if (view === 'review') await loadReviewNotes()
-        if (view === 'settings') await loadTasks()
-        if (view === 'settings') await loadWorkspaceMembers()
+        if (view === 'settings') await Promise.all([loadTasks(), loadWorkspaceMembers(), loadEngagementDashboard()])
         if (view === 'integrations') await loadIntegrations()
       } catch (e) {
         if (mounted) setError(e instanceof Error ? e.message : 'Could not load data')
@@ -439,6 +478,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const canManageWorkspaceMembers = activeWorkspace?.role === 'owner' || activeWorkspace?.role === 'admin'
   const clientLabel = isFirmWorkspace ? 'Accounting client' : 'Business entity'
   const clientLabelPlural = isFirmWorkspace ? 'Accounting clients' : 'Business entities'
+  const currentReviewFlowStatus = String(dashboard?.engagement?.review_flow_status || 'not_started')
+  const nextReviewFlowStatuses = reviewFlowTransitions[currentReviewFlowStatus] || []
 
   useEffect(() => {
     if (!activeWorkspace) return
@@ -480,6 +521,16 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     })
   }, [workspaceProfile])
 
+  useEffect(() => {
+    const engagement = dashboard?.engagement
+    if (!engagement) return
+    setEngagementWorkflowForm({
+      dueDate: engagement.due_date || '',
+      reviewFlowStatus: engagement.review_flow_status || 'not_started',
+      deliverablesText: Array.isArray(engagement.deliverables) ? engagement.deliverables.join('\n') : ''
+    })
+  }, [dashboard])
+
   const onCreateClient = async () => {
     const name = newClientName.trim()
     if (!name) {
@@ -512,6 +563,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         method: 'POST',
         body: JSON.stringify({
           ...newEngagement,
+          dueDate: newEngagement.dueDate || null,
+          deliverables: parseDeliverablesText(newEngagement.deliverablesText),
           status: 'draft'
         })
       })
@@ -519,6 +572,52 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       navigate(`/portal/accounting/working-papers/engagements/${engagement.id}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not create engagement')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onUpdateEngagementWorkflow = async () => {
+    if (!engagementId) {
+      setError('Select an engagement before updating workflow details.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      await portalFetch(`/v1/accounting/engagements/${engagementId}`, getToken, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          dueDate: engagementWorkflowForm.dueDate || null,
+          reviewFlowStatus: engagementWorkflowForm.reviewFlowStatus,
+          deliverables: parseDeliverablesText(engagementWorkflowForm.deliverablesText)
+        })
+      })
+      await Promise.all([loadEngagementDashboard(), loadEngagements(), loadStatusSummary()])
+      setNotice('Engagement workflow details updated')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not update engagement workflow details')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onAdvanceReviewFlow = async (nextStatus: string) => {
+    if (!engagementId) {
+      setError('Select an engagement before advancing review flow.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      await portalFetch(`/v1/accounting/engagements/${engagementId}`, getToken, {
+        method: 'PATCH',
+        body: JSON.stringify({ reviewFlowStatus: nextStatus })
+      })
+      await Promise.all([loadEngagementDashboard(), loadEngagements(), loadStatusSummary()])
+      setNotice(`Review flow moved to ${formatWorkflowLabel(nextStatus)}`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not update review flow state')
     } finally {
       setSaving(false)
     }
@@ -1646,14 +1745,17 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                 <th className="py-2">{clientLabel}</th>
                                 <th className="py-2">Type</th>
                                 <th className="py-2">Status</th>
+                                <th className="py-2">Review Flow</th>
                                 <th className="py-2">Period End</th>
+                                <th className="py-2">Due Date</th>
+                                <th className="py-2">Deliverables</th>
                                 <th className="py-2">Actions</th>
                               </tr>
                             </thead>
                             <tbody>
                               {engagements.length === 0 ? (
                                 <tr>
-                                  <td className="py-3 text-text-light" colSpan={6}>No engagements match the current filters.</td>
+                                  <td className="py-3 text-text-light" colSpan={9}>No engagements match the current filters.</td>
                                 </tr>
                               ) : engagements.map((engagement) => (
                                   <tr key={engagement.id} className="border-b border-border/70">
@@ -1665,7 +1767,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                     <td className="py-2">{engagement.client_name}</td>
                                     <td className="py-2">{engagement.engagement_type}</td>
                                     <td className="py-2">{engagement.status}</td>
+                                    <td className="py-2">{engagement.review_flow_status || 'not_started'}</td>
                                     <td className="py-2">{new Date(engagement.period_end).toLocaleDateString()}</td>
+                                    <td className="py-2">{engagement.due_date ? new Date(engagement.due_date).toLocaleDateString() : '—'}</td>
+                                    <td className="py-2">{Array.isArray(engagement.deliverables) ? engagement.deliverables.length : 0}</td>
                                     <td className="py-2">
                                       <button
                                         type="button"
@@ -1736,6 +1841,15 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             />
                           </div>
                           <div>
+                            <label className="block text-xs text-text-light mb-1">Due date</label>
+                            <input
+                              type="date"
+                              className="border border-border rounded-md px-3 py-2 text-sm w-full"
+                              value={newEngagement.dueDate}
+                              onChange={(e) => setNewEngagement((prev) => ({ ...prev, dueDate: e.target.value }))}
+                            />
+                          </div>
+                          <div>
                             <label className="block text-xs text-text-light mb-1">Source type</label>
                             <select
                               className="border border-border rounded-md px-3 py-2 text-sm w-full"
@@ -1763,6 +1877,25 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               onChange={(e) => setNewEngagement((prev) => ({ ...prev, periodEnd: e.target.value }))}
                             />
                           </div>
+                          <div>
+                            <label className="block text-xs text-text-light mb-1">Review flow status</label>
+                            <select
+                              className="border border-border rounded-md px-3 py-2 text-sm w-full"
+                              value={newEngagement.reviewFlowStatus}
+                              onChange={(e) => setNewEngagement((prev) => ({ ...prev, reviewFlowStatus: e.target.value }))}
+                            >
+                              {reviewFlowStatusOptions.map((status) => <option key={status} value={status}>{formatWorkflowLabel(status)}</option>)}
+                            </select>
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-xs text-text-light mb-1">Deliverables (comma or line separated)</label>
+                            <textarea
+                              className="border border-border rounded-md px-3 py-2 text-sm w-full min-h-[92px]"
+                              value={newEngagement.deliverablesText}
+                              onChange={(e) => setNewEngagement((prev) => ({ ...prev, deliverablesText: e.target.value }))}
+                              placeholder="Working paper package, analytics memo, signoff checklist"
+                            />
+                          </div>
                         </div>
                         <button type="submit" className="btn btn--primary text-sm py-2 px-4" disabled={saving}>
                           {saving ? 'Creating…' : 'Create engagement'}
@@ -1772,6 +1905,29 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
                     {view === 'engagementDashboard' && dashboard && (
                       <div className="space-y-4">
+                        <div className="rounded-lg border border-border p-4 bg-white">
+                          <p className="text-xs text-text-light">
+                            Review flow: <span className="font-medium text-primary-dark">{formatWorkflowLabel(dashboard.engagement.review_flow_status || 'not_started')}</span>
+                            {' '}| Due date: <span className="font-medium text-primary-dark">{dashboard.engagement.due_date ? new Date(dashboard.engagement.due_date).toLocaleDateString() : 'Not set'}</span>
+                            {' '}| Deliverables: <span className="font-medium text-primary-dark">{Array.isArray(dashboard.engagement.deliverables) ? dashboard.engagement.deliverables.length : 0}</span>
+                          </p>
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {nextReviewFlowStatuses.map((status) => (
+                              <button
+                                key={status}
+                                type="button"
+                                className="btn btn--secondary text-sm py-2 px-3"
+                                disabled={saving}
+                                onClick={() => { void onAdvanceReviewFlow(status) }}
+                              >
+                                Move to {formatWorkflowLabel(status)}
+                              </button>
+                            ))}
+                            <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/settings`} className="text-sm text-primary-dark underline self-center">
+                              Edit workflow details
+                            </Link>
+                          </div>
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                           <div className="rounded-lg border border-border p-4">
                             <p className="text-xs text-text-light">Status</p>
@@ -2056,6 +2212,49 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           <p className="text-sm text-text-light">
                             Use <Link className="font-medium underline" to="/portal/accounting/workspaces">Workspace Administration</Link> for employee onboarding and member management.
                           </p>
+                        </div>
+                        <div className="rounded-lg border border-border p-4 space-y-3">
+                          <h3 className="font-semibold text-primary-dark">Workflow details</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs text-text-light mb-1">Due date</label>
+                              <input
+                                type="date"
+                                className="border border-border rounded-md px-3 py-2 text-sm w-full"
+                                value={engagementWorkflowForm.dueDate}
+                                onChange={(e) => setEngagementWorkflowForm((prev) => ({ ...prev, dueDate: e.target.value }))}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-text-light mb-1">Review flow status</label>
+                              <select
+                                className="border border-border rounded-md px-3 py-2 text-sm w-full"
+                                value={engagementWorkflowForm.reviewFlowStatus}
+                                onChange={(e) => setEngagementWorkflowForm((prev) => ({ ...prev, reviewFlowStatus: e.target.value }))}
+                              >
+                                {reviewFlowStatusOptions.map((status) => (
+                                  <option key={status} value={status}>{formatWorkflowLabel(status)}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="block text-xs text-text-light mb-1">Deliverables (comma or line separated)</label>
+                              <textarea
+                                className="border border-border rounded-md px-3 py-2 text-sm w-full min-h-[110px]"
+                                value={engagementWorkflowForm.deliverablesText}
+                                onChange={(e) => setEngagementWorkflowForm((prev) => ({ ...prev, deliverablesText: e.target.value }))}
+                                placeholder="Lead sheet pack, review memo, adjustment log"
+                              />
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn btn--primary text-sm py-2 px-4"
+                            disabled={saving || !engagementId}
+                            onClick={() => { void onUpdateEngagementWorkflow() }}
+                          >
+                            Save Workflow Details
+                          </button>
                         </div>
                         <div className="rounded-lg border border-border p-4">
                           <h3 className="font-semibold text-primary-dark mb-2">Task summary</h3>

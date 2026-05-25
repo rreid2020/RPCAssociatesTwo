@@ -400,6 +400,9 @@ const STATEMENTS = [
   period_end DATE NOT NULL,
   status VARCHAR(32) NOT NULL DEFAULT 'draft',
   source_type VARCHAR(32) NOT NULL DEFAULT 'manual',
+  due_date DATE,
+  review_flow_status VARCHAR(24) NOT NULL DEFAULT 'not_started',
+  deliverables JSONB NOT NULL DEFAULT '[]'::jsonb,
   materiality_amount NUMERIC(14,2),
   reporting_currency VARCHAR(3) NOT NULL DEFAULT 'CAD',
   created_by TEXT NOT NULL,
@@ -410,6 +413,25 @@ const STATEMENTS = [
 )`,
   'ALTER TABLE taxgpt.accounting_engagements ADD COLUMN IF NOT EXISTS organization_id UUID',
   'ALTER TABLE taxgpt.accounting_engagements ADD COLUMN IF NOT EXISTS workspace_id UUID',
+  'ALTER TABLE taxgpt.accounting_engagements ADD COLUMN IF NOT EXISTS due_date DATE',
+  'ALTER TABLE taxgpt.accounting_engagements ADD COLUMN IF NOT EXISTS review_flow_status VARCHAR(24)',
+  "UPDATE taxgpt.accounting_engagements SET review_flow_status = 'not_started' WHERE review_flow_status IS NULL",
+  "ALTER TABLE taxgpt.accounting_engagements ALTER COLUMN review_flow_status SET DEFAULT 'not_started'",
+  'ALTER TABLE taxgpt.accounting_engagements ALTER COLUMN review_flow_status SET NOT NULL',
+  `DO $$
+   BEGIN
+     IF NOT EXISTS (
+       SELECT 1 FROM pg_constraint WHERE conname = 'accounting_engagements_review_flow_status_chk'
+     ) THEN
+       ALTER TABLE taxgpt.accounting_engagements
+         ADD CONSTRAINT accounting_engagements_review_flow_status_chk
+         CHECK (review_flow_status IN ('not_started', 'preparer_in_progress', 'reviewer_in_progress', 'review_notes_open', 'approved'));
+     END IF;
+   END $$`,
+  "ALTER TABLE taxgpt.accounting_engagements ADD COLUMN IF NOT EXISTS deliverables JSONB DEFAULT '[]'::jsonb",
+  "UPDATE taxgpt.accounting_engagements SET deliverables = '[]'::jsonb WHERE deliverables IS NULL",
+  "ALTER TABLE taxgpt.accounting_engagements ALTER COLUMN deliverables SET DEFAULT '[]'::jsonb",
+  "ALTER TABLE taxgpt.accounting_engagements ALTER COLUMN deliverables SET NOT NULL",
   'CREATE INDEX IF NOT EXISTS accounting_engagements_user_idx ON taxgpt.accounting_engagements(clerk_user_id, status)',
   'CREATE INDEX IF NOT EXISTS accounting_engagements_client_idx ON taxgpt.accounting_engagements(client_id)',
   'CREATE INDEX IF NOT EXISTS accounting_engagements_org_idx ON taxgpt.accounting_engagements(organization_id, status)',

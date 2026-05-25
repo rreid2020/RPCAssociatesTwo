@@ -92,6 +92,22 @@ function deriveEngagementStatusFromReviewFlow (currentStatus, reviewFlowStatus) 
   return current
 }
 
+async function assertAssignableWorkspaceMember (pool, workspaceId, clerkUserId, fieldName) {
+  if (!workspaceId || !clerkUserId) return
+  const { rows } = await pool.query(
+    `SELECT id
+     FROM taxgpt.accounting_workspace_members
+     WHERE workspace_id = $1::uuid
+       AND clerk_user_id = $2
+       AND status = 'active'
+     LIMIT 1`,
+    [workspaceId, clerkUserId]
+  )
+  if (!rows[0]) {
+    throw new Error(`${fieldName} must be an active workspace member`)
+  }
+}
+
 export function sanitizeFileName (name) {
   const str = String(name || '').replace(/[\u0000-\u001f]/g, '').trim()
   return str.slice(0, 255)
@@ -260,6 +276,10 @@ export async function listEngagements (pool, clerkUserId, query = {}) {
     values.push(query.engagementType)
     where.push(`e.engagement_type = $${values.length}`)
   }
+  if (query.reviewFlowStatus) {
+    values.push(query.reviewFlowStatus)
+    where.push(`e.review_flow_status = $${values.length}`)
+  }
   if (query.search) {
     values.push(`%${String(query.search).trim().toLowerCase()}%`)
     where.push(`(lower(e.name) LIKE $${values.length} OR lower(c.name) LIKE $${values.length})`)
@@ -291,8 +311,12 @@ export async function createEngagement (pool, clerkUserId, actorId, payload) {
   assertAllowed(reviewFlowStatus, REVIEW_FLOW_STATUSES, 'review_flow_status')
   const normalizedStatus = deriveEngagementStatusFromReviewFlow(requestedStatus, reviewFlowStatus)
   const deliverables = normalizeDeliverables(payload.deliverables)
+  const assignedPreparerId = payload.assignedPreparerId ?? null
+  const assignedReviewerId = payload.assignedReviewerId ?? null
 
   await ensureStandardMappingGroups(pool, clerkUserId)
+  await assertAssignableWorkspaceMember(pool, payload.workspaceId || null, assignedPreparerId, 'assignedPreparerId')
+  await assertAssignableWorkspaceMember(pool, payload.workspaceId || null, assignedReviewerId, 'assignedReviewerId')
 
   const { rows } = await pool.query(
     `INSERT INTO taxgpt.accounting_engagements
@@ -317,8 +341,8 @@ export async function createEngagement (pool, clerkUserId, actorId, payload) {
       payload.materialityAmount ?? null,
       payload.reportingCurrency || 'CAD',
       actorId,
-      payload.assignedPreparerId ?? null,
-      payload.assignedReviewerId ?? null
+      assignedPreparerId,
+      assignedReviewerId
     ]
   )
   await logAccountingAudit(pool, clerkUserId, actorId, 'engagement', rows[0].id, 'created', null, rows[0])
@@ -343,6 +367,10 @@ export async function updateEngagement (pool, clerkUserId, actorId, engagementId
   const deliverables = payload.deliverables == null
     ? (Array.isArray(before.deliverables) ? before.deliverables : [])
     : normalizeDeliverables(payload.deliverables)
+  const assignedPreparerId = payload.assignedPreparerId ?? before.assigned_preparer_id ?? null
+  const assignedReviewerId = payload.assignedReviewerId ?? before.assigned_reviewer_id ?? null
+  await assertAssignableWorkspaceMember(pool, before.workspace_id || null, assignedPreparerId, 'assignedPreparerId')
+  await assertAssignableWorkspaceMember(pool, before.workspace_id || null, assignedReviewerId, 'assignedReviewerId')
 
   const { rows } = await pool.query(
     `UPDATE taxgpt.accounting_engagements
@@ -376,8 +404,8 @@ export async function updateEngagement (pool, clerkUserId, actorId, engagementId
       JSON.stringify(deliverables),
       payload.materialityAmount ?? before.materiality_amount,
       payload.reportingCurrency || before.reporting_currency,
-      payload.assignedPreparerId ?? before.assigned_preparer_id,
-      payload.assignedReviewerId ?? before.assigned_reviewer_id,
+      assignedPreparerId,
+      assignedReviewerId,
       engagementId,
       clerkUserId
     ]

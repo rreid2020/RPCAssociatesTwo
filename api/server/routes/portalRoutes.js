@@ -1314,6 +1314,7 @@ export function createPortalRouter (pool) {
         status: req.query.status || null,
         clientId: req.query.clientId || null,
         engagementType: req.query.engagementType || null,
+        reviewFlowStatus: req.query.reviewFlowStatus || null,
         search: req.query.search || null,
         workspaceId: scope.workspace.id
       })

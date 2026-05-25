@@ -206,6 +206,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [notice, setNotice] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [reviewFlowStatusFilter, setReviewFlowStatusFilter] = useState('')
   const [clientFilter, setClientFilter] = useState('')
   const [engagementTypeFilter, setEngagementTypeFilter] = useState('')
   const [newClientName, setNewClientName] = useState('')
@@ -286,13 +287,14 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const loadEngagements = useCallback(async () => {
     const params = new URLSearchParams()
     if (statusFilter) params.set('status', statusFilter)
+    if (reviewFlowStatusFilter) params.set('reviewFlowStatus', reviewFlowStatusFilter)
     if (clientFilter) params.set('clientId', clientFilter)
     if (engagementTypeFilter) params.set('engagementType', engagementTypeFilter)
     if (search.trim()) params.set('search', search.trim())
     const url = `/v1/accounting/engagements${params.toString() ? `?${params.toString()}` : ''}`
     const { engagements: rows } = await portalFetch<{ engagements: Engagement[] }>(url, getToken)
     setEngagements(rows)
-  }, [clientFilter, engagementTypeFilter, getToken, search, statusFilter])
+  }, [clientFilter, engagementTypeFilter, getToken, reviewFlowStatusFilter, search, statusFilter])
 
   const loadStatusSummary = useCallback(async () => {
     const { summary } = await portalFetch<{ summary: Array<{ status: string; c: number }> }>('/v1/accounting/engagements/status-summary', getToken)
@@ -1735,6 +1737,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             <option value="">All statuses</option>
                             {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
                           </select>
+                          <select className="border border-border rounded-md px-3 py-2 text-sm" value={reviewFlowStatusFilter} onChange={(e) => setReviewFlowStatusFilter(e.target.value)}>
+                            <option value="">All review-flow states</option>
+                            {reviewFlowStatusOptions.map((status) => (
+                              <option key={status} value={status}>{formatWorkflowLabel(status)}</option>
+                            ))}
+                          </select>
                           <select className="border border-border rounded-md px-3 py-2 text-sm" value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}>
                             <option value="">{`All ${clientLabelPlural.toLowerCase()}`}</option>
                             {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
@@ -1777,7 +1785,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                     <td className="py-2">{engagement.client_name}</td>
                                     <td className="py-2">{engagement.engagement_type}</td>
                                     <td className="py-2">{engagement.status}</td>
-                                    <td className="py-2">{engagement.review_flow_status || 'not_started'}</td>
+                                    <td className="py-2">{formatWorkflowLabel(engagement.review_flow_status || 'not_started')}</td>
                                     <td className="py-2">{new Date(engagement.period_end).toLocaleDateString()}</td>
                                     <td className="py-2">{engagement.due_date ? new Date(engagement.due_date).toLocaleDateString() : '—'}</td>
                                     <td className="py-2">{Array.isArray(engagement.deliverables) ? engagement.deliverables.length : 0}</td>

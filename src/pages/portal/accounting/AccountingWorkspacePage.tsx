@@ -1519,6 +1519,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               <thead>
                                 <tr className="border-b border-border text-left text-text-light">
                                   <th className="py-2">Employee</th>
+                                  <th className="py-2">Email</th>
                                   <th className="py-2">Role</th>
                                   <th className="py-2">Status</th>
                                   <th className="py-2">Actions</th>
@@ -1527,11 +1528,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               <tbody>
                                 {(organizationSnapshot?.employees || []).length === 0 ? (
                                   <tr>
-                                    <td className="py-3 text-text-light" colSpan={4}>No organization employees yet.</td>
+                                    <td className="py-3 text-text-light" colSpan={5}>No organization employees yet.</td>
                                   </tr>
                                 ) : (organizationSnapshot?.employees || []).map((member: any) => (
                                   <tr key={member.clerk_user_id} className="border-b border-border/70">
-                                    <td className="py-2 font-mono">{member.clerk_user_id}</td>
+                                    <td className="py-2">{member.display_name || member.email || 'Employee'}</td>
+                                    <td className="py-2">{member.email || '—'}</td>
                                     <td className="py-2">{member.role}</td>
                                     <td className="py-2">{member.status}</td>
                                     <td className="py-2">

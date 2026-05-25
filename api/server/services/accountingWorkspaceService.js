@@ -1,6 +1,7 @@
 import { randomBytes } from 'crypto'
 import {
   createClerkEmailInvite,
+  getClerkBackendClient,
   createClerkOrganization,
   createClerkOrganizationInvitation
 } from './clerkAdminService.js'
@@ -490,6 +491,55 @@ async function safeEnsureWorkspaceClerkOrganization (pool, workspace, actorUserI
     } catch {}
     return workspace
   }
+}
+
+function buildDisplayNameFromClerkUser (user = {}) {
+  const first = String(user.firstName || '').trim()
+  const last = String(user.lastName || '').trim()
+  const full = `${first} ${last}`.trim()
+  if (full) return full
+  const username = String(user.username || '').trim()
+  if (username) return username
+  return null
+}
+
+function extractPrimaryEmailFromClerkUser (user = {}) {
+  const primaryId = user?.primaryEmailAddressId || null
+  const addresses = Array.isArray(user?.emailAddresses) ? user.emailAddresses : []
+  const primary = addresses.find((entry) => entry.id === primaryId) || addresses[0] || null
+  return String(primary?.emailAddress || '').trim() || null
+}
+
+async function enrichOrganizationEmployees (employees = []) {
+  const client = getClerkBackendClient()
+  const enriched = []
+  for (const member of employees) {
+    const clerkUserId = String(member.clerk_user_id || '')
+    const inviteMatch = clerkUserId.startsWith('invite:') ? clerkUserId.slice('invite:'.length).trim().toLowerCase() : null
+    if (inviteMatch) {
+      enriched.push({
+        ...member,
+        display_name: inviteMatch,
+        email: inviteMatch
+      })
+      continue
+    }
+    try {
+      const user = await client.users.getUser(clerkUserId)
+      enriched.push({
+        ...member,
+        display_name: buildDisplayNameFromClerkUser(user) || extractPrimaryEmailFromClerkUser(user) || clerkUserId,
+        email: extractPrimaryEmailFromClerkUser(user)
+      })
+    } catch {
+      enriched.push({
+        ...member,
+        display_name: clerkUserId,
+        email: null
+      })
+    }
+  }
+  return enriched
 }
 
 function mapWorkspaceRoleToOrganizationMemberRole (workspaceRole) {
@@ -1373,6 +1423,7 @@ export async function getOrganizationAdminSnapshot (pool, actorUserId, workspace
      ORDER BY created_at ASC`,
     [workspace.organization_id]
   )
+  const enrichedEmployees = await enrichOrganizationEmployees(employees)
   const [{ rows: workspaceCounts }, { rows: engagementCounts }, { rows: paperCounts }] = await Promise.all([
     pool.query(
       `SELECT clerk_user_id, count(*)::int AS c
@@ -1396,7 +1447,7 @@ export async function getOrganizationAdminSnapshot (pool, actorUserId, workspace
       [workspace.organization_id]
     )
   ])
-  return { workspace, organization, employees, workspaceCounts, engagementCounts, paperCounts }
+  return { workspace, organization, employees: enrichedEmployees, workspaceCounts, engagementCounts, paperCounts }
 }
 
 export async function upsertWorkspaceEmployeeAssignment (pool, actorUserId, workspaceId, payload = {}) {

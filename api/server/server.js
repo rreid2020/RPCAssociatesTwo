@@ -14,6 +14,7 @@ import { logPortalObjectStorageConfig } from './services/portalS3.js'
 import { createPortalRouter } from './routes/portalRoutes.js'
 import { createTaxIntelligenceRouter } from './routes/taxIntelligenceRoutes.js'
 import { createBillingRouter } from './routes/billingRoutes.js'
+import { createClerkWebhookRouter } from './routes/clerkWebhookRoutes.js'
 import { logServerEnvSummary } from './config/env.js'
 import { getNotificationInbox } from './config/mail.js'
 import { escapeHtml, singleLine } from './utils/html.js'
@@ -61,6 +62,8 @@ app.use(
 // Portal upload fallback (`/api/portal/v1/files/upload-via-api`) sends base64 JSON payloads.
 // Raise parser limits above Express default (100kb), tunable via env.
 const jsonLimitMb = Math.max(1, parseInt(process.env.API_JSON_LIMIT_MB || '150', 10) || 150)
+app.use('/api/webhooks/clerk', express.raw({ type: 'application/json' }))
+app.use('/api/portal/v1/billing/webhooks/stripe', express.raw({ type: 'application/json' }))
 app.use(express.json({ limit: `${jsonLimitMb}mb` }))
 app.use(express.urlencoded({ extended: true }))
 
@@ -263,6 +266,7 @@ app.post('/api/contact', async (req, res) => {
 // Client Portal API (Clerk JWT; data in taxgpt.*)
 app.use('/api/portal', createPortalRouter(pool))
 app.use('/api/portal', createBillingRouter(pool))
+app.use('/api/webhooks', createClerkWebhookRouter(pool))
 app.use('/api', createTaxIntelligenceRouter(pool))
 app.use('/api/portal/tax-intelligence', createTaxIntelligenceRouter(pool))
 

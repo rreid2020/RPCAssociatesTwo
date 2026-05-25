@@ -1,9 +1,12 @@
 import {
   ensureWorkspaceBillingRows,
+  findWorkspaceByStripeCustomerId,
+  findWorkspaceByStripeSubscriptionId,
   getWorkspaceEntitlementRow,
   getWorkspaceSubscriptionRow,
   getWorkspaceUsageRow,
   recordWorkspaceBillingEvent,
+  upsertWorkspaceStripeCustomerMapping,
   upsertWorkspaceEntitlementsRow,
   upsertWorkspaceSubscriptionRow
 } from '../repositories/billingRepository.js'
@@ -68,5 +71,55 @@ export async function handleBillingWebhookEvent (pool, payload) {
   if (!inserted) {
     return { processed: false, duplicate: true }
   }
-  return { processed: true, duplicate: false }
+  if (String(envelope.source).toLowerCase() !== 'stripe') {
+    return { processed: true, duplicate: false, ignored: true, reason: 'unsupported_source' }
+  }
+
+  const eventType = String(payload?.eventType || '')
+  const raw = payload?.payload || {}
+  const obj = raw?.data?.object || {}
+  const metadata = obj?.metadata || {}
+  const customerId = obj?.customer || null
+  const subscriptionId = obj?.id || obj?.subscription || null
+  let workspaceId = payload?.workspaceId || metadata.workspaceId || metadata.workspace_id || null
+
+  if (!workspaceId && subscriptionId) {
+    workspaceId = await findWorkspaceByStripeSubscriptionId(pool, subscriptionId)
+  }
+  if (!workspaceId && customerId) {
+    workspaceId = await findWorkspaceByStripeCustomerId(pool, customerId)
+  }
+  if (!workspaceId) {
+    return { processed: true, duplicate: false, ignored: true, reason: 'workspace_not_resolved' }
+  }
+
+  if (customerId) {
+    const clerkUserId = metadata.clerkUserId || metadata.clerk_user_id || 'stripe:webhook'
+    await upsertWorkspaceStripeCustomerMapping(pool, workspaceId, clerkUserId, customerId)
+  }
+
+  if (eventType.startsWith('customer.subscription.')) {
+    const interval = obj?.items?.data?.[0]?.price?.recurring?.interval === 'year' ? 'annual' : 'monthly'
+    const mappedStatus = (() => {
+      const status = String(obj?.status || 'none').toLowerCase()
+      if (status === 'active' || status === 'trialing') return 'active'
+      if (status === 'past_due') return 'past_due'
+      if (status === 'canceled' || status === 'unpaid' || status === 'incomplete_expired') return 'canceled'
+      return 'none'
+    })()
+    const planId = String(metadata.planId || metadata.plan_id || payload?.planId || 'FREE')
+    await syncSubscriptionStatus(pool, workspaceId, {
+      planId,
+      status: mappedStatus,
+      interval,
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: obj?.id || null,
+      cancelAtPeriodEnd: Boolean(obj?.cancel_at_period_end),
+      currentPeriodStart: obj?.current_period_start ? new Date(obj.current_period_start * 1000).toISOString() : null,
+      currentPeriodEnd: obj?.current_period_end ? new Date(obj.current_period_end * 1000).toISOString() : null,
+      trialEndsAt: obj?.trial_end ? new Date(obj.trial_end * 1000).toISOString() : null
+    })
+  }
+
+  return { processed: true, duplicate: false, workspaceId }
 }

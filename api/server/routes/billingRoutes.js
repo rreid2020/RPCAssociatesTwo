@@ -13,7 +13,8 @@ import {
   cancelSubscription,
   changeSubscriptionPlan,
   createBillingPortalSession,
-  createCheckoutSession
+  createCheckoutSession,
+  parseStripeWebhook
 } from '../services/billing/stripeBillingService.js'
 
 export function createBillingRouter (pool) {
@@ -22,7 +23,9 @@ export function createBillingRouter (pool) {
   const resolveScope = async (req, res, session) => {
     try {
       const requestedWorkspaceId = req.headers['x-accounting-workspace-id'] || req.query.workspaceId || null
-      const workspace = await getWorkspaceContext(pool, session.userId, requestedWorkspaceId)
+      const workspace = await getWorkspaceContext(pool, session.userId, requestedWorkspaceId, {
+        expectedClerkOrgId: session.orgId || null
+      })
       return { workspace }
     } catch (e) {
       res.status(403).json({ error: e instanceof Error ? e.message : 'Workspace access denied' })
@@ -80,12 +83,15 @@ export function createBillingRouter (pool) {
     if (!scope) return
     if (!(await requirePermission(scope, session, 'subscription.change', res))) return
     try {
+      const billing = await getWorkspaceBillingOverview(pool, scope.workspace.id)
       const checkout = await createCheckoutSession({
         workspaceId: scope.workspace.id,
         planId: req.body?.planId,
         interval: req.body?.interval,
         successUrl: req.body?.successUrl,
-        cancelUrl: req.body?.cancelUrl
+        cancelUrl: req.body?.cancelUrl,
+        stripeCustomerId: billing?.subscription?.stripe_customer_id || null,
+        customerEmail: req.body?.customerEmail || null
       })
       res.json({ checkout })
     } catch (e) {
@@ -100,9 +106,11 @@ export function createBillingRouter (pool) {
     if (!scope) return
     if (!(await requirePermission(scope, session, 'billing.manage', res))) return
     try {
+      const billing = await getWorkspaceBillingOverview(pool, scope.workspace.id)
       const portal = await createBillingPortalSession({
         workspaceId: scope.workspace.id,
-        returnUrl: req.body?.returnUrl
+        returnUrl: req.body?.returnUrl,
+        stripeCustomerId: billing?.subscription?.stripe_customer_id || null
       })
       res.json({ portal })
     } catch (e) {
@@ -117,7 +125,11 @@ export function createBillingRouter (pool) {
     if (!scope) return
     if (!(await requirePermission(scope, session, 'subscription.change', res))) return
     try {
-      await cancelSubscription({ workspaceId: scope.workspace.id })
+      const billing = await getWorkspaceBillingOverview(pool, scope.workspace.id)
+      await cancelSubscription({
+        workspaceId: scope.workspace.id,
+        stripeSubscriptionId: billing?.subscription?.stripe_subscription_id || null
+      })
       const subscription = await syncSubscriptionStatus(pool, scope.workspace.id, {
         planId: req.body?.planId || 'FREE',
         status: 'canceled',
@@ -138,8 +150,10 @@ export function createBillingRouter (pool) {
     if (!scope) return
     if (!(await requirePermission(scope, session, 'subscription.change', res))) return
     try {
+      const billing = await getWorkspaceBillingOverview(pool, scope.workspace.id)
       await changeSubscriptionPlan({
         workspaceId: scope.workspace.id,
+        stripeSubscriptionId: billing?.subscription?.stripe_subscription_id || null,
         planId: req.body?.planId,
         interval: req.body?.interval
       })
@@ -204,12 +218,16 @@ export function createBillingRouter (pool) {
       return res.status(503).json({ error: 'STRIPE_WEBHOOK_SECRET is not configured' })
     }
     try {
+      const signature = Array.isArray(req.headers['stripe-signature'])
+        ? req.headers['stripe-signature'][0]
+        : req.headers['stripe-signature']
+      const event = await parseStripeWebhook(req.body, signature)
       const result = await handleBillingWebhookEvent(pool, {
-        workspaceId: req.body?.workspaceId,
-        eventType: req.body?.eventType || 'subscription.updated',
+        workspaceId: event?.data?.object?.metadata?.workspaceId || event?.data?.object?.metadata?.workspace_id || null,
+        eventType: event.type || 'subscription.updated',
         source: 'stripe',
-        sourceEventId: req.body?.eventId || null,
-        payload: req.body || {}
+        sourceEventId: event.id || null,
+        payload: event || {}
       })
       res.json({ received: true, ...result })
     } catch (e) {

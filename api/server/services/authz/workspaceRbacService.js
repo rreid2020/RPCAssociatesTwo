@@ -1,4 +1,5 @@
 import { PERMISSION_KEYS, hasPermission, listPermissionsForRole, mapWorkspaceRoleToPlatformRole } from './rolePermissions.js'
+import { ensurePortalSchema } from '../../db/ensurePortalSchema.js'
 
 const ROLE_NAME_RE = /^[a-z0-9_]{2,48}$/
 
@@ -28,43 +29,7 @@ function normalizeSourceRole (value) {
 }
 
 export async function ensureWorkspaceRbacTables (pool) {
-  await pool.query(
-    `CREATE TABLE IF NOT EXISTS taxgpt.workspace_custom_roles (
-       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-       workspace_id UUID NOT NULL REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,
-       role_name TEXT NOT NULL,
-       source_role TEXT NOT NULL,
-       display_name TEXT NOT NULL,
-       is_system BOOLEAN NOT NULL DEFAULT false,
-       created_by TEXT NOT NULL,
-       created_at TIMESTAMP NOT NULL DEFAULT now(),
-       updated_at TIMESTAMP NOT NULL DEFAULT now(),
-       UNIQUE (workspace_id, role_name)
-     )`
-  )
-  await pool.query(
-    `CREATE TABLE IF NOT EXISTS taxgpt.workspace_role_permissions (
-       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-       workspace_id UUID NOT NULL REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,
-       role_name TEXT NOT NULL,
-       permission_key TEXT NOT NULL,
-       created_at TIMESTAMP NOT NULL DEFAULT now(),
-       UNIQUE (workspace_id, role_name, permission_key)
-     )`
-  )
-  await pool.query(
-    `CREATE TABLE IF NOT EXISTS taxgpt.workspace_member_roles (
-       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-       workspace_id UUID NOT NULL REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,
-       clerk_user_id TEXT NOT NULL,
-       role_name TEXT NOT NULL,
-       created_by TEXT NOT NULL,
-       created_at TIMESTAMP NOT NULL DEFAULT now(),
-       UNIQUE (workspace_id, clerk_user_id, role_name)
-     )`
-  )
-  await pool.query('CREATE INDEX IF NOT EXISTS workspace_custom_roles_workspace_idx ON taxgpt.workspace_custom_roles(workspace_id)')
-  await pool.query('CREATE INDEX IF NOT EXISTS workspace_member_roles_workspace_user_idx ON taxgpt.workspace_member_roles(workspace_id, clerk_user_id)')
+  await ensurePortalSchema(pool)
 }
 
 export async function listWorkspaceRoles (pool, workspaceId) {

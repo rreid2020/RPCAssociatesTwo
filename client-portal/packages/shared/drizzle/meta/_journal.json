@@ -64,6 +64,20 @@
       "when": 1779277800000,
       "tag": "0012_workspace_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1779702000000,
+      "tag": "0013_org_workspace_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1779702300000,
+      "tag": "0014_org_id_repair",
+      "breakpoints": true
     }
   ]
 }

@@ -1,12 +1,14 @@
-import { FC, ReactNode, useCallback, useMemo, useState } from 'react'
+import { FC, ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { useUser, useClerk } from '@clerk/clerk-react'
+import { useAuth, useUser, useClerk } from '@clerk/clerk-react'
 import { useFeatureAccess } from '../lib/subscriptions/hooks'
 import AxiomWordmark from './AxiomWordmark'
 import { useWorkspaceAuthorization } from '../platform/permissions/WorkspaceAuthorizationProvider'
 import { useWorkspaceState } from '../platform/workspace/useWorkspaceState'
 import { buildNavigationSections, type NavigationItem } from '../platform/navigation/navigationRegistry'
 import { ACCOUNTING_WORKSPACE_STORAGE_KEY } from '../lib/portalApi'
+import { listWorkspaces } from '../services/accounting/workspaceService'
+import { getOnboardingStatus } from '../lib/onboarding/state'
 
 interface ClientPortalShellProps {
   children: ReactNode
@@ -16,9 +18,12 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
   const { user } = useUser()
+  const { getToken, isLoaded, isSignedIn } = useAuth()
   const { signOut } = useClerk()
   const { permissions } = useWorkspaceAuthorization()
   const { workspaceId, setWorkspaceId } = useWorkspaceState()
+  const [workspaceOptions, setWorkspaceOptions] = useState<Array<{ id: string, name: string, workspaceType: 'business' | 'firm', role: string }>>([])
+  const [onboardingComplete, setOnboardingComplete] = useState(false)
   const handleSignOut = useCallback(() => {
     setWorkspaceId(null)
     if (typeof window !== 'undefined') {
@@ -29,17 +34,47 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
     void signOut({ redirectUrl })
   }, [setWorkspaceId, signOut])
 
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) {
+      setWorkspaceOptions([])
+      return
+    }
+    let cancelled = false
+    const loadWorkspaceOptions = async () => {
+      try {
+        const [rows, onboarding] = await Promise.all([
+          listWorkspaces(getToken),
+          getOnboardingStatus(getToken)
+        ])
+        if (!cancelled) setWorkspaceOptions(rows)
+        if (!cancelled) setOnboardingComplete(!onboarding.required)
+      } catch {
+        if (!cancelled) setWorkspaceOptions([])
+        if (!cancelled) setOnboardingComplete(false)
+      }
+    }
+    void loadWorkspaceOptions()
+    return () => {
+      cancelled = true
+    }
+  }, [getToken, isLoaded, isSignedIn, workspaceId])
+
+  const selectedWorkspace = useMemo(
+    () => workspaceOptions.find((workspace) => workspace.id === workspaceId) || null,
+    [workspaceId, workspaceOptions]
+  )
+
   const workingPapers = useFeatureAccess('workingPapers')
   const integrations = useFeatureAccess('integrations')
 
   const navigationSections = useMemo(() => (
     buildNavigationSections({
-      workspaceType: null,
-      onboardingComplete: Boolean(workspaceId),
+      workspaceType: selectedWorkspace?.workspaceType || null,
+      onboardingComplete,
       features: { workingPapers, integrations },
       permissions
     })
-  ), [integrations, permissions, workingPapers, workspaceId])
+  ), [integrations, onboardingComplete, permissions, selectedWorkspace, workingPapers])
 
   const iconForKey = (iconKey: string, active: boolean) => {
     const iconClass = active ? 'text-white' : 'text-text-light'
@@ -185,6 +220,21 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
             </button>
             <div className="flex-1" />
             <div className="flex items-center gap-3 sm:gap-4">
+              <div className="hidden md:block min-w-[14rem]">
+                <label className="sr-only" htmlFor="global-workspace-switcher">Active workspace</label>
+                <select
+                  id="global-workspace-switcher"
+                  className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-text"
+                  value={workspaceId || ''}
+                  onChange={(e) => setWorkspaceId(e.target.value || null)}
+                >
+                  {workspaceOptions.map((workspace) => (
+                    <option key={workspace.id} value={workspace.id}>
+                      {workspace.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <button
                 type="button"
                 className="p-2 rounded-md text-text-light hover:bg-background"

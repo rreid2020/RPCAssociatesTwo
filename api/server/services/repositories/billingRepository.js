@@ -177,3 +177,51 @@ export async function recordWorkspaceBillingEvent (pool, payload) {
   )
   return rows[0] || null
 }
+
+export async function getWorkspaceStripeCustomerMapping (pool, workspaceId) {
+  const { rows } = await pool.query(
+    `SELECT workspace_id, clerk_user_id, stripe_customer_id, created_at, updated_at
+     FROM taxgpt.workspace_stripe_customer_mappings
+     WHERE workspace_id = $1::uuid
+     LIMIT 1`,
+    [workspaceId]
+  )
+  return rows[0] || null
+}
+
+export async function upsertWorkspaceStripeCustomerMapping (pool, workspaceId, clerkUserId, stripeCustomerId) {
+  const { rows } = await pool.query(
+    `INSERT INTO taxgpt.workspace_stripe_customer_mappings
+     (workspace_id, clerk_user_id, stripe_customer_id, created_at, updated_at)
+     VALUES ($1::uuid, $2, $3, now(), now())
+     ON CONFLICT (workspace_id) DO UPDATE SET
+      clerk_user_id = EXCLUDED.clerk_user_id,
+      stripe_customer_id = EXCLUDED.stripe_customer_id,
+      updated_at = now()
+     RETURNING workspace_id, clerk_user_id, stripe_customer_id, created_at, updated_at`,
+    [workspaceId, clerkUserId, stripeCustomerId]
+  )
+  return rows[0] || null
+}
+
+export async function findWorkspaceByStripeCustomerId (pool, stripeCustomerId) {
+  const { rows } = await pool.query(
+    `SELECT workspace_id
+     FROM taxgpt.workspace_stripe_customer_mappings
+     WHERE stripe_customer_id = $1
+     LIMIT 1`,
+    [stripeCustomerId]
+  )
+  return rows[0]?.workspace_id || null
+}
+
+export async function findWorkspaceByStripeSubscriptionId (pool, stripeSubscriptionId) {
+  const { rows } = await pool.query(
+    `SELECT workspace_id
+     FROM taxgpt.workspace_subscriptions
+     WHERE stripe_subscription_id = $1
+     LIMIT 1`,
+    [stripeSubscriptionId]
+  )
+  return rows[0]?.workspace_id || null
+}

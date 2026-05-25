@@ -249,6 +249,7 @@ export const accountingClients = taxgptSchema.table('accounting_clients', {
 export const accountingEngagements = taxgptSchema.table('accounting_engagements', {
   id: uuid('id').primaryKey().defaultRandom(),
   organizationId: uuid('organization_id'),
+  workspaceId: uuid('workspace_id'),
   clerkUserId: text('clerk_user_id').notNull(),
   clientId: uuid('client_id').notNull().references(() => accountingClients.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
@@ -460,11 +461,37 @@ export const accountingAuditLog = taxgptSchema.table('accounting_audit_log', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
-export const accountingWorkspaces = taxgptSchema.table('accounting_workspaces', {
+export const accountingOrganizations = taxgptSchema.table('accounting_organizations', {
   id: uuid('id').primaryKey().defaultRandom(),
   ownerUserId: text('owner_user_id').notNull(),
   name: text('name').notNull(),
   slug: text('slug').notNull(),
+  organizationType: varchar('organization_type', { length: 16 }).notNull().default('business'),
+  clerkOrgId: text('clerk_org_id'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const accountingOrganizationMembers = taxgptSchema.table('accounting_organization_members', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id').notNull().references(() => accountingOrganizations.id, { onDelete: 'cascade' }),
+  clerkUserId: text('clerk_user_id').notNull(),
+  role: varchar('role', { length: 24 }).notNull().default('member'),
+  status: varchar('status', { length: 24 }).notNull().default('active'),
+  invitedBy: text('invited_by'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const accountingWorkspaces = taxgptSchema.table('accounting_workspaces', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id').references(() => accountingOrganizations.id, { onDelete: 'set null' }),
+  ownerUserId: text('owner_user_id').notNull(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull(),
+  clerkOrgId: text('clerk_org_id'),
+  orgSyncStatus: varchar('org_sync_status', { length: 24 }).notNull().default('pending'),
+  orgSyncedAt: timestamp('org_synced_at'),
   workspaceType: varchar('workspace_type', { length: 16 }).notNull().default('business'),
   isPersonal: boolean('is_personal').notNull().default(false),
   createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -477,6 +504,7 @@ export const accountingWorkspaceMembers = taxgptSchema.table('accounting_workspa
   clerkUserId: text('clerk_user_id').notNull(),
   role: varchar('role', { length: 24 }).notNull().default('preparer'),
   status: varchar('status', { length: 24 }).notNull().default('active'),
+  clerkOrgMembershipId: text('clerk_org_membership_id'),
   invitedBy: text('invited_by'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
@@ -489,6 +517,8 @@ export const accountingWorkspaceInvites = taxgptSchema.table('accounting_workspa
   inviteToken: text('invite_token').notNull(),
   role: varchar('role', { length: 24 }).notNull().default('preparer'),
   status: varchar('status', { length: 24 }).notNull().default('pending'),
+  source: varchar('source', { length: 24 }).notNull().default('clerk'),
+  clerkInvitationId: text('clerk_invitation_id'),
   invitedBy: text('invited_by').notNull(),
   acceptedBy: text('accepted_by'),
   expiresAt: timestamp('expires_at').notNull(),
@@ -499,6 +529,7 @@ export const accountingWorkspaceInvites = taxgptSchema.table('accounting_workspa
 export const accountingWorkspaceProfiles = taxgptSchema.table('accounting_workspace_profiles', {
   workspaceId: uuid('workspace_id').primaryKey().references(() => accountingWorkspaces.id, { onDelete: 'cascade' }),
   organizationType: varchar('organization_type', { length: 16 }).notNull().default('business'),
+  businessType: text('business_type').default('corporation'),
   companyLegalName: text('company_legal_name').notNull(),
   companyOperatingName: text('company_operating_name'),
   industry: text('industry'),
@@ -514,6 +545,121 @@ export const accountingWorkspaceProfiles = taxgptSchema.table('accounting_worksp
   postalCode: text('postal_code'),
   countryCode: varchar('country_code', { length: 2 }).notNull().default('CA'),
   onboardingCompletedAt: timestamp('onboarding_completed_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const workspaceStripeCustomerMappings = taxgptSchema.table('workspace_stripe_customer_mappings', {
+  workspaceId: uuid('workspace_id').primaryKey().references(() => accountingWorkspaces.id, { onDelete: 'cascade' }),
+  clerkUserId: text('clerk_user_id').notNull(),
+  stripeCustomerId: text('stripe_customer_id').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const subscriptionPlans = taxgptSchema.table('subscription_plans', {
+  id: text('id').primaryKey(),
+  displayName: text('display_name').notNull(),
+  stripeProductId: text('stripe_product_id').notNull(),
+  stripePriceMonthlyId: text('stripe_price_monthly_id').notNull(),
+  stripePriceAnnualId: text('stripe_price_annual_id').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const workspaceSubscriptions = taxgptSchema.table('workspace_subscriptions', {
+  workspaceId: uuid('workspace_id').primaryKey().references(() => accountingWorkspaces.id, { onDelete: 'cascade' }),
+  planId: text('plan_id').notNull().default('FREE'),
+  status: varchar('status', { length: 32 }).notNull().default('none'),
+  interval: varchar('interval', { length: 16 }).notNull().default('monthly'),
+  stripeCustomerId: text('stripe_customer_id'),
+  stripeSubscriptionId: text('stripe_subscription_id'),
+  cancelAtPeriodEnd: boolean('cancel_at_period_end').notNull().default(false),
+  currentPeriodStart: timestamp('current_period_start'),
+  currentPeriodEnd: timestamp('current_period_end'),
+  trialEndsAt: timestamp('trial_ends_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const workspaceEntitlements = taxgptSchema.table('workspace_entitlements', {
+  workspaceId: uuid('workspace_id').primaryKey().references(() => accountingWorkspaces.id, { onDelete: 'cascade' }),
+  canAccessWorkingPapers: boolean('can_access_working_papers').notNull().default(false),
+  canAccessTaxgpt: boolean('can_access_taxgpt').notNull().default(true),
+  canUseQboIntegration: boolean('can_use_qbo_integration').notNull().default(false),
+  canUseGoogleSheetsIntegration: boolean('can_use_google_sheets_integration').notNull().default(false),
+  canInviteUsers: boolean('can_invite_users').notNull().default(true),
+  maxStorageMb: integer('max_storage_mb').notNull().default(512),
+  maxUsers: integer('max_users').notNull().default(3),
+  aiMonthlyCredits: integer('ai_monthly_credits').notNull().default(100),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const workspaceCustomRoles = taxgptSchema.table('workspace_custom_roles', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  workspaceId: uuid('workspace_id').notNull().references(() => accountingWorkspaces.id, { onDelete: 'cascade' }),
+  roleName: text('role_name').notNull(),
+  sourceRole: text('source_role').notNull(),
+  displayName: text('display_name').notNull(),
+  isSystem: boolean('is_system').notNull().default(false),
+  createdBy: text('created_by').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const workspaceRolePermissions = taxgptSchema.table('workspace_role_permissions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  workspaceId: uuid('workspace_id').notNull().references(() => accountingWorkspaces.id, { onDelete: 'cascade' }),
+  roleName: text('role_name').notNull(),
+  permissionKey: text('permission_key').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const workspaceMemberRoles = taxgptSchema.table('workspace_member_roles', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  workspaceId: uuid('workspace_id').notNull().references(() => accountingWorkspaces.id, { onDelete: 'cascade' }),
+  clerkUserId: text('clerk_user_id').notNull(),
+  roleName: text('role_name').notNull(),
+  createdBy: text('created_by').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const workspaceEmployeeAssignments = taxgptSchema.table('workspace_employee_assignments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id').notNull().references(() => accountingOrganizations.id, { onDelete: 'cascade' }),
+  workspaceId: uuid('workspace_id').notNull().references(() => accountingWorkspaces.id, { onDelete: 'cascade' }),
+  clerkUserId: text('clerk_user_id').notNull(),
+  assignmentRole: varchar('assignment_role', { length: 24 }).notNull().default('member'),
+  status: varchar('status', { length: 24 }).notNull().default('active'),
+  assignedBy: text('assigned_by').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const engagementEmployeeAssignments = taxgptSchema.table('engagement_employee_assignments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id').notNull().references(() => accountingOrganizations.id, { onDelete: 'cascade' }),
+  workspaceId: uuid('workspace_id').notNull().references(() => accountingWorkspaces.id, { onDelete: 'cascade' }),
+  engagementId: uuid('engagement_id').notNull().references(() => accountingEngagements.id, { onDelete: 'cascade' }),
+  clerkUserId: text('clerk_user_id').notNull(),
+  assignmentRole: varchar('assignment_role', { length: 24 }).notNull().default('member'),
+  status: varchar('status', { length: 24 }).notNull().default('active'),
+  assignedBy: text('assigned_by').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const workingPaperEmployeeAssignments = taxgptSchema.table('working_paper_employee_assignments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id').notNull().references(() => accountingOrganizations.id, { onDelete: 'cascade' }),
+  workspaceId: uuid('workspace_id').notNull().references(() => accountingWorkspaces.id, { onDelete: 'cascade' }),
+  engagementId: uuid('engagement_id').notNull().references(() => accountingEngagements.id, { onDelete: 'cascade' }),
+  leadSheetId: uuid('lead_sheet_id').notNull().references(() => leadSheets.id, { onDelete: 'cascade' }),
+  clerkUserId: text('clerk_user_id').notNull(),
+  assignmentRole: varchar('assignment_role', { length: 24 }).notNull().default('member'),
+  status: varchar('status', { length: 24 }).notNull().default('active'),
+  assignedBy: text('assigned_by').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });

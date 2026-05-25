@@ -74,6 +74,7 @@ import {
   updateOrganizationMember
 } from '../services/accountingWorkspaceService.js'
 import {
+  assertWorkspacePermissionWithCustomRoles,
   assignWorkspaceMemberRole,
   listWorkspaceRoles,
   upsertWorkspaceCustomRole
@@ -86,7 +87,7 @@ import {
   exchangeQboCodeForTokens,
   verifySignedIntegrationState
 } from '../services/integrationOAuthService.js'
-import { getWorkspaceEntitlements } from '../services/orchestrators/billingOrchestrator.js'
+import { assertWorkspaceEntitlement } from '../services/authz/entitlementPolicy.js'
 
 const MAX_UPLOAD_BYTES = parseInt(process.env.PORTAL_MAX_UPLOAD_BYTES || String(100 * 1024 * 1024), 10)
 
@@ -208,11 +209,17 @@ export function createPortalRouter (pool) {
   const resolveAccountingScope = async (req, res, session) => {
     try {
       const requestedWorkspaceId = req.headers['x-accounting-workspace-id'] || req.query.workspaceId || null
-      const workspace = await getWorkspaceContext(pool, session.userId, requestedWorkspaceId)
+      const workspace = await getWorkspaceContext(pool, session.userId, requestedWorkspaceId, {
+        expectedClerkOrgId: session.orgId || null
+      })
+      if (!workspace.organization_id) {
+        res.status(400).json({ error: 'Workspace is not linked to an organization. Please complete organization linking first.' })
+        return null
+      }
       await assertWorkspaceAssignment(pool, workspace, session.userId, { assignedBy: session.userId })
       return {
         workspace,
-        organizationId: workspace.organization_id || workspace.id,
+        organizationId: workspace.organization_id,
         workspaceUserId: workspace.owner_user_id,
         actorUserId: session.userId
       }
@@ -224,19 +231,33 @@ export function createPortalRouter (pool) {
   }
   const hasEntitlement = async (res, workspaceId, key) => {
     try {
-      const entitlements = await getWorkspaceEntitlements(pool, workspaceId)
-      const mapping = {
-        workingPapers: Boolean(entitlements.can_access_working_papers),
-        integrations: Boolean(entitlements.can_use_qbo_integration || entitlements.can_use_google_sheets_integration)
-      }
-      if (!mapping[key]) {
+      await assertWorkspaceEntitlement({ pool, workspaceId, entitlementKey: key })
+      return true
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Could not evaluate workspace entitlements'
+      if (message.startsWith('Entitlement denied:')) {
         res.status(402).json({ error: 'Feature requires an upgraded workspace subscription.' })
         return false
       }
-      return true
-    } catch (e) {
-      res.status(500).json({ error: e instanceof Error ? e.message : 'Could not evaluate workspace entitlements' })
+      res.status(500).json({ error: message })
       return false
+    }
+  }
+  const requireWorkspacePermission = async (session, workspaceId, permission, res) => {
+    try {
+      const workspace = await getWorkspaceContext(pool, session.userId, workspaceId, {
+        expectedClerkOrgId: session.orgId || null
+      })
+      await assertWorkspacePermissionWithCustomRoles(pool, {
+        workspaceId: workspace.id,
+        workspaceRole: workspace.role,
+        clerkUserId: session.userId,
+        permission
+      })
+      return workspace
+    } catch (e) {
+      res.status(403).json({ error: e instanceof Error ? e.message : 'Forbidden' })
+      return null
     }
   }
   const resolveEngagementScope = async (req, res, session) => {
@@ -920,6 +941,8 @@ export function createPortalRouter (pool) {
   r.patch('/v1/accounting/workspaces/:workspaceId', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const authorized = await requireWorkspacePermission(session, req.params.workspaceId, 'workspace.manage', res)
+    if (!authorized) return
     try {
       const workspace = await updateWorkspace(pool, session.userId, req.params.workspaceId, req.body || {})
       res.json({ workspace })
@@ -931,6 +954,8 @@ export function createPortalRouter (pool) {
   r.delete('/v1/accounting/workspaces/:workspaceId', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const authorized = await requireWorkspacePermission(session, req.params.workspaceId, 'workspace.manage', res)
+    if (!authorized) return
     try {
       const ok = await deleteWorkspace(pool, session.userId, req.params.workspaceId)
       res.json({ ok })
@@ -942,6 +967,8 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/workspaces/:workspaceId/profile', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const authorized = await requireWorkspacePermission(session, req.params.workspaceId, 'workspace.manage', res)
+    if (!authorized) return
     try {
       const data = await getWorkspaceProfile(pool, session.userId, req.params.workspaceId)
       res.json(data)
@@ -953,6 +980,8 @@ export function createPortalRouter (pool) {
   r.put('/v1/accounting/workspaces/:workspaceId/profile', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const authorized = await requireWorkspacePermission(session, req.params.workspaceId, 'workspace.manage', res)
+    if (!authorized) return
     try {
       const data = await upsertWorkspaceProfile(pool, session.userId, req.params.workspaceId, req.body || {})
       res.json(data)
@@ -964,6 +993,8 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/workspaces/:workspaceId/members', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const authorized = await requireWorkspacePermission(session, req.params.workspaceId, 'workspace.manage', res)
+    if (!authorized) return
     try {
       const data = await listWorkspaceMembers(pool, session.userId, req.params.workspaceId)
       res.json(data)
@@ -975,6 +1006,8 @@ export function createPortalRouter (pool) {
   r.post('/v1/accounting/workspaces/:workspaceId/members', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const authorized = await requireWorkspacePermission(session, req.params.workspaceId, 'workspace.invite', res)
+    if (!authorized) return
     try {
       const member = await addWorkspaceMember(pool, session.userId, req.params.workspaceId, req.body || {})
       res.json({ member })
@@ -986,6 +1019,8 @@ export function createPortalRouter (pool) {
   r.patch('/v1/accounting/workspaces/:workspaceId/members/:memberUserId', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const authorized = await requireWorkspacePermission(session, req.params.workspaceId, 'workspace.manage', res)
+    if (!authorized) return
     try {
       const member = await updateWorkspaceMember(
         pool,
@@ -1014,6 +1049,8 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/workspaces/:workspaceId/organization', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const authorized = await requireWorkspacePermission(session, req.params.workspaceId, 'workspace.manage', res)
+    if (!authorized) return
     try {
       const snapshot = await getOrganizationAdminSnapshot(pool, session.userId, req.params.workspaceId)
       res.json(snapshot)
@@ -1025,6 +1062,8 @@ export function createPortalRouter (pool) {
   r.post('/v1/accounting/workspaces/:workspaceId/organization/invites', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const authorized = await requireWorkspacePermission(session, req.params.workspaceId, 'workspace.invite', res)
+    if (!authorized) return
     try {
       const invite = await createOrganizationEmployeeInvite(pool, session.userId, req.params.workspaceId, req.body || {})
       res.json({ invite })
@@ -1036,6 +1075,8 @@ export function createPortalRouter (pool) {
   r.patch('/v1/accounting/workspaces/:workspaceId/organization/members/:memberUserId', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const authorized = await requireWorkspacePermission(session, req.params.workspaceId, 'workspace.manage', res)
+    if (!authorized) return
     try {
       const member = await updateOrganizationMember(
         pool,
@@ -1053,6 +1094,8 @@ export function createPortalRouter (pool) {
   r.delete('/v1/accounting/workspaces/:workspaceId/organization/members/:memberUserId', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const authorized = await requireWorkspacePermission(session, req.params.workspaceId, 'workspace.manage', res)
+    if (!authorized) return
     try {
       const member = await deleteOrganizationMember(pool, session.userId, req.params.workspaceId, req.params.memberUserId)
       res.json({ member })
@@ -1064,6 +1107,8 @@ export function createPortalRouter (pool) {
   r.put('/v1/accounting/workspaces/:workspaceId/assignments/workspace', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const authorized = await requireWorkspacePermission(session, req.params.workspaceId, 'workspace.manage', res)
+    if (!authorized) return
     try {
       const assignment = await upsertWorkspaceEmployeeAssignment(pool, session.userId, req.params.workspaceId, req.body || {})
       res.json({ assignment })
@@ -1162,6 +1207,8 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/workspaces/:workspaceId/invites', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const authorized = await requireWorkspacePermission(session, req.params.workspaceId, 'workspace.manage', res)
+    if (!authorized) return
     try {
       const data = await listWorkspaceInvites(pool, session.userId, req.params.workspaceId)
       res.json(data)
@@ -1173,6 +1220,8 @@ export function createPortalRouter (pool) {
   r.post('/v1/accounting/workspaces/:workspaceId/invites', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const authorized = await requireWorkspacePermission(session, req.params.workspaceId, 'workspace.invite', res)
+    if (!authorized) return
     try {
       const invite = await createWorkspaceInvite(pool, session.userId, req.params.workspaceId, req.body || {})
       res.json({ invite })

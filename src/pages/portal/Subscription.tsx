@@ -6,8 +6,9 @@ import ClientPortalShell from '../../components/ClientPortalShell'
 import { useSubscription, useSubscriptionPlan } from '../../lib/subscriptions/hooks'
 import { SUBSCRIPTION_PLANS } from '../../lib/subscriptions/types'
 import { formatSubscriptionPrice } from '../../lib/subscriptions/utils'
-import { markSubscriptionOnboardingComplete } from '../../lib/subscriptions/onboarding'
 import { portalFetch } from '../../lib/portalApi'
+import { useWorkspaceState } from '../../platform/workspace/useWorkspaceState'
+import { listWorkspaces } from '../../services/accounting/workspaceService'
 
 type InviteDraft = {
   email: string
@@ -61,6 +62,7 @@ const Subscription: FC = () => {
   const currentPlanConfig = useSubscriptionPlan()
   const forceEnterpriseAccess = import.meta.env.VITE_FORCE_ENTERPRISE_ACCESS !== 'false'
   const onboardingRequested = searchParams.get('onboarding') === '1'
+  const { setWorkspaceId } = useWorkspaceState()
   const [loadingWorkspaces, setLoadingWorkspaces] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -79,11 +81,11 @@ const Subscription: FC = () => {
   const loadWorkspaces = useCallback(async () => {
     setLoadingWorkspaces(true)
     try {
-      const data = await portalFetch<{ workspaces: any[] }>('/v1/accounting/workspaces', getToken)
-      const rows = data.workspaces || []
+      const rows = await listWorkspaces(getToken)
       setWorkspaces(rows)
       if (rows.length > 0) {
         setSelectedWorkspaceId(rows[0].id)
+        setWorkspaceId(rows[0].id)
         setOnboardingStep((current) => (current < 2 ? 2 : current))
       }
     } catch (e) {
@@ -91,7 +93,7 @@ const Subscription: FC = () => {
     } finally {
       setLoadingWorkspaces(false)
     }
-  }, [getToken])
+  }, [getToken, setWorkspaceId])
 
   useEffect(() => {
     void loadWorkspaces()
@@ -195,6 +197,7 @@ const Subscription: FC = () => {
       }
       await loadWorkspaces()
       setSelectedWorkspaceId(created.workspace?.id || '')
+      setWorkspaceId(created.workspace?.id || null)
       setOnboardingStep(2)
       setNotice('Workspace and company/firm profile saved. Continue to invite employees.')
     } catch (e) {
@@ -256,7 +259,7 @@ const Subscription: FC = () => {
       try {
         await saveWorkspaceProfile(selectedWorkspaceId, true)
         setOnboardingStep(3)
-        markSubscriptionOnboardingComplete()
+        setWorkspaceId(selectedWorkspaceId)
         navigate('/portal/accounting/workspaces', { replace: true })
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Could not complete onboarding')
@@ -481,13 +484,17 @@ const Subscription: FC = () => {
                       <select
                         className="mt-1 w-full border border-border rounded-md px-3 py-2 text-sm"
                         value={selectedWorkspaceId}
-                        onChange={(e) => setSelectedWorkspaceId(e.target.value)}
+                        onChange={(e) => {
+                          const nextId = e.target.value
+                          setSelectedWorkspaceId(nextId)
+                          setWorkspaceId(nextId || null)
+                        }}
                         disabled={workspaces.length === 0}
                       >
                         {workspaces.length === 0 && <option value="">Create workspace first</option>}
                         {workspaces.map((workspace) => (
                           <option key={workspace.id} value={workspace.id}>
-                            {workspace.name} ({workspace.workspace_type || 'business'})
+                            {workspace.name} ({workspace.workspaceType || 'business'})
                           </option>
                         ))}
                       </select>

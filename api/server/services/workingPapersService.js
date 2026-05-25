@@ -92,6 +92,29 @@ function deriveEngagementStatusFromReviewFlow (currentStatus, reviewFlowStatus) 
   return current
 }
 
+async function applyEngagementWorkflowSignal (pool, engagementId, reviewFlowStatus) {
+  if (!engagementId || !reviewFlowStatus) return
+  const nextFlow = String(reviewFlowStatus).trim().toLowerCase()
+  if (!REVIEW_FLOW_STATUSES.has(nextFlow)) return
+  const { rows: engagementRows } = await pool.query(
+    `SELECT id, status, review_flow_status
+     FROM taxgpt.accounting_engagements
+     WHERE id = $1::uuid`,
+    [engagementId]
+  )
+  const engagement = engagementRows[0]
+  if (!engagement || engagement.status === 'archived') return
+  const nextStatus = deriveEngagementStatusFromReviewFlow(engagement.status, nextFlow)
+  await pool.query(
+    `UPDATE taxgpt.accounting_engagements
+     SET review_flow_status = $1,
+         status = $2,
+         updated_at = now()
+     WHERE id = $3::uuid`,
+    [nextFlow, nextStatus, engagementId]
+  )
+}
+
 async function assertAssignableWorkspaceMember (pool, workspaceId, clerkUserId, fieldName) {
   if (!workspaceId || !clerkUserId) return
   const { rows } = await pool.query(
@@ -728,6 +751,7 @@ export async function preparerSignoff (pool, clerkUserId, actorId, leadSheetId) 
      RETURNING *`,
     [actorId, leadSheetId]
   )
+  await applyEngagementWorkflowSignal(pool, beforeRows[0].engagement_id, 'reviewer_in_progress')
   await logAccountingAudit(pool, clerkUserId, actorId, 'lead_sheet', leadSheetId, 'preparer_signoff', beforeRows[0], rows[0])
   return rows[0]
 }
@@ -751,6 +775,27 @@ export async function reviewerSignoff (pool, clerkUserId, actorId, leadSheetId, 
      RETURNING *`,
     [actorId, leadSheetId]
   )
+  const engagementId = beforeRows[0].engagement_id
+  const [{ rows: openNoteRows }, { rows: unreviewedRows }] = await Promise.all([
+    pool.query(
+      `SELECT count(*)::int AS c
+       FROM taxgpt.review_notes
+       WHERE engagement_id = $1::uuid
+         AND status IN ('open', 'reopened')`,
+      [engagementId]
+    ),
+    pool.query(
+      `SELECT count(*)::int AS c
+       FROM taxgpt.lead_sheets
+       WHERE engagement_id = $1::uuid
+         AND status <> 'reviewed'`,
+      [engagementId]
+    )
+  ])
+  const hasOpenNotes = Number(openNoteRows[0]?.c || 0) > 0
+  const hasUnreviewedLeadSheets = Number(unreviewedRows[0]?.c || 0) > 0
+  const nextFlow = hasOpenNotes ? 'review_notes_open' : (hasUnreviewedLeadSheets ? 'reviewer_in_progress' : 'approved')
+  await applyEngagementWorkflowSignal(pool, engagementId, nextFlow)
   await logAccountingAudit(pool, clerkUserId, actorId, 'lead_sheet', leadSheetId, 'reviewer_signoff', beforeRows[0], rows[0])
   return rows[0]
 }
@@ -850,6 +895,7 @@ export async function createReviewNote (pool, clerkUserId, actorId, payload) {
       payload.assignedTo || null
     ]
   )
+  await applyEngagementWorkflowSignal(pool, rows[0].engagement_id, 'review_notes_open')
   await logAccountingAudit(pool, clerkUserId, actorId, 'review_note', rows[0].id, 'created', null, rows[0])
   return rows[0]
 }
@@ -875,6 +921,16 @@ export async function updateReviewNoteStatus (pool, clerkUserId, actorId, noteId
      RETURNING *`,
     [status, updates.assignedTo || null, actorId, noteId]
   )
+  const engagementId = beforeRows[0].engagement_id
+  const { rows: openNoteRows } = await pool.query(
+    `SELECT count(*)::int AS c
+     FROM taxgpt.review_notes
+     WHERE engagement_id = $1::uuid
+       AND status IN ('open', 'reopened')`,
+    [engagementId]
+  )
+  const hasOpenNotes = Number(openNoteRows[0]?.c || 0) > 0
+  await applyEngagementWorkflowSignal(pool, engagementId, hasOpenNotes ? 'review_notes_open' : 'reviewer_in_progress')
   await logAccountingAudit(pool, clerkUserId, actorId, 'review_note', noteId, `status_${status}`, beforeRows[0], rows[0])
   return rows[0]
 }

@@ -82,6 +82,16 @@ function assertReviewFlowTransition (fromStatus, toStatus) {
   }
 }
 
+function deriveEngagementStatusFromReviewFlow (currentStatus, reviewFlowStatus) {
+  const current = String(currentStatus || 'draft').trim().toLowerCase()
+  const flow = String(reviewFlowStatus || 'not_started').trim().toLowerCase()
+  if (current === 'archived') return 'archived'
+  if (flow === 'approved') return 'completed'
+  if (flow === 'reviewer_in_progress' || flow === 'review_notes_open') return 'in_review'
+  if (flow === 'preparer_in_progress') return current === 'draft' ? 'active' : current
+  return current
+}
+
 export function sanitizeFileName (name) {
   const str = String(name || '').replace(/[\u0000-\u001f]/g, '').trim()
   return str.slice(0, 255)
@@ -272,12 +282,14 @@ export async function listEngagements (pool, clerkUserId, query = {}) {
 
 export async function createEngagement (pool, clerkUserId, actorId, payload) {
   assertAllowed(payload.engagementType, ENGAGEMENT_TYPES, 'engagement_type')
-  assertAllowed(payload.status || 'draft', ENGAGEMENT_STATUSES, 'status')
+  const requestedStatus = payload.status || 'draft'
+  assertAllowed(requestedStatus, ENGAGEMENT_STATUSES, 'status')
   assertAllowed(payload.sourceType || 'manual', SOURCE_TYPES, 'source_type')
   const name = String(payload.name || '').trim()
   if (!name) throw new Error('Engagement name is required')
   const reviewFlowStatus = String(payload.reviewFlowStatus || 'not_started').trim().toLowerCase()
   assertAllowed(reviewFlowStatus, REVIEW_FLOW_STATUSES, 'review_flow_status')
+  const normalizedStatus = deriveEngagementStatusFromReviewFlow(requestedStatus, reviewFlowStatus)
   const deliverables = normalizeDeliverables(payload.deliverables)
 
   await ensureStandardMappingGroups(pool, clerkUserId)
@@ -298,7 +310,7 @@ export async function createEngagement (pool, clerkUserId, actorId, payload) {
       payload.periodStart,
       payload.periodEnd,
       payload.dueDate || null,
-      payload.status || 'draft',
+      normalizedStatus,
       payload.sourceType || 'manual',
       reviewFlowStatus,
       JSON.stringify(deliverables),
@@ -320,13 +332,14 @@ export async function updateEngagement (pool, clerkUserId, actorId, engagementId
   )
   if (!beforeRows[0]) return null
   const before = beforeRows[0]
-  const status = payload.status || before.status
+  const requestedStatus = payload.status || before.status
   const sourceType = payload.sourceType || before.source_type
   const reviewFlowStatus = String(payload.reviewFlowStatus || before.review_flow_status || 'not_started').trim().toLowerCase()
-  assertAllowed(status, ENGAGEMENT_STATUSES, 'status')
+  assertAllowed(requestedStatus, ENGAGEMENT_STATUSES, 'status')
   assertAllowed(sourceType, SOURCE_TYPES, 'source_type')
   assertAllowed(reviewFlowStatus, REVIEW_FLOW_STATUSES, 'review_flow_status')
   assertReviewFlowTransition(before.review_flow_status || 'not_started', reviewFlowStatus)
+  const status = payload.status ? requestedStatus : deriveEngagementStatusFromReviewFlow(requestedStatus, reviewFlowStatus)
   const deliverables = payload.deliverables == null
     ? (Array.isArray(before.deliverables) ? before.deliverables : [])
     : normalizeDeliverables(payload.deliverables)

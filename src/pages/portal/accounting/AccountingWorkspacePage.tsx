@@ -226,7 +226,9 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [engagementWorkflowForm, setEngagementWorkflowForm] = useState({
     dueDate: '',
     reviewFlowStatus: 'not_started',
-    deliverablesText: ''
+    deliverablesText: '',
+    assignedPreparerId: '',
+    assignedReviewerId: ''
   })
   const [dashboard, setDashboard] = useState<any | null>(null)
   const [leadSheets, setLeadSheets] = useState<any[]>([])
@@ -480,6 +482,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const clientLabelPlural = isFirmWorkspace ? 'Accounting clients' : 'Business entities'
   const currentReviewFlowStatus = String(dashboard?.engagement?.review_flow_status || 'not_started')
   const nextReviewFlowStatuses = reviewFlowTransitions[currentReviewFlowStatus] || []
+  const assignmentCandidates = useMemo(
+    () => workspaceMembers.filter((member) => member.status === 'active'),
+    [workspaceMembers]
+  )
 
   useEffect(() => {
     if (!activeWorkspace) return
@@ -527,7 +533,9 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setEngagementWorkflowForm({
       dueDate: engagement.due_date || '',
       reviewFlowStatus: engagement.review_flow_status || 'not_started',
-      deliverablesText: Array.isArray(engagement.deliverables) ? engagement.deliverables.join('\n') : ''
+      deliverablesText: Array.isArray(engagement.deliverables) ? engagement.deliverables.join('\n') : '',
+      assignedPreparerId: engagement.assigned_preparer_id || '',
+      assignedReviewerId: engagement.assigned_reviewer_id || ''
     })
   }, [dashboard])
 
@@ -590,7 +598,9 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         body: JSON.stringify({
           dueDate: engagementWorkflowForm.dueDate || null,
           reviewFlowStatus: engagementWorkflowForm.reviewFlowStatus,
-          deliverables: parseDeliverablesText(engagementWorkflowForm.deliverablesText)
+          deliverables: parseDeliverablesText(engagementWorkflowForm.deliverablesText),
+          assignedPreparerId: engagementWorkflowForm.assignedPreparerId || null,
+          assignedReviewerId: engagementWorkflowForm.assignedReviewerId || null
         })
       })
       await Promise.all([loadEngagementDashboard(), loadEngagements(), loadStatusSummary()])
@@ -1911,6 +1921,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             {' '}| Due date: <span className="font-medium text-primary-dark">{dashboard.engagement.due_date ? new Date(dashboard.engagement.due_date).toLocaleDateString() : 'Not set'}</span>
                             {' '}| Deliverables: <span className="font-medium text-primary-dark">{Array.isArray(dashboard.engagement.deliverables) ? dashboard.engagement.deliverables.length : 0}</span>
                           </p>
+                          <p className="text-xs text-text-light mt-1">
+                            Preparer: <span className="font-medium text-primary-dark">{dashboard.engagement.assigned_preparer_id || 'Unassigned'}</span>
+                            {' '}| Reviewer: <span className="font-medium text-primary-dark">{dashboard.engagement.assigned_reviewer_id || 'Unassigned'}</span>
+                          </p>
                           <div className="flex flex-wrap gap-2 mt-3">
                             {nextReviewFlowStatuses.map((status) => (
                               <button
@@ -2234,6 +2248,36 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               >
                                 {reviewFlowStatusOptions.map((status) => (
                                   <option key={status} value={status}>{formatWorkflowLabel(status)}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-text-light mb-1">Assigned preparer</label>
+                              <select
+                                className="border border-border rounded-md px-3 py-2 text-sm w-full"
+                                value={engagementWorkflowForm.assignedPreparerId}
+                                onChange={(e) => setEngagementWorkflowForm((prev) => ({ ...prev, assignedPreparerId: e.target.value }))}
+                              >
+                                <option value="">Unassigned</option>
+                                {assignmentCandidates.map((member) => (
+                                  <option key={member.clerk_user_id} value={member.clerk_user_id}>
+                                    {member.display_name || member.email || member.clerk_user_id}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-text-light mb-1">Assigned reviewer</label>
+                              <select
+                                className="border border-border rounded-md px-3 py-2 text-sm w-full"
+                                value={engagementWorkflowForm.assignedReviewerId}
+                                onChange={(e) => setEngagementWorkflowForm((prev) => ({ ...prev, assignedReviewerId: e.target.value }))}
+                              >
+                                <option value="">Unassigned</option>
+                                {assignmentCandidates.map((member) => (
+                                  <option key={member.clerk_user_id} value={member.clerk_user_id}>
+                                    {member.display_name || member.email || member.clerk_user_id}
+                                  </option>
                                 ))}
                               </select>
                             </div>

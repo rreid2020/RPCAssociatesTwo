@@ -798,6 +798,7 @@ const STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS taxgpt.accounting_workspace_profiles (
   workspace_id UUID PRIMARY KEY REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,
   organization_type VARCHAR(16) NOT NULL DEFAULT 'business',
+  business_type TEXT DEFAULT 'corporation',
   company_legal_name TEXT NOT NULL,
   company_operating_name TEXT,
   industry TEXT,
@@ -816,6 +817,8 @@ const STATEMENTS = [
   created_at TIMESTAMP NOT NULL DEFAULT now(),
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 )`,
+  "ALTER TABLE taxgpt.accounting_workspace_profiles ADD COLUMN IF NOT EXISTS business_type TEXT DEFAULT 'corporation'",
+  "ALTER TABLE taxgpt.accounting_workspace_profiles ALTER COLUMN business_type SET DEFAULT 'corporation'",
   'CREATE INDEX IF NOT EXISTS accounting_workspace_profiles_contact_email_idx ON taxgpt.accounting_workspace_profiles(primary_contact_email)',
   `CREATE TABLE IF NOT EXISTS taxgpt.workspace_stripe_customer_mappings (
   workspace_id UUID PRIMARY KEY REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,

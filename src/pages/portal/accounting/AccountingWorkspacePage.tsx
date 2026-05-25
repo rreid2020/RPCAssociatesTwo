@@ -30,7 +30,7 @@ interface AccountingWorkspacePageProps {
 const titleByView: Record<AccountingView, string> = {
   landing: 'Accounting Operations',
   workspaceAdmin: 'Workspace Administration',
-  companyProfile: 'Company Profile Setup',
+  companyProfile: 'Business/Firm Profile Setup',
   workingPapersDashboard: 'Working Papers',
   engagementList: 'Engagements',
   newEngagement: 'New Engagement',
@@ -48,7 +48,7 @@ const titleByView: Record<AccountingView, string> = {
 const descriptionByView: Record<AccountingView, string> = {
   landing: 'Manage workspace administration, engagements, working papers, and integrations from one place.',
   workspaceAdmin: 'Configure organization workspaces, employee onboarding, and role assignments.',
-  companyProfile: 'Set company profile details, invite employees, and confirm roster before assignments.',
+  companyProfile: 'Set business/firm profile details, invite employees, and confirm roster before assignments.',
   workingPapersDashboard: 'Track engagement progress, review items, and trial balance readiness.',
   engagementList: 'Search and manage accounting engagements.',
   newEngagement: 'Create a new accounting engagement.',
@@ -64,7 +64,7 @@ const descriptionByView: Record<AccountingView, string> = {
 }
 
 const quickLinks = [
-  { to: '/portal/accounting/company-profile', label: 'Company Profile' },
+  { to: '/portal/accounting/company-profile', label: 'Business/Firm Profile' },
   { to: '/portal/accounting/workspaces', label: 'Workspace Admin' },
   { to: '/portal/accounting/working-papers/engagements', label: 'Engagements' },
   { to: '/portal/accounting/working-papers', label: 'Working Papers' },
@@ -73,8 +73,23 @@ const quickLinks = [
 ]
 
 const workspaceAdminQuickLinks = [
-  { to: '/portal/accounting/company-profile', label: 'Company Profile' },
+  { to: '/portal/accounting/company-profile', label: 'Business/Firm Profile' },
   { to: '/portal/accounting/workspaces', label: 'Workspace Admin' }
+]
+
+const BUSINESS_TYPE_OPTIONS = [
+  { value: 'accounting_firm', label: 'Accounting Firm' },
+  { value: 'sole_proprietorship', label: 'Sole Proprietorship' },
+  { value: 'partnership', label: 'Partnership' },
+  { value: 'corporation', label: 'Corporation' },
+  { value: 'professional_corporation', label: 'Professional Corporation' },
+  { value: 'llc', label: 'Limited Liability Company (LLC)' },
+  { value: 'nonprofit', label: 'Nonprofit Organization' },
+  { value: 'charity', label: 'Registered Charity' },
+  { value: 'cooperative', label: 'Cooperative' },
+  { value: 'trust', label: 'Trust' },
+  { value: 'government', label: 'Government / Public Sector' },
+  { value: 'other', label: 'Other' }
 ]
 
 type Client = {
@@ -199,6 +214,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [newInviteEmail, setNewInviteEmail] = useState('')
   const [newInviteRole, setNewInviteRole] = useState('preparer')
   const [companyProfileForm, setCompanyProfileForm] = useState({
+    businessType: 'corporation',
     companyLegalName: '',
     companyOperatingName: '',
     taxIdentifier: '',
@@ -349,7 +365,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
           return
         }
         if (view === 'companyProfile') {
-          // Keep company profile interactive and avoid blocking paint;
+          // Keep Business/Firm Profile interactive and avoid blocking paint;
           // refresh workspace list in background and load selected scope only.
           void loadWorkspaces()
           if (selectedWorkspaceId) {
@@ -446,6 +462,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   useEffect(() => {
     if (!workspaceProfile) return
     setCompanyProfileForm({
+      businessType: workspaceProfile.business_type || 'corporation',
       companyLegalName: workspaceProfile.company_legal_name || '',
       companyOperatingName: workspaceProfile.company_operating_name || '',
       taxIdentifier: workspaceProfile.tax_identifier || '',
@@ -884,7 +901,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
   const onSaveCompanyProfile = async () => {
     if (!selectedWorkspaceId) {
-      setError('Select a workspace before saving company profile.')
+      setError('Select a workspace before saving Business/Firm profile.')
       return
     }
     if (!companyProfileForm.companyLegalName.trim()) {
@@ -897,6 +914,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       await portalFetch(`/v1/accounting/workspaces/${selectedWorkspaceId}/profile`, getToken, {
         method: 'PUT',
         body: JSON.stringify({
+          businessType: companyProfileForm.businessType,
           companyLegalName: companyProfileForm.companyLegalName.trim(),
           companyOperatingName: companyProfileForm.companyOperatingName.trim() || null,
           taxIdentifier: companyProfileForm.taxIdentifier.trim() || null,
@@ -915,9 +933,9 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         })
       })
       await loadWorkspaceProfile()
-      setNotice('Company profile saved.')
+      setNotice('Business/Firm profile saved.')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save company profile')
+      setError(e instanceof Error ? e.message : 'Could not save Business/Firm profile')
     } finally {
       setSaving(false)
     }
@@ -1173,7 +1191,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         <div className="rounded-lg border border-border p-3 space-y-3">
                           <h4 className="text-sm font-semibold text-primary-dark">Employee assignments</h4>
                           <ol className="text-xs text-text-light space-y-1 list-decimal pl-4">
-                            <li>Invite employees from Company Profile.</li>
+                            <li>Invite employees from Business/Firm Profile.</li>
                             <li>Wait for invite acceptance/confirmation.</li>
                             <li>Assign confirmed employees to workspace, engagements, and working papers.</li>
                           </ol>
@@ -1320,10 +1338,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                     {view === 'landing' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="rounded-lg border border-border p-4">
-                          <h3 className="font-semibold text-primary-dark mb-1">Company Profile</h3>
+                          <h3 className="font-semibold text-primary-dark mb-1">Business/Firm Profile</h3>
                           <p className="text-sm text-text-light mb-3">Set up company details and invite employees before assignment workflows.</p>
                           <Link className="btn btn--primary text-sm py-2 px-4 inline-block" to="/portal/accounting/company-profile">
-                            Open Company Profile
+                            Open Business/Firm Profile
                           </Link>
                         </div>
                         <div className="rounded-lg border border-border p-4">
@@ -1385,17 +1403,26 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                     {view === 'companyProfile' && (
                       <div className="space-y-4">
                         <div className="rounded-lg border border-border p-4">
-                          <h3 className="font-semibold text-primary-dark mb-2">Company profile</h3>
+                          <h3 className="font-semibold text-primary-dark mb-2">Business/Firm profile</h3>
                           <p className="text-sm text-text-light">
-                            Configure core company information, then invite employees at company level before assignment to workspace/engagement/working paper scopes.
+                            Configure core business/firm information, then invite employees before assignment to workspace/engagement/working paper scopes.
                           </p>
                         </div>
                         <div className="rounded-lg border border-border p-4 space-y-3">
-                          <h4 className="font-semibold text-primary-dark">Company details</h4>
+                          <h4 className="font-semibold text-primary-dark">Business/Firm details</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <select
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              value={companyProfileForm.businessType}
+                              onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, businessType: e.target.value }))}
+                            >
+                              {BUSINESS_TYPE_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </select>
                             <input
                               className="border border-border rounded-md px-3 py-2 text-sm"
-                              placeholder="Company legal name"
+                              placeholder="Business/Firm legal name"
                               value={companyProfileForm.companyLegalName}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, companyLegalName: e.target.value }))}
                             />
@@ -1484,7 +1511,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             disabled={saving}
                             onClick={() => { void onSaveCompanyProfile() }}
                           >
-                            Save Company Profile
+                            Save Business/Firm Profile
                           </button>
                         </div>
                         <div className="rounded-lg border border-border p-4 space-y-3">

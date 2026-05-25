@@ -13,6 +13,20 @@ import {
 
 const WORKSPACE_ROLES = new Set(['owner', 'admin', 'manager', 'reviewer', 'preparer', 'read_only', 'client'])
 const WORKSPACE_TYPES = new Set(['business', 'firm'])
+const BUSINESS_PROFILE_TYPES = new Set([
+  'accounting_firm',
+  'sole_proprietorship',
+  'partnership',
+  'corporation',
+  'professional_corporation',
+  'llc',
+  'nonprofit',
+  'charity',
+  'cooperative',
+  'trust',
+  'government',
+  'other'
+])
 
 function assertRole (role) {
   if (!WORKSPACE_ROLES.has(role)) {
@@ -24,6 +38,14 @@ function normalizeWorkspaceType (value) {
   const type = String(value || 'business').trim().toLowerCase()
   if (!WORKSPACE_TYPES.has(type)) {
     throw new Error('Invalid workspace type')
+  }
+  return type
+}
+
+function normalizeBusinessProfileType (value) {
+  const type = String(value || 'corporation').trim().toLowerCase()
+  if (!BUSINESS_PROFILE_TYPES.has(type)) {
+    throw new Error('Invalid business type')
   }
   return type
 }
@@ -260,6 +282,7 @@ export async function ensureWorkspaceTables (pool) {
     `CREATE TABLE IF NOT EXISTS taxgpt.accounting_workspace_profiles (
        workspace_id UUID PRIMARY KEY REFERENCES taxgpt.accounting_workspaces(id) ON DELETE CASCADE,
        organization_type VARCHAR(16) NOT NULL DEFAULT 'business',
+       business_type TEXT DEFAULT 'corporation',
        company_legal_name TEXT NOT NULL,
        company_operating_name TEXT,
        industry TEXT,
@@ -279,6 +302,8 @@ export async function ensureWorkspaceTables (pool) {
        updated_at TIMESTAMP NOT NULL DEFAULT now()
      )`
   )
+  await pool.query("ALTER TABLE taxgpt.accounting_workspace_profiles ADD COLUMN IF NOT EXISTS business_type TEXT DEFAULT 'corporation'")
+  await pool.query("ALTER TABLE taxgpt.accounting_workspace_profiles ALTER COLUMN business_type SET DEFAULT 'corporation'")
   await pool.query('CREATE INDEX IF NOT EXISTS accounting_workspace_profiles_contact_email_idx ON taxgpt.accounting_workspace_profiles(primary_contact_email)')
   await pool.query(
     `CREATE TABLE IF NOT EXISTS taxgpt.workspace_stripe_customer_mappings (
@@ -815,7 +840,7 @@ export async function deleteWorkspace (pool, actorUserId, workspaceId) {
 export async function getWorkspaceProfile (pool, actorUserId, workspaceId) {
   const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
   const { rows } = await pool.query(
-    `SELECT workspace_id, organization_type, company_legal_name, company_operating_name, industry, website_url, tax_identifier,
+    `SELECT workspace_id, organization_type, business_type, company_legal_name, company_operating_name, industry, website_url, tax_identifier,
             primary_contact_name, primary_contact_email, primary_contact_phone, address_line1, address_line2, city, province_state,
             postal_code, country_code, onboarding_completed_at, created_at, updated_at
      FROM taxgpt.accounting_workspace_profiles
@@ -834,20 +859,22 @@ export async function upsertWorkspaceProfile (pool, actorUserId, workspaceId, pa
   const companyLegalName = String(payload?.companyLegalName || '').trim()
   if (!companyLegalName) throw new Error('companyLegalName is required')
   const organizationType = normalizeWorkspaceType(payload?.organizationType || workspace.workspace_type)
+  const businessType = normalizeBusinessProfileType(payload?.businessType)
   const onboardingCompletedAt = payload?.onboardingCompleted ? new Date().toISOString() : null
 
   const { rows } = await pool.query(
     `INSERT INTO taxgpt.accounting_workspace_profiles
-     (workspace_id, organization_type, company_legal_name, company_operating_name, industry, website_url, tax_identifier,
+     (workspace_id, organization_type, business_type, company_legal_name, company_operating_name, industry, website_url, tax_identifier,
       primary_contact_name, primary_contact_email, primary_contact_phone, address_line1, address_line2, city, province_state,
       postal_code, country_code, onboarding_completed_at, created_at, updated_at)
      VALUES (
-      $1::uuid, $2, $3, $4, $5, $6, $7,
-      $8, $9, $10, $11, $12, $13, $14,
-      $15, $16, $17::timestamp, now(), now()
+      $1::uuid, $2, $3, $4, $5, $6, $7, $8,
+      $9, $10, $11, $12, $13, $14, $15,
+      $16, $17, $18::timestamp, now(), now()
      )
      ON CONFLICT (workspace_id) DO UPDATE SET
       organization_type = EXCLUDED.organization_type,
+      business_type = EXCLUDED.business_type,
       company_legal_name = EXCLUDED.company_legal_name,
       company_operating_name = EXCLUDED.company_operating_name,
       industry = EXCLUDED.industry,
@@ -864,12 +891,13 @@ export async function upsertWorkspaceProfile (pool, actorUserId, workspaceId, pa
       country_code = EXCLUDED.country_code,
       onboarding_completed_at = COALESCE(EXCLUDED.onboarding_completed_at, taxgpt.accounting_workspace_profiles.onboarding_completed_at),
       updated_at = now()
-     RETURNING workspace_id, organization_type, company_legal_name, company_operating_name, industry, website_url, tax_identifier,
+     RETURNING workspace_id, organization_type, business_type, company_legal_name, company_operating_name, industry, website_url, tax_identifier,
                primary_contact_name, primary_contact_email, primary_contact_phone, address_line1, address_line2, city, province_state,
                postal_code, country_code, onboarding_completed_at, created_at, updated_at`,
     [
       workspace.id,
       organizationType,
+      businessType,
       companyLegalName,
       normalizeOptionalText(payload?.companyOperatingName),
       normalizeOptionalText(payload?.industry),

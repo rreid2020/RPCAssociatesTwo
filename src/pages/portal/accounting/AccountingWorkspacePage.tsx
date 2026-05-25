@@ -752,7 +752,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         method: 'PATCH',
         body: JSON.stringify({ status })
       })
-      await loadReviewNotes()
+      await Promise.all([loadReviewNotes(), loadEngagementDashboard(), loadEngagements(), loadStatusSummary()])
       setNotice('Review note updated')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not update review note')
@@ -770,7 +770,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setError(null)
     try {
       await portalFetch(`/v1/accounting/lead-sheets/${leadSheetId}/preparer-signoff`, getToken, { method: 'POST' })
-      await loadLeadSheetDetail()
+      await Promise.all([
+        loadLeadSheetDetail(),
+        loadEngagementDashboard(),
+        loadEngagements(),
+        loadStatusSummary()
+      ])
       setNotice('Preparer signoff completed')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not sign off')
@@ -791,7 +796,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         method: 'POST',
         headers: { 'x-portal-role': 'reviewer' }
       })
-      await loadLeadSheetDetail()
+      await Promise.all([
+        loadLeadSheetDetail(),
+        loadEngagementDashboard(),
+        loadEngagements(),
+        loadStatusSummary()
+      ])
       setNotice('Reviewer signoff completed')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not sign off')

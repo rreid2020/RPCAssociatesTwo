@@ -1,0 +1,37 @@
+---
+description: Multi-tenant governance, auth, billing boundaries, API and migration standards
+alwaysApply: true
+---
+
+# Enterprise Governance and Security
+
+## Multi-Tenant Workspace Enforcement
+
+All entities and workflows must enforce workspace ownership, tenant-safe querying, RBAC, and entitlement checks. All queries/mutations must be workspace-scoped.
+
+## Authentication and Identity
+
+Clerk is authoritative for authentication, OAuth, sessions, organization membership, and invitations. Do not introduce parallel auth or membership systems.
+
+## Billing Boundaries
+
+Stripe is authoritative for subscriptions, invoices, checkout, and billing portal. The platform is authoritative for entitlements, permissions, feature access, and workspace governance. Do not embed billing logic directly in frontend components.
+
+## Authorization Order (Backend Enforced)
+
+Enforce in order:
+1. Authentication
+2. Workspace membership
+3. Role authorization
+4. Permission authorization
+5. Entitlement authorization
+
+Frontend guards are UX only; backend enforcement is mandatory.
+
+## Database and Migration Governance
+
+Before new persistence, analyze existing schema/tables/relationships and reuse patterns. Prefer additive evolutionary migrations with rollback safety, tenant ownership, indexing consideration, and operational continuity. Avoid destructive rewrites and schema drift.
+
+## API and Auditability Standards
+
+All APIs must validate input, enforce authorization and workspace ownership, return typed/consistent responses, and handle errors safely via service-layer abstractions. Critical financial operations should capture timestamps, ownership, and created_by/updated_by style accountability metadata where applicable.

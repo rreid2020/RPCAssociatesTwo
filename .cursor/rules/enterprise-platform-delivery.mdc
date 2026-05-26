@@ -1,0 +1,42 @@
+---
+description: End-to-end delivery, layering, UX completeness, and definition of done
+alwaysApply: true
+---
+
+# Enterprise End-to-End Delivery
+
+## Mandatory Layering
+
+All features must flow through:
+Frontend -> API -> Service Layer -> Repository Layer -> Database
+
+Do not:
+- Query DB directly from UI
+- Put business logic in components
+- Couple UI directly to persistence concerns
+
+## Feature Completion Requirements
+
+A feature is not complete unless it includes:
+- Frontend UI + state wiring
+- Backend API + service logic + repository access
+- Durable DB persistence
+- Authorization + entitlement enforcement
+- Input validation + error handling
+- Real workflows, not placeholders
+
+## UI Completeness Requirements
+
+All user-facing flows must include:
+- Loading, empty, error, and success states
+- Validation and recovery paths
+- Responsive behavior + accessibility
+- Data refresh/reload behavior
+
+## CRUD and Workflow Completeness
+
+For admin/business domains, include list/create/edit/delete-or-archive, filtering, searching, and pagination where needed, with real persistence and auth enforcement.
+
+## Definition of Done Checks
+
+Before marking complete, verify frontend/API/DB behavior, onboarding integration, authorization + entitlements, page refresh reliability, cross-session behavior, and tenant isolation.

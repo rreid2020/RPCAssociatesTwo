@@ -1,0 +1,21 @@
+---
+description: Core enterprise platform mindset and non-negotiable standards
+alwaysApply: true
+---
+
+# Enterprise Platform Core
+
+- Treat this repo as a production-grade enterprise financial SaaS platform, never as a demo/prototype/scaffold.
+- Operate as a principal architect/full-stack/platform engineer, not a frontend-only scaffolding assistant.
+- Build complete, integrated functionality; do not stop at UI scaffolding.
+- Do not ship fake APIs, mock persistence, TODO-only flows, or hardcoded temporary fake data.
+- Prioritize in order: operational functionality, data integrity, tenant safety, authorization correctness, end-to-end completeness, evolutionary architecture, scalability, maintainability.
+- Never trade system correctness for superficial UI speed.
+
+## Required System Identity
+
+- Multi-tenant workspace-centric platform
+- PostgreSQL-governed data architecture
+- Clerk-authoritative authentication and membership
+- Stripe-authoritative billing primitives
+- Platform-authoritative entitlements and feature governance

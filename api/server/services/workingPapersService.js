@@ -92,6 +92,13 @@ function deriveEngagementStatusFromReviewFlow (currentStatus, reviewFlowStatus) 
   return current
 }
 
+function getNextReviewFlowStatuses (reviewFlowStatus) {
+  const current = String(reviewFlowStatus || 'not_started').trim().toLowerCase()
+  const allowed = REVIEW_FLOW_TRANSITIONS[current]
+  if (!allowed) return []
+  return Array.from(allowed)
+}
+
 async function applyEngagementWorkflowSignal (pool, engagementId, reviewFlowStatus) {
   if (!engagementId || !reviewFlowStatus) return
   const nextFlow = String(reviewFlowStatus).trim().toLowerCase()
@@ -493,6 +500,7 @@ export async function getEngagementDashboard (pool, clerkUserId, engagementId) {
 
   return {
     engagement,
+    nextReviewFlowStatuses: getNextReviewFlowStatuses(engagement.review_flow_status),
     noteSummary: notes,
     taskSummary: tasks,
     leadSheetSummary: leadSheets,

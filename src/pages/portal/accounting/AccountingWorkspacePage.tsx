@@ -483,11 +483,26 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const clientLabel = isFirmWorkspace ? 'Accounting client' : 'Business entity'
   const clientLabelPlural = isFirmWorkspace ? 'Accounting clients' : 'Business entities'
   const currentReviewFlowStatus = String(dashboard?.engagement?.review_flow_status || 'not_started')
-  const nextReviewFlowStatuses = reviewFlowTransitions[currentReviewFlowStatus] || []
+  const nextReviewFlowStatuses: string[] = Array.isArray(dashboard?.nextReviewFlowStatuses)
+    ? dashboard.nextReviewFlowStatuses
+    : (reviewFlowTransitions[currentReviewFlowStatus] || [])
+  const editableReviewFlowOptions = useMemo(
+    () => Array.from(new Set([currentReviewFlowStatus, ...nextReviewFlowStatuses])),
+    [currentReviewFlowStatus, nextReviewFlowStatuses]
+  )
   const assignmentCandidates = useMemo(
     () => workspaceMembers.filter((member) => member.status === 'active'),
     [workspaceMembers]
   )
+  const assignmentLabelByUserId = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const member of workspaceMembers) {
+      const key = String(member.clerk_user_id || '')
+      if (!key) continue
+      map.set(key, String(member.display_name || member.email || member.clerk_user_id))
+    }
+    return map
+  }, [workspaceMembers])
 
   useEffect(() => {
     if (!activeWorkspace) return
@@ -1940,8 +1955,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             {' '}| Deliverables: <span className="font-medium text-primary-dark">{Array.isArray(dashboard.engagement.deliverables) ? dashboard.engagement.deliverables.length : 0}</span>
                           </p>
                           <p className="text-xs text-text-light mt-1">
-                            Preparer: <span className="font-medium text-primary-dark">{dashboard.engagement.assigned_preparer_id || 'Unassigned'}</span>
-                            {' '}| Reviewer: <span className="font-medium text-primary-dark">{dashboard.engagement.assigned_reviewer_id || 'Unassigned'}</span>
+                            Preparer: <span className="font-medium text-primary-dark">{dashboard.engagement.assigned_preparer_id ? (assignmentLabelByUserId.get(dashboard.engagement.assigned_preparer_id) || dashboard.engagement.assigned_preparer_id) : 'Unassigned'}</span>
+                            {' '}| Reviewer: <span className="font-medium text-primary-dark">{dashboard.engagement.assigned_reviewer_id ? (assignmentLabelByUserId.get(dashboard.engagement.assigned_reviewer_id) || dashboard.engagement.assigned_reviewer_id) : 'Unassigned'}</span>
                           </p>
                           <div className="flex flex-wrap gap-2 mt-3">
                             {nextReviewFlowStatuses.map((status) => (
@@ -2264,10 +2279,13 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                 value={engagementWorkflowForm.reviewFlowStatus}
                                 onChange={(e) => setEngagementWorkflowForm((prev) => ({ ...prev, reviewFlowStatus: e.target.value }))}
                               >
-                                {reviewFlowStatusOptions.map((status) => (
+                                {editableReviewFlowOptions.map((status) => (
                                   <option key={status} value={status}>{formatWorkflowLabel(status)}</option>
                                 ))}
                               </select>
+                              <p className="mt-1 text-[11px] text-text-light">
+                                You can keep current state or move only to valid next states.
+                              </p>
                             </div>
                             <div>
                               <label className="block text-xs text-text-light mb-1">Assigned preparer</label>

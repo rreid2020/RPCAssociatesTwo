@@ -382,6 +382,9 @@ export async function listEngagements (pool, clerkUserId, query = {}) {
   )
   return rows.map((row) => ({
     ...row,
+    approval_ready: Number(row.open_review_note_count || 0) === 0 && Number(row.unreviewed_lead_sheet_count || 0) === 0,
+    blocked_by_open_notes: Number(row.open_review_note_count || 0) > 0,
+    blocked_by_unreviewed_lead_sheets: Number(row.unreviewed_lead_sheet_count || 0) > 0,
     next_review_flow_statuses: getNextReviewFlowStatusesForEngagement(
       row.review_flow_status,
       row.open_review_note_count,

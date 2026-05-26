@@ -114,6 +114,9 @@ type Engagement = {
   next_review_flow_statuses?: string[] | null
   open_review_note_count?: number | null
   unreviewed_lead_sheet_count?: number | null
+  approval_ready?: boolean | null
+  blocked_by_open_notes?: boolean | null
+  blocked_by_unreviewed_lead_sheets?: boolean | null
   deliverables?: string[] | null
   materiality_amount?: string | null
   assigned_preparer_id?: string | null
@@ -1932,6 +1935,17 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                       {Number(engagement.open_review_note_count || 0) > 0 || Number(engagement.unreviewed_lead_sheet_count || 0) > 0
                                         ? `Open notes: ${Number(engagement.open_review_note_count || 0)} | Unreviewed sheets: ${Number(engagement.unreviewed_lead_sheet_count || 0)}`
                                         : 'None'}
+                                      <div className="mt-1 flex flex-wrap gap-1">
+                                        <span className="rounded border border-border px-1.5 py-0.5 text-[10px] text-text-light">
+                                          {engagement.approval_ready ? 'Ready' : 'Blocked'}
+                                        </span>
+                                        {engagement.blocked_by_open_notes && (
+                                          <span className="rounded border border-border px-1.5 py-0.5 text-[10px] text-text-light">Notes</span>
+                                        )}
+                                        {engagement.blocked_by_unreviewed_lead_sheets && (
+                                          <span className="rounded border border-border px-1.5 py-0.5 text-[10px] text-text-light">Lead sheets</span>
+                                        )}
+                                      </div>
                                     </td>
                                     <td className="py-2">{new Date(engagement.period_end).toLocaleDateString()}</td>
                                     <td className="py-2">{engagement.due_date ? new Date(engagement.due_date).toLocaleDateString() : '—'}</td>

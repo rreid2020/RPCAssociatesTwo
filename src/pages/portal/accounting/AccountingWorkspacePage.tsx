@@ -678,8 +678,18 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }
 
   const onAdvanceReviewFlowForEngagement = async (targetEngagementId: string, nextStatus: string) => {
+    const previousEngagements = engagements
     setTransitioningEngagementId(targetEngagementId)
     setError(null)
+    setEngagements((rows) => rows.map((engagement) => (
+      engagement.id === targetEngagementId
+        ? {
+            ...engagement,
+            review_flow_status: nextStatus,
+            next_review_flow_statuses: reviewFlowTransitions[nextStatus] || []
+          }
+        : engagement
+    )))
     try {
       await portalFetch(`/v1/accounting/engagements/${targetEngagementId}`, getToken, {
         method: 'PATCH',
@@ -695,6 +705,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       }
       setNotice(`Engagement moved to ${formatWorkflowLabel(nextStatus)}`)
     } catch (e) {
+      setEngagements(previousEngagements)
       setError(e instanceof Error ? e.message : 'Could not update engagement workflow')
     } finally {
       setTransitioningEngagementId(null)

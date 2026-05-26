@@ -430,7 +430,9 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         if (['workingPapersDashboard', 'engagementList', 'newEngagement', 'landing'].includes(view)) {
           await Promise.all([loadEngagements(), loadStatusSummary()])
         }
-        if (view === 'engagementDashboard') await loadEngagementDashboard()
+        if (view === 'engagementDashboard') {
+          await Promise.all([loadEngagementDashboard(), loadWorkspaceMembers()])
+        }
         if (view === 'trialBalance') await loadTrialBalance()
         if (view === 'leadSheets') await loadLeadSheets()
         if (view === 'leadSheetDetail') await loadLeadSheetDetail()
@@ -438,7 +440,9 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
           await loadDocuments()
           await loadRepositoryFiles()
         }
-        if (view === 'review') await loadReviewNotes()
+        if (view === 'review') {
+          await Promise.all([loadReviewNotes(), loadWorkspaceMembers()])
+        }
         if (view === 'settings') await Promise.all([loadTasks(), loadWorkspaceMembers(), loadEngagementDashboard()])
         if (view === 'integrations') await loadIntegrations()
       } catch (e) {
@@ -556,6 +560,27 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     })
   }, [dashboard])
 
+  const refreshEngagementWorkflowViews = useCallback(async (
+    options: { includeReviewNotes?: boolean; includeLeadSheetDetail?: boolean } = {}
+  ) => {
+    const tasks: Array<Promise<any>> = [
+      loadEngagementDashboard(),
+      loadEngagements(),
+      loadStatusSummary(),
+      loadWorkspaceMembers()
+    ]
+    if (options.includeReviewNotes) tasks.push(loadReviewNotes())
+    if (options.includeLeadSheetDetail) tasks.push(loadLeadSheetDetail())
+    await Promise.all(tasks)
+  }, [
+    loadEngagementDashboard,
+    loadEngagements,
+    loadLeadSheetDetail,
+    loadReviewNotes,
+    loadStatusSummary,
+    loadWorkspaceMembers
+  ])
+
   const onCreateClient = async () => {
     const name = newClientName.trim()
     if (!name) {
@@ -620,7 +645,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
           assignedReviewerId: engagementWorkflowForm.assignedReviewerId || null
         })
       })
-      await Promise.all([loadEngagementDashboard(), loadEngagements(), loadStatusSummary()])
+      await refreshEngagementWorkflowViews()
       setNotice('Engagement workflow details updated')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not update engagement workflow details')
@@ -641,7 +666,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         method: 'PATCH',
         body: JSON.stringify({ reviewFlowStatus: nextStatus })
       })
-      await Promise.all([loadEngagementDashboard(), loadEngagements(), loadStatusSummary()])
+      await refreshEngagementWorkflowViews()
       setNotice(`Review flow moved to ${formatWorkflowLabel(nextStatus)}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not update review flow state')
@@ -767,7 +792,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         method: 'PATCH',
         body: JSON.stringify({ status })
       })
-      await Promise.all([loadReviewNotes(), loadEngagementDashboard(), loadEngagements(), loadStatusSummary()])
+      await refreshEngagementWorkflowViews({ includeReviewNotes: true })
       setNotice('Review note updated')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not update review note')
@@ -785,12 +810,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setError(null)
     try {
       await portalFetch(`/v1/accounting/lead-sheets/${leadSheetId}/preparer-signoff`, getToken, { method: 'POST' })
-      await Promise.all([
-        loadLeadSheetDetail(),
-        loadEngagementDashboard(),
-        loadEngagements(),
-        loadStatusSummary()
-      ])
+      await refreshEngagementWorkflowViews({ includeLeadSheetDetail: true })
       setNotice('Preparer signoff completed')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not sign off')
@@ -811,12 +831,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         method: 'POST',
         headers: { 'x-portal-role': 'reviewer' }
       })
-      await Promise.all([
-        loadLeadSheetDetail(),
-        loadEngagementDashboard(),
-        loadEngagements(),
-        loadStatusSummary()
-      ])
+      await refreshEngagementWorkflowViews({ includeLeadSheetDetail: true })
       setNotice('Reviewer signoff completed')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not sign off')
@@ -1810,7 +1825,16 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                     <td className="py-2">{engagement.client_name}</td>
                                     <td className="py-2">{engagement.engagement_type}</td>
                                     <td className="py-2">{engagement.status}</td>
-                                    <td className="py-2">{formatWorkflowLabel(engagement.review_flow_status || 'not_started')}</td>
+                                    <td className="py-2">
+                                      <div className="space-y-1">
+                                        <p>{formatWorkflowLabel(engagement.review_flow_status || 'not_started')}</p>
+                                        <p className="text-[11px] text-text-light">
+                                          Next: {(reviewFlowTransitions[String(engagement.review_flow_status || 'not_started')] || [])
+                                            .map((status) => formatWorkflowLabel(status))
+                                            .join(', ') || 'none'}
+                                        </p>
+                                      </div>
+                                    </td>
                                     <td className="py-2">{new Date(engagement.period_end).toLocaleDateString()}</td>
                                     <td className="py-2">{engagement.due_date ? new Date(engagement.due_date).toLocaleDateString() : '—'}</td>
                                     <td className="py-2">{Array.isArray(engagement.deliverables) ? engagement.deliverables.length : 0}</td>

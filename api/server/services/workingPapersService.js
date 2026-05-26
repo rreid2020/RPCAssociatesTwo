@@ -328,6 +328,35 @@ export async function listEngagements (pool, clerkUserId, query = {}) {
     values.push(query.workspaceId)
     where.push(`e.workspace_id = $${values.length}::uuid`)
   }
+  if (query.approvalReady === true) {
+    where.push(`NOT EXISTS (
+      SELECT 1
+      FROM taxgpt.review_notes rn
+      WHERE rn.engagement_id = e.id
+        AND rn.status IN ('open', 'reopened')
+    )`)
+    where.push(`NOT EXISTS (
+      SELECT 1
+      FROM taxgpt.lead_sheets ls
+      WHERE ls.engagement_id = e.id
+        AND ls.status <> 'reviewed'
+    )`)
+  } else if (query.approvalReady === false) {
+    where.push(`(
+      EXISTS (
+        SELECT 1
+        FROM taxgpt.review_notes rn
+        WHERE rn.engagement_id = e.id
+          AND rn.status IN ('open', 'reopened')
+      )
+      OR EXISTS (
+        SELECT 1
+        FROM taxgpt.lead_sheets ls
+        WHERE ls.engagement_id = e.id
+          AND ls.status <> 'reviewed'
+      )
+    )`)
+  }
 
   const { rows } = await pool.query(
     `SELECT

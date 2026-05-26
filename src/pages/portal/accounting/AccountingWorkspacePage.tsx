@@ -210,6 +210,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [reviewFlowStatusFilter, setReviewFlowStatusFilter] = useState('')
+  const [approvalReadyFilter, setApprovalReadyFilter] = useState('')
   const [clientFilter, setClientFilter] = useState('')
   const [engagementTypeFilter, setEngagementTypeFilter] = useState('')
   const [newClientName, setNewClientName] = useState('')
@@ -292,13 +293,14 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     const params = new URLSearchParams()
     if (statusFilter) params.set('status', statusFilter)
     if (reviewFlowStatusFilter) params.set('reviewFlowStatus', reviewFlowStatusFilter)
+    if (approvalReadyFilter) params.set('approvalReady', approvalReadyFilter)
     if (clientFilter) params.set('clientId', clientFilter)
     if (engagementTypeFilter) params.set('engagementType', engagementTypeFilter)
     if (search.trim()) params.set('search', search.trim())
     const url = `/v1/accounting/engagements${params.toString() ? `?${params.toString()}` : ''}`
     const { engagements: rows } = await portalFetch<{ engagements: Engagement[] }>(url, getToken)
     setEngagements(rows)
-  }, [clientFilter, engagementTypeFilter, getToken, reviewFlowStatusFilter, search, statusFilter])
+  }, [approvalReadyFilter, clientFilter, engagementTypeFilter, getToken, reviewFlowStatusFilter, search, statusFilter])
 
   const loadStatusSummary = useCallback(async () => {
     const { summary } = await portalFetch<{ summary: Array<{ status: string; c: number }> }>('/v1/accounting/engagements/status-summary', getToken)
@@ -1822,6 +1824,11 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             {reviewFlowStatusOptions.map((status) => (
                               <option key={status} value={status}>{formatWorkflowLabel(status)}</option>
                             ))}
+                          </select>
+                          <select className="border border-border rounded-md px-3 py-2 text-sm" value={approvalReadyFilter} onChange={(e) => setApprovalReadyFilter(e.target.value)}>
+                            <option value="">All approval states</option>
+                            <option value="true">Approval ready</option>
+                            <option value="false">Approval blocked</option>
                           </select>
                           <select className="border border-border rounded-md px-3 py-2 text-sm" value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}>
                             <option value="">{`All ${clientLabelPlural.toLowerCase()}`}</option>

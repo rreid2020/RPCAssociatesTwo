@@ -327,7 +327,10 @@ export async function listEngagements (pool, clerkUserId, query = {}) {
      ORDER BY e.period_end DESC, e.updated_at DESC`,
     values
   )
-  return rows
+  return rows.map((row) => ({
+    ...row,
+    next_review_flow_statuses: getNextReviewFlowStatuses(row.review_flow_status)
+  }))
 }
 
 export async function createEngagement (pool, clerkUserId, actorId, payload) {

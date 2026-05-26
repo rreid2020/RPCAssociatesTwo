@@ -111,6 +111,7 @@ type Engagement = {
   status: string
   source_type: string
   review_flow_status?: string | null
+  next_review_flow_statuses?: string[] | null
   deliverables?: string[] | null
   materiality_amount?: string | null
   assigned_preparer_id?: string | null
@@ -1846,21 +1847,31 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                     <td className="py-2">{engagement.engagement_type}</td>
                                     <td className="py-2">{engagement.status}</td>
                                     <td className="py-2">
+                                      {(() => {
+                                        const nextStates = Array.isArray(engagement.next_review_flow_statuses)
+                                          ? engagement.next_review_flow_statuses
+                                          : (reviewFlowTransitions[String(engagement.review_flow_status || 'not_started')] || [])
+                                        return (
                                       <div className="space-y-1">
                                         <p>{formatWorkflowLabel(engagement.review_flow_status || 'not_started')}</p>
                                         <p className="text-[11px] text-text-light">
-                                          Next: {(reviewFlowTransitions[String(engagement.review_flow_status || 'not_started')] || [])
+                                          Next: {nextStates
                                             .map((status) => formatWorkflowLabel(status))
                                             .join(', ') || 'none'}
                                         </p>
                                       </div>
+                                        )
+                                      })()}
                                     </td>
                                     <td className="py-2">{new Date(engagement.period_end).toLocaleDateString()}</td>
                                     <td className="py-2">{engagement.due_date ? new Date(engagement.due_date).toLocaleDateString() : '—'}</td>
                                     <td className="py-2">{Array.isArray(engagement.deliverables) ? engagement.deliverables.length : 0}</td>
                                     <td className="py-2">
                                       <div className="flex flex-wrap items-center gap-2">
-                                        {(reviewFlowTransitions[String(engagement.review_flow_status || 'not_started')] || []).slice(0, 2).map((status) => (
+                                        {(Array.isArray(engagement.next_review_flow_statuses)
+                                          ? engagement.next_review_flow_statuses
+                                          : (reviewFlowTransitions[String(engagement.review_flow_status || 'not_started')] || [])
+                                        ).slice(0, 2).map((status) => (
                                           <button
                                             key={`${engagement.id}-${status}`}
                                             type="button"

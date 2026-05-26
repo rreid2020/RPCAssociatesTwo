@@ -1942,9 +1942,29 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             <p className="text-2xl font-bold text-primary-dark">{statusSummary.length}</p>
                           </div>
                         </div>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                          <div className="rounded-lg border border-border p-4">
+                            <p className="text-xs text-text-light">Workflow ready</p>
+                            <p className="text-2xl font-bold text-primary-dark">{Number(workflowSummary?.approval_ready_count || 0)}</p>
+                          </div>
+                          <div className="rounded-lg border border-border p-4">
+                            <p className="text-xs text-text-light">Workflow blocked</p>
+                            <p className="text-2xl font-bold text-primary-dark">{Number(workflowSummary?.approval_blocked_count || 0)}</p>
+                          </div>
+                          <div className="rounded-lg border border-border p-4">
+                            <p className="text-xs text-text-light">Open review notes</p>
+                            <p className="text-2xl font-bold text-primary-dark">{Number(workflowSummary?.open_review_notes || 0)}</p>
+                          </div>
+                          <div className="rounded-lg border border-border p-4">
+                            <p className="text-xs text-text-light">Unreviewed lead sheets</p>
+                            <p className="text-2xl font-bold text-primary-dark">{Number(workflowSummary?.unreviewed_lead_sheets || 0)}</p>
+                          </div>
+                        </div>
                         <div className="flex flex-wrap gap-2">
                           <Link to="/portal/accounting/working-papers/engagements/new" className="btn btn--primary text-sm py-2 px-4">Create Engagement</Link>
                           <Link to="/portal/accounting/working-papers/engagements" className="btn btn--primary text-sm py-2 px-4">Open Engagements</Link>
+                          <Link to="/portal/accounting/working-papers/engagements?approvalReady=false" className="btn btn--secondary text-sm py-2 px-4">Open Workflow Queue</Link>
+                          <Link to="/portal/accounting/working-papers/engagements?approvalReady=true" className="btn btn--secondary text-sm py-2 px-4">Open Approval Ready</Link>
                         </div>
                       </div>
                     )}

@@ -18,6 +18,7 @@ import {
   getClientDetails,
   getEngagementDashboard,
   getEngagementStatusSummary,
+  getEngagementWorkflowSummary,
   getLeadSheetDetail,
   listAdjustmentEntries,
   listClients,
@@ -1394,6 +1395,15 @@ export function createPortalRouter (pool) {
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
     const summary = await getEngagementStatusSummary(pool, scope.workspaceUserId)
+    res.json({ summary })
+  })
+
+  r.get('/v1/accounting/engagements/workflow-summary', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    const summary = await getEngagementWorkflowSummary(pool, scope.workspaceUserId, scope.workspace.id)
     res.json({ summary })
   })
 

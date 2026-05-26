@@ -204,6 +204,13 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [clients, setClients] = useState<Client[]>([])
   const [engagements, setEngagements] = useState<Engagement[]>([])
   const [statusSummary, setStatusSummary] = useState<Array<{ status: string; c: number }>>([])
+  const [workflowSummary, setWorkflowSummary] = useState<{
+    total_engagements: number
+    approval_ready_count: number
+    approval_blocked_count: number
+    open_review_notes: number
+    unreviewed_lead_sheets: number
+  } | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -305,6 +312,19 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const loadStatusSummary = useCallback(async () => {
     const { summary } = await portalFetch<{ summary: Array<{ status: string; c: number }> }>('/v1/accounting/engagements/status-summary', getToken)
     setStatusSummary(summary)
+  }, [getToken])
+
+  const loadWorkflowSummary = useCallback(async () => {
+    const { summary } = await portalFetch<{
+      summary: {
+        total_engagements: number
+        approval_ready_count: number
+        approval_blocked_count: number
+        open_review_notes: number
+        unreviewed_lead_sheets: number
+      }
+    }>('/v1/accounting/engagements/workflow-summary', getToken)
+    setWorkflowSummary(summary)
   }, [getToken])
 
   const loadEngagementDashboard = useCallback(async () => {
@@ -434,7 +454,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         }
         await loadClients()
         if (['workingPapersDashboard', 'engagementList', 'newEngagement', 'landing'].includes(view)) {
-          await Promise.all([loadEngagements(), loadStatusSummary()])
+          await Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
         }
         if (view === 'engagementDashboard') {
           await Promise.all([loadEngagementDashboard(), loadWorkspaceMembers()])
@@ -473,6 +493,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     loadRepositoryFiles,
     loadReviewNotes,
     loadStatusSummary,
+    loadWorkflowSummary,
     loadTasks,
     loadTrialBalance,
     loadWorkspaceProfile,
@@ -573,6 +594,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       loadEngagementDashboard(),
       loadEngagements(),
       loadStatusSummary(),
+      loadWorkflowSummary(),
       loadWorkspaceMembers()
     ]
     if (options.includeReviewNotes) tasks.push(loadReviewNotes())
@@ -584,6 +606,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     loadLeadSheetDetail,
     loadReviewNotes,
     loadStatusSummary,
+    loadWorkflowSummary,
     loadWorkspaceMembers
   ])
 
@@ -701,7 +724,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         body: JSON.stringify({ reviewFlowStatus: nextStatus })
       })
       if (view === 'engagementList' || view === 'workingPapersDashboard' || view === 'landing') {
-        await Promise.all([loadEngagements(), loadStatusSummary()])
+        await Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
       } else {
         await refreshEngagementWorkflowViews({
           includeReviewNotes: view === 'review',
@@ -1809,6 +1832,21 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                     {view === 'engagementList' && (
                       <div className="space-y-4">
                         <div className="flex flex-wrap gap-2">
+                          <div className="rounded-lg border border-border px-3 py-2 text-xs text-text-light">
+                            Total: <span className="font-medium text-primary-dark">{Number(workflowSummary?.total_engagements || 0)}</span>
+                          </div>
+                          <div className="rounded-lg border border-border px-3 py-2 text-xs text-text-light">
+                            Ready: <span className="font-medium text-primary-dark">{Number(workflowSummary?.approval_ready_count || 0)}</span>
+                          </div>
+                          <div className="rounded-lg border border-border px-3 py-2 text-xs text-text-light">
+                            Blocked: <span className="font-medium text-primary-dark">{Number(workflowSummary?.approval_blocked_count || 0)}</span>
+                          </div>
+                          <div className="rounded-lg border border-border px-3 py-2 text-xs text-text-light">
+                            Open notes: <span className="font-medium text-primary-dark">{Number(workflowSummary?.open_review_notes || 0)}</span>
+                          </div>
+                          <div className="rounded-lg border border-border px-3 py-2 text-xs text-text-light">
+                            Unreviewed sheets: <span className="font-medium text-primary-dark">{Number(workflowSummary?.unreviewed_lead_sheets || 0)}</span>
+                          </div>
                           <input
                             className="border border-border rounded-md px-3 py-2 text-sm"
                             placeholder={`Search engagement or ${clientLabel.toLowerCase()}`}

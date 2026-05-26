@@ -601,6 +601,74 @@ export async function getEngagementStatusSummary (pool, clerkUserId) {
   return rows
 }
 
+export async function getEngagementWorkflowSummary (pool, clerkUserId, workspaceId = null) {
+  const values = [clerkUserId]
+  let workspaceFilter = ''
+  if (workspaceId) {
+    values.push(workspaceId)
+    workspaceFilter = `AND e.workspace_id = $${values.length}::uuid`
+  }
+
+  const { rows } = await pool.query(
+    `SELECT
+       count(*)::int AS total_engagements,
+       sum(
+         CASE WHEN NOT EXISTS (
+           SELECT 1
+           FROM taxgpt.review_notes rn
+           WHERE rn.engagement_id = e.id
+             AND rn.status IN ('open', 'reopened')
+         ) AND NOT EXISTS (
+           SELECT 1
+           FROM taxgpt.lead_sheets ls
+           WHERE ls.engagement_id = e.id
+             AND ls.status <> 'reviewed'
+         ) THEN 1 ELSE 0 END
+       )::int AS approval_ready_count,
+       sum(
+         CASE WHEN EXISTS (
+           SELECT 1
+           FROM taxgpt.review_notes rn
+           WHERE rn.engagement_id = e.id
+             AND rn.status IN ('open', 'reopened')
+         ) OR EXISTS (
+           SELECT 1
+           FROM taxgpt.lead_sheets ls
+           WHERE ls.engagement_id = e.id
+             AND ls.status <> 'reviewed'
+         ) THEN 1 ELSE 0 END
+       )::int AS approval_blocked_count,
+       COALESCE((
+         SELECT count(*)::int
+         FROM taxgpt.review_notes rn
+         INNER JOIN taxgpt.accounting_engagements e2 ON e2.id = rn.engagement_id
+         WHERE e2.clerk_user_id = $1
+           AND rn.status IN ('open', 'reopened')
+           ${workspaceId ? `AND e2.workspace_id = $${values.length}::uuid` : ''}
+       ), 0) AS open_review_notes,
+       COALESCE((
+         SELECT count(*)::int
+         FROM taxgpt.lead_sheets ls
+         INNER JOIN taxgpt.accounting_engagements e3 ON e3.id = ls.engagement_id
+         WHERE e3.clerk_user_id = $1
+           AND ls.status <> 'reviewed'
+           ${workspaceId ? `AND e3.workspace_id = $${values.length}::uuid` : ''}
+       ), 0) AS unreviewed_lead_sheets
+     FROM taxgpt.accounting_engagements e
+     WHERE e.clerk_user_id = $1
+       ${workspaceFilter}`,
+    values
+  )
+
+  return rows[0] || {
+    total_engagements: 0,
+    approval_ready_count: 0,
+    approval_blocked_count: 0,
+    open_review_notes: 0,
+    unreviewed_lead_sheets: 0
+  }
+}
+
 export async function listTrialBalanceAccounts (pool, clerkUserId, engagementId) {
   const { rows: ownershipRows } = await pool.query(
     'SELECT id FROM taxgpt.accounting_engagements WHERE id = $1::uuid AND clerk_user_id = $2',

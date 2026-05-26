@@ -1,4 +1,4 @@
-import { createContext, FC, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, FC, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
 import { portalFetch } from '../../lib/portalApi'
 import { useWorkspaceState } from '../workspace/useWorkspaceState'
@@ -23,6 +23,7 @@ export const WorkspaceAuthorizationProvider: FC<{ children: ReactNode }> = ({ ch
   const [customRoles, setCustomRoles] = useState<string[]>([])
   const [permissions, setPermissions] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
+  const lastWorkspaceValidationAtRef = useRef<number>(0)
 
   const refresh = useCallback(async () => {
     if (!workspaceId) {
@@ -58,6 +59,9 @@ export const WorkspaceAuthorizationProvider: FC<{ children: ReactNode }> = ({ ch
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return
+    const now = Date.now()
+    if (now - lastWorkspaceValidationAtRef.current < 15000) return
+    lastWorkspaceValidationAtRef.current = now
     let mounted = true
     const validateWorkspaceSelection = async () => {
       try {

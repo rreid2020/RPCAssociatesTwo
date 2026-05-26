@@ -466,7 +466,9 @@ export async function getWorkspaceAuthorizationContext (pool, workspace, actorUs
 
 export async function getWorkspaceContext (pool, clerkUserId, requestedWorkspaceId = null, options = {}) {
   const expectedClerkOrgId = String(options?.expectedClerkOrgId || '').trim() || null
-  await ensurePersonalWorkspace(pool, clerkUserId)
+  if (!requestedWorkspaceId) {
+    await ensurePersonalWorkspace(pool, clerkUserId)
+  }
   if (requestedWorkspaceId) {
     const { rows } = await pool.query(
       `SELECT w.*, m.role, m.status
@@ -483,8 +485,9 @@ export async function getWorkspaceContext (pool, clerkUserId, requestedWorkspace
     if (expectedClerkOrgId && workspace.clerk_org_id && workspace.clerk_org_id !== expectedClerkOrgId) {
       throw new Error('Workspace organization context mismatch')
     }
-    workspace = await ensureHierarchyMembershipForWorkspaceUser(pool, workspace, clerkUserId, clerkUserId)
-    await ensureLegacyAssignmentsForWorkspaceUser(pool, workspace, clerkUserId, clerkUserId)
+    if (!workspace.organization_id) {
+      workspace = await ensureOrganizationLinkForWorkspace(pool, workspace)
+    }
     if (!workspace.clerk_org_id && canManageWorkspace(workspace)) {
       return await safeEnsureWorkspaceClerkOrganization(pool, workspace, clerkUserId)
     }
@@ -506,8 +509,9 @@ export async function getWorkspaceContext (pool, clerkUserId, requestedWorkspace
   if (expectedClerkOrgId && workspace.clerk_org_id && workspace.clerk_org_id !== expectedClerkOrgId) {
     throw new Error('Workspace organization context mismatch')
   }
-  workspace = await ensureHierarchyMembershipForWorkspaceUser(pool, workspace, clerkUserId, clerkUserId)
-  await ensureLegacyAssignmentsForWorkspaceUser(pool, workspace, clerkUserId, clerkUserId)
+  if (!workspace.organization_id) {
+    workspace = await ensureOrganizationLinkForWorkspace(pool, workspace)
+  }
   if (!workspace.clerk_org_id && canManageWorkspace(workspace)) {
     return await safeEnsureWorkspaceClerkOrganization(pool, workspace, clerkUserId)
   }
@@ -528,12 +532,7 @@ export async function listWorkspacesForUser (pool, clerkUserId) {
      ORDER BY w.created_at ASC`,
     [clerkUserId]
   )
-  const normalized = []
-  for (const workspace of rows) {
-    const linked = await ensureHierarchyMembershipForWorkspaceUser(pool, workspace, clerkUserId, clerkUserId)
-    normalized.push(linked)
-  }
-  return normalized
+  return rows
 }
 
 export async function getOnboardingStatusForUser (pool, clerkUserId) {

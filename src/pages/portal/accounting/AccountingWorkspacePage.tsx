@@ -112,6 +112,8 @@ type Engagement = {
   source_type: string
   review_flow_status?: string | null
   next_review_flow_statuses?: string[] | null
+  open_review_note_count?: number | null
+  unreviewed_lead_sheet_count?: number | null
   deliverables?: string[] | null
   materiality_amount?: string | null
   assigned_preparer_id?: string | null
@@ -1842,6 +1844,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                 <th className="py-2">Type</th>
                                 <th className="py-2">Status</th>
                                 <th className="py-2">Review Flow</th>
+                                <th className="py-2">Workflow Blockers</th>
                                 <th className="py-2">Period End</th>
                                 <th className="py-2">Due Date</th>
                                 <th className="py-2">Deliverables</th>
@@ -1851,7 +1854,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             <tbody>
                               {engagements.length === 0 ? (
                                 <tr>
-                                  <td className="py-3 text-text-light" colSpan={9}>No engagements match the current filters.</td>
+                                  <td className="py-3 text-text-light" colSpan={10}>No engagements match the current filters.</td>
                                 </tr>
                               ) : engagements.map((engagement) => (
                                   <tr key={engagement.id} className="border-b border-border/70">
@@ -1879,6 +1882,11 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                       </div>
                                         )
                                       })()}
+                                    </td>
+                                    <td className="py-2 text-xs text-text-light">
+                                      {Number(engagement.open_review_note_count || 0) > 0 || Number(engagement.unreviewed_lead_sheet_count || 0) > 0
+                                        ? `Open notes: ${Number(engagement.open_review_note_count || 0)} | Unreviewed sheets: ${Number(engagement.unreviewed_lead_sheet_count || 0)}`
+                                        : 'None'}
                                     </td>
                                     <td className="py-2">{new Date(engagement.period_end).toLocaleDateString()}</td>
                                     <td className="py-2">{engagement.due_date ? new Date(engagement.due_date).toLocaleDateString() : '—'}</td>

@@ -99,6 +99,16 @@ function getNextReviewFlowStatuses (reviewFlowStatus) {
   return Array.from(allowed)
 }
 
+function getNextReviewFlowStatusesForEngagement (reviewFlowStatus, openReviewNoteCount = 0, unreviewedLeadSheetCount = 0) {
+  const nextStatuses = getNextReviewFlowStatuses(reviewFlowStatus)
+  const openNotes = Number(openReviewNoteCount || 0)
+  const unreviewedSheets = Number(unreviewedLeadSheetCount || 0)
+  if (openNotes > 0 || unreviewedSheets > 0) {
+    return nextStatuses.filter((status) => status !== 'approved')
+  }
+  return nextStatuses
+}
+
 async function applyEngagementWorkflowSignal (pool, engagementId, reviewFlowStatus) {
   if (!engagementId || !reviewFlowStatus) return
   const nextFlow = String(reviewFlowStatus).trim().toLowerCase()
@@ -320,7 +330,21 @@ export async function listEngagements (pool, clerkUserId, query = {}) {
   }
 
   const { rows } = await pool.query(
-    `SELECT e.*, c.name AS client_name
+    `SELECT
+       e.*,
+       c.name AS client_name,
+       (
+         SELECT count(*)::int
+         FROM taxgpt.review_notes rn
+         WHERE rn.engagement_id = e.id
+           AND rn.status IN ('open', 'reopened')
+       ) AS open_review_note_count,
+       (
+         SELECT count(*)::int
+         FROM taxgpt.lead_sheets ls
+         WHERE ls.engagement_id = e.id
+           AND ls.status <> 'reviewed'
+       ) AS unreviewed_lead_sheet_count
      FROM taxgpt.accounting_engagements e
      INNER JOIN taxgpt.accounting_clients c ON c.id = e.client_id
      WHERE ${where.join(' AND ')}
@@ -329,7 +353,11 @@ export async function listEngagements (pool, clerkUserId, query = {}) {
   )
   return rows.map((row) => ({
     ...row,
-    next_review_flow_statuses: getNextReviewFlowStatuses(row.review_flow_status)
+    next_review_flow_statuses: getNextReviewFlowStatusesForEngagement(
+      row.review_flow_status,
+      row.open_review_note_count,
+      row.unreviewed_lead_sheet_count
+    )
   }))
 }
 

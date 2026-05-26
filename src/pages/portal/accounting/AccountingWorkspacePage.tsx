@@ -675,6 +675,26 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     }
   }
 
+  const onAdvanceReviewFlowForEngagement = async (targetEngagementId: string, nextStatus: string) => {
+    setSaving(true)
+    setError(null)
+    try {
+      await portalFetch(`/v1/accounting/engagements/${targetEngagementId}`, getToken, {
+        method: 'PATCH',
+        body: JSON.stringify({ reviewFlowStatus: nextStatus })
+      })
+      await refreshEngagementWorkflowViews({
+        includeReviewNotes: view === 'review',
+        includeLeadSheetDetail: view === 'leadSheetDetail'
+      })
+      setNotice(`Engagement moved to ${formatWorkflowLabel(nextStatus)}`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not update engagement workflow')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const onGenerateLeadSheets = async () => {
     if (!engagementId) {
       setError('Select an engagement before generating lead sheets.')
@@ -1839,13 +1859,26 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                     <td className="py-2">{engagement.due_date ? new Date(engagement.due_date).toLocaleDateString() : '—'}</td>
                                     <td className="py-2">{Array.isArray(engagement.deliverables) ? engagement.deliverables.length : 0}</td>
                                     <td className="py-2">
-                                      <button
-                                        type="button"
-                                        className="text-xs text-primary-dark underline"
-                                        onClick={() => { void onDeleteEngagement(engagement.id) }}
-                                      >
-                                        Delete
-                                      </button>
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        {(reviewFlowTransitions[String(engagement.review_flow_status || 'not_started')] || []).slice(0, 2).map((status) => (
+                                          <button
+                                            key={`${engagement.id}-${status}`}
+                                            type="button"
+                                            className="text-xs text-primary-dark underline"
+                                            disabled={saving}
+                                            onClick={() => { void onAdvanceReviewFlowForEngagement(engagement.id, status) }}
+                                          >
+                                            Move to {formatWorkflowLabel(status)}
+                                          </button>
+                                        ))}
+                                        <button
+                                          type="button"
+                                          className="text-xs text-primary-dark underline"
+                                          onClick={() => { void onDeleteEngagement(engagement.id) }}
+                                        >
+                                          Delete
+                                        </button>
+                                      </div>
                                     </td>
                                   </tr>
                                 ))}

@@ -660,6 +660,37 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     void loadEngagements()
   }
 
+  const onSetEngagementFilterPreset = (preset: 'all' | 'queue' | 'ready') => {
+    const params = new URLSearchParams()
+    if (preset === 'queue') {
+      params.set('approvalReady', 'false')
+      setApprovalReadyFilter('false')
+    } else if (preset === 'ready') {
+      params.set('approvalReady', 'true')
+      setApprovalReadyFilter('true')
+    } else {
+      setApprovalReadyFilter('')
+    }
+    setSearch('')
+    setStatusFilter('')
+    setReviewFlowStatusFilter('')
+    setClientFilter('')
+    setEngagementTypeFilter('')
+    setSearchParams(params, { replace: true })
+    void Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
+  }
+
+  const onClearEngagementFilters = () => {
+    setSearch('')
+    setStatusFilter('')
+    setReviewFlowStatusFilter('')
+    setApprovalReadyFilter('')
+    setClientFilter('')
+    setEngagementTypeFilter('')
+    setSearchParams(new URLSearchParams(), { replace: true })
+    void Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
+  }
+
   const onCreateEngagement = async (event: FormEvent) => {
     event.preventDefault()
     setSaving(true)
@@ -1874,6 +1905,15 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           <div className="rounded-lg border border-border px-3 py-2 text-xs text-text-light">
                             Unreviewed sheets: <span className="font-medium text-primary-dark">{Number(workflowSummary?.unreviewed_lead_sheets || 0)}</span>
                           </div>
+                          <button type="button" className="btn btn--secondary text-xs py-1.5 px-3" onClick={() => onSetEngagementFilterPreset('all')}>
+                            All
+                          </button>
+                          <button type="button" className="btn btn--secondary text-xs py-1.5 px-3" onClick={() => onSetEngagementFilterPreset('queue')}>
+                            Queue
+                          </button>
+                          <button type="button" className="btn btn--secondary text-xs py-1.5 px-3" onClick={() => onSetEngagementFilterPreset('ready')}>
+                            Ready
+                          </button>
                           <input
                             className="border border-border rounded-md px-3 py-2 text-sm"
                             placeholder={`Search engagement or ${clientLabel.toLowerCase()}`}
@@ -1905,6 +1945,9 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           </select>
                           <button type="button" className="btn btn--primary text-sm py-2 px-4" onClick={onApplyEngagementFilters}>
                             Apply Filters
+                          </button>
+                          <button type="button" className="btn btn--secondary text-sm py-2 px-4" onClick={onClearEngagementFilters}>
+                            Clear Filters
                           </button>
                         </div>
                         <div className="overflow-x-auto">

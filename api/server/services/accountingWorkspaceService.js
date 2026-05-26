@@ -48,6 +48,8 @@ const BUSINESS_PROFILE_TYPES = new Set([
   'other'
 ])
 
+let workspaceTablesEnsurePromise = null
+
 function assertRole (role) {
   if (!WORKSPACE_ROLES.has(role)) {
     throw new Error('Invalid workspace role')
@@ -188,8 +190,16 @@ async function writeWorkspaceAuditEvent (pool, workspaceId, actorUserId, action,
 }
 
 export async function ensureWorkspaceTables (pool) {
-  await ensurePortalSchema(pool)
-  await ensureWorkspaceRbacTables(pool)
+  if (!workspaceTablesEnsurePromise) {
+    workspaceTablesEnsurePromise = (async () => {
+      await ensurePortalSchema(pool)
+      await ensureWorkspaceRbacTables(pool)
+    })().catch((error) => {
+      workspaceTablesEnsurePromise = null
+      throw error
+    })
+  }
+  await workspaceTablesEnsurePromise
 }
 
 export async function ensurePersonalWorkspace (pool, clerkUserId) {

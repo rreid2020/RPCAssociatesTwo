@@ -106,11 +106,18 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
   }
 
   const isActive = (path: string) => {
-    const normalizedPath = path.split('?')[0]
+    const [normalizedPath, queryString = ''] = path.split('?')
     if (normalizedPath === '/portal/dashboard') {
       return location.pathname === '/portal/dashboard'
     }
-    return location.pathname.startsWith(normalizedPath)
+    if (!location.pathname.startsWith(normalizedPath)) return false
+    if (!queryString) return true
+    const expectedParams = new URLSearchParams(queryString)
+    const currentParams = new URLSearchParams(location.search)
+    for (const [key, value] of expectedParams.entries()) {
+      if (currentParams.get(key) !== value) return false
+    }
+    return true
   }
 
   return (

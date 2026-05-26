@@ -278,6 +278,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [trialBalancePreview, setTrialBalancePreview] = useState<TrialBalancePreview | null>(null)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
+  const [transitioningEngagementId, setTransitioningEngagementId] = useState<string | null>(null)
   const [importPayload, setImportPayload] = useState<{ fileName: string; base64Content: string } | null>(null)
 
   const loadClients = useCallback(async () => {
@@ -677,7 +678,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }
 
   const onAdvanceReviewFlowForEngagement = async (targetEngagementId: string, nextStatus: string) => {
-    setSaving(true)
+    setTransitioningEngagementId(targetEngagementId)
     setError(null)
     try {
       await portalFetch(`/v1/accounting/engagements/${targetEngagementId}`, getToken, {
@@ -692,7 +693,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not update engagement workflow')
     } finally {
-      setSaving(false)
+      setTransitioningEngagementId(null)
     }
   }
 
@@ -1876,7 +1877,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                             key={`${engagement.id}-${status}`}
                                             type="button"
                                             className="text-xs text-primary-dark underline"
-                                            disabled={saving}
+                                            disabled={transitioningEngagementId === engagement.id}
                                             onClick={() => { void onAdvanceReviewFlowForEngagement(engagement.id, status) }}
                                           >
                                             Move to {formatWorkflowLabel(status)}
@@ -1889,6 +1890,9 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                         >
                                           Delete
                                         </button>
+                                        {transitioningEngagementId === engagement.id && (
+                                          <span className="text-[11px] text-text-light">Updating…</span>
+                                        )}
                                       </div>
                                     </td>
                                   </tr>

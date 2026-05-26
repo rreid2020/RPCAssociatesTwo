@@ -71,6 +71,17 @@ const SECTIONS: NavigationSection[] = [
     ]
   },
   {
+    id: 'accounting-engagement-workflow',
+    label: 'Engagement Workflow',
+    depth: 2,
+    items: [
+      { to: '/portal/accounting/working-papers/engagements', label: 'All Engagements', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
+      { to: '/portal/accounting/working-papers/engagements?approvalReady=false', label: 'Workflow Queue', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
+      { to: '/portal/accounting/working-papers/engagements?approvalReady=true', label: 'Approval Ready', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
+      { to: '/portal/accounting/working-papers/engagements/new', label: 'Create Engagement', iconKey: 'plus', requiredFeature: 'workingPapers', requiredPermission: 'engagement.manage' }
+    ]
+  },
+  {
     id: 'docs-billing',
     items: [
       { to: '/portal/files', label: 'Documents', iconKey: 'folder' },

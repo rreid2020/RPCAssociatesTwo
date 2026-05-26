@@ -106,10 +106,11 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
   }
 
   const isActive = (path: string) => {
-    if (path === '/portal/dashboard') {
+    const normalizedPath = path.split('?')[0]
+    if (normalizedPath === '/portal/dashboard') {
       return location.pathname === '/portal/dashboard'
     }
-    return location.pathname.startsWith(path)
+    return location.pathname.startsWith(normalizedPath)
   }
 
   return (

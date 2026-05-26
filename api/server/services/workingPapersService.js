@@ -507,6 +507,51 @@ export async function updateEngagement (pool, clerkUserId, actorId, engagementId
   return rows[0]
 }
 
+export async function bulkTransitionEngagements (pool, clerkUserId, actorId, workspaceId, engagementIds = [], reviewFlowStatus) {
+  const ids = Array.from(new Set(
+    (Array.isArray(engagementIds) ? engagementIds : [])
+      .map((id) => String(id || '').trim())
+      .filter(Boolean)
+  ))
+  if (!ids.length) {
+    throw new Error('At least one engagementId is required')
+  }
+  if (ids.length > 100) {
+    throw new Error('Bulk transitions are limited to 100 engagements per request')
+  }
+  const requestedStatus = String(reviewFlowStatus || '').trim().toLowerCase()
+  assertAllowed(requestedStatus, REVIEW_FLOW_STATUSES, 'review_flow_status')
+
+  const updated = []
+  const failed = []
+  for (const engagementId of ids) {
+    try {
+      const engagement = await updateEngagement(pool, clerkUserId, actorId, engagementId, {
+        reviewFlowStatus: requestedStatus
+      })
+      if (!engagement || (workspaceId && String(engagement.workspace_id || '') !== String(workspaceId))) {
+        failed.push({ engagementId, reason: 'Engagement not found in workspace' })
+        continue
+      }
+      updated.push({
+        id: engagement.id,
+        name: engagement.name,
+        reviewFlowStatus: engagement.review_flow_status,
+        status: engagement.status
+      })
+    } catch (error) {
+      failed.push({
+        engagementId,
+        reason: error instanceof Error ? error.message : 'Could not transition engagement'
+      })
+    }
+  }
+  return {
+    updated,
+    failed
+  }
+}
+
 export async function archiveEngagement (pool, clerkUserId, actorId, engagementId) {
   const { rows: beforeRows } = await pool.query(
     'SELECT * FROM taxgpt.accounting_engagements WHERE id = $1::uuid AND clerk_user_id = $2',

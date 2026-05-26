@@ -4,6 +4,7 @@ import { buildPortalObjectKey, deleteObject, getObjectStorageConfigDiagnostics, 
 import {
   archiveEngagement,
   attachExistingDocument,
+  bulkTransitionEngagements,
   calculateTrialBalanceVariances,
   createAdjustmentEntry,
   createClient,
@@ -1360,6 +1361,27 @@ export function createPortalRouter (pool) {
       res.json({ engagement })
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update engagement' })
+    }
+  })
+
+  r.post('/v1/accounting/engagements/bulk-transition', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    if (!(await hasEntitlement(res, scope.workspace.id, 'workingPapers'))) return
+    try {
+      const result = await bulkTransitionEngagements(
+        pool,
+        scope.workspaceUserId,
+        scope.actorUserId,
+        scope.workspace.id,
+        req.body?.engagementIds,
+        req.body?.reviewFlowStatus
+      )
+      res.json(result)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not run bulk transition' })
     }
   })
 

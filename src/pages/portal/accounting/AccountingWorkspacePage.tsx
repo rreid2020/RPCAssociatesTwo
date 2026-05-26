@@ -293,6 +293,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [importFile, setImportFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [transitioningEngagementId, setTransitioningEngagementId] = useState<string | null>(null)
+  const [selectedEngagementIds, setSelectedEngagementIds] = useState<string[]>([])
+  const [bulkTransitionStatus, setBulkTransitionStatus] = useState('')
   const [importPayload, setImportPayload] = useState<{ fileName: string; base64Content: string } | null>(null)
 
   const loadClients = useCallback(async () => {
@@ -602,6 +604,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     })
   }, [dashboard])
 
+  useEffect(() => {
+    setSelectedEngagementIds((current) => current.filter((id) => engagements.some((engagement) => engagement.id === id)))
+  }, [engagements])
+
   const refreshEngagementWorkflowViews = useCallback(async (
     options: { includeReviewNotes?: boolean; includeLeadSheetDetail?: boolean } = {}
   ) => {
@@ -689,6 +695,62 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setEngagementTypeFilter('')
     setSearchParams(new URLSearchParams(), { replace: true })
     void Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
+  }
+
+  const onToggleEngagementSelection = (engagementId: string) => {
+    setSelectedEngagementIds((current) => (
+      current.includes(engagementId)
+        ? current.filter((id) => id !== engagementId)
+        : [...current, engagementId]
+    ))
+  }
+
+  const onToggleAllVisibleEngagements = () => {
+    const visibleIds = engagements.map((engagement) => engagement.id)
+    const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedEngagementIds.includes(id))
+    if (allSelected) {
+      setSelectedEngagementIds((current) => current.filter((id) => !visibleIds.includes(id)))
+      return
+    }
+    setSelectedEngagementIds((current) => Array.from(new Set([...current, ...visibleIds])))
+  }
+
+  const onRunBulkTransition = async () => {
+    if (!bulkTransitionStatus) {
+      setError('Choose a target review-flow status for bulk transition.')
+      return
+    }
+    if (!selectedEngagementIds.length) {
+      setError('Select at least one engagement to transition.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      const result = await portalFetch<{ updated: Array<{ id: string }>, failed: Array<{ engagementId: string, reason: string }> }>(
+        '/v1/accounting/engagements/bulk-transition',
+        getToken,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            engagementIds: selectedEngagementIds,
+            reviewFlowStatus: bulkTransitionStatus
+          })
+        }
+      )
+      await Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
+      if (result.failed.length > 0) {
+        setNotice(`Bulk transition complete: ${result.updated.length} updated, ${result.failed.length} failed.`)
+      } else {
+        setNotice(`Bulk transition complete: ${result.updated.length} engagements updated.`)
+      }
+      setSelectedEngagementIds([])
+      setBulkTransitionStatus('')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not run bulk transition')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const onCreateEngagement = async (event: FormEvent) => {
@@ -1950,10 +2012,41 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             Clear Filters
                           </button>
                         </div>
+                        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border p-3">
+                          <p className="text-xs text-text-light">
+                            Selected: <span className="font-medium text-primary-dark">{selectedEngagementIds.length}</span>
+                          </p>
+                          <select
+                            className="border border-border rounded-md px-3 py-2 text-sm"
+                            value={bulkTransitionStatus}
+                            onChange={(e) => setBulkTransitionStatus(e.target.value)}
+                          >
+                            <option value="">Bulk transition target...</option>
+                            {reviewFlowStatusOptions.map((status) => (
+                              <option key={status} value={status}>{formatWorkflowLabel(status)}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className="btn btn--primary text-sm py-2 px-4"
+                            disabled={saving || !selectedEngagementIds.length || !bulkTransitionStatus}
+                            onClick={() => { void onRunBulkTransition() }}
+                          >
+                            Run Bulk Transition
+                          </button>
+                        </div>
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
                             <thead>
                               <tr className="border-b border-border text-left text-text-light">
+                                <th className="py-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={engagements.length > 0 && engagements.every((engagement) => selectedEngagementIds.includes(engagement.id))}
+                                    onChange={onToggleAllVisibleEngagements}
+                                    aria-label="Select all visible engagements"
+                                  />
+                                </th>
                                 <th className="py-2">Engagement</th>
                                 <th className="py-2">{clientLabel}</th>
                                 <th className="py-2">Type</th>
@@ -1969,10 +2062,18 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             <tbody>
                               {engagements.length === 0 ? (
                                 <tr>
-                                  <td className="py-3 text-text-light" colSpan={10}>No engagements match the current filters.</td>
+                                  <td className="py-3 text-text-light" colSpan={11}>No engagements match the current filters.</td>
                                 </tr>
                               ) : engagements.map((engagement) => (
                                   <tr key={engagement.id} className="border-b border-border/70">
+                                    <td className="py-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedEngagementIds.includes(engagement.id)}
+                                        onChange={() => onToggleEngagementSelection(engagement.id)}
+                                        aria-label={`Select engagement ${engagement.name}`}
+                                      />
+                                    </td>
                                     <td className="py-2">
                                       <Link className="text-primary-dark hover:underline" to={`/portal/accounting/working-papers/engagements/${engagement.id}`}>
                                         {engagement.name}

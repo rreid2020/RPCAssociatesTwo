@@ -2054,6 +2054,11 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             Preparer: <span className="font-medium text-primary-dark">{dashboard.engagement.assigned_preparer_id ? (assignmentLabelByUserId.get(dashboard.engagement.assigned_preparer_id) || dashboard.engagement.assigned_preparer_id) : 'Unassigned'}</span>
                             {' '}| Reviewer: <span className="font-medium text-primary-dark">{dashboard.engagement.assigned_reviewer_id ? (assignmentLabelByUserId.get(dashboard.engagement.assigned_reviewer_id) || dashboard.engagement.assigned_reviewer_id) : 'Unassigned'}</span>
                           </p>
+                          <p className="text-xs text-text-light mt-1">
+                            Open review notes: <span className="font-medium text-primary-dark">{Number(dashboard.workflowHealth?.openReviewNotes || 0)}</span>
+                            {' '}| Unreviewed lead sheets: <span className="font-medium text-primary-dark">{Number(dashboard.workflowHealth?.unreviewedLeadSheets || 0)}</span>
+                            {' '}| Approval ready: <span className="font-medium text-primary-dark">{dashboard.workflowHealth?.canApprove ? 'Yes' : 'No'}</span>
+                          </p>
                           <div className="flex flex-wrap gap-2 mt-3">
                             {nextReviewFlowStatuses.map((status) => (
                               <button

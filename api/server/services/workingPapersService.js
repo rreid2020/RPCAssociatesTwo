@@ -520,6 +520,22 @@ export async function getEngagementDashboard (pool, clerkUserId, engagementId) {
     pool.query('SELECT status, count(*)::int AS c FROM taxgpt.lead_sheets WHERE engagement_id = $1::uuid GROUP BY status', [engagementId]),
     pool.query('SELECT status, count(*)::int AS c FROM taxgpt.trial_balances WHERE engagement_id = $1::uuid GROUP BY status', [engagementId])
   ])
+  const [openNoteCount, unreviewedLeadSheetCount] = await Promise.all([
+    pool.query(
+      `SELECT count(*)::int AS c
+       FROM taxgpt.review_notes
+       WHERE engagement_id = $1::uuid
+         AND status IN ('open', 'reopened')`,
+      [engagementId]
+    ),
+    pool.query(
+      `SELECT count(*)::int AS c
+       FROM taxgpt.lead_sheets
+       WHERE engagement_id = $1::uuid
+         AND status <> 'reviewed'`,
+      [engagementId]
+    )
+  ])
 
   const { rows: materialRows } = await pool.query(
     `SELECT count(*)::int AS c
@@ -532,6 +548,11 @@ export async function getEngagementDashboard (pool, clerkUserId, engagementId) {
   return {
     engagement,
     nextReviewFlowStatuses: getNextReviewFlowStatuses(engagement.review_flow_status),
+    workflowHealth: {
+      openReviewNotes: Number(openNoteCount.rows[0]?.c || 0),
+      unreviewedLeadSheets: Number(unreviewedLeadSheetCount.rows[0]?.c || 0),
+      canApprove: Number(openNoteCount.rows[0]?.c || 0) === 0 && Number(unreviewedLeadSheetCount.rows[0]?.c || 0) === 0
+    },
     noteSummary: notes,
     taskSummary: tasks,
     leadSheetSummary: leadSheets,

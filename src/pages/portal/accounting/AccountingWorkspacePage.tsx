@@ -587,7 +587,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setApprovalReadyFilter(searchParams.get('approvalReady') || '')
     setClientFilter(searchParams.get('clientId') || '')
     setEngagementTypeFilter(searchParams.get('engagementType') || '')
-  }, [searchParams, view])
+    void Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
+  }, [loadEngagements, loadStatusSummary, loadWorkflowSummary, searchParams, view])
 
   useEffect(() => {
     const engagement = dashboard?.engagement

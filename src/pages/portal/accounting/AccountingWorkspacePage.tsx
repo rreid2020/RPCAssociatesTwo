@@ -678,6 +678,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }
 
   const onAdvanceReviewFlowForEngagement = async (targetEngagementId: string, nextStatus: string) => {
+    if (transitioningEngagementId === targetEngagementId) return
     const previousEngagements = engagements
     setTransitioningEngagementId(targetEngagementId)
     setError(null)
@@ -1892,7 +1893,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                             key={`${engagement.id}-${status}`}
                                             type="button"
                                             className="text-xs text-primary-dark underline"
-                                            disabled={transitioningEngagementId === engagement.id}
+                                            disabled={transitioningEngagementId === engagement.id || status === engagement.review_flow_status}
                                             onClick={() => { void onAdvanceReviewFlowForEngagement(engagement.id, status) }}
                                           >
                                             Move to {formatWorkflowLabel(status)}

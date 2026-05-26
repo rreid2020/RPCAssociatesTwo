@@ -8,7 +8,7 @@ const AccountingWorkspacePage = lazy(async () => await import('../pages/portal/a
 
 function accountingViewRoute (
   path: string,
-  view: 'landing' | 'workspaceAdmin' | 'companyProfile' | 'joinWorkspaceInvite' | 'workingPapersDashboard' | 'engagementList' | 'newEngagement' | 'engagementDashboard' | 'trialBalance' | 'leadSheets' | 'leadSheetDetail' | 'documents' | 'review' | 'settings' | 'integrations',
+  view: 'landing' | 'workspaceAdmin' | 'companyProfile' | 'joinWorkspaceInvite' | 'workingPapersDashboard' | 'engagementList' | 'newEngagement' | 'engagementDashboard' | 'trialBalance' | 'leadSheets' | 'leadSheetDetail' | 'documents' | 'review' | 'adjustments' | 'settings' | 'integrations',
   feature: 'workingPapers' | 'integrations' | null = null,
   permission: string | null = null,
   allowRolloutBypass = true
@@ -61,6 +61,7 @@ export function getAccountingRoutes () {
       {accountingViewRoute('/portal/accounting/working-papers/engagements/:engagementId/lead-sheets/:leadSheetId', 'leadSheetDetail', 'workingPapers', 'working_papers.read')}
       {accountingViewRoute('/portal/accounting/working-papers/engagements/:engagementId/documents', 'documents', 'workingPapers', 'documents.manage')}
       {accountingViewRoute('/portal/accounting/working-papers/engagements/:engagementId/review', 'review', 'workingPapers', 'review_notes.manage')}
+      {accountingViewRoute('/portal/accounting/working-papers/engagements/:engagementId/adjustments', 'adjustments', 'workingPapers', 'working_papers.manage')}
       {accountingViewRoute('/portal/accounting/working-papers/engagements/:engagementId/settings', 'settings', 'workingPapers', 'engagement.manage')}
       {accountingViewRoute('/portal/accounting/integrations', 'integrations', 'integrations', 'integrations.manage')}
       <Route

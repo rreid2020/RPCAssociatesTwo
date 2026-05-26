@@ -5,6 +5,21 @@ import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
 import { portalFetch } from '../../../lib/portalApi'
 import { useWorkspaceState } from '../../../platform/workspace/useWorkspaceState'
+import WorkingPaperTreePanel from '../../../modules/working-papers/components/WorkingPaperTreePanel'
+import WorkflowQueuePanel from '../../../modules/working-papers/components/WorkflowQueuePanel'
+import AuditTimelinePanel from '../../../modules/working-papers/components/AuditTimelinePanel'
+import AdjustmentWorkspacePanel from '../../../modules/working-papers/components/AdjustmentWorkspacePanel'
+import {
+  createEvidenceLink,
+  createReviewSignoff,
+  createTickmark,
+  fetchAiFoundations,
+  fetchAuditEvents,
+  fetchEvidenceLinks,
+  fetchReviewSignoffs,
+  fetchWorkflowQueue,
+  fetchWorkingPaperTree
+} from '../../../modules/working-papers/services/executionApi'
 
 type AccountingView =
   | 'landing'
@@ -19,6 +34,7 @@ type AccountingView =
   | 'leadSheetDetail'
   | 'documents'
   | 'review'
+  | 'adjustments'
   | 'settings'
   | 'integrations'
   | 'joinWorkspaceInvite'
@@ -40,6 +56,7 @@ const titleByView: Record<AccountingView, string> = {
   leadSheetDetail: 'Lead Sheet Detail',
   documents: 'Supporting Documents',
   review: 'Review',
+  adjustments: 'Adjustments',
   settings: 'Engagement Settings',
   integrations: 'Integrations',
   joinWorkspaceInvite: 'Join Workspace',
@@ -58,6 +75,7 @@ const descriptionByView: Record<AccountingView, string> = {
   leadSheetDetail: 'Review accounts, support, notes, and signoffs for a lead sheet.',
   documents: 'Link and manage supporting engagement documents.',
   review: 'Track and clear review notes.',
+  adjustments: 'Build and reconcile journal adjustments.',
   settings: 'Configure engagement settings and assignments.',
   integrations: 'Configure accounting system integrations and connection states.',
   joinWorkspaceInvite: 'Accept a workspace invitation and join your team workspace.',
@@ -251,7 +269,14 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [leadSheetDetail, setLeadSheetDetail] = useState<any | null>(null)
   const [reviewNotes, setReviewNotes] = useState<any[]>([])
   const [tasks, setTasks] = useState<any[]>([])
+  const [adjustments, setAdjustments] = useState<any[]>([])
   const [documents, setDocuments] = useState<any[]>([])
+  const [workingPaperTree, setWorkingPaperTree] = useState<any | null>(null)
+  const [workflowQueue, setWorkflowQueue] = useState<any[]>([])
+  const [auditEvents, setAuditEvents] = useState<any[]>([])
+  const [reviewSignoffs, setReviewSignoffs] = useState<any[]>([])
+  const [evidenceLinks, setEvidenceLinks] = useState<any[]>([])
+  const [aiFoundations, setAiFoundations] = useState<Record<string, unknown> | null>(null)
   const [repositoryFiles, setRepositoryFiles] = useState<any[]>([])
   const [integrationsData, setIntegrationsData] = useState<any | null>(null)
   const [workspaces, setWorkspaces] = useState<any[]>([])
@@ -392,6 +417,44 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setTasks(tasks)
   }, [engagementId, getToken])
 
+  const loadAdjustments = useCallback(async () => {
+    if (!engagementId) return
+    const { entries } = await portalFetch<{ entries: any[] }>(`/v1/accounting/engagements/${engagementId}/adjustments`, getToken)
+    setAdjustments(entries || [])
+  }, [engagementId, getToken])
+
+  const loadWorkingPaperExecution = useCallback(async () => {
+    if (!engagementId) return
+    const tree = await fetchWorkingPaperTree(engagementId, getToken)
+    setWorkingPaperTree(tree)
+    const queue = await fetchWorkflowQueue(engagementId, getToken)
+    setWorkflowQueue(queue.queue || [])
+  }, [engagementId, getToken])
+
+  const loadAuditEvents = useCallback(async () => {
+    if (!engagementId) return
+    const { events } = await fetchAuditEvents(engagementId, getToken)
+    setAuditEvents(events || [])
+  }, [engagementId, getToken])
+
+  const loadReviewSignoffs = useCallback(async () => {
+    if (!engagementId) return
+    const { signoffs } = await fetchReviewSignoffs(engagementId, getToken)
+    setReviewSignoffs(signoffs || [])
+  }, [engagementId, getToken])
+
+  const loadEvidenceLinks = useCallback(async () => {
+    if (!leadSheetId) return
+    const { evidence } = await fetchEvidenceLinks(leadSheetId, getToken)
+    setEvidenceLinks(evidence || [])
+  }, [getToken, leadSheetId])
+
+  const loadAiFoundations = useCallback(async () => {
+    if (!engagementId) return
+    const response = await fetchAiFoundations(engagementId, getToken)
+    setAiFoundations(response || null)
+  }, [engagementId, getToken])
+
   const loadIntegrations = useCallback(async () => {
     const data = await portalFetch<any>('/v1/accounting/integrations', getToken)
     setIntegrationsData(data)
@@ -463,19 +526,22 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
           await Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
         }
         if (view === 'engagementDashboard') {
-          await Promise.all([loadEngagementDashboard(), loadWorkspaceMembers()])
+          await Promise.all([loadEngagementDashboard(), loadWorkspaceMembers(), loadWorkingPaperExecution(), loadWorkflowSummary(), loadAuditEvents(), loadAiFoundations()])
         }
-        if (view === 'trialBalance') await loadTrialBalance()
+        if (view === 'trialBalance') await Promise.all([loadTrialBalance(), loadWorkingPaperExecution(), loadAdjustments()])
         if (view === 'leadSheets') await loadLeadSheets()
-        if (view === 'leadSheetDetail') await loadLeadSheetDetail()
+        if (view === 'leadSheetDetail') await Promise.all([loadLeadSheetDetail(), loadEvidenceLinks()])
         if (view === 'documents') {
           await loadDocuments()
           await loadRepositoryFiles()
         }
         if (view === 'review') {
-          await Promise.all([loadReviewNotes(), loadWorkspaceMembers()])
+          await Promise.all([loadReviewNotes(), loadWorkspaceMembers(), loadWorkingPaperExecution(), loadReviewSignoffs(), loadAuditEvents(), loadAiFoundations()])
         }
-        if (view === 'settings') await Promise.all([loadTasks(), loadWorkspaceMembers(), loadEngagementDashboard()])
+        if (view === 'adjustments') {
+          await Promise.all([loadAdjustments(), loadAuditEvents(), loadWorkspaceMembers()])
+        }
+        if (view === 'settings') await Promise.all([loadTasks(), loadWorkspaceMembers(), loadEngagementDashboard(), loadAdjustments()])
         if (view === 'integrations') await loadIntegrations()
       } catch (e) {
         if (mounted) setError(e instanceof Error ? e.message : 'Could not load data')
@@ -493,15 +559,21 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     loadEngagementDashboard,
     loadEngagements,
     loadIntegrations,
+    loadAuditEvents,
+    loadAiFoundations,
+    loadAdjustments,
+    loadEvidenceLinks,
     loadLeadSheetDetail,
     loadLeadSheets,
     loadOrganizationSnapshot,
     loadRepositoryFiles,
     loadReviewNotes,
+    loadReviewSignoffs,
     loadStatusSummary,
     loadWorkflowSummary,
     loadTasks,
     loadTrialBalance,
+    loadWorkingPaperExecution,
     loadWorkspaceProfile,
     loadWorkspaceInvites,
     loadWorkspaceMembers,
@@ -873,6 +945,101 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       await loadLeadSheets()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not generate lead sheets')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onCreateAdjustmentEntry = async (payload: { entryNumber: string, description: string }) => {
+    if (!engagementId) {
+      setError('Select an engagement before creating adjustments.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      await portalFetch('/v1/accounting/adjustments', getToken, {
+        method: 'POST',
+        body: JSON.stringify({
+          engagementId,
+          entryNumber: payload.entryNumber,
+          description: payload.description,
+          status: 'draft',
+          source: 'manual'
+        })
+      })
+      await Promise.all([loadAdjustments(), loadAuditEvents()])
+      setNotice('Adjustment entry created')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not create adjustment entry')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onUpsertAdjustmentLines = async (adjustmentId: string, lines: Array<{ accountName: string, debitAmount: number, creditAmount: number, memo?: string }>) => {
+    setSaving(true)
+    setError(null)
+    try {
+      await portalFetch(`/v1/accounting/adjustments/${adjustmentId}/lines`, getToken, {
+        method: 'PUT',
+        body: JSON.stringify({ lines })
+      })
+      await Promise.all([loadAdjustments(), loadAuditEvents()])
+      setNotice('Adjustment lines saved')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save adjustment lines')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onCaptureReviewSignoff = async (signoffType: 'preparer' | 'reviewer') => {
+    if (!engagementId) return
+    setSaving(true)
+    setError(null)
+    try {
+      await createReviewSignoff(engagementId, { leadSheetId: leadSheetId || null, signoffType, signoffState: 'signed' }, getToken)
+      await Promise.all([loadReviewSignoffs(), loadAuditEvents()])
+      setNotice(`${signoffType === 'preparer' ? 'Preparer' : 'Reviewer'} signoff captured`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not capture signoff')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onLinkEvidence = async () => {
+    if (!leadSheetId) {
+      setError('Open a lead sheet to link evidence.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      await createEvidenceLink(leadSheetId, {
+        label: 'Supporting document',
+        linkType: 'document',
+        metadata: { source: 'manual-link' }
+      }, getToken)
+      await Promise.all([loadEvidenceLinks(), loadAuditEvents()])
+      setNotice('Evidence link added')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not add evidence link')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onCreateRowTickmark = async (workingPaperRowId: string) => {
+    setSaving(true)
+    setError(null)
+    try {
+      await createTickmark(workingPaperRowId, { tickmarkCode: 'TB', label: 'Trace verified' }, getToken)
+      await loadAuditEvents()
+      setNotice('Tickmark added')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not add tickmark')
     } finally {
       setSaving(false)
     }
@@ -2171,6 +2338,15 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             </tbody>
                           </table>
                         </div>
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                          <WorkingPaperTreePanel sections={Array.isArray(workingPaperTree?.sections) ? workingPaperTree.sections : []} />
+                          <AdjustmentWorkspacePanel
+                            entries={adjustments}
+                            saving={saving}
+                            onCreateEntry={onCreateAdjustmentEntry}
+                            onUpdateLines={onUpsertAdjustmentLines}
+                          />
+                        </div>
                       </div>
                     )}
 
@@ -2346,7 +2522,19 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/lead-sheets`} className="btn btn--primary text-sm py-2 px-4">Lead Sheets</Link>
                           <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/documents`} className="btn btn--primary text-sm py-2 px-4">Documents</Link>
                           <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/review`} className="btn btn--primary text-sm py-2 px-4">Review</Link>
+                          <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/adjustments`} className="btn btn--primary text-sm py-2 px-4">Adjustments</Link>
                           <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/settings`} className="btn btn--primary text-sm py-2 px-4">Settings</Link>
+                        </div>
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                          <WorkingPaperTreePanel sections={Array.isArray(workingPaperTree?.sections) ? workingPaperTree.sections : []} />
+                          <WorkflowQueuePanel queue={workflowQueue} />
+                        </div>
+                        <AuditTimelinePanel events={auditEvents} />
+                        <div className="rounded-lg border border-border p-4">
+                          <h3 className="font-semibold text-primary-dark">AI Foundations</h3>
+                          <p className="text-xs text-text-light mt-1">
+                            Reconciliation assistant: {String(aiFoundations?.reconciliationAssistant || 'scaffolded')} | Anomaly detection: {String(aiFoundations?.anomalyDetection || 'scaffolded')} | Notes generation: {String(aiFoundations?.notesGeneration || 'scaffolded')}
+                          </p>
                         </div>
                       </div>
                     )}
@@ -2501,7 +2689,43 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             <button type="button" className="btn btn--primary text-sm py-2 px-4" disabled={saving} onClick={() => { void onReviewerSignoff() }}>
                               Reviewer Signoff
                             </button>
+                            <button type="button" className="btn btn--secondary text-sm py-2 px-4" disabled={saving} onClick={() => { void onCaptureReviewSignoff('reviewer') }}>
+                              Capture Review Signoff Event
+                            </button>
+                            <button type="button" className="btn btn--secondary text-sm py-2 px-4" disabled={saving} onClick={() => { void onLinkEvidence() }}>
+                              Link Evidence
+                            </button>
                           </div>
+                        </div>
+                        <div className="rounded-lg border border-border p-4 space-y-2">
+                          <h3 className="font-semibold text-primary-dark">Evidence Links</h3>
+                          {evidenceLinks.length === 0 ? (
+                            <p className="text-sm text-text-light">No evidence links on this lead sheet yet.</p>
+                          ) : evidenceLinks.map((evidence) => (
+                            <div key={evidence.id} className="text-xs text-text-light flex items-center justify-between gap-2">
+                              <span>{evidence.label || evidence.link_type || 'Evidence'}</span>
+                              <span>{new Date(evidence.created_at).toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="rounded-lg border border-border p-4 space-y-2">
+                          <h3 className="font-semibold text-primary-dark">Row Tickmarks</h3>
+                          {((Array.isArray(workingPaperTree?.sections) ? workingPaperTree.sections : [])
+                            .flatMap((section: any) => Array.isArray(section.rows) ? section.rows : [])
+                            .filter((row: any) => String(row.lead_sheet_id) === String(leadSheetId))
+                            .slice(0, 8)
+                          ).map((row: any) => (
+                            <div key={row.id} className="flex items-center justify-between gap-2 text-xs">
+                              <span className="text-text-light">{row.row_label || row.account_name || row.id}</span>
+                              <button
+                                type="button"
+                                className="text-xs text-primary-dark underline"
+                                onClick={() => { void onCreateRowTickmark(row.id) }}
+                              >
+                                Add Tickmark
+                              </button>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
@@ -2552,6 +2776,15 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
                     {view === 'review' && (
                       <div className="space-y-3">
+                        <div className="flex flex-wrap gap-2">
+                          <button type="button" className="btn btn--secondary text-sm py-2 px-4" disabled={saving} onClick={() => { void onCaptureReviewSignoff('preparer') }}>
+                            Capture Preparer Signoff
+                          </button>
+                          <button type="button" className="btn btn--secondary text-sm py-2 px-4" disabled={saving} onClick={() => { void onCaptureReviewSignoff('reviewer') }}>
+                            Capture Reviewer Signoff
+                          </button>
+                        </div>
+                        <WorkflowQueuePanel queue={workflowQueue} />
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
                             <thead>
@@ -2590,6 +2823,31 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             </tbody>
                           </table>
                         </div>
+                        <div className="rounded-lg border border-border p-4">
+                          <h3 className="font-semibold text-primary-dark">Signoff Timeline</h3>
+                          <div className="mt-2 space-y-1">
+                            {reviewSignoffs.length === 0 ? (
+                              <p className="text-sm text-text-light">No signoff events captured.</p>
+                            ) : reviewSignoffs.map((signoff) => (
+                              <p key={signoff.id} className="text-xs text-text-light">
+                                {signoff.signoff_type} - {signoff.signoff_state} by {signoff.signed_by} on {new Date(signoff.signed_at).toLocaleString()}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                        <AuditTimelinePanel events={auditEvents} />
+                      </div>
+                    )}
+
+                    {view === 'adjustments' && (
+                      <div className="space-y-4">
+                        <AdjustmentWorkspacePanel
+                          entries={adjustments}
+                          saving={saving}
+                          onCreateEntry={onCreateAdjustmentEntry}
+                          onUpdateLines={onUpsertAdjustmentLines}
+                        />
+                        <AuditTimelinePanel events={auditEvents} />
                       </div>
                     )}
 

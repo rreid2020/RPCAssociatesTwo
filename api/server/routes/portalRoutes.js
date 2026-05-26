@@ -47,6 +47,18 @@ import { parseTrialBalanceFile, previewTrialBalanceImport, saveTrialBalanceImpor
 import { GoogleSheetsProvider, QuickBooksOnlineProvider, createAccountingProvider } from '../services/accountingProviders.js'
 import { AIReviewService } from '../services/aiReviewService.js'
 import {
+  captureReviewSignoff,
+  createEvidenceLinkForLeadSheet,
+  createTickmarkForWorkingPaperRow,
+  getAiExecutionFoundations,
+  getEngagementAuditEvents,
+  getEngagementWorkflowQueue,
+  getEvidenceLinksForLeadSheet,
+  getReviewSignoffTimeline,
+  getTickmarksForWorkingPaperRow,
+  getWorkingPaperExecutionTree
+} from '../services/workingPapersExecutionService.js'
+import {
   addWorkspaceMember,
   assertEngagementAssignment,
   assertWorkingPaperAssignment,
@@ -1429,6 +1441,72 @@ export function createPortalRouter (pool) {
     res.json({ summary })
   })
 
+  r.get('/v1/accounting/engagements/:engagementId/working-paper-tree', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    const tree = await getWorkingPaperExecutionTree(pool, scope.workspaceUserId, req.params.engagementId)
+    if (!tree) return res.status(404).json({ error: 'Engagement not found' })
+    res.json(tree)
+  })
+
+  r.get('/v1/accounting/engagements/:engagementId/workflow-queue', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    const queue = await getEngagementWorkflowQueue(pool, scope.workspaceUserId, req.params.engagementId)
+    if (!queue) return res.status(404).json({ error: 'Engagement not found' })
+    res.json(queue)
+  })
+
+  r.get('/v1/accounting/engagements/:engagementId/audit-events', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    const events = await getEngagementAuditEvents(pool, scope.workspaceUserId, req.params.engagementId)
+    if (!events) return res.status(404).json({ error: 'Engagement not found' })
+    res.json({ events })
+  })
+
+  r.get('/v1/accounting/engagements/:engagementId/review-signoffs', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    const signoffs = await getReviewSignoffTimeline(pool, scope.workspaceUserId, req.params.engagementId)
+    if (!signoffs) return res.status(404).json({ error: 'Engagement not found' })
+    res.json({ signoffs })
+  })
+
+  r.post('/v1/accounting/engagements/:engagementId/review-signoffs', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    const signoff = await captureReviewSignoff(pool, scope.workspaceUserId, scope.actorUserId, {
+      engagementId: req.params.engagementId,
+      leadSheetId: req.body?.leadSheetId || null,
+      signoffType: req.body?.signoffType || 'reviewer',
+      signoffState: req.body?.signoffState || 'signed',
+      metadata: req.body?.metadata || {}
+    })
+    if (!signoff) return res.status(404).json({ error: 'Engagement not found' })
+    res.json({ signoff })
+  })
+
+  r.get('/v1/accounting/engagements/:engagementId/ai-foundations', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    const aiFoundations = await getAiExecutionFoundations(pool, scope.workspaceUserId, req.params.engagementId)
+    if (!aiFoundations) return res.status(404).json({ error: 'Engagement not found' })
+    res.json(aiFoundations)
+  })
+
   r.get('/v1/accounting/engagements/:engagementId/dashboard', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
@@ -1548,6 +1626,26 @@ export function createPortalRouter (pool) {
     res.json(detail)
   })
 
+  r.get('/v1/accounting/lead-sheets/:leadSheetId/evidence-links', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveWorkingPaperScope(req, res, session)
+    if (!scope) return
+    const evidence = await getEvidenceLinksForLeadSheet(pool, scope.workspaceUserId, req.params.leadSheetId)
+    if (!evidence) return res.status(404).json({ error: 'Lead sheet not found' })
+    res.json({ evidence })
+  })
+
+  r.post('/v1/accounting/lead-sheets/:leadSheetId/evidence-links', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveWorkingPaperScope(req, res, session)
+    if (!scope) return
+    const evidence = await createEvidenceLinkForLeadSheet(pool, scope.workspaceUserId, scope.actorUserId, req.params.leadSheetId, req.body || {})
+    if (!evidence) return res.status(404).json({ error: 'Lead sheet not found' })
+    res.json({ evidence })
+  })
+
   r.patch('/v1/accounting/lead-sheets/:leadSheetId/conclusion', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
@@ -1599,6 +1697,26 @@ export function createPortalRouter (pool) {
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not sign off' })
     }
+  })
+
+  r.get('/v1/accounting/working-paper-rows/:workingPaperRowId/tickmarks', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    const tickmarks = await getTickmarksForWorkingPaperRow(pool, scope.workspaceUserId, req.params.workingPaperRowId)
+    if (!tickmarks) return res.status(404).json({ error: 'Working paper row not found' })
+    res.json({ tickmarks })
+  })
+
+  r.post('/v1/accounting/working-paper-rows/:workingPaperRowId/tickmarks', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    const tickmark = await createTickmarkForWorkingPaperRow(pool, scope.workspaceUserId, scope.actorUserId, req.params.workingPaperRowId, req.body || {})
+    if (!tickmark) return res.status(404).json({ error: 'Working paper row not found' })
+    res.json({ tickmark })
   })
 
   r.delete('/v1/accounting/lead-sheets/:leadSheetId', async (req, res) => {

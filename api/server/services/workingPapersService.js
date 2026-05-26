@@ -837,12 +837,27 @@ export async function generateLeadSheets (pool, clerkUserId, actorId, engagement
     )
     const leadSheet = upserted[0]
     await pool.query('DELETE FROM taxgpt.lead_sheet_accounts WHERE lead_sheet_id = $1::uuid', [leadSheet.id])
+    await pool.query('DELETE FROM taxgpt.working_paper_rows WHERE lead_sheet_id = $1::uuid', [leadSheet.id])
     for (let i = 0; i < rowsForSection.length; i++) {
       await pool.query(
         `INSERT INTO taxgpt.lead_sheet_accounts
          (lead_sheet_id, trial_balance_account_id, sort_order, created_at, updated_at)
          VALUES ($1::uuid, $2::uuid, $3, now(), now())`,
         [leadSheet.id, rowsForSection[i].id, i]
+      )
+      await pool.query(
+        `INSERT INTO taxgpt.working_paper_rows
+         (organization_id, workspace_id, engagement_id, lead_sheet_id, trial_balance_account_id, row_label, sort_order, created_at, updated_at)
+         VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid, $6, $7, now(), now())`,
+        [
+          rowsForSection[i].organization_id || null,
+          rowsForSection[i].workspace_id || null,
+          engagementId,
+          leadSheet.id,
+          rowsForSection[i].id,
+          rowsForSection[i].account_name || rowsForSection[i].account_number || 'Working paper row',
+          i
+        ]
       )
     }
     createdOrUpdated.push(leadSheet)
@@ -899,7 +914,7 @@ export async function getLeadSheetDetail (pool, clerkUserId, engagementId, leadS
 
 export async function updateLeadSheetConclusion (pool, clerkUserId, actorId, leadSheetId, conclusionText) {
   const { rows: beforeRows } = await pool.query(
-    `SELECT ls.*, e.clerk_user_id
+    `SELECT ls.*, e.clerk_user_id, e.organization_id, e.workspace_id
      FROM taxgpt.lead_sheets ls
      INNER JOIN taxgpt.accounting_engagements e ON e.id = ls.engagement_id
      WHERE ls.id = $1::uuid`,
@@ -921,7 +936,7 @@ export async function updateLeadSheetConclusion (pool, clerkUserId, actorId, lea
 export async function updateLeadSheetStatus (pool, clerkUserId, actorId, leadSheetId, status) {
   assertAllowed(status, LEAD_SHEET_STATUSES, 'lead sheet status')
   const { rows: beforeRows } = await pool.query(
-    `SELECT ls.*, e.clerk_user_id
+    `SELECT ls.*, e.clerk_user_id, e.organization_id, e.workspace_id
      FROM taxgpt.lead_sheets ls
      INNER JOIN taxgpt.accounting_engagements e ON e.id = ls.engagement_id
      WHERE ls.id = $1::uuid`,
@@ -956,6 +971,26 @@ export async function preparerSignoff (pool, clerkUserId, actorId, leadSheetId) 
      RETURNING *`,
     [actorId, leadSheetId]
   )
+  await pool.query(
+    `INSERT INTO taxgpt.review_signoffs
+     (organization_id, workspace_id, engagement_id, lead_sheet_id, signoff_type, signoff_state, signed_by, signed_at, metadata, created_at, updated_at)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, 'preparer', 'signed', $5, now(), '{}'::jsonb, now(), now())`,
+    [beforeRows[0].organization_id || null, beforeRows[0].workspace_id || null, beforeRows[0].engagement_id, leadSheetId, actorId]
+  )
+  await pool.query(
+    `INSERT INTO taxgpt.audit_events
+     (organization_id, workspace_id, engagement_id, lead_sheet_id, event_type, entity_type, entity_id, actor_id, after_value, metadata, created_at)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, 'preparer_signoff', 'lead_sheet', $5, $6, $7::jsonb, '{}'::jsonb, now())`,
+    [
+      beforeRows[0].organization_id || null,
+      beforeRows[0].workspace_id || null,
+      beforeRows[0].engagement_id,
+      leadSheetId,
+      leadSheetId,
+      actorId,
+      JSON.stringify(rows[0] || {})
+    ]
+  )
   await applyEngagementWorkflowSignal(pool, beforeRows[0].engagement_id, 'reviewer_in_progress')
   await logAccountingAudit(pool, clerkUserId, actorId, 'lead_sheet', leadSheetId, 'preparer_signoff', beforeRows[0], rows[0])
   return rows[0]
@@ -979,6 +1014,26 @@ export async function reviewerSignoff (pool, clerkUserId, actorId, leadSheetId, 
      WHERE id = $2::uuid
      RETURNING *`,
     [actorId, leadSheetId]
+  )
+  await pool.query(
+    `INSERT INTO taxgpt.review_signoffs
+     (organization_id, workspace_id, engagement_id, lead_sheet_id, signoff_type, signoff_state, signed_by, signed_at, metadata, created_at, updated_at)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, 'reviewer', 'signed', $5, now(), '{}'::jsonb, now(), now())`,
+    [beforeRows[0].organization_id || null, beforeRows[0].workspace_id || null, beforeRows[0].engagement_id, leadSheetId, actorId]
+  )
+  await pool.query(
+    `INSERT INTO taxgpt.audit_events
+     (organization_id, workspace_id, engagement_id, lead_sheet_id, event_type, entity_type, entity_id, actor_id, after_value, metadata, created_at)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, 'reviewer_signoff', 'lead_sheet', $5, $6, $7::jsonb, '{}'::jsonb, now())`,
+    [
+      beforeRows[0].organization_id || null,
+      beforeRows[0].workspace_id || null,
+      beforeRows[0].engagement_id,
+      leadSheetId,
+      leadSheetId,
+      actorId,
+      JSON.stringify(rows[0] || {})
+    ]
   )
   const engagementId = beforeRows[0].engagement_id
   const [{ rows: openNoteRows }, { rows: unreviewedRows }] = await Promise.all([

@@ -1,5 +1,5 @@
 import { FC, FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
@@ -203,6 +203,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const { workspaceId, setWorkspaceId } = useWorkspaceState()
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { engagementId, leadSheetId } = useParams()
   const [clients, setClients] = useState<Client[]>([])
   const [engagements, setEngagements] = useState<Engagement[]>([])
@@ -217,12 +218,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [reviewFlowStatusFilter, setReviewFlowStatusFilter] = useState('')
-  const [approvalReadyFilter, setApprovalReadyFilter] = useState('')
-  const [clientFilter, setClientFilter] = useState('')
-  const [engagementTypeFilter, setEngagementTypeFilter] = useState('')
+  const [search, setSearch] = useState(() => searchParams.get('search') || '')
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || '')
+  const [reviewFlowStatusFilter, setReviewFlowStatusFilter] = useState(() => searchParams.get('reviewFlowStatus') || '')
+  const [approvalReadyFilter, setApprovalReadyFilter] = useState(() => searchParams.get('approvalReady') || '')
+  const [clientFilter, setClientFilter] = useState(() => searchParams.get('clientId') || '')
+  const [engagementTypeFilter, setEngagementTypeFilter] = useState(() => searchParams.get('engagementType') || '')
   const [newClientName, setNewClientName] = useState('')
   const [newEngagement, setNewEngagement] = useState({
     clientId: '',
@@ -579,6 +580,16 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }, [workspaceProfile])
 
   useEffect(() => {
+    if (view !== 'engagementList') return
+    setSearch(searchParams.get('search') || '')
+    setStatusFilter(searchParams.get('status') || '')
+    setReviewFlowStatusFilter(searchParams.get('reviewFlowStatus') || '')
+    setApprovalReadyFilter(searchParams.get('approvalReady') || '')
+    setClientFilter(searchParams.get('clientId') || '')
+    setEngagementTypeFilter(searchParams.get('engagementType') || '')
+  }, [searchParams, view])
+
+  useEffect(() => {
     const engagement = dashboard?.engagement
     if (!engagement) return
     setEngagementWorkflowForm({
@@ -634,6 +645,18 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     } finally {
       setSaving(false)
     }
+  }
+
+  const onApplyEngagementFilters = () => {
+    const params = new URLSearchParams()
+    if (search.trim()) params.set('search', search.trim())
+    if (statusFilter) params.set('status', statusFilter)
+    if (reviewFlowStatusFilter) params.set('reviewFlowStatus', reviewFlowStatusFilter)
+    if (approvalReadyFilter) params.set('approvalReady', approvalReadyFilter)
+    if (clientFilter) params.set('clientId', clientFilter)
+    if (engagementTypeFilter) params.set('engagementType', engagementTypeFilter)
+    setSearchParams(params, { replace: true })
+    void loadEngagements()
   }
 
   const onCreateEngagement = async (event: FormEvent) => {
@@ -1879,7 +1902,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             <option value="">All types</option>
                             {engagementTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
                           </select>
-                          <button type="button" className="btn btn--primary text-sm py-2 px-4" onClick={() => { void loadEngagements() }}>
+                          <button type="button" className="btn btn--primary text-sm py-2 px-4" onClick={onApplyEngagementFilters}>
                             Apply Filters
                           </button>
                         </div>

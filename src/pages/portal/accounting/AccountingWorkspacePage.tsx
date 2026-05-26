@@ -685,10 +685,14 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         method: 'PATCH',
         body: JSON.stringify({ reviewFlowStatus: nextStatus })
       })
-      await refreshEngagementWorkflowViews({
-        includeReviewNotes: view === 'review',
-        includeLeadSheetDetail: view === 'leadSheetDetail'
-      })
+      if (view === 'engagementList' || view === 'workingPapersDashboard' || view === 'landing') {
+        await Promise.all([loadEngagements(), loadStatusSummary()])
+      } else {
+        await refreshEngagementWorkflowViews({
+          includeReviewNotes: view === 'review',
+          includeLeadSheetDetail: view === 'leadSheetDetail'
+        })
+      }
       setNotice(`Engagement moved to ${formatWorkflowLabel(nextStatus)}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not update engagement workflow')

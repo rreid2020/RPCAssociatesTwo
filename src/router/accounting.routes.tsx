@@ -49,8 +49,8 @@ export function getAccountingRoutes () {
   return (
     <Fragment>
       {accountingViewRoute('/portal/accounting', 'landing')}
-      {accountingViewRoute('/portal/accounting/company-profile', 'companyProfile', null, 'workspace.manage', false)}
-      {accountingViewRoute('/portal/accounting/workspaces', 'workspaceAdmin', null, 'workspace.manage')}
+      {accountingViewRoute('/portal/accounting/company-profile', 'companyProfile')}
+      {accountingViewRoute('/portal/accounting/workspaces', 'workspaceAdmin')}
       {accountingViewRoute('/portal/accounting/join', 'joinWorkspaceInvite')}
       {accountingViewRoute('/portal/accounting/working-papers', 'workingPapersDashboard', 'workingPapers', 'working_papers.read')}
       {accountingViewRoute('/portal/accounting/working-papers/engagements', 'engagementList', 'workingPapers', 'engagement.read')}

@@ -63,8 +63,8 @@ const SECTIONS: NavigationSection[] = [
     id: 'accounting',
     depth: 1,
     items: [
-      { to: '/portal/accounting/company-profile', label: 'Business/Firm Profile', iconKey: 'workspace', requiredPermission: 'workspace.manage' },
-      { to: '/portal/accounting/workspaces', label: 'Workspace Admin', iconKey: 'workspace', requiredPermission: 'workspace.manage' },
+      { to: '/portal/accounting/company-profile', label: 'Business/Firm Profile', iconKey: 'workspace' },
+      { to: '/portal/accounting/workspaces', label: 'Workspace Admin', iconKey: 'workspace' },
       { to: '/portal/accounting/working-papers/engagements', label: 'Engagements', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
       { to: '/portal/accounting/working-papers', label: 'Working Papers', iconKey: 'document', requiredFeature: 'workingPapers', requiredPermission: 'working_papers.read' },
       { to: '/portal/accounting/integrations', label: 'Integrations', iconKey: 'terminal', requiredFeature: 'integrations', requiredPermission: 'integrations.manage' }

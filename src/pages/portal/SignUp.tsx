@@ -21,10 +21,18 @@ const SignUp: FC = () => {
   const [verifying, setVerifying] = useState(false)
   const inviteTicket = searchParams.get('__clerk_ticket') || searchParams.get('ticket')
   const inviteFlow = Boolean(inviteTicket)
+  const modeParam = searchParams.get('mode')
   const nextParam = searchParams.get('next')
   const nextPath = nextParam && nextParam.startsWith('/') ? nextParam : null
-  const postAuthPath = nextPath
-    ? `/portal/post-auth?next=${encodeURIComponent(nextPath)}`
+  const postAuthQuery = new URLSearchParams()
+  if (nextPath) {
+    postAuthQuery.set('next', nextPath)
+  }
+  if (modeParam === 'create') {
+    postAuthQuery.set('mode', 'create')
+  }
+  const postAuthPath = postAuthQuery.toString()
+    ? `/portal/post-auth?${postAuthQuery.toString()}`
     : '/portal/post-auth'
 
   useEffect(() => {

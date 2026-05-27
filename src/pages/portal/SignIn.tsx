@@ -17,6 +17,7 @@ const SignIn: FC = () => {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [awaitingEmailCode, setAwaitingEmailCode] = useState(false)
+  const modeParam = searchParams.get('mode')
   const nextParam = searchParams.get('next')
   const nextPath = nextParam && nextParam.startsWith('/') ? nextParam : null
   const postAuthPath = nextPath
@@ -24,6 +25,10 @@ const SignIn: FC = () => {
     : '/portal/post-auth'
 
   useEffect(() => {
+    if (modeParam === 'create') {
+      navigate(`/portal/sign-up${location.search || ''}`, { replace: true })
+      return
+    }
     const inviteTicket = searchParams.get('__clerk_ticket') || searchParams.get('ticket')
     if (inviteTicket) {
       navigate(`/portal/sign-up${location.search || ''}`, { replace: true })
@@ -32,7 +37,7 @@ const SignIn: FC = () => {
     if (isAuthLoaded && isSignedIn) {
       navigate(postAuthPath)
     }
-  }, [isAuthLoaded, isSignedIn, location.search, navigate, postAuthPath, searchParams])
+  }, [isAuthLoaded, isSignedIn, location.search, modeParam, navigate, postAuthPath, searchParams])
 
   const goPostAuth = () => {
     navigate(postAuthPath)

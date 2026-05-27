@@ -11,6 +11,7 @@ const PostAuthRedirect: FC = () => {
   const params = new URLSearchParams(location.search)
   const nextParam = params.get('next')
   const nextPath = nextParam && nextParam.startsWith('/') ? nextParam : null
+  const modeParam = params.get('mode')
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return
@@ -43,6 +44,9 @@ const PostAuthRedirect: FC = () => {
     const params = new URLSearchParams(location.search)
     const inviteTicket = params.get('__clerk_ticket') || params.get('ticket')
     if (inviteTicket) {
+      return <Navigate to={`/portal/sign-up${location.search || ''}`} replace />
+    }
+    if (modeParam === 'create') {
       return <Navigate to={`/portal/sign-up${location.search || ''}`} replace />
     }
     if (nextPath) {

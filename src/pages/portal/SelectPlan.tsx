@@ -26,7 +26,7 @@ const SelectPlan: FC = () => {
       navigate('/portal/dashboard')
       return
     }
-    navigate(`/portal/sign-up?plan=${encodeURIComponent(planId)}&next=${encodeURIComponent(onboardingPath)}`)
+    navigate(`/portal/sign-up?mode=create&plan=${encodeURIComponent(planId)}&next=${encodeURIComponent(onboardingPath)}`)
   }
 
   return (

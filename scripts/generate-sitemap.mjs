@@ -1,4 +1,4 @@
-import { writeFileSync } from 'fs'
+import { writeFileSync, statSync, existsSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { createClient } from '@sanity/client'
@@ -25,6 +25,24 @@ function loadEnv() {
 }
 
 const env = { ...process.env, ...loadEnv() }
+
+function dateFromFile(pathFromRepoRoot) {
+  try {
+    const absolutePath = join(__dirname, '..', pathFromRepoRoot)
+    if (!existsSync(absolutePath)) return null
+    return statSync(absolutePath).mtime.toISOString().split('T')[0]
+  } catch {
+    return null
+  }
+}
+
+function dateFromFiles(pathsFromRepoRoot = [], fallbackDate) {
+  const dates = pathsFromRepoRoot
+    .map((p) => dateFromFile(p))
+    .filter(Boolean)
+    .sort()
+  return dates[dates.length - 1] || fallbackDate
+}
 
 async function generateSitemap() {
   try {
@@ -70,35 +88,36 @@ async function generateSitemap() {
     const baseUrl = (env.VITE_SITE_URL || process.env.VITE_SITE_URL || 'https://axiomft.ca').replace(/\/$/, '')
     const currentDate = new Date().toISOString().split('T')[0]
 
-    // Static pages
+    // Static pages (stable lastmod based on source files)
     const staticPages = [
-      { url: '/', priority: '1.0', changefreq: 'weekly' },
-      { url: '/services', priority: '0.9', changefreq: 'monthly' },
-      { url: '/client-portal', priority: '0.8', changefreq: 'monthly' },
-      { url: '/book-consultation', priority: '0.9', changefreq: 'monthly' },
-      { url: '/contact', priority: '0.9', changefreq: 'monthly' },
-      { url: '/resources', priority: '0.8', changefreq: 'monthly' },
-      { url: '/resources/category/online-calculators', priority: '0.8', changefreq: 'monthly' },
-      { url: '/resources/category/excel-templates', priority: '0.8', changefreq: 'monthly' },
-      { url: '/resources/category/publications', priority: '0.8', changefreq: 'monthly' },
-      { url: '/resources/canadian-personal-income-tax-calculator', priority: '0.8', changefreq: 'monthly' },
-      { url: '/resources/cash-flow-calculator', priority: '0.8', changefreq: 'monthly' },
-      { url: '/resources/cash-flow-statement-direct-method', priority: '0.8', changefreq: 'monthly' },
-      { url: '/resources/donation-credit-optimizer', priority: '0.8', changefreq: 'monthly' },
-      { url: '/resources/ccpc-salary-dividend-calculator', priority: '0.8', changefreq: 'monthly' },
-      { url: '/resources/cash-flow-statement-template', priority: '0.8', changefreq: 'monthly' },
-      { url: '/resources/cfi-financial-ratios-guide', priority: '0.8', changefreq: 'monthly' },
-      { url: '/articles', priority: '0.8', changefreq: 'weekly' },
-      { url: '/privacy', priority: '0.5', changefreq: 'yearly' },
-      { url: '/terms', priority: '0.5', changefreq: 'yearly' },
-      { url: '/sitemap', priority: '0.3', changefreq: 'monthly' },
+      { url: '/', priority: '1.0', changefreq: 'weekly', sourceFiles: ['src/pages/Home.tsx'] },
+      { url: '/services', priority: '0.9', changefreq: 'monthly', sourceFiles: ['src/pages/Services.tsx', 'src/lib/services/data.ts'] },
+      { url: '/client-portal', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/ClientPortal.tsx'] },
+      { url: '/book-consultation', priority: '0.9', changefreq: 'monthly', sourceFiles: ['src/pages/BookConsultation.tsx'] },
+      { url: '/contact', priority: '0.9', changefreq: 'monthly', sourceFiles: ['src/pages/ContactPage.tsx'] },
+      { url: '/resources', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/Resources.tsx'] },
+      { url: '/resources/category/online-calculators', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/ResourceCategory.tsx'] },
+      { url: '/resources/category/excel-templates', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/ResourceCategory.tsx'] },
+      { url: '/resources/category/publications', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/ResourceCategory.tsx'] },
+      { url: '/resources/canadian-personal-income-tax-calculator', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/TaxCalculator.tsx'] },
+      { url: '/resources/cash-flow-calculator', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/CashFlowCalculator.tsx'] },
+      { url: '/resources/cash-flow-statement-direct-method', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/CashFlowStatementDirectMethod.tsx'] },
+      { url: '/resources/donation-credit-optimizer', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/DonationOptimizerPage.tsx'] },
+      { url: '/resources/ccpc-salary-dividend-calculator', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/TaxEngineCalculatorPage.tsx'] },
+      { url: '/resources/cash-flow-statement-template', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/CashFlowTemplate.tsx', 'src/pages/ResourceDetail.tsx'] },
+      { url: '/resources/cfi-financial-ratios-guide', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/ResourceDetail.tsx'] },
+      { url: '/articles', priority: '0.8', changefreq: 'weekly', sourceFiles: ['src/pages/Articles.tsx'] },
+      { url: '/privacy', priority: '0.5', changefreq: 'yearly', sourceFiles: ['src/pages/Privacy.tsx'] },
+      { url: '/terms', priority: '0.5', changefreq: 'yearly', sourceFiles: ['src/pages/Terms.tsx'] },
+      { url: '/sitemap', priority: '0.3', changefreq: 'monthly', sourceFiles: ['src/pages/Sitemap.tsx'] },
     ]
 
     // Service pages
     const servicePages = services.map(service => ({
       url: `/services/${service.slug}`,
       priority: '0.9',
-      changefreq: 'monthly'
+      changefreq: 'monthly',
+      sourceFiles: ['src/pages/ServiceDetail.tsx', 'src/lib/services/data.ts']
     }))
 
     // Article pages
@@ -121,9 +140,9 @@ async function generateSitemap() {
 
     // Article category pages
     const categoryPages = [
-      { url: '/articles/category/canadian-tax', priority: '0.7', changefreq: 'weekly' },
-      { url: '/articles/category/accounting', priority: '0.7', changefreq: 'weekly' },
-      { url: '/articles/category/technology', priority: '0.7', changefreq: 'weekly' },
+      { url: '/articles/category/canadian-tax', priority: '0.7', changefreq: 'weekly', sourceFiles: ['src/pages/ArticleCategory.tsx'] },
+      { url: '/articles/category/accounting', priority: '0.7', changefreq: 'weekly', sourceFiles: ['src/pages/ArticleCategory.tsx'] },
+      { url: '/articles/category/technology', priority: '0.7', changefreq: 'weekly', sourceFiles: ['src/pages/ArticleCategory.tsx'] },
     ]
 
     const allPages = [
@@ -140,7 +159,7 @@ async function generateSitemap() {
         http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
 ${allPages.map(page => `  <url>
     <loc>${baseUrl}${page.url}</loc>
-    <lastmod>${page.lastmod || currentDate}</lastmod>
+    <lastmod>${page.lastmod || dateFromFiles(page.sourceFiles || [], currentDate)}</lastmod>
     <changefreq>${page.changefreq}</changefreq>
     <priority>${page.priority}</priority>
   </url>`).join('\n')}

@@ -27,6 +27,7 @@ type AccountingView =
   | 'workspaceAdmin'
   | 'companyProfile'
   | 'engagementList'
+  | 'workingPapersWorkspace'
   | 'newEngagement'
   | 'engagementDashboard'
   | 'trialBalance'
@@ -48,6 +49,7 @@ const titleByView: Record<AccountingView, string> = {
   workspaceAdmin: 'Workspace Administration',
   companyProfile: 'Business/Firm Profile Setup',
   engagementList: 'Engagements',
+  workingPapersWorkspace: 'Working Papers',
   newEngagement: 'New Engagement',
   engagementDashboard: 'Engagement Dashboard',
   trialBalance: 'Trial Balance',
@@ -66,6 +68,7 @@ const descriptionByView: Record<AccountingView, string> = {
   workspaceAdmin: 'Configure organization workspaces, employee onboarding, and role assignments.',
   companyProfile: 'Set business/firm profile details, invite employees, and confirm roster before assignments.',
   engagementList: 'Search and manage accounting engagements.',
+  workingPapersWorkspace: 'Run engagement-centric accounting execution across trial balance, lead sheets, adjustments, and review workflow.',
   newEngagement: 'Create a new accounting engagement.',
   engagementDashboard: 'View completion status, notes, tasks, and signoff readiness.',
   trialBalance: 'Import and map trial balance data.',
@@ -83,7 +86,7 @@ const quickLinks = [
   { to: '/portal/accounting/company-profile', label: 'Business/Firm Profile' },
   { to: '/portal/accounting/workspaces', label: 'Workspace Admin' },
   { to: '/portal/accounting/working-papers/engagements', label: 'Engagements' },
-  { to: '/portal/accounting/working-papers/engagements', label: 'Working Papers' },
+  { to: '/portal/accounting/working-papers/workspace', label: 'Working Papers' },
   { to: '/portal/accounting/working-papers/engagements/new', label: 'Create Engagement' },
   { to: '/portal/accounting/integrations', label: 'Integrations' },
 ]
@@ -520,7 +523,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
           return
         }
         await loadClients()
-        if (['engagementList', 'newEngagement', 'landing'].includes(view)) {
+        if (['engagementList', 'workingPapersWorkspace', 'newEngagement', 'landing'].includes(view)) {
           await Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
         }
         if (view === 'engagementDashboard') {
@@ -948,7 +951,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         method: 'PATCH',
         body: JSON.stringify({ reviewFlowStatus: nextStatus })
       })
-      if (view === 'engagementList' || view === 'landing') {
+      if (view === 'engagementList' || view === 'workingPapersWorkspace' || view === 'landing') {
         await Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
       } else {
         await refreshEngagementWorkflowViews({
@@ -1608,6 +1611,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                 ? '/portal/accounting/company-profile'
               : view === 'joinWorkspaceInvite'
                 ? '/portal/accounting/join'
+              : view === 'workingPapersWorkspace'
+                ? '/portal/accounting/working-papers/workspace'
             : view === 'integrations'
               ? '/portal/accounting/integrations'
               : '/portal/accounting/working-papers/engagements'
@@ -1897,7 +1902,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         <div className="rounded-lg border border-border p-4">
                           <h3 className="font-semibold text-primary-dark mb-1">Working Papers</h3>
                           <p className="text-sm text-text-light mb-3">Engagements, trial balances, lead sheets, review notes, signoffs.</p>
-                          <Link className="btn btn--primary text-sm py-2 px-4 inline-block" to="/portal/accounting/working-papers/engagements">
+                          <Link className="btn btn--primary text-sm py-2 px-4 inline-block" to="/portal/accounting/working-papers/workspace">
                             Open Working Papers
                           </Link>
                         </div>
@@ -2212,58 +2217,57 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             Run Bulk Transition
                           </button>
                         </div>
-                        {engagements.length === 0 ? (
+                        <AgGridTable
+                          rowData={engagements}
+                          height={360}
+                          columnDefs={engagementListColumnDefs}
+                          gridOptions={engagementListGridOptions}
+                          quickFilterText={search}
+                        />
+                        <p className="text-xs text-text-light">
+                          Tip: select rows for bulk transitions, and double-click a row to open the engagement workspace.
+                        </p>
+                        {engagements.length === 0 && (
                           <p className="text-sm text-text-light">No engagements match the current filters.</p>
-                        ) : (
-                          <>
-                            <AgGridTable
-                              rowData={engagements}
-                              height={360}
-                              columnDefs={engagementListColumnDefs}
-                              gridOptions={engagementListGridOptions}
-                              quickFilterText={search}
-                            />
-                            <p className="text-xs text-text-light">
-                              Tip: select rows for bulk transitions, and double-click a row to open the engagement workspace.
-                            </p>
-                            <div className="space-y-2">
-                              {engagements.map((engagement) => (
-                                <div key={`engagement-actions-${engagement.id}`} className="rounded border border-border/70 p-2">
-                                  <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <Link className="text-sm text-primary-dark hover:underline" to={`/portal/accounting/working-papers/engagements/${engagement.id}`}>
-                                      {engagement.name}
-                                    </Link>
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      {(Array.isArray(engagement.next_review_flow_statuses)
-                                        ? engagement.next_review_flow_statuses
-                                        : (reviewFlowTransitions[String(engagement.review_flow_status || 'not_started')] || [])
-                                      ).slice(0, 2).map((status) => (
-                                        <button
-                                          key={`${engagement.id}-${status}`}
-                                          type="button"
-                                          className="text-xs text-primary-dark underline"
-                                          disabled={transitioningEngagementId === engagement.id || status === engagement.review_flow_status}
-                                          onClick={() => { void onAdvanceReviewFlowForEngagement(engagement.id, status) }}
-                                        >
-                                          Move to {formatWorkflowLabel(status)}
-                                        </button>
-                                      ))}
+                        )}
+                        {engagements.length > 0 && (
+                          <div className="space-y-2">
+                            {engagements.map((engagement) => (
+                              <div key={`engagement-actions-${engagement.id}`} className="rounded border border-border/70 p-2">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <Link className="text-sm text-primary-dark hover:underline" to={`/portal/accounting/working-papers/engagements/${engagement.id}`}>
+                                    {engagement.name}
+                                  </Link>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {(Array.isArray(engagement.next_review_flow_statuses)
+                                      ? engagement.next_review_flow_statuses
+                                      : (reviewFlowTransitions[String(engagement.review_flow_status || 'not_started')] || [])
+                                    ).slice(0, 2).map((status) => (
                                       <button
+                                        key={`${engagement.id}-${status}`}
                                         type="button"
                                         className="text-xs text-primary-dark underline"
-                                        onClick={() => { void onDeleteEngagement(engagement.id) }}
+                                        disabled={transitioningEngagementId === engagement.id || status === engagement.review_flow_status}
+                                        onClick={() => { void onAdvanceReviewFlowForEngagement(engagement.id, status) }}
                                       >
-                                        Delete
+                                        Move to {formatWorkflowLabel(status)}
                                       </button>
-                                      {transitioningEngagementId === engagement.id && (
-                                        <span className="text-[11px] text-text-light">Updating…</span>
-                                      )}
-                                    </div>
+                                    ))}
+                                    <button
+                                      type="button"
+                                      className="text-xs text-primary-dark underline"
+                                      onClick={() => { void onDeleteEngagement(engagement.id) }}
+                                    >
+                                      Delete
+                                    </button>
+                                    {transitioningEngagementId === engagement.id && (
+                                      <span className="text-[11px] text-text-light">Updating…</span>
+                                    )}
                                   </div>
                                 </div>
-                              ))}
-                            </div>
-                          </>
+                              </div>
+                            ))}
+                          </div>
                         )}
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                           <WorkingPaperTreePanel sections={Array.isArray(workingPaperTree?.sections) ? workingPaperTree.sections : []} />
@@ -2274,6 +2278,41 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             onUpdateLines={onUpsertAdjustmentLines}
                           />
                         </div>
+                      </div>
+                    )}
+
+                    {view === 'workingPapersWorkspace' && (
+                      <div className="space-y-4">
+                        <div className="rounded-lg border border-border p-4">
+                          <p className="text-sm text-text-light">
+                            Operational workspace for trial balance, lead sheets, adjustments, review workflow, and signoffs.
+                          </p>
+                        </div>
+                        <AgGridTable
+                          rowData={engagements}
+                          height={360}
+                          columnDefs={engagementListColumnDefs}
+                          gridOptions={engagementListGridOptions}
+                          quickFilterText={search}
+                        />
+                        {engagements.length === 0 ? (
+                          <p className="text-sm text-text-light">Create an engagement to start working papers execution.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {engagements.slice(0, 20).map((engagement) => (
+                              <div key={`workspace-links-${engagement.id}`} className="rounded border border-border/70 p-3">
+                                <p className="text-sm font-medium text-primary-dark mb-2">{engagement.name}</p>
+                                <div className="flex flex-wrap gap-2">
+                                  <Link className="text-xs text-primary-dark underline" to={`/portal/accounting/working-papers/engagements/${engagement.id}/trial-balance`}>Trial Balance</Link>
+                                  <Link className="text-xs text-primary-dark underline" to={`/portal/accounting/working-papers/engagements/${engagement.id}/lead-sheets`}>Lead Sheets</Link>
+                                  <Link className="text-xs text-primary-dark underline" to={`/portal/accounting/working-papers/engagements/${engagement.id}/adjustments`}>Adjustments</Link>
+                                  <Link className="text-xs text-primary-dark underline" to={`/portal/accounting/working-papers/engagements/${engagement.id}/review`}>Reviewer Workflow</Link>
+                                  <Link className="text-xs text-primary-dark underline" to={`/portal/accounting/working-papers/engagements/${engagement.id}`}>Engagement Dashboard</Link>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
 

@@ -129,6 +129,10 @@ const Subscription: FC = () => {
     () => workspaces.find((workspace) => workspace.id === selectedWorkspaceId) || null,
     [workspaces, selectedWorkspaceId]
   )
+  const showPlanStep = planStepRequired && !planStepConfirmed
+  const showWorkspaceStep = planStepConfirmed && !startAtInvites && onboardingStep <= 1
+  const showInviteStep = planStepConfirmed && onboardingStep === 2
+  const showCompleteStep = planStepConfirmed && onboardingStep >= 3
 
   const loadWorkspaceProfile = useCallback(async (workspaceId: string) => {
     try {
@@ -360,7 +364,7 @@ const Subscription: FC = () => {
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                {planStepRequired && (
+                  {planStepRequired && (
                   <div className={`rounded-lg border px-3 py-2 ${planStepConfirmed ? 'border-accent bg-accent/5' : 'border-border'}`}>
                     Plan + payment
                   </div>
@@ -380,7 +384,7 @@ const Subscription: FC = () => {
                 <p className="text-sm text-text-light">Loading onboarding data...</p>
               ) : (
                 <>
-                  {planStepRequired && (
+                  {showPlanStep && (
                     <div className="rounded-lg border border-border p-4 space-y-3">
                       <h3 className="font-semibold text-primary-dark">Plan and payment</h3>
                       <p className="text-sm text-text-light">
@@ -405,7 +409,7 @@ const Subscription: FC = () => {
                     </div>
                   )}
 
-                  {planStepConfirmed && !startAtInvites && (
+                  {showWorkspaceStep && (
                   <div className="rounded-lg border border-border p-4 space-y-3">
                     <h3 className="font-semibold text-primary-dark">Step 1: Set up workspace and company/firm profile</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -560,7 +564,7 @@ const Subscription: FC = () => {
                   </div>
                   )}
 
-                  {planStepConfirmed && (
+                  {showInviteStep && (
                   <div className="rounded-lg border border-border p-4 space-y-3">
                     <h3 className="font-semibold text-primary-dark">Step 2: Invite employees to workspace</h3>
                     <label className="text-sm text-text-light block">
@@ -646,7 +650,7 @@ const Subscription: FC = () => {
                   </div>
                   )}
 
-                  {planStepConfirmed && (
+                  {showCompleteStep && (
                   <div className="rounded-lg border border-border p-4">
                     <h3 className="font-semibold text-primary-dark mb-2">Step 3: Complete onboarding</h3>
                     <p className="text-sm text-text-light mb-3">

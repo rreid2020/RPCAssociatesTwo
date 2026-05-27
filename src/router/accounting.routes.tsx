@@ -1,5 +1,5 @@
 import { Fragment, lazy } from 'react'
-import { Navigate, Route } from 'react-router-dom'
+import { Route } from 'react-router-dom'
 import { ProtectedRoute } from './route-guards'
 import RouteSuspense from './route-suspense'
 import { EntitlementGuard, PermissionGuard } from '../platform/api/guards'
@@ -8,7 +8,7 @@ const AccountingWorkspacePage = lazy(async () => await import('../pages/portal/a
 
 function accountingViewRoute (
   path: string,
-  view: 'landing' | 'workspaceAdmin' | 'companyProfile' | 'joinWorkspaceInvite' | 'workingPapersDashboard' | 'engagementList' | 'newEngagement' | 'engagementDashboard' | 'trialBalance' | 'leadSheets' | 'leadSheetDetail' | 'documents' | 'review' | 'adjustments' | 'settings' | 'integrations',
+  view: 'landing' | 'workspaceAdmin' | 'companyProfile' | 'joinWorkspaceInvite' | 'engagementList' | 'newEngagement' | 'engagementDashboard' | 'trialBalance' | 'leadSheets' | 'leadSheetDetail' | 'documents' | 'review' | 'adjustments' | 'settings' | 'integrations',
   feature: 'workingPapers' | 'integrations' | null = null,
   permission: string | null = null,
   allowRolloutBypass = true
@@ -52,7 +52,6 @@ export function getAccountingRoutes () {
       {accountingViewRoute('/portal/accounting/company-profile', 'companyProfile')}
       {accountingViewRoute('/portal/accounting/workspaces', 'workspaceAdmin')}
       {accountingViewRoute('/portal/accounting/join', 'joinWorkspaceInvite')}
-      {accountingViewRoute('/portal/accounting/working-papers', 'workingPapersDashboard', 'workingPapers', 'working_papers.read')}
       {accountingViewRoute('/portal/accounting/working-papers/engagements', 'engagementList', 'workingPapers', 'engagement.read')}
       {accountingViewRoute('/portal/accounting/working-papers/engagements/new', 'newEngagement', 'workingPapers', 'engagement.manage')}
       {accountingViewRoute('/portal/accounting/working-papers/engagements/:engagementId', 'engagementDashboard', 'workingPapers', 'engagement.read')}
@@ -64,22 +63,6 @@ export function getAccountingRoutes () {
       {accountingViewRoute('/portal/accounting/working-papers/engagements/:engagementId/adjustments', 'adjustments', 'workingPapers', 'working_papers.manage')}
       {accountingViewRoute('/portal/accounting/working-papers/engagements/:engagementId/settings', 'settings', 'workingPapers', 'engagement.manage')}
       {accountingViewRoute('/portal/accounting/integrations', 'integrations', 'integrations', 'integrations.manage')}
-      <Route
-        path="/portal/working-papers"
-        element={
-          <ProtectedRoute>
-            <Navigate to="/portal/accounting/working-papers" replace />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/portal/integrations"
-        element={
-          <ProtectedRoute>
-            <Navigate to="/portal/accounting/integrations" replace />
-          </ProtectedRoute>
-        }
-      />
     </Fragment>
   )
 }

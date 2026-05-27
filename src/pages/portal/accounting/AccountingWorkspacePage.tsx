@@ -26,7 +26,6 @@ type AccountingView =
   | 'landing'
   | 'workspaceAdmin'
   | 'companyProfile'
-  | 'workingPapersDashboard'
   | 'engagementList'
   | 'newEngagement'
   | 'engagementDashboard'
@@ -48,7 +47,6 @@ const titleByView: Record<AccountingView, string> = {
   landing: 'Accounting Operations',
   workspaceAdmin: 'Workspace Administration',
   companyProfile: 'Business/Firm Profile Setup',
-  workingPapersDashboard: 'Working Papers',
   engagementList: 'Engagements',
   newEngagement: 'New Engagement',
   engagementDashboard: 'Engagement Dashboard',
@@ -67,7 +65,6 @@ const descriptionByView: Record<AccountingView, string> = {
   landing: 'Manage workspace administration, engagements, working papers, and integrations from one place.',
   workspaceAdmin: 'Configure organization workspaces, employee onboarding, and role assignments.',
   companyProfile: 'Set business/firm profile details, invite employees, and confirm roster before assignments.',
-  workingPapersDashboard: 'Track engagement progress, review items, and trial balance readiness.',
   engagementList: 'Search and manage accounting engagements.',
   newEngagement: 'Create a new accounting engagement.',
   engagementDashboard: 'View completion status, notes, tasks, and signoff readiness.',
@@ -86,7 +83,7 @@ const quickLinks = [
   { to: '/portal/accounting/company-profile', label: 'Business/Firm Profile' },
   { to: '/portal/accounting/workspaces', label: 'Workspace Admin' },
   { to: '/portal/accounting/working-papers/engagements', label: 'Engagements' },
-  { to: '/portal/accounting/working-papers', label: 'Working Papers' },
+  { to: '/portal/accounting/working-papers/engagements', label: 'Working Papers' },
   { to: '/portal/accounting/working-papers/engagements/new', label: 'Create Engagement' },
   { to: '/portal/accounting/integrations', label: 'Integrations' },
 ]
@@ -226,7 +223,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const { engagementId, leadSheetId } = useParams()
   const [clients, setClients] = useState<Client[]>([])
   const [engagements, setEngagements] = useState<Engagement[]>([])
-  const [statusSummary, setStatusSummary] = useState<Array<{ status: string; c: number }>>([])
+  const [, setStatusSummary] = useState<Array<{ status: string; c: number }>>([])
   const [workflowSummary, setWorkflowSummary] = useState<{
     total_engagements: number
     approval_ready_count: number
@@ -523,7 +520,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
           return
         }
         await loadClients()
-        if (['workingPapersDashboard', 'engagementList', 'newEngagement', 'landing'].includes(view)) {
+        if (['engagementList', 'newEngagement', 'landing'].includes(view)) {
           await Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
         }
         if (view === 'engagementDashboard') {
@@ -583,7 +580,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     view
   ])
 
-  const activeEngagements = useMemo(() => engagements.filter((e) => e.status !== 'archived'), [engagements])
   const activeWorkspace = useMemo(
     () => workspaces.find((workspace) => workspace.id === selectedWorkspaceId) || null,
     [workspaces, selectedWorkspaceId]
@@ -916,7 +912,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         method: 'PATCH',
         body: JSON.stringify({ reviewFlowStatus: nextStatus })
       })
-      if (view === 'engagementList' || view === 'workingPapersDashboard' || view === 'landing') {
+      if (view === 'engagementList' || view === 'landing') {
         await Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
       } else {
         await refreshEngagementWorkflowViews({
@@ -1578,7 +1574,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                 ? '/portal/accounting/join'
             : view === 'integrations'
               ? '/portal/accounting/integrations'
-              : '/portal/accounting/working-papers'
+              : '/portal/accounting/working-papers/engagements'
         }
       />
       <ClientPortalShell>
@@ -1865,7 +1861,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         <div className="rounded-lg border border-border p-4">
                           <h3 className="font-semibold text-primary-dark mb-1">Working Papers</h3>
                           <p className="text-sm text-text-light mb-3">Engagements, trial balances, lead sheets, review notes, signoffs.</p>
-                          <Link className="btn btn--primary text-sm py-2 px-4 inline-block" to="/portal/accounting/working-papers">
+                          <Link className="btn btn--primary text-sm py-2 px-4 inline-block" to="/portal/accounting/working-papers/engagements">
                             Open Working Papers
                           </Link>
                         </div>
@@ -2090,49 +2086,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               </tbody>
                             </table>
                           </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {view === 'workingPapersDashboard' && (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          <div className="rounded-lg border border-border p-4">
-                            <p className="text-xs text-text-light">Active engagements</p>
-                            <p className="text-2xl font-bold text-primary-dark">{activeEngagements.length}</p>
-                          </div>
-                          <div className="rounded-lg border border-border p-4">
-                            <p className="text-xs text-text-light">Recent engagements</p>
-                            <p className="text-2xl font-bold text-primary-dark">{engagements.slice(0, 5).length}</p>
-                          </div>
-                          <div className="rounded-lg border border-border p-4">
-                            <p className="text-xs text-text-light">Status categories</p>
-                            <p className="text-2xl font-bold text-primary-dark">{statusSummary.length}</p>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                          <div className="rounded-lg border border-border p-4">
-                            <p className="text-xs text-text-light">Workflow ready</p>
-                            <p className="text-2xl font-bold text-primary-dark">{Number(workflowSummary?.approval_ready_count || 0)}</p>
-                          </div>
-                          <div className="rounded-lg border border-border p-4">
-                            <p className="text-xs text-text-light">Workflow blocked</p>
-                            <p className="text-2xl font-bold text-primary-dark">{Number(workflowSummary?.approval_blocked_count || 0)}</p>
-                          </div>
-                          <div className="rounded-lg border border-border p-4">
-                            <p className="text-xs text-text-light">Open review notes</p>
-                            <p className="text-2xl font-bold text-primary-dark">{Number(workflowSummary?.open_review_notes || 0)}</p>
-                          </div>
-                          <div className="rounded-lg border border-border p-4">
-                            <p className="text-xs text-text-light">Unreviewed lead sheets</p>
-                            <p className="text-2xl font-bold text-primary-dark">{Number(workflowSummary?.unreviewed_lead_sheets || 0)}</p>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Link to="/portal/accounting/working-papers/engagements/new" className="btn btn--primary text-sm py-2 px-4">Create Engagement</Link>
-                          <Link to="/portal/accounting/working-papers/engagements" className="btn btn--primary text-sm py-2 px-4">Open Engagements</Link>
-                          <Link to="/portal/accounting/working-papers/engagements?approvalReady=false" className="btn btn--secondary text-sm py-2 px-4">Open Workflow Queue</Link>
-                          <Link to="/portal/accounting/working-papers/engagements?approvalReady=true" className="btn btn--secondary text-sm py-2 px-4">Open Approval Ready</Link>
                         </div>
                       </div>
                     )}

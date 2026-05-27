@@ -1,12 +1,11 @@
 import { FC } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
 import { getTaxBasePath } from './path'
 
 const Optimization: FC = () => {
-  const location = useLocation()
-  const basePath = getTaxBasePath(location.pathname)
+  const basePath = getTaxBasePath()
 
   return (
     <>

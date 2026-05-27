@@ -1,5 +1,5 @@
 import { FC, useEffect, useMemo, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
@@ -77,8 +77,7 @@ function computeSetupReadiness (r: TaxReturnSummary): { required: number; recomm
 
 const TaxReturns: FC = () => {
   const { getToken } = useAuth()
-  const location = useLocation()
-  const basePath = useMemo(() => getTaxBasePath(location.pathname), [location.pathname])
+  const basePath = useMemo(() => getTaxBasePath(), [])
   const [returns, setReturns] = useState<TaxReturnSummary[]>([])
   const [step, setStep] = useState<InterviewStep>(1)
   const [taxYear, setTaxYear] = useState(new Date().getFullYear())

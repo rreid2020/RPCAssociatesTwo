@@ -1,5 +1,5 @@
 import { FC, useEffect, useMemo, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
@@ -99,8 +99,7 @@ function round2 (n: number): number {
 
 const FormsSchedules: FC = () => {
   const { getToken } = useAuth()
-  const location = useLocation()
-  const basePath = useMemo(() => getTaxBasePath(location.pathname), [location.pathname])
+  const basePath = useMemo(() => getTaxBasePath(), [])
   const [returns, setReturns] = useState<TaxReturnSummary[]>([])
   const [selectedReturnId, setSelectedReturnId] = useState('')
   const [detail, setDetail] = useState<ReturnDetailPayload | null>(null)

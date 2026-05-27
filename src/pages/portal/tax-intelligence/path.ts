@@ -1,4 +1,3 @@
-export function getTaxBasePath (pathname: string): '/app/tax-intelligence' | '/portal/tax-intelligence' {
-  if (pathname.startsWith('/portal/')) return '/portal/tax-intelligence'
+export function getTaxBasePath (): '/app/tax-intelligence' {
   return '/app/tax-intelligence'
 }

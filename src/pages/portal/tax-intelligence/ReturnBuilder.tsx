@@ -353,7 +353,7 @@ const ReturnBuilder: FC = () => {
   const { getToken } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
-  const basePath = useMemo(() => getTaxBasePath(location.pathname), [location.pathname])
+  const basePath = useMemo(() => getTaxBasePath(), [])
   const [activeStep, setActiveStep] = useState<Step>('Setup')
   const [data, setData] = useState<TaxReturnPayload | null>(null)
   const [allReturns, setAllReturns] = useState<TaxReturnSummary[]>([])

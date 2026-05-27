@@ -71,7 +71,6 @@ const SECTIONS: NavigationSection[] = [
       { to: '/portal/accounting/working-papers/engagements?approvalReady=false', label: 'Workflow Queue', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
       { to: '/portal/accounting/working-papers/engagements?approvalReady=true', label: 'Approval Ready', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
       { to: '/portal/accounting/working-papers/engagements/new', label: 'Create Engagement', iconKey: 'plus', requiredFeature: 'workingPapers', requiredPermission: 'engagement.manage' },
-      { to: '/portal/accounting/working-papers/engagements', label: 'Working Papers', iconKey: 'document', requiredFeature: 'workingPapers', requiredPermission: 'working_papers.read' },
       { to: '/portal/accounting/integrations', label: 'Integrations', iconKey: 'terminal', requiredFeature: 'integrations', requiredPermission: 'integrations.manage' }
     ]
   },

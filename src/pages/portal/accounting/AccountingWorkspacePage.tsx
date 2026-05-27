@@ -766,23 +766,59 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     void Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
   }
 
-  const onToggleEngagementSelection = (engagementId: string) => {
-    setSelectedEngagementIds((current) => (
-      current.includes(engagementId)
-        ? current.filter((id) => id !== engagementId)
-        : [...current, engagementId]
-    ))
-  }
-
-  const onToggleAllVisibleEngagements = () => {
-    const visibleIds = engagements.map((engagement) => engagement.id)
-    const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedEngagementIds.includes(id))
-    if (allSelected) {
-      setSelectedEngagementIds((current) => current.filter((id) => !visibleIds.includes(id)))
-      return
+  const engagementListColumnDefs = useMemo(() => ([
+    { field: 'name', headerName: 'Engagement', minWidth: 240 },
+    { field: 'client_name', headerName: clientLabel, minWidth: 170 },
+    { field: 'engagement_type', headerName: 'Type', minWidth: 170 },
+    { field: 'status', headerName: 'Status', minWidth: 130 },
+    {
+      field: 'review_flow_status',
+      headerName: 'Review Flow',
+      minWidth: 170,
+      valueGetter: (params: any) => formatWorkflowLabel(String(params.data?.review_flow_status || 'not_started'))
+    },
+    {
+      headerName: 'Workflow Blockers',
+      minWidth: 260,
+      valueGetter: (params: any) => {
+        const openNotes = Number(params.data?.open_review_note_count || 0)
+        const unreviewed = Number(params.data?.unreviewed_lead_sheet_count || 0)
+        if (openNotes > 0 || unreviewed > 0) return `Open notes: ${openNotes} | Unreviewed sheets: ${unreviewed}`
+        return 'None'
+      }
+    },
+    {
+      field: 'period_end',
+      headerName: 'Period End',
+      minWidth: 130,
+      valueFormatter: (params: any) => (params.value ? new Date(params.value).toLocaleDateString() : '—')
+    },
+    {
+      field: 'due_date',
+      headerName: 'Due Date',
+      minWidth: 130,
+      valueFormatter: (params: any) => (params.value ? new Date(params.value).toLocaleDateString() : '—')
+    },
+    {
+      field: 'deliverables',
+      headerName: 'Deliverables',
+      minWidth: 120,
+      valueGetter: (params: any) => (Array.isArray(params.data?.deliverables) ? params.data.deliverables.length : 0)
     }
-    setSelectedEngagementIds((current) => Array.from(new Set([...current, ...visibleIds])))
-  }
+  ]), [clientLabel])
+
+  const engagementListGridOptions = useMemo(() => ({
+    rowSelection: { mode: 'multiRow' as const },
+    onSelectionChanged: (event: any) => {
+      const selected = event.api.getSelectedRows().map((row: any) => row.id)
+      setSelectedEngagementIds(selected)
+    },
+    onRowDoubleClicked: (event: any) => {
+      const rowId = String(event.data?.id || '')
+      if (!rowId) return
+      navigate(`/portal/accounting/working-papers/engagements/${rowId}`)
+    }
+  }), [navigate])
 
   const onRunBulkTransition = async () => {
     if (!bulkTransitionStatus) {
@@ -2176,122 +2212,59 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             Run Bulk Transition
                           </button>
                         </div>
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b border-border text-left text-text-light">
-                                <th className="py-2">
-                                  <input
-                                    type="checkbox"
-                                    checked={engagements.length > 0 && engagements.every((engagement) => selectedEngagementIds.includes(engagement.id))}
-                                    onChange={onToggleAllVisibleEngagements}
-                                    aria-label="Select all visible engagements"
-                                  />
-                                </th>
-                                <th className="py-2">Engagement</th>
-                                <th className="py-2">{clientLabel}</th>
-                                <th className="py-2">Type</th>
-                                <th className="py-2">Status</th>
-                                <th className="py-2">Review Flow</th>
-                                <th className="py-2">Workflow Blockers</th>
-                                <th className="py-2">Period End</th>
-                                <th className="py-2">Due Date</th>
-                                <th className="py-2">Deliverables</th>
-                                <th className="py-2">Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {engagements.length === 0 ? (
-                                <tr>
-                                  <td className="py-3 text-text-light" colSpan={11}>No engagements match the current filters.</td>
-                                </tr>
-                              ) : engagements.map((engagement) => (
-                                  <tr key={engagement.id} className="border-b border-border/70">
-                                    <td className="py-2">
-                                      <input
-                                        type="checkbox"
-                                        checked={selectedEngagementIds.includes(engagement.id)}
-                                        onChange={() => onToggleEngagementSelection(engagement.id)}
-                                        aria-label={`Select engagement ${engagement.name}`}
-                                      />
-                                    </td>
-                                    <td className="py-2">
-                                      <Link className="text-primary-dark hover:underline" to={`/portal/accounting/working-papers/engagements/${engagement.id}`}>
-                                        {engagement.name}
-                                      </Link>
-                                    </td>
-                                    <td className="py-2">{engagement.client_name}</td>
-                                    <td className="py-2">{engagement.engagement_type}</td>
-                                    <td className="py-2">{engagement.status}</td>
-                                    <td className="py-2">
-                                      {(() => {
-                                        const nextStates = Array.isArray(engagement.next_review_flow_statuses)
-                                          ? engagement.next_review_flow_statuses
-                                          : (reviewFlowTransitions[String(engagement.review_flow_status || 'not_started')] || [])
-                                        return (
-                                      <div className="space-y-1">
-                                        <p>{formatWorkflowLabel(engagement.review_flow_status || 'not_started')}</p>
-                                        <p className="text-[11px] text-text-light">
-                                          Next: {nextStates
-                                            .map((status) => formatWorkflowLabel(status))
-                                            .join(', ') || 'none'}
-                                        </p>
-                                      </div>
-                                        )
-                                      })()}
-                                    </td>
-                                    <td className="py-2 text-xs text-text-light">
-                                      {Number(engagement.open_review_note_count || 0) > 0 || Number(engagement.unreviewed_lead_sheet_count || 0) > 0
-                                        ? `Open notes: ${Number(engagement.open_review_note_count || 0)} | Unreviewed sheets: ${Number(engagement.unreviewed_lead_sheet_count || 0)}`
-                                        : 'None'}
-                                      <div className="mt-1 flex flex-wrap gap-1">
-                                        <span className="rounded border border-border px-1.5 py-0.5 text-[10px] text-text-light">
-                                          {engagement.approval_ready ? 'Ready' : 'Blocked'}
-                                        </span>
-                                        {engagement.blocked_by_open_notes && (
-                                          <span className="rounded border border-border px-1.5 py-0.5 text-[10px] text-text-light">Notes</span>
-                                        )}
-                                        {engagement.blocked_by_unreviewed_lead_sheets && (
-                                          <span className="rounded border border-border px-1.5 py-0.5 text-[10px] text-text-light">Lead sheets</span>
-                                        )}
-                                      </div>
-                                    </td>
-                                    <td className="py-2">{new Date(engagement.period_end).toLocaleDateString()}</td>
-                                    <td className="py-2">{engagement.due_date ? new Date(engagement.due_date).toLocaleDateString() : '—'}</td>
-                                    <td className="py-2">{Array.isArray(engagement.deliverables) ? engagement.deliverables.length : 0}</td>
-                                    <td className="py-2">
-                                      <div className="flex flex-wrap items-center gap-2">
-                                        {(Array.isArray(engagement.next_review_flow_statuses)
-                                          ? engagement.next_review_flow_statuses
-                                          : (reviewFlowTransitions[String(engagement.review_flow_status || 'not_started')] || [])
-                                        ).slice(0, 2).map((status) => (
-                                          <button
-                                            key={`${engagement.id}-${status}`}
-                                            type="button"
-                                            className="text-xs text-primary-dark underline"
-                                            disabled={transitioningEngagementId === engagement.id || status === engagement.review_flow_status}
-                                            onClick={() => { void onAdvanceReviewFlowForEngagement(engagement.id, status) }}
-                                          >
-                                            Move to {formatWorkflowLabel(status)}
-                                          </button>
-                                        ))}
+                        {engagements.length === 0 ? (
+                          <p className="text-sm text-text-light">No engagements match the current filters.</p>
+                        ) : (
+                          <>
+                            <AgGridTable
+                              rowData={engagements}
+                              height={360}
+                              columnDefs={engagementListColumnDefs}
+                              gridOptions={engagementListGridOptions}
+                              quickFilterText={search}
+                            />
+                            <p className="text-xs text-text-light">
+                              Tip: select rows for bulk transitions, and double-click a row to open the engagement workspace.
+                            </p>
+                            <div className="space-y-2">
+                              {engagements.map((engagement) => (
+                                <div key={`engagement-actions-${engagement.id}`} className="rounded border border-border/70 p-2">
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <Link className="text-sm text-primary-dark hover:underline" to={`/portal/accounting/working-papers/engagements/${engagement.id}`}>
+                                      {engagement.name}
+                                    </Link>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      {(Array.isArray(engagement.next_review_flow_statuses)
+                                        ? engagement.next_review_flow_statuses
+                                        : (reviewFlowTransitions[String(engagement.review_flow_status || 'not_started')] || [])
+                                      ).slice(0, 2).map((status) => (
                                         <button
+                                          key={`${engagement.id}-${status}`}
                                           type="button"
                                           className="text-xs text-primary-dark underline"
-                                          onClick={() => { void onDeleteEngagement(engagement.id) }}
+                                          disabled={transitioningEngagementId === engagement.id || status === engagement.review_flow_status}
+                                          onClick={() => { void onAdvanceReviewFlowForEngagement(engagement.id, status) }}
                                         >
-                                          Delete
+                                          Move to {formatWorkflowLabel(status)}
                                         </button>
-                                        {transitioningEngagementId === engagement.id && (
-                                          <span className="text-[11px] text-text-light">Updating…</span>
-                                        )}
-                                      </div>
-                                    </td>
-                                  </tr>
-                                ))}
-                            </tbody>
-                          </table>
-                        </div>
+                                      ))}
+                                      <button
+                                        type="button"
+                                        className="text-xs text-primary-dark underline"
+                                        onClick={() => { void onDeleteEngagement(engagement.id) }}
+                                      >
+                                        Delete
+                                      </button>
+                                      {transitioningEngagementId === engagement.id && (
+                                        <span className="text-[11px] text-text-light">Updating…</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                           <WorkingPaperTreePanel sections={Array.isArray(workingPaperTree?.sections) ? workingPaperTree.sections : []} />
                           <AdjustmentWorkspacePanel

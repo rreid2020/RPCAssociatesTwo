@@ -8,6 +8,8 @@ const DIST_DIR = resolve(process.cwd(), 'dist')
 const HOST = '127.0.0.1'
 const PORT = 4173
 const STRICT_PRERENDER = process.env.PRERENDER_STRICT === '1'
+const IS_CI = String(process.env.CI || '').toLowerCase() === 'true'
+const ALLOW_PRERENDER_IN_CI = process.env.PRERENDER_IN_CI === '1'
 
 const ROUTES = [
   '/',
@@ -123,6 +125,13 @@ async function writePrerenderedHtml(route, html) {
 async function prerenderRoutes() {
   if (!existsSync(DIST_DIR)) {
     throw new Error('dist directory was not found. Run vite build before prerendering.')
+  }
+
+  // In CI/deploy environments, browser dependencies are often unavailable.
+  // Skip prerender by default to keep production builds reliable.
+  if (!STRICT_PRERENDER && IS_CI && !ALLOW_PRERENDER_IN_CI) {
+    console.warn('Skipping prerender in CI (set PRERENDER_IN_CI=1 to force it).')
+    return { skipped: true }
   }
 
   let server = null

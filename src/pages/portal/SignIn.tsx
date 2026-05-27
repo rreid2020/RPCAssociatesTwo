@@ -1,6 +1,6 @@
 import { FC, useEffect, useState } from 'react'
 import { useSignIn, useClerk, useAuth } from '@clerk/clerk-react'
-import { useNavigate, Link, useLocation } from 'react-router-dom'
+import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom'
 import SEO from '../../components/SEO'
 import AxiomWordmark from '../../components/AxiomWordmark'
 
@@ -10,27 +10,32 @@ const SignIn: FC = () => {
   const { setActive } = useClerk()
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [awaitingEmailCode, setAwaitingEmailCode] = useState(false)
+  const nextParam = searchParams.get('next')
+  const nextPath = nextParam && nextParam.startsWith('/') ? nextParam : null
+  const postAuthPath = nextPath
+    ? `/portal/post-auth?next=${encodeURIComponent(nextPath)}`
+    : '/portal/post-auth'
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    const inviteTicket = params.get('__clerk_ticket') || params.get('ticket')
+    const inviteTicket = searchParams.get('__clerk_ticket') || searchParams.get('ticket')
     if (inviteTicket) {
       navigate(`/portal/sign-up${location.search || ''}`, { replace: true })
       return
     }
     if (isAuthLoaded && isSignedIn) {
-      navigate('/portal/post-auth')
+      navigate(postAuthPath)
     }
-  }, [isAuthLoaded, isSignedIn, location.search, navigate])
+  }, [isAuthLoaded, isSignedIn, location.search, navigate, postAuthPath, searchParams])
 
   const goPostAuth = () => {
-    navigate('/portal/post-auth')
+    navigate(postAuthPath)
   }
 
   const handleOAuthSignIn = async (strategy: 'oauth_github' | 'oauth_google') => {
@@ -41,7 +46,7 @@ const SignIn: FC = () => {
 
     const origin = window.location.origin
     const ssoCallback = `${origin}/sso-callback`
-    const afterAuth = `${origin}/portal/post-auth`
+    const afterAuth = `${origin}${postAuthPath}`
 
     try {
       await signIn.authenticateWithRedirect({
@@ -277,7 +282,10 @@ const SignIn: FC = () => {
             <div className="mt-6 text-center">
               <p className="text-sm text-text-light">
                 Don&apos;t have an account?{' '}
-                <Link to="/portal/sign-up" className="text-primary-dark font-medium hover:underline">
+                <Link
+                  to={nextPath ? `/portal/select-plan?next=${encodeURIComponent(nextPath)}` : '/portal/select-plan'}
+                  className="text-primary-dark font-medium hover:underline"
+                >
                   Sign up
                 </Link>
               </p>

@@ -8,6 +8,9 @@ const PostAuthRedirect: FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const { isLoaded, isSignedIn, getToken } = useAuth()
+  const params = new URLSearchParams(location.search)
+  const nextParam = params.get('next')
+  const nextPath = nextParam && nextParam.startsWith('/') ? nextParam : null
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return
@@ -17,6 +20,11 @@ const PostAuthRedirect: FC = () => {
       try {
         await portalFetch('/v1/accounting/invites/accept-pending', getToken, { method: 'POST' })
       } catch {}
+      if (nextPath) {
+        if (!mounted) return
+        navigate(nextPath, { replace: true })
+        return
+      }
       const status = await getOnboardingStatus(getToken)
       if (!mounted) return
       navigate(resolvePostAuthPath(status), { replace: true })
@@ -25,7 +33,7 @@ const PostAuthRedirect: FC = () => {
     return () => {
       mounted = false
     }
-  }, [getToken, isLoaded, isSignedIn, navigate])
+  }, [getToken, isLoaded, isSignedIn, navigate, nextPath])
 
   if (!isLoaded) {
     return <p className="p-4 text-sm text-text-light">Loading...</p>
@@ -36,6 +44,9 @@ const PostAuthRedirect: FC = () => {
     const inviteTicket = params.get('__clerk_ticket') || params.get('ticket')
     if (inviteTicket) {
       return <Navigate to={`/portal/sign-up${location.search || ''}`} replace />
+    }
+    if (nextPath) {
+      return <Navigate to={`/portal/sign-in?next=${encodeURIComponent(nextPath)}`} replace />
     }
     return <Navigate to="/portal/sign-in" replace />
   }

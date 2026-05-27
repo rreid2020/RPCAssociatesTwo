@@ -4,6 +4,7 @@ import { AuthenticateWithRedirectCallback } from '@clerk/clerk-react'
 import SignIn from '../pages/portal/SignIn'
 import SignUp from '../pages/portal/SignUp'
 import PostAuthRedirect from '../pages/portal/PostAuthRedirect'
+import SelectPlan from '../pages/portal/SelectPlan'
 
 export function getAuthRoutes () {
   return (
@@ -11,6 +12,7 @@ export function getAuthRoutes () {
       <Route path="/sso-callback" element={<AuthenticateWithRedirectCallback />} />
       <Route path="/portal/post-auth" element={<PostAuthRedirect />} />
       <Route path="/portal/sign-in" element={<SignIn />} />
+      <Route path="/portal/select-plan" element={<SelectPlan />} />
       <Route path="/portal/sign-up" element={<SignUp />} />
     </Fragment>
   )

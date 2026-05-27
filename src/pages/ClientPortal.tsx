@@ -35,7 +35,7 @@ const ClientPortal: FC = () => {
                   </a>
                 </div>
                 <p className="text-sm text-text-light">
-                  New user? <Link to="/portal/sign-up" className="text-accent font-semibold hover:underline">Create an account</Link>
+                  New user? <Link to="/portal/select-plan" className="text-accent font-semibold hover:underline">Create an account</Link>
                   {' · '}
                   <Link to="/portal/sign-in" className="text-accent font-semibold hover:underline">Sign in</Link> if you already have one.
                 </p>

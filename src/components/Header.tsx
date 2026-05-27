@@ -373,7 +373,7 @@ const Header: FC = () => {
                 </li>
                 <li className="shrink-0">
                   <Link
-                    to="/portal/sign-up"
+                    to="/portal/select-plan"
                     className="inline-flex h-12 items-center px-1.5 text-base font-semibold text-text hover:text-primary-dark whitespace-nowrap"
                     onClick={closeMenu}
                   >
@@ -583,7 +583,7 @@ const Header: FC = () => {
 
               <div className="text-center">
                 <Link
-                  to="/portal/sign-up"
+                  to="/portal/select-plan"
                   className="block font-semibold text-primary-dark py-2"
                   onClick={closeMenu}
                 >

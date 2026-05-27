@@ -21,15 +21,20 @@ const SignUp: FC = () => {
   const [verifying, setVerifying] = useState(false)
   const inviteTicket = searchParams.get('__clerk_ticket') || searchParams.get('ticket')
   const inviteFlow = Boolean(inviteTicket)
+  const nextParam = searchParams.get('next')
+  const nextPath = nextParam && nextParam.startsWith('/') ? nextParam : null
+  const postAuthPath = nextPath
+    ? `/portal/post-auth?next=${encodeURIComponent(nextPath)}`
+    : '/portal/post-auth'
 
   useEffect(() => {
     if (isAuthLoaded && isSignedIn) {
-      navigate('/portal/post-auth')
+      navigate(postAuthPath)
     }
-  }, [isAuthLoaded, isSignedIn, navigate])
+  }, [isAuthLoaded, isSignedIn, navigate, postAuthPath])
 
   const goPostAuth = () => {
-    navigate('/portal/post-auth')
+    navigate(postAuthPath)
   }
 
   const normalizeCode = (value: string) => value.replace(/\D/g, '').slice(0, 6)
@@ -86,7 +91,7 @@ const SignUp: FC = () => {
 
     const origin = window.location.origin
     const ssoCallback = `${origin}/sso-callback`
-    const afterAuth = `${origin}/portal/post-auth`
+    const afterAuth = `${origin}${postAuthPath}`
 
     try {
       await signUp.authenticateWithRedirect({
@@ -429,7 +434,10 @@ const SignUp: FC = () => {
             <div className="mt-6 text-center">
               <p className="text-sm text-text-light">
                 Already have an account?{' '}
-                <Link to="/portal/sign-in" className="text-primary-dark font-medium hover:underline">
+                <Link
+                  to={nextPath ? `/portal/sign-in?next=${encodeURIComponent(nextPath)}` : '/portal/sign-in'}
+                  className="text-primary-dark font-medium hover:underline"
+                >
                   Sign in
                 </Link>
               </p>

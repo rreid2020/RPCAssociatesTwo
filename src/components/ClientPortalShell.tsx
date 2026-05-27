@@ -43,12 +43,14 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
     let cancelled = false
     const loadWorkspaceOptions = async () => {
       try {
-        const [rows, onboarding] = await Promise.all([
-          listWorkspaces(getToken),
-          getOnboardingStatus(getToken)
-        ])
+        const rows = await listWorkspaces(getToken)
         if (!cancelled) setWorkspaceOptions(rows)
-        if (!cancelled) setOnboardingComplete(!onboarding.required)
+        const completedWorkspace = rows.find((workspace: any) => Boolean(workspace.profile_onboarding_completed_at))
+        if (!cancelled) setOnboardingComplete(Boolean(completedWorkspace))
+        if (!completedWorkspace) {
+          const onboarding = await getOnboardingStatus(getToken)
+          if (!cancelled) setOnboardingComplete(!onboarding.required)
+        }
       } catch {
         if (!cancelled) setWorkspaceOptions([])
         if (!cancelled) setOnboardingComplete(false)

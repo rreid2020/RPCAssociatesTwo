@@ -1,8 +1,10 @@
 import { useMemo } from 'react'
 import { AgGridReact } from 'ag-grid-react'
-import type { ColDef, GridOptions } from 'ag-grid-community'
+import { AllCommunityModule, ModuleRegistry, type ColDef, type GridOptions } from 'ag-grid-community'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-quartz.css'
+
+ModuleRegistry.registerModules([AllCommunityModule])
 
 type AgGridTableProps = {
   rowData: any[]

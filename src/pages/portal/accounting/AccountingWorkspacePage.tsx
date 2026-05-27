@@ -464,8 +464,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const loadWorkspaces = useCallback(async () => {
     const { workspaces: rows } = await portalFetch<{ workspaces: any[] }>('/v1/accounting/workspaces', getToken)
     setWorkspaces(rows)
-    if (selectedWorkspaceId && rows.some((workspace) => workspace.id === selectedWorkspaceId)) return
-    setWorkspaceId(rows[0]?.id || null)
+    const hasSelectedWorkspace = selectedWorkspaceId && rows.some((workspace) => workspace.id === selectedWorkspaceId)
+    const resolvedWorkspaceId = hasSelectedWorkspace ? selectedWorkspaceId : (rows[0]?.id || null)
+    if (!hasSelectedWorkspace) {
+      setWorkspaceId(resolvedWorkspaceId)
+    }
+    return { rows, workspaceId: resolvedWorkspaceId }
   }, [getToken, selectedWorkspaceId, setWorkspaceId])
 
   const loadWorkspaceMembers = useCallback(async () => {
@@ -480,16 +484,34 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setWorkspaceInvites(data.invites || [])
   }, [getToken, selectedWorkspaceId])
 
-  const loadOrganizationSnapshot = useCallback(async () => {
-    if (!selectedWorkspaceId) return
-    const data = await portalFetch<any>(`/v1/accounting/workspaces/${selectedWorkspaceId}/organization`, getToken)
-    setOrganizationSnapshot(data)
+  const loadOrganizationSnapshot = useCallback(async (workspaceIdOverride?: string | null) => {
+    const workspaceIdToLoad = workspaceIdOverride || selectedWorkspaceId
+    if (!workspaceIdToLoad) return
+    try {
+      const data = await portalFetch<any>(`/v1/accounting/workspaces/${workspaceIdToLoad}/organization`, getToken)
+      setOrganizationSnapshot(data)
+    } catch (e) {
+      if (e instanceof Error && /forbidden|403|access denied/i.test(e.message)) {
+        setOrganizationSnapshot(null)
+        return
+      }
+      throw e
+    }
   }, [getToken, selectedWorkspaceId])
 
-  const loadWorkspaceProfile = useCallback(async () => {
-    if (!selectedWorkspaceId) return
-    const data = await portalFetch<any>(`/v1/accounting/workspaces/${selectedWorkspaceId}/profile`, getToken)
-    setWorkspaceProfile(data.profile || null)
+  const loadWorkspaceProfile = useCallback(async (workspaceIdOverride?: string | null) => {
+    const workspaceIdToLoad = workspaceIdOverride || selectedWorkspaceId
+    if (!workspaceIdToLoad) return
+    try {
+      const data = await portalFetch<any>(`/v1/accounting/workspaces/${workspaceIdToLoad}/profile`, getToken)
+      setWorkspaceProfile(data.profile || null)
+    } catch (e) {
+      if (e instanceof Error && /forbidden|403|access denied/i.test(e.message)) {
+        setWorkspaceProfile(null)
+        return
+      }
+      throw e
+    }
   }, [getToken, selectedWorkspaceId])
 
   useEffect(() => {
@@ -507,11 +529,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         if (view === 'companyProfile') {
           // Keep Business/Firm Profile interactive and avoid blocking paint;
           // refresh workspace list in background and load selected scope only.
-          void loadWorkspaces()
-          if (selectedWorkspaceId) {
+          const workspaceState = await loadWorkspaces()
+          const resolvedWorkspaceId = workspaceState?.workspaceId || null
+          if (resolvedWorkspaceId) {
             await Promise.all([
-              loadWorkspaceProfile(),
-              loadOrganizationSnapshot()
+              loadWorkspaceProfile(resolvedWorkspaceId),
+              loadOrganizationSnapshot(resolvedWorkspaceId)
             ])
           }
           return

@@ -109,6 +109,24 @@ const folderNameRe = /^[^/\\<>:|?"*]+$/u
 
 const HOME_ROOT_NAME = 'My files'
 
+function isDeadlockError (error) {
+  const message = String(error?.message || '').toLowerCase()
+  return message.includes('deadlock detected')
+}
+
+async function withDeadlockRetry (operation, retries = 2, waitMs = 40) {
+  let attempt = 0
+  while (true) {
+    try {
+      return await operation()
+    } catch (error) {
+      if (!isDeadlockError(error) || attempt >= retries) throw error
+      attempt += 1
+      await new Promise((resolve) => setTimeout(resolve, waitMs * attempt))
+    }
+  }
+}
+
 /**
  * TaxGPT’s `taxgpt.users` table is a mirror of Clerk (optional; used by other features).
  * Portal data uses `clerk_user_id` text on portal_* tables and does not FK to `users.id`.
@@ -934,7 +952,7 @@ export function createPortalRouter (pool) {
     const session = await getClerkUser(req, res)
     if (!session) return
     try {
-      const onboarding = await getOnboardingStatusForUser(pool, session.userId)
+      const onboarding = await withDeadlockRetry(async () => await getOnboardingStatusForUser(pool, session.userId))
       res.json({ onboarding })
     } catch (e) {
       res.status(500).json({ error: e instanceof Error ? e.message : 'Could not load onboarding status' })

@@ -274,6 +274,20 @@ export function createPortalRouter (pool) {
       return null
     }
   }
+  const requireScopePermission = async (session, scope, permission, res) => {
+    try {
+      await assertWorkspacePermissionWithCustomRoles(pool, {
+        workspaceId: scope.workspace.id,
+        workspaceRole: scope.workspace.role,
+        clerkUserId: session.userId,
+        permission
+      })
+      return true
+    } catch (e) {
+      res.status(403).json({ error: e instanceof Error ? e.message : 'Forbidden' })
+      return false
+    }
+  }
   const resolveEngagementScope = async (req, res, session) => {
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return null
@@ -1486,6 +1500,7 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'signoff.perform', res))) return
     const signoff = await captureReviewSignoff(pool, scope.workspaceUserId, scope.actorUserId, {
       engagementId: req.params.engagementId,
       leadSheetId: req.body?.leadSheetId || null,
@@ -1572,6 +1587,7 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.manage', res))) return
     try {
       const account = await updateTrialBalanceAccountMapping(pool, scope.workspaceUserId, scope.actorUserId, req.params.accountId, req.body || {})
       if (!account) return res.status(404).json({ error: 'Account not found' })
@@ -1641,6 +1657,7 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveWorkingPaperScope(req, res, session)
     if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.manage', res))) return
     const evidence = await createEvidenceLinkForLeadSheet(pool, scope.workspaceUserId, scope.actorUserId, req.params.leadSheetId, req.body || {})
     if (!evidence) return res.status(404).json({ error: 'Lead sheet not found' })
     res.json({ evidence })
@@ -1651,6 +1668,7 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveWorkingPaperScope(req, res, session)
     if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.manage', res))) return
     const leadSheet = await updateLeadSheetConclusion(pool, scope.workspaceUserId, scope.actorUserId, req.params.leadSheetId, req.body?.conclusionText || null)
     if (!leadSheet) return res.status(404).json({ error: 'Lead sheet not found' })
     res.json({ leadSheet })
@@ -1661,6 +1679,7 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveWorkingPaperScope(req, res, session)
     if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.manage', res))) return
     try {
       const leadSheet = await updateLeadSheetStatus(pool, scope.workspaceUserId, scope.actorUserId, req.params.leadSheetId, req.body?.status)
       if (!leadSheet) return res.status(404).json({ error: 'Lead sheet not found' })
@@ -1675,6 +1694,7 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveWorkingPaperScope(req, res, session)
     if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'signoff.perform', res))) return
     const leadSheet = await preparerSignoff(pool, scope.workspaceUserId, scope.actorUserId, req.params.leadSheetId)
     if (!leadSheet) return res.status(404).json({ error: 'Lead sheet not found' })
     res.json({ leadSheet })
@@ -1685,6 +1705,7 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveWorkingPaperScope(req, res, session)
     if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'workflows.approve', res))) return
     const canOverride = isStaff(session.userId) ||
       scope.workspace.role === 'manager' ||
       scope.workspace.role === 'reviewer' ||
@@ -1714,6 +1735,7 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.manage', res))) return
     const tickmark = await createTickmarkForWorkingPaperRow(pool, scope.workspaceUserId, scope.actorUserId, req.params.workingPaperRowId, req.body || {})
     if (!tickmark) return res.status(404).json({ error: 'Working paper row not found' })
     res.json({ tickmark })
@@ -1783,6 +1805,7 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'review_notes.manage', res))) return
     try {
       await assertEngagementAssignment(pool, scope.workspace, req.body?.engagementId, session.userId, { assignedBy: scope.actorUserId })
       if (req.body?.leadSheetId) {
@@ -1801,6 +1824,7 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'review_notes.manage', res))) return
     try {
       const note = await updateReviewNoteStatus(pool, scope.workspaceUserId, scope.actorUserId, req.params.noteId, req.body?.status, req.body || {})
       if (!note) return res.status(404).json({ error: 'Review note not found' })
@@ -1865,6 +1889,7 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.manage', res))) return
     try {
       await assertEngagementAssignment(pool, scope.workspace, req.body?.engagementId, session.userId, { assignedBy: scope.actorUserId })
       const entry = await createAdjustmentEntry(pool, scope.workspaceUserId, scope.actorUserId, req.body || {})
@@ -1880,6 +1905,7 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.manage', res))) return
     try {
       const result = await upsertAdjustmentLines(pool, scope.workspaceUserId, scope.actorUserId, req.params.adjustmentId, req.body?.lines || [])
       if (!result) return res.status(404).json({ error: 'Adjustment entry not found' })
@@ -1894,6 +1920,7 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'workflows.approve', res))) return
     try {
       const entry = await updateAdjustmentStatus(pool, scope.workspaceUserId, scope.actorUserId, req.params.adjustmentId, req.body?.status)
       if (!entry) return res.status(404).json({ error: 'Adjustment entry not found' })

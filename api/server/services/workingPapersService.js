@@ -1,4 +1,23 @@
 import { encryptSecret } from './tokenEncryption.js'
+import {
+  createAdjustmentEntryRecord,
+  createReviewNoteRecord,
+  fetchEngagementForAccess,
+  fetchLeadSheetDetailRows,
+  fetchLeadSheetForAccess,
+  listAdjustmentEntriesForEngagement,
+  listLeadSheetsForEngagement,
+  listReviewNotesForEngagement,
+  listTrialBalanceAccountsForEngagement,
+  patchReviewNoteStatusRecord,
+  replaceAdjustmentLines,
+  updateAdjustmentStatusRecord
+} from './repositories/workingPaperDomainRepository.js'
+import {
+  appendWorkflowStatus,
+  recordAuditEvent,
+  upsertReviewAssignment
+} from './repositories/auditWorkflowRepository.js'
 
 const ENGAGEMENT_TYPES = new Set([
   'month_end_close',
@@ -718,21 +737,9 @@ export async function getEngagementWorkflowSummary (pool, clerkUserId, workspace
 }
 
 export async function listTrialBalanceAccounts (pool, clerkUserId, engagementId) {
-  const { rows: ownershipRows } = await pool.query(
-    'SELECT id FROM taxgpt.accounting_engagements WHERE id = $1::uuid AND clerk_user_id = $2',
-    [engagementId, clerkUserId]
-  )
-  if (!ownershipRows[0]) return null
-
-  const { rows } = await pool.query(
-    `SELECT tba.*, tb.name AS trial_balance_name
-     FROM taxgpt.trial_balance_accounts tba
-     INNER JOIN taxgpt.trial_balances tb ON tb.id = tba.trial_balance_id
-     WHERE tb.engagement_id = $1::uuid
-     ORDER BY COALESCE(tba.account_number, ''), tba.account_name`,
-    [engagementId]
-  )
-  return rows
+  const engagement = await fetchEngagementForAccess(pool, engagementId, clerkUserId)
+  if (!engagement) return null
+  return listTrialBalanceAccountsForEngagement(pool, engagementId)
 }
 
 export async function updateTrialBalanceAccountMapping (pool, clerkUserId, actorId, accountId, payload) {
@@ -868,48 +875,18 @@ export async function generateLeadSheets (pool, clerkUserId, actorId, engagement
 }
 
 export async function listLeadSheets (pool, clerkUserId, engagementId) {
-  const { rows } = await pool.query(
-    `SELECT ls.*, 
-            count(distinct lsa.id)::int AS account_count,
-            count(distinct rn.id)::int AS open_note_count,
-            count(distinct wpd.id)::int AS document_count
-     FROM taxgpt.lead_sheets ls
-     INNER JOIN taxgpt.accounting_engagements e ON e.id = ls.engagement_id
-     LEFT JOIN taxgpt.lead_sheet_accounts lsa ON lsa.lead_sheet_id = ls.id
-     LEFT JOIN taxgpt.review_notes rn ON rn.lead_sheet_id = ls.id AND rn.status IN ('open', 'reopened')
-     LEFT JOIN taxgpt.working_paper_documents wpd ON wpd.lead_sheet_id = ls.id
-     WHERE ls.engagement_id = $1::uuid AND e.clerk_user_id = $2
-     GROUP BY ls.id
-     ORDER BY ls.section_code ASC`,
-    [engagementId, clerkUserId]
-  )
-  return rows
+  const engagement = await fetchEngagementForAccess(pool, engagementId, clerkUserId)
+  if (!engagement) return []
+  return listLeadSheetsForEngagement(pool, engagementId)
 }
 
 export async function getLeadSheetDetail (pool, clerkUserId, engagementId, leadSheetId) {
-  const { rows: leadSheetRows } = await pool.query(
-    `SELECT ls.*
-     FROM taxgpt.lead_sheets ls
-     INNER JOIN taxgpt.accounting_engagements e ON e.id = ls.engagement_id
-     WHERE ls.id = $1::uuid AND ls.engagement_id = $2::uuid AND e.clerk_user_id = $3`,
-    [leadSheetId, engagementId, clerkUserId]
-  )
-  if (!leadSheetRows[0]) return null
-  const leadSheet = leadSheetRows[0]
-  const [accounts, notes, documents, tasks] = await Promise.all([
-    pool.query(
-      `SELECT tba.*
-       FROM taxgpt.lead_sheet_accounts lsa
-       INNER JOIN taxgpt.trial_balance_accounts tba ON tba.id = lsa.trial_balance_account_id
-       WHERE lsa.lead_sheet_id = $1::uuid
-       ORDER BY lsa.sort_order ASC`,
-      [leadSheetId]
-    ),
-    pool.query('SELECT * FROM taxgpt.review_notes WHERE lead_sheet_id = $1::uuid ORDER BY created_at DESC', [leadSheetId]),
-    pool.query('SELECT * FROM taxgpt.working_paper_documents WHERE lead_sheet_id = $1::uuid ORDER BY uploaded_at DESC', [leadSheetId]),
-    pool.query('SELECT * FROM taxgpt.engagement_tasks WHERE lead_sheet_id = $1::uuid ORDER BY sort_order ASC, created_at DESC', [leadSheetId])
-  ])
-  return { leadSheet, accounts: accounts.rows, notes: notes.rows, documents: documents.rows, tasks: tasks.rows }
+  const engagement = await fetchEngagementForAccess(pool, engagementId, clerkUserId)
+  if (!engagement) return null
+  const leadSheet = await fetchLeadSheetForAccess(pool, leadSheetId, clerkUserId)
+  if (!leadSheet || leadSheet.engagement_id !== engagementId) return null
+  const detailRows = await fetchLeadSheetDetailRows(pool, leadSheetId)
+  return { leadSheet, ...detailRows }
 }
 
 export async function updateLeadSheetConclusion (pool, clerkUserId, actorId, leadSheetId, conclusionText) {
@@ -1139,49 +1116,71 @@ export async function createReviewNote (pool, clerkUserId, actorId, payload) {
   assertAllowed(payload.priority || 'medium', REVIEW_NOTE_PRIORITIES, 'note priority')
   const text = String(payload.noteText || '').trim()
   if (!text) throw new Error('noteText is required')
-  const { rows } = await pool.query(
-    `INSERT INTO taxgpt.review_notes
-     (engagement_id, lead_sheet_id, trial_balance_account_id, document_id, note_text, status, priority, created_by, assigned_to, created_at, updated_at)
-     VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, 'open', $6, $7, $8, now(), now())
-     RETURNING *`,
-    [
-      payload.engagementId,
-      payload.leadSheetId || null,
-      payload.trialBalanceAccountId || null,
-      payload.documentId || null,
-      text,
-      payload.priority || 'medium',
-      actorId,
-      payload.assignedTo || null
-    ]
-  )
-  await applyEngagementWorkflowSignal(pool, rows[0].engagement_id, 'review_notes_open')
-  await logAccountingAudit(pool, clerkUserId, actorId, 'review_note', rows[0].id, 'created', null, rows[0])
-  return rows[0]
+  const engagement = await fetchEngagementForAccess(pool, payload.engagementId, clerkUserId)
+  if (!engagement) return null
+  const note = await createReviewNoteRecord(pool, {
+    organizationId: engagement.organization_id || null,
+    workspaceId: engagement.workspace_id || null,
+    engagementId: payload.engagementId,
+    leadSheetId: payload.leadSheetId || null,
+    trialBalanceAccountId: payload.trialBalanceAccountId || null,
+    documentId: payload.documentId || null,
+    noteText: text,
+    priority: payload.priority || 'medium',
+    actorId,
+    assignedTo: payload.assignedTo || null
+  })
+  if (!note) return null
+  await applyEngagementWorkflowSignal(pool, note.engagement_id, 'review_notes_open')
+  await appendWorkflowStatus(pool, {
+    organizationId: note.organization_id || engagement.organization_id || null,
+    workspaceId: note.workspace_id || engagement.workspace_id || null,
+    engagementId: note.engagement_id,
+    leadSheetId: note.lead_sheet_id || null,
+    statusType: 'review_note',
+    statusValue: note.status,
+    transitionedBy: actorId,
+    metadata: {
+      reviewNoteId: note.id,
+      priority: note.priority
+    }
+  })
+  if (note.assigned_to) {
+    await upsertReviewAssignment(pool, {
+      organizationId: note.organization_id || engagement.organization_id || null,
+      workspaceId: note.workspace_id || engagement.workspace_id || null,
+      engagementId: note.engagement_id,
+      leadSheetId: note.lead_sheet_id || null,
+      reviewNoteId: note.id,
+      assignmentType: 'review_note',
+      assignedTo: note.assigned_to,
+      assignedBy: actorId,
+      dueDate: engagement.due_date || null,
+      metadata: { priority: note.priority }
+    })
+  }
+  await recordAuditEvent(pool, {
+    organizationId: note.organization_id || engagement.organization_id || null,
+    workspaceId: note.workspace_id || engagement.workspace_id || null,
+    engagementId: note.engagement_id,
+    leadSheetId: note.lead_sheet_id || null,
+    eventType: 'review_note_created',
+    entityType: 'review_note',
+    entityId: note.id,
+    actorId,
+    afterValue: note
+  })
+  await logAccountingAudit(pool, clerkUserId, actorId, 'review_note', note.id, 'created', null, note)
+  return note
 }
 
 export async function updateReviewNoteStatus (pool, clerkUserId, actorId, noteId, status, updates = {}) {
   assertAllowed(status, REVIEW_NOTE_STATUSES, 'review note status')
-  const { rows: beforeRows } = await pool.query(
-    `SELECT rn.*, e.clerk_user_id
-     FROM taxgpt.review_notes rn
-     INNER JOIN taxgpt.accounting_engagements e ON e.id = rn.engagement_id
-     WHERE rn.id = $1::uuid`,
-    [noteId]
-  )
-  if (!beforeRows[0] || beforeRows[0].clerk_user_id !== clerkUserId) return null
-  const { rows } = await pool.query(
-    `UPDATE taxgpt.review_notes
-     SET status = $1,
-         assigned_to = COALESCE($2, assigned_to),
-         resolved_by = CASE WHEN $1 IN ('cleared', 'addressed') THEN $3 ELSE resolved_by END,
-         resolved_at = CASE WHEN $1 IN ('cleared', 'addressed') THEN now() ELSE resolved_at END,
-         updated_at = now()
-     WHERE id = $4::uuid
-     RETURNING *`,
-    [status, updates.assignedTo || null, actorId, noteId]
-  )
-  const engagementId = beforeRows[0].engagement_id
+  const patched = await patchReviewNoteStatusRecord(pool, noteId, actorId, status, updates)
+  if (!patched || !patched.current) return null
+  const engagement = await fetchEngagementForAccess(pool, patched.current.engagement_id, clerkUserId)
+  if (!engagement) return null
+  const engagementId = patched.current.engagement_id
   const { rows: openNoteRows } = await pool.query(
     `SELECT count(*)::int AS c
      FROM taxgpt.review_notes
@@ -1191,30 +1190,51 @@ export async function updateReviewNoteStatus (pool, clerkUserId, actorId, noteId
   )
   const hasOpenNotes = Number(openNoteRows[0]?.c || 0) > 0
   await applyEngagementWorkflowSignal(pool, engagementId, hasOpenNotes ? 'review_notes_open' : 'reviewer_in_progress')
-  await logAccountingAudit(pool, clerkUserId, actorId, 'review_note', noteId, `status_${status}`, beforeRows[0], rows[0])
-  return rows[0]
+  await appendWorkflowStatus(pool, {
+    organizationId: patched.current.organization_id || engagement.organization_id || null,
+    workspaceId: patched.current.workspace_id || engagement.workspace_id || null,
+    engagementId,
+    leadSheetId: patched.current.lead_sheet_id || null,
+    statusType: 'review_note',
+    statusValue: patched.current.status,
+    transitionedBy: actorId,
+    metadata: { reviewNoteId: patched.current.id }
+  })
+  if (patched.current.assigned_to) {
+    await upsertReviewAssignment(pool, {
+      organizationId: patched.current.organization_id || engagement.organization_id || null,
+      workspaceId: patched.current.workspace_id || engagement.workspace_id || null,
+      engagementId,
+      leadSheetId: patched.current.lead_sheet_id || null,
+      reviewNoteId: patched.current.id,
+      assignmentType: 'review_note',
+      assignedTo: patched.current.assigned_to,
+      assignedBy: actorId,
+      assignmentState: ['addressed', 'cleared'].includes(patched.current.status) ? 'completed' : 'active',
+      dueDate: engagement.due_date || null,
+      metadata: { transitionedStatus: patched.current.status }
+    })
+  }
+  await recordAuditEvent(pool, {
+    organizationId: patched.current.organization_id || engagement.organization_id || null,
+    workspaceId: patched.current.workspace_id || engagement.workspace_id || null,
+    engagementId,
+    leadSheetId: patched.current.lead_sheet_id || null,
+    eventType: 'review_note_status_updated',
+    entityType: 'review_note',
+    entityId: patched.current.id,
+    actorId,
+    beforeValue: patched.before,
+    afterValue: patched.current
+  })
+  await logAccountingAudit(pool, clerkUserId, actorId, 'review_note', noteId, `status_${status}`, patched.before, patched.current)
+  return patched.current
 }
 
 export async function listReviewNotes (pool, clerkUserId, engagementId, filters = {}) {
-  const values = [engagementId, clerkUserId]
-  const where = ['rn.engagement_id = $1::uuid', 'e.clerk_user_id = $2']
-  if (filters.status) {
-    values.push(filters.status)
-    where.push(`rn.status = $${values.length}`)
-  }
-  if (filters.priority) {
-    values.push(filters.priority)
-    where.push(`rn.priority = $${values.length}`)
-  }
-  const { rows } = await pool.query(
-    `SELECT rn.*
-     FROM taxgpt.review_notes rn
-     INNER JOIN taxgpt.accounting_engagements e ON e.id = rn.engagement_id
-     WHERE ${where.join(' AND ')}
-     ORDER BY rn.created_at DESC`,
-    values
-  )
-  return rows
+  const engagement = await fetchEngagementForAccess(pool, engagementId, clerkUserId)
+  if (!engagement) return []
+  return listReviewNotesForEngagement(pool, engagementId, filters)
 }
 
 export async function createTask (pool, clerkUserId, actorId, payload) {
@@ -1303,22 +1323,38 @@ export function validateAdjustmentBalance (lines) {
 export async function createAdjustmentEntry (pool, clerkUserId, actorId, payload) {
   assertAllowed(payload.status || 'draft', ADJUSTMENT_STATUSES, 'adjustment status')
   assertAllowed(payload.source || 'manual', ADJUSTMENT_SOURCES, 'adjustment source')
-  const { rows } = await pool.query(
-    `INSERT INTO taxgpt.adjustment_entries
-     (engagement_id, entry_number, description, status, source, created_by, created_at, updated_at)
-     VALUES ($1::uuid, $2, $3, $4, $5, $6, now(), now())
-     RETURNING *`,
-    [
-      payload.engagementId,
-      payload.entryNumber,
-      payload.description,
-      payload.status || 'draft',
-      payload.source || 'manual',
-      actorId
-    ]
-  )
-  await logAccountingAudit(pool, clerkUserId, actorId, 'adjustment_entry', rows[0].id, 'created', null, rows[0])
-  return rows[0]
+  const engagement = await fetchEngagementForAccess(pool, payload.engagementId, clerkUserId)
+  if (!engagement) return null
+  const entry = await createAdjustmentEntryRecord(pool, {
+    engagementId: payload.engagementId,
+    entryNumber: payload.entryNumber,
+    description: payload.description,
+    status: payload.status || 'draft',
+    source: payload.source || 'manual',
+    actorId
+  })
+  if (!entry) return null
+  await appendWorkflowStatus(pool, {
+    organizationId: engagement.organization_id || null,
+    workspaceId: engagement.workspace_id || null,
+    engagementId: entry.engagement_id,
+    statusType: 'adjustment',
+    statusValue: entry.status,
+    transitionedBy: actorId,
+    metadata: { adjustmentId: entry.id, entryNumber: entry.entry_number }
+  })
+  await recordAuditEvent(pool, {
+    organizationId: engagement.organization_id || null,
+    workspaceId: engagement.workspace_id || null,
+    engagementId: entry.engagement_id,
+    eventType: 'adjustment_created',
+    entityType: 'adjustment_entry',
+    entityId: entry.id,
+    actorId,
+    afterValue: entry
+  })
+  await logAccountingAudit(pool, clerkUserId, actorId, 'adjustment_entry', entry.id, 'created', null, entry)
+  return entry
 }
 
 export async function upsertAdjustmentLines (pool, clerkUserId, actorId, adjustmentEntryId, lines) {
@@ -1335,54 +1371,45 @@ export async function upsertAdjustmentLines (pool, clerkUserId, actorId, adjustm
     [adjustmentEntryId]
   )
   if (!entryRows[0] || entryRows[0].clerk_user_id !== clerkUserId) return null
-  await pool.query('DELETE FROM taxgpt.adjustment_entry_lines WHERE adjustment_entry_id = $1::uuid', [adjustmentEntryId])
-  for (const line of safeLines) {
-    await pool.query(
-      `INSERT INTO taxgpt.adjustment_entry_lines
-       (adjustment_entry_id, account_number, account_name, debit_amount, credit_amount, memo, created_at, updated_at)
-       VALUES ($1::uuid, $2, $3, $4, $5, $6, now(), now())`,
-      [adjustmentEntryId, line.accountNumber || null, line.accountName, line.debitAmount || 0, line.creditAmount || 0, line.memo || null]
-    )
-  }
+  await replaceAdjustmentLines(pool, adjustmentEntryId, safeLines)
   await logAccountingAudit(pool, clerkUserId, actorId, 'adjustment_entry', adjustmentEntryId, 'lines_updated', null, { lineCount: safeLines.length })
   return { lineCount: safeLines.length, validation }
 }
 
 export async function updateAdjustmentStatus (pool, clerkUserId, actorId, adjustmentEntryId, status) {
   assertAllowed(status, ADJUSTMENT_STATUSES, 'adjustment status')
-  const { rows: beforeRows } = await pool.query(
-    `SELECT ae.*, e.clerk_user_id
-     FROM taxgpt.adjustment_entries ae
-     INNER JOIN taxgpt.accounting_engagements e ON e.id = ae.engagement_id
-     WHERE ae.id = $1::uuid`,
-    [adjustmentEntryId]
-  )
-  if (!beforeRows[0] || beforeRows[0].clerk_user_id !== clerkUserId) return null
-  const before = beforeRows[0]
-  const { rows } = await pool.query(
-    `UPDATE taxgpt.adjustment_entries
-     SET status = $1,
-         approved_by = CASE WHEN $1 = 'approved' THEN $2 ELSE approved_by END,
-         posted_at = CASE WHEN $1 = 'posted' THEN now() ELSE posted_at END,
-         updated_at = now()
-     WHERE id = $3::uuid
-     RETURNING *`,
-    [status, actorId, adjustmentEntryId]
-  )
-  await logAccountingAudit(pool, clerkUserId, actorId, 'adjustment_entry', adjustmentEntryId, `status_${status}`, before, rows[0])
-  return rows[0]
+  const patched = await updateAdjustmentStatusRecord(pool, adjustmentEntryId, actorId, status)
+  if (!patched || !patched.current) return null
+  const engagement = await fetchEngagementForAccess(pool, patched.current.engagement_id, clerkUserId)
+  if (!engagement) return null
+  await appendWorkflowStatus(pool, {
+    organizationId: engagement.organization_id || null,
+    workspaceId: engagement.workspace_id || null,
+    engagementId: patched.current.engagement_id,
+    statusType: 'adjustment',
+    statusValue: patched.current.status,
+    transitionedBy: actorId,
+    metadata: { adjustmentId: patched.current.id }
+  })
+  await recordAuditEvent(pool, {
+    organizationId: engagement.organization_id || null,
+    workspaceId: engagement.workspace_id || null,
+    engagementId: patched.current.engagement_id,
+    eventType: 'adjustment_status_updated',
+    entityType: 'adjustment_entry',
+    entityId: patched.current.id,
+    actorId,
+    beforeValue: patched.before,
+    afterValue: patched.current
+  })
+  await logAccountingAudit(pool, clerkUserId, actorId, 'adjustment_entry', adjustmentEntryId, `status_${status}`, patched.before, patched.current)
+  return patched.current
 }
 
 export async function listAdjustmentEntries (pool, clerkUserId, engagementId) {
-  const { rows } = await pool.query(
-    `SELECT ae.*
-     FROM taxgpt.adjustment_entries ae
-     INNER JOIN taxgpt.accounting_engagements e ON e.id = ae.engagement_id
-     WHERE ae.engagement_id = $1::uuid AND e.clerk_user_id = $2
-     ORDER BY ae.created_at DESC`,
-    [engagementId, clerkUserId]
-  )
-  return rows
+  const engagement = await fetchEngagementForAccess(pool, engagementId, clerkUserId)
+  if (!engagement) return []
+  return listAdjustmentEntriesForEngagement(pool, engagementId)
 }
 
 export async function listIntegrations (pool, clerkUserId, organizationId = null) {

@@ -9,6 +9,7 @@ import WorkingPaperTreePanel from '../../../modules/working-papers/components/Wo
 import WorkflowQueuePanel from '../../../modules/working-papers/components/WorkflowQueuePanel'
 import AuditTimelinePanel from '../../../modules/working-papers/components/AuditTimelinePanel'
 import AdjustmentWorkspacePanel from '../../../modules/working-papers/components/AdjustmentWorkspacePanel'
+import AgGridTable from '../../../modules/working-papers/components/grid/AgGridTable'
 import {
   createEvidenceLink,
   createReviewSignoff,
@@ -2569,36 +2570,37 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             ))}
                           </div>
                         )}
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b border-border text-left text-text-light">
-                                <th className="py-2">Account</th>
-                                <th className="py-2">Current</th>
-                                <th className="py-2">Prior</th>
-                                <th className="py-2">Variance</th>
-                                <th className="py-2">%</th>
-                                <th className="py-2">Flags</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {trialBalanceAccounts.length === 0 ? (
-                                <tr>
-                                  <td className="py-3 text-text-light" colSpan={6}>No trial balance accounts imported yet.</td>
-                                </tr>
-                              ) : trialBalanceAccounts.map((account) => (
-                                  <tr key={account.id} className="border-b border-border/70">
-                                    <td className="py-2">{account.account_number || '—'} {account.account_name}</td>
-                                    <td className="py-2">{account.current_period_balance}</td>
-                                    <td className="py-2">{account.prior_period_balance ?? '—'}</td>
-                                    <td className="py-2">{account.variance_amount ?? '—'}</td>
-                                    <td className="py-2">{account.variance_percent != null ? `${(Number(account.variance_percent) * 100).toFixed(1)}%` : account.variance_label || '—'}</td>
-                                    <td className="py-2">{account.is_material ? 'Material' : account.is_unusual ? 'Unusual' : '—'}</td>
-                                  </tr>
-                                ))}
-                            </tbody>
-                          </table>
-                        </div>
+                        {trialBalanceAccounts.length === 0 ? (
+                          <p className="text-sm text-text-light">No trial balance accounts imported yet.</p>
+                        ) : (
+                          <AgGridTable
+                            rowData={trialBalanceAccounts}
+                            height={360}
+                            columnDefs={[
+                              {
+                                headerName: 'Account',
+                                minWidth: 260,
+                                valueGetter: (params) => `${params.data?.account_number || '—'} ${params.data?.account_name || ''}`
+                              },
+                              { field: 'current_period_balance', headerName: 'Current', minWidth: 130 },
+                              { field: 'prior_period_balance', headerName: 'Prior', minWidth: 130 },
+                              { field: 'variance_amount', headerName: 'Variance', minWidth: 130 },
+                              {
+                                headerName: '%',
+                                minWidth: 110,
+                                valueGetter: (params) => {
+                                  const value = params.data?.variance_percent
+                                  return value != null ? `${(Number(value) * 100).toFixed(1)}%` : (params.data?.variance_label || '—')
+                                }
+                              },
+                              {
+                                headerName: 'Flags',
+                                minWidth: 130,
+                                valueGetter: (params) => (params.data?.is_material ? 'Material' : (params.data?.is_unusual ? 'Unusual' : '—'))
+                              }
+                            ]}
+                          />
+                        )}
                       </div>
                     )}
 
@@ -2609,47 +2611,40 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             Generate or Refresh Lead Sheets
                           </button>
                         </div>
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b border-border text-left text-text-light">
-                                <th className="py-2">Section</th>
-                                <th className="py-2">Status</th>
-                                <th className="py-2">Risk</th>
-                                <th className="py-2">Open notes</th>
-                                <th className="py-2">Docs</th>
-                                <th className="py-2">Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {leadSheets.length === 0 ? (
-                                <tr>
-                                  <td className="py-3 text-text-light" colSpan={6}>No lead sheets generated yet.</td>
-                                </tr>
-                              ) : leadSheets.map((sheet) => (
-                                  <tr key={sheet.id} className="border-b border-border/70">
-                                    <td className="py-2">
-                                      <Link className="text-primary-dark hover:underline" to={`/portal/accounting/working-papers/engagements/${engagementId}/lead-sheets/${sheet.id}`}>
-                                        {sheet.section_code} - {sheet.section_name}
-                                      </Link>
-                                    </td>
-                                    <td className="py-2">{sheet.status}</td>
-                                    <td className="py-2">{sheet.risk_level}</td>
-                                    <td className="py-2">{sheet.open_note_count}</td>
-                                    <td className="py-2">{sheet.document_count}</td>
-                                    <td className="py-2">
-                                      <button
-                                        type="button"
-                                        className="text-xs text-primary-dark underline"
-                                        onClick={() => { void onDeleteLeadSheet(sheet.id) }}
-                                      >
-                                        Delete
-                                      </button>
-                                    </td>
-                                  </tr>
-                                ))}
-                            </tbody>
-                          </table>
+                        {leadSheets.length === 0 ? (
+                          <p className="text-sm text-text-light">No lead sheets generated yet.</p>
+                        ) : (
+                          <AgGridTable
+                            rowData={leadSheets}
+                            height={320}
+                            columnDefs={[
+                              {
+                                headerName: 'Section',
+                                minWidth: 240,
+                                valueGetter: (params) => `${params.data?.section_code || ''} - ${params.data?.section_name || ''}`
+                              },
+                              { field: 'status', headerName: 'Status', minWidth: 130 },
+                              { field: 'risk_level', headerName: 'Risk', minWidth: 120 },
+                              { field: 'open_note_count', headerName: 'Open Notes', minWidth: 120 },
+                              { field: 'document_count', headerName: 'Docs', minWidth: 90 }
+                            ]}
+                          />
+                        )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {leadSheets.map((sheet) => (
+                            <div key={`sheet-actions-${sheet.id}`} className="rounded border border-border/70 p-2 flex items-center justify-between gap-2">
+                              <Link className="text-primary-dark hover:underline text-sm" to={`/portal/accounting/working-papers/engagements/${engagementId}/lead-sheets/${sheet.id}`}>
+                                Open {sheet.section_code} - {sheet.section_name}
+                              </Link>
+                              <button
+                                type="button"
+                                className="text-xs text-primary-dark underline"
+                                onClick={() => { void onDeleteLeadSheet(sheet.id) }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
@@ -2785,44 +2780,40 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           </button>
                         </div>
                         <WorkflowQueuePanel queue={workflowQueue} />
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b border-border text-left text-text-light">
-                                <th className="py-2">Priority</th>
-                                <th className="py-2">Status</th>
-                                <th className="py-2">Note</th>
-                                <th className="py-2">Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {reviewNotes.length === 0 ? (
-                                <tr>
-                                  <td className="py-3 text-text-light" colSpan={4}>No review notes for this engagement.</td>
-                                </tr>
-                              ) : reviewNotes.map((note) => (
-                                  <tr key={note.id} className="border-b border-border/70">
-                                    <td className="py-2">{note.priority}</td>
-                                    <td className="py-2">{note.status}</td>
-                                    <td className="py-2">{note.note_text}</td>
-                                    <td className="py-2">
-                                      <div className="flex gap-2">
-                                        <button type="button" className="text-xs text-primary-dark underline" onClick={() => { void onUpdateReviewNoteStatus(note.id, 'addressed') }}>
-                                          Address
-                                        </button>
-                                        <button type="button" className="text-xs text-primary-dark underline" onClick={() => { void onUpdateReviewNoteStatus(note.id, 'cleared') }}>
-                                          Clear
-                                        </button>
-                                        <button type="button" className="text-xs text-primary-dark underline" onClick={() => { void onUpdateReviewNoteStatus(note.id, 'reopened') }}>
-                                          Reopen
-                                        </button>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                ))}
-                            </tbody>
-                          </table>
-                        </div>
+                        {reviewNotes.length === 0 ? (
+                          <p className="text-sm text-text-light">No review notes for this engagement.</p>
+                        ) : (
+                          <>
+                            <AgGridTable
+                              rowData={reviewNotes}
+                              height={280}
+                              columnDefs={[
+                                { field: 'priority', headerName: 'Priority', minWidth: 110 },
+                                { field: 'status', headerName: 'Status', minWidth: 130 },
+                                { field: 'note_text', headerName: 'Note', minWidth: 360 }
+                              ]}
+                            />
+                            <div className="space-y-2">
+                              {reviewNotes.map((note) => (
+                                <div key={`review-actions-${note.id}`} className="rounded border border-border/70 p-2">
+                                  <p className="text-xs text-text-light mb-1">{note.priority} - {note.status}</p>
+                                  <p className="text-sm text-primary-dark mb-2">{note.note_text}</p>
+                                  <div className="flex gap-2">
+                                    <button type="button" className="text-xs text-primary-dark underline" onClick={() => { void onUpdateReviewNoteStatus(note.id, 'addressed') }}>
+                                      Address
+                                    </button>
+                                    <button type="button" className="text-xs text-primary-dark underline" onClick={() => { void onUpdateReviewNoteStatus(note.id, 'cleared') }}>
+                                      Clear
+                                    </button>
+                                    <button type="button" className="text-xs text-primary-dark underline" onClick={() => { void onUpdateReviewNoteStatus(note.id, 'reopened') }}>
+                                      Reopen
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
                         <div className="rounded-lg border border-border p-4">
                           <h3 className="font-semibold text-primary-dark">Signoff Timeline</h3>
                           <div className="mt-2 space-y-1">

@@ -1,10 +1,69 @@
-import type { FC } from 'react'
+import { type FC, useMemo } from 'react'
+import type { ColDef, GridOptions } from 'ag-grid-community'
+import AgGridTable from './grid/AgGridTable'
 
 type WorkingPaperTreePanelProps = {
   sections: any[]
 }
 
 const WorkingPaperTreePanel: FC<WorkingPaperTreePanelProps> = ({ sections }) => {
+  const rows = useMemo(() => {
+    const flattened: any[] = []
+    for (const section of sections || []) {
+      const sectionCode = String(section.section_code || 'section').trim()
+      flattened.push({
+        id: `section-${section.id}`,
+        type: 'section',
+        path: [sectionCode],
+        section_label: `${sectionCode} - ${section.section_name || 'Section'}`,
+        review_status: section.status || 'not_started',
+        row_count: Array.isArray(section.rows) ? section.rows.length : Number(section.row_count || 0)
+      })
+      for (const row of Array.isArray(section.rows) ? section.rows : []) {
+        flattened.push({
+          id: row.id,
+          type: 'row',
+          path: [sectionCode, String(row.row_label || row.account_name || row.id)],
+          section_label: row.row_label || row.account_name || 'Row',
+          review_status: row.review_status || 'pending',
+          row_count: null
+        })
+      }
+    }
+    return flattened
+  }, [sections])
+
+  const columnDefs = useMemo<Array<ColDef<any>>>(
+    () => [
+      {
+        field: 'section_label',
+        headerName: 'Working Paper Node',
+        minWidth: 280
+      },
+      { field: 'review_status', headerName: 'Status', minWidth: 140 },
+      {
+        field: 'row_count',
+        headerName: 'Rows',
+        minWidth: 100,
+        valueFormatter: (params) => (params.value == null ? '' : String(params.value))
+      }
+    ],
+    []
+  )
+
+  const gridOptions = useMemo<GridOptions<any>>(
+    () => ({
+      treeData: true,
+      getDataPath: (data: any) => data.path,
+      autoGroupColumnDef: {
+        headerName: 'Hierarchy',
+        minWidth: 280
+      },
+      groupDefaultExpanded: 1
+    }),
+    []
+  )
+
   return (
     <div className="rounded-lg border border-border p-4 space-y-3">
       <div>
@@ -14,26 +73,7 @@ const WorkingPaperTreePanel: FC<WorkingPaperTreePanelProps> = ({ sections }) => 
       {sections.length === 0 ? (
         <p className="text-sm text-text-light">No working paper sections generated yet.</p>
       ) : (
-        <div className="space-y-2">
-          {sections.map((section) => (
-            <details key={section.id} className="rounded border border-border/70 px-3 py-2">
-              <summary className="cursor-pointer text-sm text-primary-dark font-medium">
-                {section.section_code} - {section.section_name} ({Array.isArray(section.rows) ? section.rows.length : Number(section.row_count || 0)} rows)
-              </summary>
-              <div className="mt-2 space-y-1">
-                {(Array.isArray(section.rows) ? section.rows : []).slice(0, 20).map((row: any) => (
-                  <div key={row.id} className="text-xs text-text-light flex justify-between gap-2">
-                    <span>{row.row_label || row.account_name || 'Row'}</span>
-                    <span>{row.review_status || 'pending'}</span>
-                  </div>
-                ))}
-                {Array.isArray(section.rows) && section.rows.length > 20 && (
-                  <p className="text-[11px] text-text-light">+{section.rows.length - 20} more rows</p>
-                )}
-              </div>
-            </details>
-          ))}
-        </div>
+        <AgGridTable rowData={rows} columnDefs={columnDefs} gridOptions={gridOptions} height={360} />
       )}
     </div>
   )

@@ -23,7 +23,7 @@ export type NavigationSection = {
   items: NavigationItem[]
 }
 
-const ROLLOUT_BYPASS_ENABLED = import.meta.env.VITE_FORCE_ENTERPRISE_ACCESS !== 'false'
+const ROLLOUT_BYPASS_ENABLED = import.meta.env.VITE_FORCE_ENTERPRISE_ACCESS === 'true'
 
 const SECTIONS: NavigationSection[] = [
   {
@@ -93,6 +93,7 @@ const SECTIONS: NavigationSection[] = [
 
 function isItemVisible (item: NavigationItem, context: NavigationContext) {
   if (ROLLOUT_BYPASS_ENABLED) return true
+  if (item.to === '/portal/billing/subscription') return true
   if (!context.onboardingComplete && item.to.startsWith('/portal/accounting/working-papers')) return false
   if (item.requiredFeature && !context.features[item.requiredFeature]) return false
   if (item.requiredPermission && !context.permissions.includes(item.requiredPermission)) return false

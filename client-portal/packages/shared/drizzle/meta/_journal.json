@@ -92,6 +92,13 @@
       "when": 1779806400000,
       "tag": "0016_working_paper_operating_core",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1779900000000,
+      "tag": "0017_canonical_working_paper_tables",
+      "breakpoints": true
     }
   ]
 }

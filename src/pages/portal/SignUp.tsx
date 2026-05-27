@@ -3,10 +3,11 @@ import { useSignUp, useClerk, useAuth } from '@clerk/clerk-react'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import SEO from '../../components/SEO'
 import AxiomWordmark from '../../components/AxiomWordmark'
+import { portalFetch } from '../../lib/portalApi'
 
 const SignUp: FC = () => {
   const { signUp, isLoaded } = useSignUp()
-  const { isSignedIn, isLoaded: isAuthLoaded } = useAuth()
+  const { isSignedIn, isLoaded: isAuthLoaded, getToken } = useAuth()
   const { setActive } = useClerk()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -22,8 +23,21 @@ const SignUp: FC = () => {
   const inviteTicket = searchParams.get('__clerk_ticket') || searchParams.get('ticket')
   const inviteFlow = Boolean(inviteTicket)
   const modeParam = searchParams.get('mode')
+  const planParam = String(searchParams.get('plan') || '').trim().toUpperCase()
   const nextParam = searchParams.get('next')
   const nextPath = nextParam && nextParam.startsWith('/') ? nextParam : null
+  const createMode = modeParam === 'create' && !inviteFlow
+  const onboardingTarget = createMode && Boolean(nextPath?.includes('/portal/subscription?onboarding=1'))
+  const [workspaceType, setWorkspaceType] = useState<'business' | 'firm'>('business')
+  const [workspaceName, setWorkspaceName] = useState('')
+  const [companyLegalName, setCompanyLegalName] = useState('')
+  const [companyOperatingName, setCompanyOperatingName] = useState('')
+  const [industry, setIndustry] = useState('')
+  const [websiteUrl, setWebsiteUrl] = useState('')
+  const [taxIdentifier, setTaxIdentifier] = useState('')
+  const [primaryContactName, setPrimaryContactName] = useState('')
+  const [primaryContactEmail, setPrimaryContactEmail] = useState('')
+  const [primaryContactPhone, setPrimaryContactPhone] = useState('')
   const postAuthQuery = new URLSearchParams()
   if (nextPath) {
     postAuthQuery.set('next', nextPath)
@@ -70,7 +84,59 @@ const SignUp: FC = () => {
 
   const activateSession = async (sessionId: string) => {
     await setActive({ session: sessionId })
+    if (onboardingTarget) {
+      const workspaceId = await createWorkspaceProfileForOnboarding()
+      const selectedPlan = ['FREE', 'PROFESSIONAL', 'TAX_INTELLIGENCE', 'ENTERPRISE'].includes(planParam) ? planParam : 'FREE'
+      const target = new URLSearchParams({
+        onboarding: '1',
+        selectedPlan
+      })
+      target.set('step', 'invites')
+      if (workspaceId) {
+        target.set('workspaceId', workspaceId)
+      }
+      navigate(`/portal/subscription?${target.toString()}`)
+      return
+    }
     goPostAuth()
+  }
+
+  const createWorkspaceProfileForOnboarding = async (): Promise<string | null> => {
+    const run = async () => {
+      const created = await portalFetch<{ workspace: { id: string } }>('/v1/accounting/workspaces', getToken, {
+        method: 'POST',
+        body: JSON.stringify({
+          name: workspaceName.trim(),
+          workspaceType
+        })
+      })
+      const workspaceId = created.workspace?.id
+      if (!workspaceId) return null
+      await portalFetch(`/v1/accounting/workspaces/${workspaceId}/profile`, getToken, {
+        method: 'PUT',
+        body: JSON.stringify({
+          organizationType: workspaceType,
+          companyLegalName: companyLegalName.trim(),
+          companyOperatingName: companyOperatingName.trim(),
+          industry: industry.trim(),
+          websiteUrl: websiteUrl.trim(),
+          taxIdentifier: taxIdentifier.trim(),
+          primaryContactName: primaryContactName.trim(),
+          primaryContactEmail: primaryContactEmail.trim(),
+          primaryContactPhone: primaryContactPhone.trim(),
+          onboardingCompleted: false
+        })
+      })
+      return workspaceId
+    }
+
+    try {
+      return await run()
+    } catch {
+      // Session propagation can lag briefly after setActive.
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      return await run()
+    }
   }
 
   const recoverIfVerificationAlreadyComplete = async () => {
@@ -178,6 +244,13 @@ const SignUp: FC = () => {
         }
       } else {
         setError('Please fill in all required fields')
+        return
+      }
+    }
+
+    if (createMode) {
+      if (!workspaceName.trim() || !companyLegalName.trim()) {
+        setError('Workspace name and company/firm legal name are required.')
         return
       }
     }
@@ -363,6 +436,149 @@ const SignUp: FC = () => {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  {createMode && (
+                    <>
+                      <div>
+                        <h2 className="text-base font-semibold text-primary-dark">Company / Firm Profile</h2>
+                        <p className="text-xs text-text-light mt-1">
+                          This profile is created immediately after account setup and before employee invites.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label htmlFor="workspaceType" className="block text-sm font-medium text-text mb-1">
+                            Workspace type
+                          </label>
+                          <select
+                            id="workspaceType"
+                            value={workspaceType}
+                            onChange={(e) => { setWorkspaceType(e.target.value as 'business' | 'firm') }}
+                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          >
+                            <option value="business">Business</option>
+                            <option value="firm">Accounting firm</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label htmlFor="workspaceName" className="block text-sm font-medium text-text mb-1">
+                            Workspace name
+                          </label>
+                          <input
+                            id="workspaceName"
+                            type="text"
+                            value={workspaceName}
+                            onChange={(e) => { setWorkspaceName(e.target.value) }}
+                            required
+                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label htmlFor="companyLegalName" className="block text-sm font-medium text-text mb-1">
+                          Company/Firm legal name
+                        </label>
+                        <input
+                          id="companyLegalName"
+                          type="text"
+                          value={companyLegalName}
+                          onChange={(e) => { setCompanyLegalName(e.target.value) }}
+                          required
+                          className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label htmlFor="companyOperatingName" className="block text-sm font-medium text-text mb-1">
+                            Operating name
+                          </label>
+                          <input
+                            id="companyOperatingName"
+                            type="text"
+                            value={companyOperatingName}
+                            onChange={(e) => { setCompanyOperatingName(e.target.value) }}
+                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="industry" className="block text-sm font-medium text-text mb-1">
+                            Industry
+                          </label>
+                          <input
+                            id="industry"
+                            type="text"
+                            value={industry}
+                            onChange={(e) => { setIndustry(e.target.value) }}
+                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label htmlFor="websiteUrl" className="block text-sm font-medium text-text mb-1">
+                            Website
+                          </label>
+                          <input
+                            id="websiteUrl"
+                            type="url"
+                            value={websiteUrl}
+                            onChange={(e) => { setWebsiteUrl(e.target.value) }}
+                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="taxIdentifier" className="block text-sm font-medium text-text mb-1">
+                            Business number / Tax ID
+                          </label>
+                          <input
+                            id="taxIdentifier"
+                            type="text"
+                            value={taxIdentifier}
+                            onChange={(e) => { setTaxIdentifier(e.target.value) }}
+                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label htmlFor="primaryContactName" className="block text-sm font-medium text-text mb-1">
+                            Primary contact name
+                          </label>
+                          <input
+                            id="primaryContactName"
+                            type="text"
+                            value={primaryContactName}
+                            onChange={(e) => { setPrimaryContactName(e.target.value) }}
+                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="primaryContactEmail" className="block text-sm font-medium text-text mb-1">
+                            Primary contact email
+                          </label>
+                          <input
+                            id="primaryContactEmail"
+                            type="email"
+                            value={primaryContactEmail}
+                            onChange={(e) => { setPrimaryContactEmail(e.target.value) }}
+                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="primaryContactPhone" className="block text-sm font-medium text-text mb-1">
+                            Primary contact phone
+                          </label>
+                          <input
+                            id="primaryContactPhone"
+                            type="text"
+                            value={primaryContactPhone}
+                            onChange={(e) => { setPrimaryContactPhone(e.target.value) }}
+                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="firstName" className="block text-sm font-medium text-text mb-1">

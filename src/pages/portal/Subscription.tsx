@@ -62,6 +62,9 @@ const Subscription: FC = () => {
   const currentPlanConfig = useSubscriptionPlan()
   const forceEnterpriseAccess = import.meta.env.VITE_FORCE_ENTERPRISE_ACCESS !== 'false'
   const onboardingRequested = searchParams.get('onboarding') === '1'
+  const requestedStep = String(searchParams.get('step') || '').toLowerCase()
+  const startAtInvites = onboardingRequested && requestedStep === 'invites'
+  const requestedWorkspaceId = String(searchParams.get('workspaceId') || '').trim()
   const selectedPlan = (searchParams.get('selectedPlan') || '').toUpperCase()
   const planStepRequired = onboardingRequested && selectedPlan.length > 0
   const { setWorkspaceId } = useWorkspaceState()
@@ -87,8 +90,11 @@ const Subscription: FC = () => {
       const rows = await listWorkspaces(getToken)
       setWorkspaces(rows)
       if (rows.length > 0) {
-        setSelectedWorkspaceId(rows[0].id)
-        setWorkspaceId(rows[0].id)
+        const preferredWorkspace = requestedWorkspaceId
+          ? rows.find((row) => row.id === requestedWorkspaceId) || rows[0]
+          : rows[0]
+        setSelectedWorkspaceId(preferredWorkspace.id)
+        setWorkspaceId(preferredWorkspace.id)
         setOnboardingStep((current) => (current < 2 ? 2 : current))
       }
     } catch (e) {
@@ -96,11 +102,16 @@ const Subscription: FC = () => {
     } finally {
       setLoadingWorkspaces(false)
     }
-  }, [getToken, setWorkspaceId])
+  }, [getToken, requestedWorkspaceId, setWorkspaceId])
 
   useEffect(() => {
     void loadWorkspaces()
   }, [loadWorkspaces])
+
+  useEffect(() => {
+    if (!startAtInvites) return
+    setOnboardingStep((current) => (current < 2 ? 2 : current))
+  }, [startAtInvites])
 
   useEffect(() => {
     if (planStepRequired && forceEnterpriseAccess) {
@@ -369,7 +380,7 @@ const Subscription: FC = () => {
                     </div>
                   )}
 
-                  {planStepConfirmed && (
+                  {planStepConfirmed && !startAtInvites && (
                   <div className="rounded-lg border border-border p-4 space-y-3">
                     <h3 className="font-semibold text-primary-dark">Step 1: Set up workspace and company/firm profile</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

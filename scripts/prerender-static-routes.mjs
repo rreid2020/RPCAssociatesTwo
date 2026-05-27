@@ -7,6 +7,7 @@ import puppeteer from 'puppeteer'
 const DIST_DIR = resolve(process.cwd(), 'dist')
 const HOST = '127.0.0.1'
 const PORT = 4173
+const STRICT_PRERENDER = process.env.PRERENDER_STRICT === '1'
 
 const ROUTES = [
   '/',
@@ -124,13 +125,30 @@ async function prerenderRoutes() {
     throw new Error('dist directory was not found. Run vite build before prerendering.')
   }
 
-  const server = await startSpaServer()
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  })
+  let server = null
+  let browser = null
 
   try {
+    server = await startSpaServer()
+    try {
+      browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      })
+    } catch (error) {
+      const launchError = String(error?.message || error || '')
+      const isBrowserDependencyError =
+        launchError.includes('Failed to launch the browser process') ||
+        launchError.includes('error while loading shared libraries')
+
+      if (!STRICT_PRERENDER && isBrowserDependencyError) {
+        console.warn('Skipping prerender: browser dependencies are unavailable in this build environment.')
+        console.warn(launchError)
+        return { skipped: true }
+      }
+      throw error
+    }
+
     const page = await browser.newPage()
     page.setDefaultNavigationTimeout(90000)
 
@@ -141,16 +159,26 @@ async function prerenderRoutes() {
       await writePrerenderedHtml(route, html)
       console.log(`Prerendered ${route}`)
     }
+
+    return { skipped: false }
   } finally {
-    await browser.close()
-    await new Promise((resolveClose, rejectClose) => {
-      server.close((error) => (error ? rejectClose(error) : resolveClose()))
-    })
+    if (browser) {
+      await browser.close()
+    }
+    if (server) {
+      await new Promise((resolveClose, rejectClose) => {
+        server.close((error) => (error ? rejectClose(error) : resolveClose()))
+      })
+    }
   }
 }
 
 prerenderRoutes()
-  .then(() => {
+  .then((result) => {
+    if (result?.skipped) {
+      console.log('Prerender step completed in fallback mode.')
+      return
+    }
     console.log(`Prerender complete for ${ROUTES.length} routes`)
   })
   .catch((error) => {

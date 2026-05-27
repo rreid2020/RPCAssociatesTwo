@@ -188,6 +188,30 @@ const Subscription: FC = () => {
     })
   }
 
+  const applySelectedPlanToWorkspace = async (workspaceId: string) => {
+    if (!selectedPlan) return
+    await portalFetch('/v1/billing/subscription/sync', getToken, {
+      method: 'POST',
+      headers: {
+        'x-accounting-workspace-id': workspaceId
+      },
+      body: JSON.stringify({
+        planId: selectedPlan,
+        status: 'active',
+        interval: 'monthly'
+      })
+    })
+    await portalFetch('/v1/billing/entitlements/sync', getToken, {
+      method: 'POST',
+      headers: {
+        'x-accounting-workspace-id': workspaceId
+      },
+      body: JSON.stringify({
+        planId: selectedPlan
+      })
+    })
+  }
+
   const onCreateWorkspace = async () => {
     // Browser autofill can update DOM inputs without triggering React change events.
     const resolvedWorkspaceName = String(newWorkspaceName || workspaceNameInputRef.current?.value || '').trim()
@@ -220,6 +244,7 @@ const Subscription: FC = () => {
       })
       if (created.workspace?.id) {
         await saveWorkspaceProfile(created.workspace.id, false)
+        await applySelectedPlanToWorkspace(created.workspace.id)
       }
       await loadWorkspaces()
       setSelectedWorkspaceId(created.workspace?.id || '')

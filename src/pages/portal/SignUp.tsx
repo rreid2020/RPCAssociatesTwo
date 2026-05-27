@@ -24,6 +24,7 @@ const SignUp: FC = () => {
   const inviteFlow = Boolean(inviteTicket)
   const modeParam = searchParams.get('mode')
   const planParam = String(searchParams.get('plan') || '').trim().toUpperCase()
+  const selectedPlanId = ['FREE', 'PROFESSIONAL', 'TAX_INTELLIGENCE', 'ENTERPRISE'].includes(planParam) ? planParam : 'FREE'
   const nextParam = searchParams.get('next')
   const nextPath = nextParam && nextParam.startsWith('/') ? nextParam : null
   const createMode = modeParam === 'create' && !inviteFlow
@@ -86,10 +87,9 @@ const SignUp: FC = () => {
     await setActive({ session: sessionId })
     if (onboardingTarget) {
       const workspaceId = await createWorkspaceProfileForOnboarding()
-      const selectedPlan = ['FREE', 'PROFESSIONAL', 'TAX_INTELLIGENCE', 'ENTERPRISE'].includes(planParam) ? planParam : 'FREE'
       const target = new URLSearchParams({
         onboarding: '1',
-        selectedPlan
+        selectedPlan: selectedPlanId
       })
       target.set('step', 'invites')
       if (workspaceId) {
@@ -125,6 +125,26 @@ const SignUp: FC = () => {
           primaryContactEmail: primaryContactEmail.trim(),
           primaryContactPhone: primaryContactPhone.trim(),
           onboardingCompleted: false
+        })
+      })
+      await portalFetch('/v1/billing/subscription/sync', getToken, {
+        method: 'POST',
+        headers: {
+          'x-accounting-workspace-id': workspaceId
+        },
+        body: JSON.stringify({
+          planId: selectedPlanId,
+          status: 'active',
+          interval: 'monthly'
+        })
+      })
+      await portalFetch('/v1/billing/entitlements/sync', getToken, {
+        method: 'POST',
+        headers: {
+          'x-accounting-workspace-id': workspaceId
+        },
+        body: JSON.stringify({
+          planId: selectedPlanId
         })
       })
       return workspaceId

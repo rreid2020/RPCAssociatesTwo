@@ -23,7 +23,9 @@ export type NavigationSection = {
   items: NavigationItem[]
 }
 
-const ROLLOUT_BYPASS_ENABLED = import.meta.env.VITE_FORCE_ENTERPRISE_ACCESS === 'true'
+const ROLLOUT_BYPASS_ENABLED =
+  import.meta.env.MODE !== 'test' &&
+  import.meta.env.VITE_FORCE_ENTERPRISE_ACCESS !== 'false'
 
 const SECTIONS: NavigationSection[] = [
   {

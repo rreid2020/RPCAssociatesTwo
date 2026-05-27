@@ -372,6 +372,15 @@ const Header: FC = () => {
                   </Link>
                 </li>
                 <li className="shrink-0">
+                  <Link
+                    to="/portal/sign-up"
+                    className="inline-flex h-12 items-center px-1.5 text-base font-semibold text-text hover:text-primary-dark whitespace-nowrap"
+                    onClick={closeMenu}
+                  >
+                    Create account
+                  </Link>
+                </li>
+                <li className="shrink-0">
                   <HeaderPortalAuthLink
                     classNameSignIn="inline-flex h-12 items-center px-1.5 text-base font-semibold text-text hover:text-primary-dark whitespace-nowrap"
                     classNameSignedIn="inline-flex h-12 items-center px-1.5 text-base font-semibold text-text hover:text-primary-dark whitespace-nowrap"
@@ -573,6 +582,13 @@ const Header: FC = () => {
               </Link>
 
               <div className="text-center">
+                <Link
+                  to="/portal/sign-up"
+                  className="block font-semibold text-primary-dark py-2"
+                  onClick={closeMenu}
+                >
+                  Create account
+                </Link>
                 <HeaderPortalAuthLink
                   classNameSignIn="block font-semibold text-primary-dark py-2"
                   classNameSignedIn="block font-semibold text-primary-dark py-2"

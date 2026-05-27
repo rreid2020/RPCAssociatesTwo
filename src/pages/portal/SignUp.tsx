@@ -435,7 +435,7 @@ const SignUp: FC = () => {
               <p className="text-sm text-text-light">
                 Already have an account?{' '}
                 <Link
-                  to={nextPath ? `/portal/sign-in?next=${encodeURIComponent(nextPath)}` : '/portal/sign-in'}
+                  to={`/portal/sign-in?next=${encodeURIComponent(nextPath || '/portal/select-plan')}`}
                   className="text-primary-dark font-medium hover:underline"
                 >
                   Sign in

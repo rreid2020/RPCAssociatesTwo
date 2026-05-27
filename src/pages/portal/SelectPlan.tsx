@@ -1,5 +1,5 @@
-import { FC } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { FC, useEffect } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../components/SEO'
 import AxiomWordmark from '../../components/AxiomWordmark'
@@ -8,14 +8,22 @@ import { formatSubscriptionPrice } from '../../lib/subscriptions/utils'
 
 const SelectPlan: FC = () => {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { isSignedIn } = useAuth()
+  const selectedPlanFromQuery = searchParams.get('selectedPlan')
+
+  useEffect(() => {
+    if (isSignedIn) {
+      navigate('/portal/dashboard', { replace: true })
+    }
+  }, [isSignedIn, navigate])
 
   const planEntries = Object.values(SUBSCRIPTION_PLANS)
 
   const onChoosePlan = (planId: SubscriptionPlan) => {
     const onboardingPath = `/portal/subscription?onboarding=1&selectedPlan=${encodeURIComponent(planId)}`
     if (isSignedIn) {
-      navigate(onboardingPath)
+      navigate('/portal/dashboard')
       return
     }
     navigate(`/portal/sign-up?plan=${encodeURIComponent(planId)}&next=${encodeURIComponent(onboardingPath)}`)
@@ -34,9 +42,15 @@ const SelectPlan: FC = () => {
             <AxiomWordmark size="lg" centered blendOnBackground className="mb-4" />
             <h1 className="text-3xl font-bold text-primary-dark mb-2">Select a Plan</h1>
             <p className="text-text-light">
-              Choose your plan first, then create your account and continue to company/firm setup.
+              Choose your plan, then continue to company/firm setup. In development, full access is currently enabled.
             </p>
           </div>
+
+          {selectedPlanFromQuery && (
+            <div className="mb-6 rounded-lg border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-accent">
+              Selected plan from previous step: <strong>{selectedPlanFromQuery}</strong>. Confirm below to continue.
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {planEntries.map((plan) => (
@@ -58,7 +72,7 @@ const SelectPlan: FC = () => {
 
           <div className="mt-8 text-center text-sm text-text-light">
             Already have an account?{' '}
-            <Link to="/portal/sign-in" className="text-primary-dark font-medium hover:underline">
+            <Link to={`/portal/sign-in?next=${encodeURIComponent('/portal/select-plan')}`} className="text-primary-dark font-medium hover:underline">
               Sign in
             </Link>
           </div>

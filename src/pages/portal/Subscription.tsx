@@ -62,6 +62,8 @@ const Subscription: FC = () => {
   const currentPlanConfig = useSubscriptionPlan()
   const forceEnterpriseAccess = import.meta.env.VITE_FORCE_ENTERPRISE_ACCESS !== 'false'
   const onboardingRequested = searchParams.get('onboarding') === '1'
+  const selectedPlan = (searchParams.get('selectedPlan') || '').toUpperCase()
+  const planStepRequired = onboardingRequested && selectedPlan.length > 0
   const { setWorkspaceId } = useWorkspaceState()
   const [loadingWorkspaces, setLoadingWorkspaces] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -75,6 +77,7 @@ const Subscription: FC = () => {
   const [inviteDrafts, setInviteDrafts] = useState<InviteDraft[]>([{ email: '', role: 'manager' }])
   const [inviteSendSummary, setInviteSendSummary] = useState<InviteSendSummary>(null)
   const [onboardingStep, setOnboardingStep] = useState(1)
+  const [planStepConfirmed, setPlanStepConfirmed] = useState(false)
   const workspaceNameInputRef = useRef<HTMLInputElement | null>(null)
   const companyLegalNameInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -98,6 +101,18 @@ const Subscription: FC = () => {
   useEffect(() => {
     void loadWorkspaces()
   }, [loadWorkspaces])
+
+  useEffect(() => {
+    if (planStepRequired && forceEnterpriseAccess) {
+      setPlanStepConfirmed(true)
+      return
+    }
+    if (!planStepRequired) {
+      setPlanStepConfirmed(true)
+      return
+    }
+    setPlanStepConfirmed(false)
+  }, [forceEnterpriseAccess, planStepRequired])
 
   const activeWorkspace = useMemo(
     () => workspaces.find((workspace) => workspace.id === selectedWorkspaceId) || null,
@@ -309,6 +324,11 @@ const Subscription: FC = () => {
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                {planStepRequired && (
+                  <div className={`rounded-lg border px-3 py-2 ${planStepConfirmed ? 'border-accent bg-accent/5' : 'border-border'}`}>
+                    Plan + payment
+                  </div>
+                )}
                 <div className={`rounded-lg border px-3 py-2 ${onboardingStep >= 1 ? 'border-accent bg-accent/5' : 'border-border'}`}>
                   Step 1: Workspace setup
                 </div>
@@ -324,6 +344,32 @@ const Subscription: FC = () => {
                 <p className="text-sm text-text-light">Loading onboarding data...</p>
               ) : (
                 <>
+                  {planStepRequired && (
+                    <div className="rounded-lg border border-border p-4 space-y-3">
+                      <h3 className="font-semibold text-primary-dark">Plan and payment</h3>
+                      <p className="text-sm text-text-light">
+                        Selected plan: <span className="font-medium text-primary-dark">{selectedPlan}</span>
+                      </p>
+                      {forceEnterpriseAccess ? (
+                        <p className="text-sm text-accent">
+                          Development mode is enabled. Stripe checkout is bypassed and full access is active for testing.
+                        </p>
+                      ) : (
+                        <p className="text-sm text-text-light">
+                          Stripe checkout integration is available and can be connected before final production rollout.
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        className="btn btn--primary text-sm py-2 px-4"
+                        onClick={() => setPlanStepConfirmed(true)}
+                      >
+                        Continue to Company/Firm Setup
+                      </button>
+                    </div>
+                  )}
+
+                  {planStepConfirmed && (
                   <div className="rounded-lg border border-border p-4 space-y-3">
                     <h3 className="font-semibold text-primary-dark">Step 1: Set up workspace and company/firm profile</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -476,7 +522,9 @@ const Subscription: FC = () => {
                       {saving ? 'Saving...' : 'Create Workspace'}
                     </button>
                   </div>
+                  )}
 
+                  {planStepConfirmed && (
                   <div className="rounded-lg border border-border p-4 space-y-3">
                     <h3 className="font-semibold text-primary-dark">Step 2: Invite employees to workspace</h3>
                     <label className="text-sm text-text-light block">
@@ -560,7 +608,9 @@ const Subscription: FC = () => {
                       </p>
                     )}
                   </div>
+                  )}
 
+                  {planStepConfirmed && (
                   <div className="rounded-lg border border-border p-4">
                     <h3 className="font-semibold text-primary-dark mb-2">Step 3: Complete onboarding</h3>
                     <p className="text-sm text-text-light mb-3">
@@ -575,6 +625,7 @@ const Subscription: FC = () => {
                       Complete Onboarding
                     </button>
                   </div>
+                  )}
                 </>
               )}
             </div>

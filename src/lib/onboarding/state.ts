@@ -10,7 +10,9 @@ export type OnboardingStatus = {
 
 export const ONBOARDING_REQUIRED_PATH = '/portal/subscription?onboarding=1'
 export const POST_AUTH_PATH = '/portal/post-auth'
-export const ROLLOUT_BYPASS_ENABLED = import.meta.env.VITE_FORCE_ENTERPRISE_ACCESS === 'true'
+export const ROLLOUT_BYPASS_ENABLED =
+  import.meta.env.MODE !== 'test' &&
+  import.meta.env.VITE_FORCE_ENTERPRISE_ACCESS !== 'false'
 
 const ONBOARDING_BYPASS_PATHS = new Set([
   '/portal/subscription',

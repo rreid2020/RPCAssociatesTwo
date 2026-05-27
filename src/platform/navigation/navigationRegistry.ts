@@ -68,19 +68,11 @@ const SECTIONS: NavigationSection[] = [
       { to: '/portal/accounting/company-profile', label: 'Business/Firm Profile', iconKey: 'workspace' },
       { to: '/portal/accounting/workspaces', label: 'Workspace Admin', iconKey: 'workspace' },
       { to: '/portal/accounting/working-papers/engagements', label: 'Engagements', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
-      { to: '/portal/accounting/working-papers', label: 'Working Papers', iconKey: 'document', requiredFeature: 'workingPapers', requiredPermission: 'working_papers.read' },
-      { to: '/portal/accounting/integrations', label: 'Integrations', iconKey: 'terminal', requiredFeature: 'integrations', requiredPermission: 'integrations.manage' }
-    ]
-  },
-  {
-    id: 'accounting-engagement-workflow',
-    label: 'Engagement Workflow',
-    depth: 2,
-    items: [
-      { to: '/portal/accounting/working-papers/engagements', label: 'All Engagements', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
       { to: '/portal/accounting/working-papers/engagements?approvalReady=false', label: 'Workflow Queue', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
       { to: '/portal/accounting/working-papers/engagements?approvalReady=true', label: 'Approval Ready', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
-      { to: '/portal/accounting/working-papers/engagements/new', label: 'Create Engagement', iconKey: 'plus', requiredFeature: 'workingPapers', requiredPermission: 'engagement.manage' }
+      { to: '/portal/accounting/working-papers/engagements/new', label: 'Create Engagement', iconKey: 'plus', requiredFeature: 'workingPapers', requiredPermission: 'engagement.manage' },
+      { to: '/portal/accounting/working-papers', label: 'Working Papers', iconKey: 'document', requiredFeature: 'workingPapers', requiredPermission: 'working_papers.read' },
+      { to: '/portal/accounting/integrations', label: 'Integrations', iconKey: 'terminal', requiredFeature: 'integrations', requiredPermission: 'integrations.manage' }
     ]
   },
   {

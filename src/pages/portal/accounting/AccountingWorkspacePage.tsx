@@ -2341,15 +2341,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             ))}
                           </div>
                         )}
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                          <WorkingPaperTreePanel sections={Array.isArray(workingPaperTree?.sections) ? workingPaperTree.sections : []} />
-                          <AdjustmentWorkspacePanel
-                            entries={adjustments}
-                            saving={saving}
-                            onCreateEntry={onCreateAdjustmentEntry}
-                            onUpdateLines={onUpsertAdjustmentLines}
-                          />
-                        </div>
                       </div>
                     )}
 
@@ -2366,6 +2357,22 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           columnDefs={engagementListColumnDefs}
                           gridOptions={engagementListGridOptions}
                           quickFilterText={search}
+                        />
+                        <div className="rounded-lg border border-border p-4 bg-white">
+                          <h3 className="font-semibold text-primary-dark mb-2">Operational Modules</h3>
+                          <p className="text-xs text-text-light">
+                            The workspace now runs execution modules for working paper tree, workflow queue, and journal adjustments from one centralized view.
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                          <WorkingPaperTreePanel sections={Array.isArray(workingPaperTree?.sections) ? workingPaperTree.sections : []} />
+                          <WorkflowQueuePanel queue={workflowQueue} />
+                        </div>
+                        <AdjustmentWorkspacePanel
+                          entries={adjustments}
+                          saving={saving}
+                          onCreateEntry={onCreateAdjustmentEntry}
+                          onUpdateLines={onUpsertAdjustmentLines}
                         />
                         {engagements.length === 0 ? (
                           <p className="text-sm text-text-light">Create an engagement to start working papers execution.</p>
@@ -3076,7 +3083,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                 )}
               </div>
 
-              {view !== 'companyProfile' && view !== 'workingPapersWorkspace' && (
+              {view !== 'companyProfile' && view !== 'workingPapersWorkspace' && view !== 'engagementList' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                   {(view === 'workspaceAdmin' ? workspaceAdminQuickLinks : quickLinks).map((item) => (
                     <Link

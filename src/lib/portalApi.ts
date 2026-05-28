@@ -123,3 +123,6 @@ export type PortalDashboard = {
   recentActivity: Array<{ id: string; kind: string; title: string; body: string | null; created_at: string }>
 }
 
+export function getTaxgptWebUrl (): string {
+  return (import.meta.env.VITE_TAXGPT_WEB_URL as string) || ''
+}

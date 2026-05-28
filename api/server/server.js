@@ -15,7 +15,6 @@ import { createPortalRouter } from './routes/portalRoutes.js'
 import { createTaxIntelligenceRouter } from './routes/taxIntelligenceRoutes.js'
 import { createBillingRouter } from './routes/billingRoutes.js'
 import { createClerkWebhookRouter } from './routes/clerkWebhookRoutes.js'
-import { createTaxgptRouter } from './routes/taxgptRoutes.js'
 import { logServerEnvSummary } from './config/env.js'
 import { getNotificationInbox } from './config/mail.js'
 import { escapeHtml, singleLine } from './utils/html.js'
@@ -270,7 +269,6 @@ app.use('/api/portal', createBillingRouter(pool))
 app.use('/api/webhooks', createClerkWebhookRouter(pool))
 app.use('/api', createTaxIntelligenceRouter(pool))
 app.use('/api/portal/tax-intelligence', createTaxIntelligenceRouter(pool))
-app.use('/api/taxgpt', createTaxgptRouter(pool))
 
 // Initialize database tables
 async function initializeDatabase() {
@@ -370,7 +368,6 @@ app.use('/api', (req, res, next) => {
       '/api/contact',
       '/api/portal/v1/...',
       '/api/tax-returns/...',
-      '/api/taxgpt/...',
       '/api/documents/extract',
       '/api/scenarios/...',
       '/api/audit/...'

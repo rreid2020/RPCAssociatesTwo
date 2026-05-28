@@ -22,15 +22,15 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <ObservabilityProvider>
         <WorkspaceContextProvider>
-          <WorkspaceAuthorizationProvider>
-            {clerkPubKey ? (
-              <ClerkProvider publishableKey={clerkPubKey}>
+          {clerkPubKey ? (
+            <ClerkProvider publishableKey={clerkPubKey}>
+              <WorkspaceAuthorizationProvider>
                 <App />
-              </ClerkProvider>
-            ) : (
-              <App />
-            )}
-          </WorkspaceAuthorizationProvider>
+              </WorkspaceAuthorizationProvider>
+            </ClerkProvider>
+          ) : (
+            <App />
+          )}
         </WorkspaceContextProvider>
       </ObservabilityProvider>
     </QueryClientProvider>

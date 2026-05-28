@@ -58,7 +58,6 @@ import {
   getTickmarksForWorkingPaperRow,
   getWorkingPaperExecutionTree
 } from '../services/workingPapersExecutionService.js'
-import { exportEngagementWorkbook } from '../services/importExportService.js'
 import {
   addWorkspaceMember,
   assertEngagementAssignment,
@@ -126,28 +125,6 @@ async function withDeadlockRetry (operation, retries = 2, waitMs = 40) {
       await new Promise((resolve) => setTimeout(resolve, waitMs * attempt))
     }
   }
-}
-
-async function recordCanonicalAuditEvent (pool, payload) {
-  await pool.query(
-    `INSERT INTO taxgpt.audit_events
-     (organization_id, workspace_id, engagement_id, lead_sheet_id, working_paper_row_id, event_type, entity_type, entity_id, actor_id, before_value, after_value, metadata, created_at)
-     VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid, $6, $7, $8, $9, $10::jsonb, $11::jsonb, COALESCE($12::jsonb, '{}'::jsonb), now())`,
-    [
-      payload.organizationId || null,
-      payload.workspaceId || null,
-      payload.engagementId || null,
-      payload.leadSheetId || null,
-      payload.workingPaperRowId || null,
-      payload.eventType,
-      payload.entityType || null,
-      payload.entityId || null,
-      payload.actorId || null,
-      payload.beforeValue ? JSON.stringify(payload.beforeValue) : null,
-      payload.afterValue ? JSON.stringify(payload.afterValue) : null,
-      payload.metadata ? JSON.stringify(payload.metadata) : null
-    ]
-  )
 }
 
 /**
@@ -1558,7 +1535,6 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
-    if (!(await requireScopePermission(session, scope, 'working_papers.read', res))) return
     const aiFoundations = await getAiExecutionFoundations(pool, scope.workspaceUserId, req.params.engagementId)
     if (!aiFoundations) return res.status(404).json({ error: 'Engagement not found' })
     res.json(aiFoundations)
@@ -1569,122 +1545,9 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
-    if (!(await requireScopePermission(session, scope, 'engagement.read', res))) return
     const dashboard = await getEngagementDashboard(pool, scope.workspaceUserId, req.params.engagementId)
     if (!dashboard) return res.status(404).json({ error: 'Engagement not found' })
     res.json(dashboard)
-  })
-
-  r.get('/v1/accounting/engagements/:engagementId/export-workbook', async (req, res) => {
-    const session = await getClerkUser(req, res)
-    if (!session) return
-    const scope = await resolveEngagementScope(req, res, session)
-    if (!scope) return
-    if (!(await requireScopePermission(session, scope, 'working_papers.read', res))) return
-    try {
-      const workbook = await exportEngagementWorkbook(pool, scope, req.params.engagementId)
-      if (!workbook) return res.status(404).json({ error: 'Engagement not found' })
-      await recordCanonicalAuditEvent(pool, {
-        organizationId: scope.workspace.organizationId,
-        workspaceId: scope.workspace.id,
-        engagementId: req.params.engagementId,
-        eventType: 'engagement.exported',
-        entityType: 'engagement',
-        entityId: req.params.engagementId,
-        actorId: scope.actorUserId,
-        afterValue: { fileName: workbook.fileName, mimeType: workbook.mimeType },
-        metadata: { route: 'export-workbook' }
-      })
-      res.json(workbook)
-    } catch (e) {
-      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not export workbook' })
-    }
-  })
-
-  r.get('/v1/accounting/engagements/:engagementId/snapshots', async (req, res) => {
-    const session = await getClerkUser(req, res)
-    if (!session) return
-    const scope = await resolveEngagementScope(req, res, session)
-    if (!scope) return
-    if (!(await requireScopePermission(session, scope, 'engagement.read', res))) return
-    const { rows } = await pool.query(
-      `SELECT id, snapshot_label, snapshot_type, source_state, created_by, created_at
-       FROM taxgpt.engagement_snapshots
-       WHERE engagement_id = $1::uuid
-         AND COALESCE(workspace_id::text, '') = COALESCE($2::text, '')
-         AND deleted_at IS NULL
-       ORDER BY created_at DESC`,
-      [req.params.engagementId, scope.workspace.id]
-    )
-    res.json({ snapshots: rows })
-  })
-
-  r.post('/v1/accounting/engagements/:engagementId/snapshots', async (req, res) => {
-    const session = await getClerkUser(req, res)
-    if (!session) return
-    const scope = await resolveEngagementScope(req, res, session)
-    if (!scope) return
-    if (!(await requireScopePermission(session, scope, 'engagement.manage', res))) return
-    const snapshotLabel = String(req.body?.snapshotLabel || 'Manual Snapshot').trim().slice(0, 120)
-    const snapshotType = String(req.body?.snapshotType || 'manual').trim().slice(0, 24)
-    const sourceState = String(req.body?.sourceState || scope.engagement?.review_flow_status || '').trim() || null
-    const { rows: engagementRows } = await pool.query(
-      `SELECT id, name, status, review_flow_status, deliverables, due_date, assigned_preparer_id, assigned_reviewer_id, materiality_amount, reporting_currency
-       FROM taxgpt.accounting_engagements
-       WHERE id = $1::uuid
-         AND clerk_user_id = $2
-       LIMIT 1`,
-      [req.params.engagementId, scope.workspaceUserId]
-    )
-    const engagement = engagementRows[0]
-    if (!engagement) return res.status(404).json({ error: 'Engagement not found' })
-    const { rows: leadSheetRows } = await pool.query(
-      `SELECT id, section_code, section_name, status, risk_level, open_note_count, document_count
-       FROM taxgpt.lead_sheets
-       WHERE engagement_id = $1::uuid
-       ORDER BY section_code ASC`,
-      [req.params.engagementId]
-    )
-    const { rows: adjustmentRows } = await pool.query(
-      `SELECT id, entry_number, status, created_at
-       FROM taxgpt.adjustment_entries
-       WHERE engagement_id = $1::uuid
-       ORDER BY created_at ASC`,
-      [req.params.engagementId]
-    )
-    const snapshotPayload = {
-      engagement,
-      leadSheets: leadSheetRows,
-      adjustments: adjustmentRows
-    }
-    const { rows } = await pool.query(
-      `INSERT INTO taxgpt.engagement_snapshots
-       (organization_id, workspace_id, engagement_id, snapshot_label, snapshot_type, snapshot_payload, source_state, created_by, updated_by, created_at, updated_at)
-       VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6::jsonb, $7, $8, $8, now(), now())
-       RETURNING id, snapshot_label, snapshot_type, source_state, created_by, created_at`,
-      [
-        scope.workspace.organizationId || null,
-        scope.workspace.id || null,
-        req.params.engagementId,
-        snapshotLabel || 'Manual Snapshot',
-        snapshotType || 'manual',
-        JSON.stringify(snapshotPayload),
-        sourceState,
-        scope.actorUserId
-      ]
-    )
-    await recordCanonicalAuditEvent(pool, {
-      organizationId: scope.workspace.organizationId,
-      workspaceId: scope.workspace.id,
-      engagementId: req.params.engagementId,
-      eventType: 'engagement.snapshot_created',
-      entityType: 'engagement_snapshot',
-      entityId: rows[0]?.id,
-      actorId: scope.actorUserId,
-      afterValue: rows[0],
-      metadata: { snapshotType }
-    })
-    res.json({ snapshot: rows[0] })
   })
 
   r.get('/v1/accounting/engagements/:engagementId/trial-balance/accounts', async (req, res) => {
@@ -1692,7 +1555,6 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
-    if (!(await requireScopePermission(session, scope, 'working_papers.read', res))) return
     const accounts = await listTrialBalanceAccounts(pool, scope.workspaceUserId, req.params.engagementId)
     if (!accounts) return res.status(404).json({ error: 'Engagement not found' })
     res.json({ accounts })
@@ -1784,7 +1646,6 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
-    if (!(await requireScopePermission(session, scope, 'working_papers.read', res))) return
     const leadSheets = await listLeadSheets(pool, scope.workspaceUserId, req.params.engagementId)
     res.json({ leadSheets })
   })
@@ -1794,7 +1655,6 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
-    if (!(await requireScopePermission(session, scope, 'working_papers.read', res))) return
     const detail = await getLeadSheetDetail(pool, scope.workspaceUserId, req.params.engagementId, req.params.leadSheetId)
     if (!detail) return res.status(404).json({ error: 'Lead sheet not found' })
     res.json(detail)
@@ -1805,80 +1665,9 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveWorkingPaperScope(req, res, session)
     if (!scope) return
-    if (!(await requireScopePermission(session, scope, 'working_papers.read', res))) return
     const evidence = await getEvidenceLinksForLeadSheet(pool, scope.workspaceUserId, req.params.leadSheetId)
     if (!evidence) return res.status(404).json({ error: 'Lead sheet not found' })
     res.json({ evidence })
-  })
-
-  r.get('/v1/accounting/evidence-links/:evidenceLinkId/annotations', async (req, res) => {
-    const session = await getClerkUser(req, res)
-    if (!session) return
-    const scope = await resolveWorkingPaperScope(req, res, session)
-    if (!scope) return
-    if (!(await requireScopePermission(session, scope, 'working_papers.read', res))) return
-    const { rows } = await pool.query(
-      `SELECT id, evidence_link_id, annotation_type, content, page_number, rect, created_by, created_at, updated_at
-       FROM taxgpt.evidence_annotations
-       WHERE evidence_link_id = $1::uuid
-         AND COALESCE(workspace_id::text, '') = COALESCE($2::text, '')
-         AND deleted_at IS NULL
-       ORDER BY created_at ASC`,
-      [req.params.evidenceLinkId, scope.workspace.id]
-    )
-    res.json({ annotations: rows })
-  })
-
-  r.post('/v1/accounting/evidence-links/:evidenceLinkId/annotations', async (req, res) => {
-    const session = await getClerkUser(req, res)
-    if (!session) return
-    const scope = await resolveWorkingPaperScope(req, res, session)
-    if (!scope) return
-    if (!(await requireScopePermission(session, scope, 'working_papers.manage', res))) return
-    const annotationType = String(req.body?.annotationType || 'note')
-    const content = req.body?.content && typeof req.body.content === 'object' ? req.body.content : {}
-    const pageNumber = req.body?.pageNumber ?? null
-    const rect = req.body?.rect && typeof req.body.rect === 'object' ? req.body.rect : null
-    const { rows: linkRows } = await pool.query(
-      `SELECT engagement_id, lead_sheet_id
-       FROM taxgpt.evidence_links
-       WHERE id = $1::uuid
-         AND COALESCE(workspace_id::text, '') = COALESCE($2::text, '')
-       LIMIT 1`,
-      [req.params.evidenceLinkId, scope.workspace.id]
-    )
-    const evidenceLink = linkRows[0]
-    if (!evidenceLink) return res.status(404).json({ error: 'Evidence link not found' })
-    const { rows } = await pool.query(
-      `INSERT INTO taxgpt.evidence_annotations
-       (organization_id, workspace_id, engagement_id, evidence_link_id, annotation_type, content, page_number, rect, created_by, updated_by, created_at, updated_at)
-       VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, $6::jsonb, $7, $8::jsonb, $9, $9, now(), now())
-       RETURNING id, evidence_link_id, annotation_type, content, page_number, rect, created_by, created_at, updated_at`,
-      [
-        scope.workspace.organizationId || null,
-        scope.workspace.id || null,
-        evidenceLink.engagement_id || null,
-        req.params.evidenceLinkId,
-        annotationType,
-        JSON.stringify(content),
-        pageNumber,
-        rect ? JSON.stringify(rect) : null,
-        scope.actorUserId
-      ]
-    )
-    await recordCanonicalAuditEvent(pool, {
-      organizationId: scope.workspace.organizationId,
-      workspaceId: scope.workspace.id,
-      engagementId: evidenceLink.engagement_id || null,
-      leadSheetId: evidenceLink.lead_sheet_id || null,
-      eventType: 'evidence.annotation_created',
-      entityType: 'evidence_annotation',
-      entityId: rows[0]?.id,
-      actorId: scope.actorUserId,
-      afterValue: rows[0],
-      metadata: { evidenceLinkId: req.params.evidenceLinkId }
-    })
-    res.json({ annotation: rows[0] })
   })
 
   r.post('/v1/accounting/lead-sheets/:leadSheetId/evidence-links', async (req, res) => {
@@ -1954,114 +1743,9 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
-    if (!(await requireScopePermission(session, scope, 'working_papers.read', res))) return
     const tickmarks = await getTickmarksForWorkingPaperRow(pool, scope.workspaceUserId, req.params.workingPaperRowId)
     if (!tickmarks) return res.status(404).json({ error: 'Working paper row not found' })
     res.json({ tickmarks })
-  })
-
-  r.get('/v1/accounting/working-paper-rows/:workingPaperRowId/formulas', async (req, res) => {
-    const session = await getClerkUser(req, res)
-    if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
-    if (!scope) return
-    if (!(await requireScopePermission(session, scope, 'working_papers.read', res))) return
-    const { rows } = await pool.query(
-      `SELECT fc.id, fc.working_paper_row_id, fc.cell_key, fc.formula_text, fc.evaluated_value, fc.value_type, fc.calculation_version, fc.metadata, fc.updated_at
-       FROM taxgpt.formula_cells fc
-       INNER JOIN taxgpt.working_paper_rows wpr ON wpr.id = fc.working_paper_row_id
-       WHERE fc.working_paper_row_id = $1::uuid
-         AND COALESCE(wpr.workspace_id::text, '') = COALESCE($2::text, '')
-         AND fc.deleted_at IS NULL
-       ORDER BY fc.cell_key ASC`,
-      [req.params.workingPaperRowId, scope.workspace.id]
-    )
-    res.json({ cells: rows })
-  })
-
-  r.put('/v1/accounting/working-paper-rows/:workingPaperRowId/formulas', async (req, res) => {
-    const session = await getClerkUser(req, res)
-    if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
-    if (!scope) return
-    if (!(await requireScopePermission(session, scope, 'working_papers.manage', res))) return
-    const cells = Array.isArray(req.body?.cells) ? req.body.cells : []
-    const { rows: rowScopeRows } = await pool.query(
-      `SELECT id, engagement_id, lead_sheet_id
-       FROM taxgpt.working_paper_rows
-       WHERE id = $1::uuid
-         AND COALESCE(workspace_id::text, '') = COALESCE($2::text, '')
-       LIMIT 1`,
-      [req.params.workingPaperRowId, scope.workspace.id]
-    )
-    const scopedRow = rowScopeRows[0]
-    if (!scopedRow) return res.status(404).json({ error: 'Working paper row not found' })
-    const { rows: beforeRows } = await pool.query(
-      `SELECT fc.id, fc.cell_key, fc.formula_text, fc.evaluated_value, fc.value_type, fc.calculation_version, fc.metadata
-       FROM taxgpt.formula_cells fc
-       INNER JOIN taxgpt.working_paper_rows wpr ON wpr.id = fc.working_paper_row_id
-       WHERE fc.working_paper_row_id = $1::uuid
-         AND COALESCE(wpr.workspace_id::text, '') = COALESCE($2::text, '')
-         AND deleted_at IS NULL
-       ORDER BY cell_key ASC`,
-      [req.params.workingPaperRowId, scope.workspace.id]
-    )
-    await pool.query(
-      `UPDATE taxgpt.formula_cells
-       SET deleted_at = now(), updated_at = now(), updated_by = $2
-       WHERE working_paper_row_id = $1::uuid
-         AND COALESCE(workspace_id::text, '') = COALESCE($3::text, '')
-         AND deleted_at IS NULL`,
-      [req.params.workingPaperRowId, scope.actorUserId, scope.workspace.id]
-    )
-    for (const cell of cells) {
-      const cellKey = String(cell?.cellKey || '').trim()
-      const formulaText = String(cell?.formulaText || '').trim()
-      if (!cellKey || !formulaText) continue
-      await pool.query(
-        `INSERT INTO taxgpt.formula_cells
-         (organization_id, workspace_id, engagement_id, lead_sheet_id, working_paper_row_id, cell_key, formula_text, evaluated_value, value_type, calculation_version, metadata, created_by, updated_by, created_at, updated_at)
-         SELECT wpr.organization_id, wpr.workspace_id, wpr.engagement_id, wpr.lead_sheet_id, wpr.id, $2, $3, $4, $5, COALESCE($6::int, 1), COALESCE($7::jsonb, '{}'::jsonb), $8, $8, now(), now()
-         FROM taxgpt.working_paper_rows wpr
-         WHERE wpr.id = $1::uuid
-           AND COALESCE(wpr.workspace_id::text, '') = COALESCE($9::text, '')`,
-        [
-          req.params.workingPaperRowId,
-          cellKey,
-          formulaText,
-          cell?.evaluatedValue ?? null,
-          cell?.valueType || 'number',
-          cell?.calculationVersion ?? 1,
-          JSON.stringify(cell?.metadata && typeof cell.metadata === 'object' ? cell.metadata : {}),
-          scope.actorUserId,
-          scope.workspace.id
-        ]
-      )
-    }
-    const { rows } = await pool.query(
-      `SELECT fc.id, fc.working_paper_row_id, fc.cell_key, fc.formula_text, fc.evaluated_value, fc.value_type, fc.calculation_version, fc.metadata, fc.updated_at
-       FROM taxgpt.formula_cells fc
-       INNER JOIN taxgpt.working_paper_rows wpr ON wpr.id = fc.working_paper_row_id
-       WHERE fc.working_paper_row_id = $1::uuid
-         AND COALESCE(wpr.workspace_id::text, '') = COALESCE($2::text, '')
-         AND deleted_at IS NULL
-       ORDER BY cell_key ASC`,
-      [req.params.workingPaperRowId, scope.workspace.id]
-    )
-    await recordCanonicalAuditEvent(pool, {
-      organizationId: scope.workspace.organizationId,
-      workspaceId: scope.workspace.id,
-      engagementId: scopedRow.engagement_id || null,
-      leadSheetId: scopedRow.lead_sheet_id || null,
-      workingPaperRowId: req.params.workingPaperRowId,
-      eventType: 'formula.cells_upserted',
-      entityType: 'formula_cell',
-      entityId: req.params.workingPaperRowId,
-      actorId: scope.actorUserId,
-      beforeValue: { cells: beforeRows },
-      afterValue: { cells: rows }
-    })
-    res.json({ cells: rows })
   })
 
   r.post('/v1/accounting/working-paper-rows/:workingPaperRowId/tickmarks', async (req, res) => {
@@ -2090,7 +1774,6 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
-    if (!(await requireScopePermission(session, scope, 'documents.read', res))) return
     const documents = await listDocumentsByEngagement(pool, scope.workspaceUserId, req.params.engagementId, req.query.leadSheetId || null)
     res.json({ documents })
   })
@@ -2128,7 +1811,6 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
-    if (!(await requireScopePermission(session, scope, 'working_papers.read', res))) return
     const notes = await listReviewNotes(pool, scope.workspaceUserId, req.params.engagementId, {
       status: req.query.status || null,
       priority: req.query.priority || null
@@ -2175,7 +1857,6 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
-    if (!(await requireScopePermission(session, scope, 'engagement.read', res))) return
     const tasks = await listTasks(pool, scope.workspaceUserId, req.params.engagementId)
     res.json({ tasks })
   })
@@ -2217,7 +1898,6 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
-    if (!(await requireScopePermission(session, scope, 'working_papers.read', res))) return
     const entries = await listAdjustmentEntries(pool, scope.workspaceUserId, req.params.engagementId)
     res.json({ entries })
   })

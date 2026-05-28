@@ -41,3 +41,12 @@ export async function fetchEngagementWorkflowSummaryDomain (getToken: () => Prom
   }>('/v1/accounting/engagements/workflow-summary', getToken)
 }
 
+export async function fetchEngagementDashboardDomain (getToken: () => Promise<string | null>, engagementId: string) {
+  return portalFetch<any>(`/v1/accounting/engagements/${engagementId}/dashboard`, getToken)
+}
+
+export async function fetchEngagementDocumentsDomain (getToken: () => Promise<string | null>, engagementId: string, leadSheetId?: string | null) {
+  const query = leadSheetId ? `?leadSheetId=${encodeURIComponent(leadSheetId)}` : ''
+  return portalFetch<{ documents: any[] }>(`/v1/accounting/engagements/${engagementId}/documents${query}`, getToken)
+}
+

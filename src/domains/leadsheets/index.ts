@@ -14,3 +14,7 @@ export async function fetchLeadSheetsDomain (getToken: () => Promise<string | nu
   return portalFetch<{ leadSheets: LeadSheetSummary[] }>(`/v1/accounting/engagements/${engagementId}/lead-sheets`, getToken)
 }
 
+export async function fetchLeadSheetDetailDomain (getToken: () => Promise<string | null>, engagementId: string, leadSheetId: string) {
+  return portalFetch<any>(`/v1/accounting/engagements/${engagementId}/lead-sheets/${leadSheetId}`, getToken)
+}
+

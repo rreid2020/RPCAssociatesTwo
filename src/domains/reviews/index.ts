@@ -11,3 +11,7 @@ export async function fetchReviewNotesDomain (getToken: () => Promise<string | n
   return portalFetch<{ notes: ReviewNote[] }>(`/v1/accounting/engagements/${engagementId}/review-notes`, getToken)
 }
 
+export async function fetchReviewTasksDomain (getToken: () => Promise<string | null>, engagementId: string) {
+  return portalFetch<{ tasks: any[] }>(`/v1/accounting/engagements/${engagementId}/tasks`, getToken)
+}
+

@@ -23,14 +23,16 @@ import {
 } from '../../../modules/working-papers/services/executionApi'
 import {
   fetchAccountingClientsDomain,
+  fetchEngagementDashboardDomain,
+  fetchEngagementDocumentsDomain,
   fetchEngagementsDomain,
   fetchEngagementStatusSummaryDomain,
   fetchEngagementWorkflowSummaryDomain
 } from '../../../domains/Accounting'
 import { fetchTrialBalanceAccountsDomain } from '../../../domains/trial-balance'
-import { fetchLeadSheetsDomain } from '../../../domains/leadsheets'
+import { fetchLeadSheetDetailDomain, fetchLeadSheetsDomain } from '../../../domains/leadsheets'
 import { fetchAdjustmentsDomain } from '../../../domains/adjustments'
-import { fetchReviewNotesDomain } from '../../../domains/reviews'
+import { fetchReviewNotesDomain, fetchReviewTasksDomain } from '../../../domains/reviews'
 import { useWorkingPapersUiStore } from '../../../modules/working-papers/state/useWorkingPapersUiStore'
 import { calculateLeadSheetTotals, calculateTrialBalanceTotals } from '../../../domains/formulas'
 import { downloadBase64File, exportEngagementWorkbookDomain } from '../../../domains/import-export'
@@ -370,7 +372,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
   const loadEngagementDashboard = useCallback(async () => {
     if (!engagementId) return
-    const data = await portalFetch<any>(`/v1/accounting/engagements/${engagementId}/dashboard`, getToken)
+    const data = await fetchEngagementDashboardDomain(getToken, engagementId)
     setDashboard(data)
   }, [engagementId, getToken])
 
@@ -394,19 +396,13 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
   const loadLeadSheetDetail = useCallback(async () => {
     if (!engagementId || !leadSheetId) return
-    const detail = await portalFetch<any>(
-      `/v1/accounting/engagements/${engagementId}/lead-sheets/${leadSheetId}`,
-      getToken
-    )
+    const detail = await fetchLeadSheetDetailDomain(getToken, engagementId, leadSheetId)
     setLeadSheetDetail(detail)
   }, [engagementId, getToken, leadSheetId])
 
   const loadDocuments = useCallback(async () => {
     if (!engagementId) return
-    const { documents: rows } = await portalFetch<{ documents: any[] }>(
-      `/v1/accounting/engagements/${engagementId}/documents${leadSheetId ? `?leadSheetId=${leadSheetId}` : ''}`,
-      getToken
-    )
+    const { documents: rows } = await fetchEngagementDocumentsDomain(getToken, engagementId, leadSheetId)
     setDocuments(rows)
   }, [engagementId, getToken, leadSheetId])
 
@@ -423,7 +419,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
   const loadTasks = useCallback(async () => {
     if (!engagementId) return
-    const { tasks } = await portalFetch<{ tasks: any[] }>(`/v1/accounting/engagements/${engagementId}/tasks`, getToken)
+    const { tasks } = await fetchReviewTasksDomain(getToken, engagementId)
     setTasks(tasks)
   }, [engagementId, getToken])
 

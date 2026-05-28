@@ -131,6 +131,10 @@ type Client = {
   id: string
   name: string
   legal_name?: string | null
+  business_number?: string | null
+  fiscal_year_end_month?: number | null
+  fiscal_year_end_day?: number | null
+  default_currency?: string | null
 }
 
 type Engagement = {
@@ -260,6 +264,15 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [clientFilter, setClientFilter] = useState(() => searchParams.get('clientId') || '')
   const [engagementTypeFilter, setEngagementTypeFilter] = useState(() => searchParams.get('engagementType') || '')
   const [newClientName, setNewClientName] = useState('')
+  const [entityProfileForm, setEntityProfileForm] = useState({
+    id: '',
+    name: '',
+    legalName: '',
+    businessNumber: '',
+    fiscalYearEndMonth: '',
+    fiscalYearEndDay: '',
+    defaultCurrency: 'CAD'
+  })
   const [newEngagement, setNewEngagement] = useState({
     clientId: '',
     name: '',
@@ -537,10 +550,16 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
           const workspaceState = await loadWorkspaces()
           const resolvedWorkspaceId = workspaceState?.workspaceId || null
           if (resolvedWorkspaceId) {
-            await Promise.all([
-              loadWorkspaceProfile(resolvedWorkspaceId),
-              loadOrganizationSnapshot(resolvedWorkspaceId)
-            ])
+            const resolvedWorkspace = (workspaceState?.rows || []).find((workspace: any) => workspace.id === resolvedWorkspaceId)
+            const canManageResolvedWorkspace = resolvedWorkspace?.role === 'owner' || resolvedWorkspace?.role === 'admin'
+            const profileTasks: Array<Promise<any>> = [loadWorkspaceProfile(resolvedWorkspaceId)]
+            if (canManageResolvedWorkspace) {
+              profileTasks.push(loadOrganizationSnapshot(resolvedWorkspaceId))
+            } else {
+              setOrganizationSnapshot(null)
+            }
+            profileTasks.push(loadClients())
+            await Promise.all(profileTasks)
           }
           return
         }
@@ -620,6 +639,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const canManageWorkspaceMembers = activeWorkspace?.role === 'owner' || activeWorkspace?.role === 'admin'
   const clientLabel = isFirmWorkspace ? 'Accounting client' : 'Business entity'
   const clientLabelPlural = isFirmWorkspace ? 'Accounting clients' : 'Business entities'
+  const entityProfileLabel = isFirmWorkspace ? 'Client profile' : 'Corporate business entity profile'
   const currentReviewFlowStatus = String(dashboard?.engagement?.review_flow_status || 'not_started')
   const nextReviewFlowStatuses: string[] = Array.isArray(dashboard?.nextReviewFlowStatuses)
     ? dashboard.nextReviewFlowStatuses
@@ -660,14 +680,23 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     if (!showWorkspaceTools || !selectedWorkspaceId) return
     void loadWorkspaceMembers()
     void loadWorkspaceInvites()
-    void loadOrganizationSnapshot()
-  }, [loadOrganizationSnapshot, loadWorkspaceInvites, loadWorkspaceMembers, selectedWorkspaceId, showWorkspaceTools])
+    if (canManageWorkspaceMembers) {
+      void loadOrganizationSnapshot()
+    } else {
+      setOrganizationSnapshot(null)
+    }
+  }, [canManageWorkspaceMembers, loadOrganizationSnapshot, loadWorkspaceInvites, loadWorkspaceMembers, selectedWorkspaceId, showWorkspaceTools])
 
   useEffect(() => {
     if (view !== 'companyProfile' || !selectedWorkspaceId) return
+    void loadClients()
     void loadWorkspaceProfile()
-    void loadOrganizationSnapshot()
-  }, [loadOrganizationSnapshot, loadWorkspaceProfile, selectedWorkspaceId, view])
+    if (canManageWorkspaceMembers) {
+      void loadOrganizationSnapshot()
+    } else {
+      setOrganizationSnapshot(null)
+    }
+  }, [canManageWorkspaceMembers, loadClients, loadOrganizationSnapshot, loadWorkspaceProfile, selectedWorkspaceId, view])
 
   useEffect(() => {
     if (!workspaceProfile) return
@@ -752,15 +781,100 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setSaving(true)
     setError(null)
     try {
-      await portalFetch('/v1/accounting/clients', getToken, {
+      const { client } = await portalFetch<{ client: Client }>('/v1/accounting/clients', getToken, {
         method: 'POST',
         body: JSON.stringify({ name })
       })
       setNewClientName('')
       await loadClients()
+      if (client?.id) {
+        setNewEngagement((prev) => ({ ...prev, clientId: client.id }))
+      }
       setNotice('Client created')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not create client')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onSelectEntityProfile = (client: Client) => {
+    setEntityProfileForm({
+      id: client.id,
+      name: client.name || '',
+      legalName: client.legal_name || '',
+      businessNumber: client.business_number || '',
+      fiscalYearEndMonth: client.fiscal_year_end_month != null ? String(client.fiscal_year_end_month) : '',
+      fiscalYearEndDay: client.fiscal_year_end_day != null ? String(client.fiscal_year_end_day) : '',
+      defaultCurrency: String(client.default_currency || 'CAD').toUpperCase()
+    })
+  }
+
+  const onResetEntityProfileForm = () => {
+    setEntityProfileForm({
+      id: '',
+      name: '',
+      legalName: '',
+      businessNumber: '',
+      fiscalYearEndMonth: '',
+      fiscalYearEndDay: '',
+      defaultCurrency: 'CAD'
+    })
+  }
+
+  const onSaveEntityProfile = async () => {
+    const name = entityProfileForm.name.trim()
+    if (!name) {
+      setError(`${entityProfileLabel} name is required.`)
+      return
+    }
+    const fiscalYearEndMonth = entityProfileForm.fiscalYearEndMonth ? Number(entityProfileForm.fiscalYearEndMonth) : null
+    const fiscalYearEndDay = entityProfileForm.fiscalYearEndDay ? Number(entityProfileForm.fiscalYearEndDay) : null
+    if (fiscalYearEndMonth != null && (!Number.isInteger(fiscalYearEndMonth) || fiscalYearEndMonth < 1 || fiscalYearEndMonth > 12)) {
+      setError('Fiscal year end month must be between 1 and 12.')
+      return
+    }
+    if (fiscalYearEndDay != null && (!Number.isInteger(fiscalYearEndDay) || fiscalYearEndDay < 1 || fiscalYearEndDay > 31)) {
+      setError('Fiscal year end day must be between 1 and 31.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      if (entityProfileForm.id) {
+        await portalFetch(`/v1/accounting/clients/${entityProfileForm.id}`, getToken, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            name,
+            legalName: entityProfileForm.legalName.trim() || null,
+            businessNumber: entityProfileForm.businessNumber.trim() || null,
+            fiscalYearEndMonth,
+            fiscalYearEndDay,
+            defaultCurrency: (entityProfileForm.defaultCurrency || 'CAD').trim().toUpperCase()
+          })
+        })
+        setNotice(`${entityProfileLabel} updated.`)
+      } else {
+        const { client } = await portalFetch<{ client: Client }>('/v1/accounting/clients', getToken, {
+          method: 'POST',
+          body: JSON.stringify({
+            name,
+            legalName: entityProfileForm.legalName.trim() || null,
+            businessNumber: entityProfileForm.businessNumber.trim() || null,
+            fiscalYearEndMonth,
+            fiscalYearEndDay,
+            defaultCurrency: (entityProfileForm.defaultCurrency || 'CAD').trim().toUpperCase()
+          })
+        })
+        setNotice(`${entityProfileLabel} created.`)
+        if (client?.id) {
+          setNewEngagement((prev) => ({ ...prev, clientId: client.id }))
+        }
+      }
+      await loadClients()
+      onResetEntityProfileForm()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : `Could not save ${entityProfileLabel.toLowerCase()}`)
     } finally {
       setSaving(false)
     }
@@ -905,10 +1019,16 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setSaving(true)
     setError(null)
     try {
+      const resolvedClientId = String(newEngagement.clientId || '').trim()
+      if (!resolvedClientId) {
+        setError(`Select a ${clientLabel.toLowerCase()} before creating an engagement. Use quick add and click Add first if needed.`)
+        return
+      }
       const { engagement } = await portalFetch<{ engagement: Engagement }>('/v1/accounting/engagements', getToken, {
         method: 'POST',
         body: JSON.stringify({
           ...newEngagement,
+          clientId: resolvedClientId,
           dueDate: newEngagement.dueDate || null,
           deliverables: parseDeliverablesText(newEngagement.deliverablesText),
           status: 'draft'
@@ -2099,6 +2219,116 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           </button>
                         </div>
                         <div className="rounded-lg border border-border p-4 space-y-3">
+                          <h4 className="font-semibold text-primary-dark">
+                            {isFirmWorkspace ? 'Client Profiles' : 'Corporate Business Entity Profiles'}
+                          </h4>
+                          <p className="text-xs text-text-light">
+                            {isFirmWorkspace
+                              ? 'Create and maintain client records that engagements will be attached to.'
+                              : 'Create reporting entities (subsidiary/division/legal entity) that engagements will be attached to.'}
+                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              placeholder={isFirmWorkspace ? 'Client name' : 'Business entity name'}
+                              value={entityProfileForm.name}
+                              onChange={(e) => setEntityProfileForm((prev) => ({ ...prev, name: e.target.value }))}
+                            />
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              placeholder="Legal name"
+                              value={entityProfileForm.legalName}
+                              onChange={(e) => setEntityProfileForm((prev) => ({ ...prev, legalName: e.target.value }))}
+                            />
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              placeholder="Business number"
+                              value={entityProfileForm.businessNumber}
+                              onChange={(e) => setEntityProfileForm((prev) => ({ ...prev, businessNumber: e.target.value }))}
+                            />
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              placeholder="Default currency (e.g., CAD)"
+                              value={entityProfileForm.defaultCurrency}
+                              onChange={(e) => setEntityProfileForm((prev) => ({ ...prev, defaultCurrency: e.target.value.toUpperCase() }))}
+                            />
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              placeholder="Fiscal year end month (1-12)"
+                              value={entityProfileForm.fiscalYearEndMonth}
+                              onChange={(e) => setEntityProfileForm((prev) => ({ ...prev, fiscalYearEndMonth: e.target.value }))}
+                            />
+                            <input
+                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              placeholder="Fiscal year end day (1-31)"
+                              value={entityProfileForm.fiscalYearEndDay}
+                              onChange={(e) => setEntityProfileForm((prev) => ({ ...prev, fiscalYearEndDay: e.target.value }))}
+                            />
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              className="btn btn--primary text-sm py-2 px-4"
+                              disabled={saving}
+                              onClick={() => { void onSaveEntityProfile() }}
+                            >
+                              {entityProfileForm.id ? `Update ${entityProfileLabel}` : `Create ${entityProfileLabel}`}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn--secondary text-sm py-2 px-4"
+                              disabled={saving}
+                              onClick={onResetEntityProfileForm}
+                            >
+                              Clear
+                            </button>
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b border-border text-left text-text-light">
+                                  <th className="py-2">Name</th>
+                                  <th className="py-2">Legal name</th>
+                                  <th className="py-2">Business number</th>
+                                  <th className="py-2">Fiscal year end</th>
+                                  <th className="py-2">Currency</th>
+                                  <th className="py-2">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {clients.length === 0 ? (
+                                  <tr>
+                                    <td className="py-3 text-text-light" colSpan={6}>
+                                      No {clientLabelPlural.toLowerCase()} found in this workspace.
+                                    </td>
+                                  </tr>
+                                ) : clients.map((client) => (
+                                  <tr key={client.id} className="border-b border-border/70">
+                                    <td className="py-2">{client.name}</td>
+                                    <td className="py-2">{client.legal_name || '—'}</td>
+                                    <td className="py-2">{client.business_number || '—'}</td>
+                                    <td className="py-2">
+                                      {client.fiscal_year_end_month && client.fiscal_year_end_day
+                                        ? `${client.fiscal_year_end_month}/${client.fiscal_year_end_day}`
+                                        : '—'}
+                                    </td>
+                                    <td className="py-2">{client.default_currency || 'CAD'}</td>
+                                    <td className="py-2">
+                                      <button
+                                        type="button"
+                                        className="text-xs text-primary-dark underline"
+                                        onClick={() => onSelectEntityProfile(client)}
+                                      >
+                                        Edit
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                        <div className="rounded-lg border border-border p-4 space-y-3">
                           <h4 className="font-semibold text-primary-dark">Employee invite</h4>
                           <div className="flex flex-wrap items-center gap-2">
                             <input
@@ -2371,11 +2601,18 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               className="border border-border rounded-md px-3 py-2 text-sm w-full"
                               value={newEngagement.clientId}
                               onChange={(e) => setNewEngagement((prev) => ({ ...prev, clientId: e.target.value }))}
-                              required
                             >
                               <option value="">Select {clientLabel.toLowerCase()}</option>
                               {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
                             </select>
+                            <p className="mt-1 text-xs text-text-light">
+                              Step 1: choose an existing {clientLabel.toLowerCase()} or create one with quick add, then select it here.
+                            </p>
+                            {clients.length === 0 && (
+                              <p className="mt-1 text-xs text-text-light">
+                                No {clientLabelPlural.toLowerCase()} found yet. Use quick add to create one.
+                              </p>
+                            )}
                           </div>
                           <div>
                             <label className="block text-xs text-text-light mb-1">New {clientLabel.toLowerCase()} (optional quick add)</label>

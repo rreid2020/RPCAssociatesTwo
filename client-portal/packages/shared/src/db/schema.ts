@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { pgTable, pgSchema, text, timestamp, jsonb, integer, uuid, varchar, customType, boolean, numeric, date } from 'drizzle-orm/pg-core';
 import type { SourceType, SourceCategory, IngestStatus, Priority, RiskLevel } from '../types';
 
@@ -83,6 +84,9 @@ export const embeddings = taxgptSchema.table('embeddings', {
 export const chatSessions = taxgptSchema.table('chat_sessions', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: text('user_id').notNull(), // Clerk user ID
+  workspaceId: uuid('workspace_id'),
+  title: text('title'),
+  lastMessageAt: timestamp('last_message_at').notNull().defaultNow(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
@@ -94,9 +98,60 @@ export const chatMessages = taxgptSchema.table('chat_messages', {
     .references(() => chatSessions.id, { onDelete: 'cascade' }),
   role: varchar('role', { length: 20 }).notNull(), // 'user' | 'assistant' | 'system'
   content: text('content').notNull(),
+  modelUsed: text('model_used'),
+  inputTokens: integer('input_tokens'),
+  outputTokens: integer('output_tokens'),
+  totalTokens: integer('total_tokens'),
+  messageContent: text('message_content'),
   citations: jsonb('citations').$type<Array<Record<string, unknown>>>(),
   riskLevel: varchar('risk_level', { length: 10 }).$type<RiskLevel>(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const chatCitations = taxgptSchema.table('citations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  messageId: uuid('message_id').notNull().references(() => chatMessages.id, { onDelete: 'cascade' }),
+  sourceChunkId: uuid('source_chunk_id').references(() => chunks.id, { onDelete: 'set null' }),
+  excerpt: text('excerpt').notNull(),
+  confidenceScore: numeric('confidence_score', { precision: 6, scale: 5 }),
+  sourceType: varchar('source_type', { length: 32 }),
+  sourceTitle: text('source_title'),
+  sectionReference: text('section_reference'),
+  sourceUrl: text('source_url'),
+  createdAt: timestamp('created_at').notNull().defaultNow()
+});
+
+export const chatFeedback = taxgptSchema.table('feedback', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull(),
+  messageId: uuid('message_id').notNull().references(() => chatMessages.id, { onDelete: 'cascade' }),
+  feedbackType: varchar('feedback_type', { length: 32 }).notNull(),
+  comments: text('comments'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow()
+});
+
+export const retrievalLogs = taxgptSchema.table('retrieval_logs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull(),
+  conversationId: uuid('conversation_id').references(() => chatSessions.id, { onDelete: 'set null' }),
+  messageId: uuid('message_id').references(() => chatMessages.id, { onDelete: 'set null' }),
+  query: text('query').notNull(),
+  retrievedChunks: jsonb('retrieved_chunks').$type<Array<Record<string, unknown>>>().notNull().default([]),
+  similarityScores: jsonb('similarity_scores').$type<number[]>().notNull().default([]),
+  responseTimeMs: integer('response_time_ms'),
+  modelUsed: text('model_used'),
+  createdAt: timestamp('created_at').notNull().defaultNow()
+});
+
+export const usageTracking = taxgptSchema.table('usage_tracking', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull(),
+  promptCount: integer('prompt_count').notNull().default(1),
+  tokenUsage: integer('token_usage').notNull().default(0),
+  recordedAt: timestamp('recorded_at').notNull().defaultNow(),
+  planType: varchar('plan_type', { length: 32 }).notNull().default('FREE'),
+  dateBucket: date('date_bucket').notNull().default(sql`CURRENT_DATE`)
 });
 
 export const users = taxgptSchema.table('users', {

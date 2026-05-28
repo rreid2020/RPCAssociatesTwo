@@ -47,7 +47,6 @@ const SECTIONS: NavigationSection[] = [
     items: [
       { to: '/portal/taxgpt', label: 'Tax GPT', iconKey: 'sparkles' },
       { to: '/app/tax-intelligence/returns', label: 'Tax Returns', iconKey: 'document' },
-      { to: '/app/tax-intelligence/returns', label: 'Return Builder', iconKey: 'plus' },
       { to: '/app/tax-intelligence/documents', label: 'Document Processing', iconKey: 'exchange' },
       { to: '/app/tax-intelligence/optimization', label: 'Optimization', iconKey: 'magic' },
       { to: '/app/tax-intelligence/scenarios', label: 'Scenarios', iconKey: 'trend' },

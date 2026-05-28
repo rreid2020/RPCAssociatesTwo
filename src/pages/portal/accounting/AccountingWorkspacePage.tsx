@@ -335,13 +335,13 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [trialBalancePreview, setTrialBalancePreview] = useState<TrialBalancePreview | null>(null)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
-  const [transitioningEngagementId, setTransitioningEngagementId] = useState<string | null>(null)
   const selectedEngagementIds = useWorkingPapersUiStore((state) => state.selectedEngagementIds)
   const bulkTransitionStatus = useWorkingPapersUiStore((state) => state.bulkTransitionStatus)
   const setSelectedEngagementIds = useWorkingPapersUiStore((state) => state.setSelectedEngagementIds)
   const setBulkTransitionStatus = useWorkingPapersUiStore((state) => state.setBulkTransitionStatus)
   const resetWorkingPapersSelection = useWorkingPapersUiStore((state) => state.resetSelection)
   const [importPayload, setImportPayload] = useState<{ fileName: string; base64Content: string } | null>(null)
+  const primarySelectedEngagementId = selectedEngagementIds[0] || null
 
   const loadClients = useCallback(async () => {
     const { clients: rows } = await fetchAccountingClientsDomain(getToken)
@@ -971,42 +971,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     }
   }
 
-  const onAdvanceReviewFlowForEngagement = async (targetEngagementId: string, nextStatus: string) => {
-    if (transitioningEngagementId === targetEngagementId) return
-    const previousEngagements = engagements
-    setTransitioningEngagementId(targetEngagementId)
-    setError(null)
-    setEngagements((rows) => rows.map((engagement) => (
-      engagement.id === targetEngagementId
-        ? {
-            ...engagement,
-            review_flow_status: nextStatus,
-            next_review_flow_statuses: reviewFlowTransitions[nextStatus] || []
-          }
-        : engagement
-    )))
-    try {
-      await portalFetch(`/v1/accounting/engagements/${targetEngagementId}`, getToken, {
-        method: 'PATCH',
-        body: JSON.stringify({ reviewFlowStatus: nextStatus })
-      })
-      if (view === 'engagementList' || view === 'workingPapersWorkspace' || view === 'landing') {
-        await Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
-      } else {
-        await refreshEngagementWorkflowViews({
-          includeReviewNotes: view === 'review',
-          includeLeadSheetDetail: view === 'leadSheetDetail'
-        })
-      }
-      setNotice(`Engagement moved to ${formatWorkflowLabel(nextStatus)}`)
-    } catch (e) {
-      setEngagements(previousEngagements)
-      setError(e instanceof Error ? e.message : 'Could not update engagement workflow')
-    } finally {
-      setTransitioningEngagementId(null)
-    }
-  }
-
   const onGenerateLeadSheets = async () => {
     if (!engagementId) {
       setError('Select an engagement before generating lead sheets.')
@@ -1555,16 +1519,23 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     }
   }
 
-  const onDeleteEngagement = async (id: string) => {
-    if (!window.confirm('Delete this engagement and all related working papers?')) return
+  const onDeleteSelectedEngagements = async () => {
+    if (selectedEngagementIds.length === 0) {
+      setError('Select at least one engagement to delete.')
+      return
+    }
+    if (!window.confirm(`Delete ${selectedEngagementIds.length} engagement(s) and all related working papers?`)) return
     setSaving(true)
     setError(null)
     try {
-      await portalFetch(`/v1/accounting/engagements/${id}`, getToken, { method: 'DELETE' })
-      await Promise.all([loadEngagements(), loadStatusSummary()])
-      setNotice('Engagement deleted.')
+      for (const engagementIdToDelete of selectedEngagementIds) {
+        await portalFetch(`/v1/accounting/engagements/${engagementIdToDelete}`, getToken, { method: 'DELETE' })
+      }
+      await Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
+      resetWorkingPapersSelection()
+      setNotice(`${selectedEngagementIds.length} engagement(s) deleted.`)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not delete engagement')
+      setError(e instanceof Error ? e.message : 'Could not delete selected engagements')
     } finally {
       setSaving(false)
     }
@@ -2270,6 +2241,33 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           <p className="text-xs text-text-light">
                             Selected: <span className="font-medium text-primary-dark">{selectedEngagementIds.length}</span>
                           </p>
+                          <button
+                            type="button"
+                            className="btn btn--primary text-sm py-2 px-4"
+                            disabled={saving}
+                            onClick={() => navigate('/portal/accounting/working-papers/engagements/new')}
+                          >
+                            Create Engagement
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn--secondary text-sm py-2 px-4"
+                            disabled={saving || selectedEngagementIds.length !== 1 || !primarySelectedEngagementId}
+                            onClick={() => {
+                              if (!primarySelectedEngagementId) return
+                              navigate(`/portal/accounting/working-papers/engagements/${primarySelectedEngagementId}/settings`)
+                            }}
+                          >
+                            Update Engagement
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn--secondary text-sm py-2 px-4"
+                            disabled={saving || selectedEngagementIds.length === 0}
+                            onClick={() => { void onDeleteSelectedEngagements() }}
+                          >
+                            Delete Selected
+                          </button>
                           <select
                             className="border border-border rounded-md px-3 py-2 text-sm"
                             value={bulkTransitionStatus}
@@ -2301,45 +2299,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         </p>
                         {engagements.length === 0 && (
                           <p className="text-sm text-text-light">No engagements match the current filters.</p>
-                        )}
-                        {engagements.length > 0 && (
-                          <div className="space-y-2">
-                            {engagements.map((engagement) => (
-                              <div key={`engagement-actions-${engagement.id}`} className="rounded border border-border/70 p-2">
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                  <Link className="text-sm text-primary-dark hover:underline" to={`/portal/accounting/working-papers/engagements/${engagement.id}`}>
-                                    {engagement.name}
-                                  </Link>
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    {(Array.isArray(engagement.next_review_flow_statuses)
-                                      ? engagement.next_review_flow_statuses
-                                      : (reviewFlowTransitions[String(engagement.review_flow_status || 'not_started')] || [])
-                                    ).slice(0, 2).map((status) => (
-                                      <button
-                                        key={`${engagement.id}-${status}`}
-                                        type="button"
-                                        className="text-xs text-primary-dark underline"
-                                        disabled={transitioningEngagementId === engagement.id || status === engagement.review_flow_status}
-                                        onClick={() => { void onAdvanceReviewFlowForEngagement(engagement.id, status) }}
-                                      >
-                                        Move to {formatWorkflowLabel(status)}
-                                      </button>
-                                    ))}
-                                    <button
-                                      type="button"
-                                      className="text-xs text-primary-dark underline"
-                                      onClick={() => { void onDeleteEngagement(engagement.id) }}
-                                    >
-                                      Delete
-                                    </button>
-                                    {transitioningEngagementId === engagement.id && (
-                                      <span className="text-[11px] text-text-light">Updating…</span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
                         )}
                       </div>
                     )}

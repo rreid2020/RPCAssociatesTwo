@@ -21,6 +21,20 @@ import {
   fetchWorkflowQueue,
   fetchWorkingPaperTree
 } from '../../../modules/working-papers/services/executionApi'
+import {
+  fetchAccountingClientsDomain,
+  fetchEngagementsDomain,
+  fetchEngagementStatusSummaryDomain,
+  fetchEngagementWorkflowSummaryDomain
+} from '../../../domains/Accounting'
+import { fetchTrialBalanceAccountsDomain } from '../../../domains/trial-balance'
+import { fetchLeadSheetsDomain } from '../../../domains/leadsheets'
+import { fetchAdjustmentsDomain } from '../../../domains/adjustments'
+import { fetchReviewNotesDomain } from '../../../domains/reviews'
+import { useWorkingPapersUiStore } from '../../../modules/working-papers/state/useWorkingPapersUiStore'
+import { calculateLeadSheetTotals, calculateTrialBalanceTotals } from '../../../domains/formulas'
+import { downloadBase64File, exportEngagementWorkbookDomain } from '../../../domains/import-export'
+import { createEngagementSnapshotDomain, fetchEngagementSnapshotsDomain } from '../../../domains/snapshots'
 
 type AccountingView =
   | 'landing'
@@ -315,47 +329,42 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     countryCode: 'CA'
   })
   const [trialBalanceAccounts, setTrialBalanceAccounts] = useState<any[]>([])
+  const [engagementSnapshots, setEngagementSnapshots] = useState<any[]>([])
   const [trialBalancePreview, setTrialBalancePreview] = useState<TrialBalancePreview | null>(null)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [transitioningEngagementId, setTransitioningEngagementId] = useState<string | null>(null)
-  const [selectedEngagementIds, setSelectedEngagementIds] = useState<string[]>([])
-  const [bulkTransitionStatus, setBulkTransitionStatus] = useState('')
+  const selectedEngagementIds = useWorkingPapersUiStore((state) => state.selectedEngagementIds)
+  const bulkTransitionStatus = useWorkingPapersUiStore((state) => state.bulkTransitionStatus)
+  const setSelectedEngagementIds = useWorkingPapersUiStore((state) => state.setSelectedEngagementIds)
+  const setBulkTransitionStatus = useWorkingPapersUiStore((state) => state.setBulkTransitionStatus)
+  const resetWorkingPapersSelection = useWorkingPapersUiStore((state) => state.resetSelection)
   const [importPayload, setImportPayload] = useState<{ fileName: string; base64Content: string } | null>(null)
 
   const loadClients = useCallback(async () => {
-    const { clients: rows } = await portalFetch<{ clients: Client[] }>('/v1/accounting/clients', getToken)
+    const { clients: rows } = await fetchAccountingClientsDomain(getToken)
     setClients(rows)
   }, [getToken])
 
   const loadEngagements = useCallback(async () => {
-    const params = new URLSearchParams()
-    if (statusFilter) params.set('status', statusFilter)
-    if (reviewFlowStatusFilter) params.set('reviewFlowStatus', reviewFlowStatusFilter)
-    if (approvalReadyFilter) params.set('approvalReady', approvalReadyFilter)
-    if (clientFilter) params.set('clientId', clientFilter)
-    if (engagementTypeFilter) params.set('engagementType', engagementTypeFilter)
-    if (search.trim()) params.set('search', search.trim())
-    const url = `/v1/accounting/engagements${params.toString() ? `?${params.toString()}` : ''}`
-    const { engagements: rows } = await portalFetch<{ engagements: Engagement[] }>(url, getToken)
+    const { engagements: rows } = await fetchEngagementsDomain(getToken, {
+      status: statusFilter,
+      reviewFlowStatus: reviewFlowStatusFilter,
+      approvalReady: approvalReadyFilter,
+      clientId: clientFilter,
+      engagementType: engagementTypeFilter,
+      search
+    })
     setEngagements(rows)
   }, [approvalReadyFilter, clientFilter, engagementTypeFilter, getToken, reviewFlowStatusFilter, search, statusFilter])
 
   const loadStatusSummary = useCallback(async () => {
-    const { summary } = await portalFetch<{ summary: Array<{ status: string; c: number }> }>('/v1/accounting/engagements/status-summary', getToken)
+    const { summary } = await fetchEngagementStatusSummaryDomain(getToken)
     setStatusSummary(summary)
   }, [getToken])
 
   const loadWorkflowSummary = useCallback(async () => {
-    const { summary } = await portalFetch<{
-      summary: {
-        total_engagements: number
-        approval_ready_count: number
-        approval_blocked_count: number
-        open_review_notes: number
-        unreviewed_lead_sheets: number
-      }
-    }>('/v1/accounting/engagements/workflow-summary', getToken)
+    const { summary } = await fetchEngagementWorkflowSummaryDomain(getToken)
     setWorkflowSummary(summary)
   }, [getToken])
 
@@ -367,19 +376,19 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
   const loadTrialBalance = useCallback(async () => {
     if (!engagementId) return
-    const { accounts } = await portalFetch<{ accounts: any[] }>(
-      `/v1/accounting/engagements/${engagementId}/trial-balance/accounts`,
-      getToken
-    )
+    const { accounts } = await fetchTrialBalanceAccountsDomain(getToken, engagementId)
     setTrialBalanceAccounts(accounts)
+  }, [engagementId, getToken])
+
+  const loadEngagementSnapshots = useCallback(async () => {
+    if (!engagementId) return
+    const { snapshots } = await fetchEngagementSnapshotsDomain(getToken, engagementId)
+    setEngagementSnapshots(snapshots)
   }, [engagementId, getToken])
 
   const loadLeadSheets = useCallback(async () => {
     if (!engagementId) return
-    const { leadSheets: rows } = await portalFetch<{ leadSheets: any[] }>(
-      `/v1/accounting/engagements/${engagementId}/lead-sheets`,
-      getToken
-    )
+    const { leadSheets: rows } = await fetchLeadSheetsDomain(getToken, engagementId)
     setLeadSheets(rows)
   }, [engagementId, getToken])
 
@@ -408,7 +417,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
   const loadReviewNotes = useCallback(async () => {
     if (!engagementId) return
-    const { notes } = await portalFetch<{ notes: any[] }>(`/v1/accounting/engagements/${engagementId}/review-notes`, getToken)
+    const { notes } = await fetchReviewNotesDomain(getToken, engagementId)
     setReviewNotes(notes)
   }, [engagementId, getToken])
 
@@ -420,7 +429,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
   const loadAdjustments = useCallback(async () => {
     if (!engagementId) return
-    const { entries } = await portalFetch<{ entries: any[] }>(`/v1/accounting/engagements/${engagementId}/adjustments`, getToken)
+    const { entries } = await fetchAdjustmentsDomain(getToken, engagementId)
     setAdjustments(entries || [])
   }, [engagementId, getToken])
 
@@ -550,7 +559,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
           await Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
         }
         if (view === 'engagementDashboard') {
-          await Promise.all([loadEngagementDashboard(), loadWorkspaceMembers(), loadWorkingPaperExecution(), loadWorkflowSummary(), loadAuditEvents(), loadAiFoundations()])
+          await Promise.all([loadEngagementDashboard(), loadWorkspaceMembers(), loadWorkingPaperExecution(), loadWorkflowSummary(), loadAuditEvents(), loadAiFoundations(), loadEngagementSnapshots()])
         }
         if (view === 'trialBalance') await Promise.all([loadTrialBalance(), loadWorkingPaperExecution(), loadAdjustments()])
         if (view === 'leadSheets') await loadLeadSheets()
@@ -581,6 +590,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     loadClients,
     loadDocuments,
     loadEngagementDashboard,
+    loadEngagementSnapshots,
     loadEngagements,
     loadIntegrations,
     loadAuditEvents,
@@ -625,6 +635,14 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const assignmentCandidates = useMemo(
     () => workspaceMembers.filter((member) => member.status === 'active'),
     [workspaceMembers]
+  )
+  const trialBalanceTotals = useMemo(
+    () => calculateTrialBalanceTotals(trialBalanceAccounts),
+    [trialBalanceAccounts]
+  )
+  const leadSheetTotals = useMemo(
+    () => calculateLeadSheetTotals(leadSheets),
+    [leadSheets]
   )
   const assignmentLabelByUserId = useMemo(() => {
     const map = new Map<string, string>()
@@ -700,8 +718,11 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }, [dashboard])
 
   useEffect(() => {
-    setSelectedEngagementIds((current) => current.filter((id) => engagements.some((engagement) => engagement.id === id)))
-  }, [engagements])
+    const nextIds = selectedEngagementIds.filter((id) => engagements.some((engagement) => engagement.id === id))
+    if (nextIds.length !== selectedEngagementIds.length) {
+      setSelectedEngagementIds(nextIds)
+    }
+  }, [engagements, selectedEngagementIds, setSelectedEngagementIds])
 
   const refreshEngagementWorkflowViews = useCallback(async (
     options: { includeReviewNotes?: boolean; includeLeadSheetDetail?: boolean } = {}
@@ -875,8 +896,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       } else {
         setNotice(`Bulk transition complete: ${result.updated.length} engagements updated.`)
       }
-      setSelectedEngagementIds([])
-      setBulkTransitionStatus('')
+      resetWorkingPapersSelection()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not run bulk transition')
     } finally {
@@ -1564,6 +1584,39 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       setNotice('Working paper deleted.')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not delete working paper')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onExportEngagementWorkbook = async (targetEngagementId: string) => {
+    setSaving(true)
+    setError(null)
+    try {
+      const workbook = await exportEngagementWorkbookDomain(getToken, targetEngagementId)
+      downloadBase64File(workbook)
+      setNotice('Workbook export downloaded.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not export workbook')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onCreateSnapshot = async () => {
+    if (!engagementId) return
+    setSaving(true)
+    setError(null)
+    try {
+      await createEngagementSnapshotDomain(getToken, engagementId, {
+        snapshotLabel: `Snapshot ${new Date().toLocaleString()}`,
+        snapshotType: 'manual',
+        sourceState: String(dashboard?.engagement?.review_flow_status || 'not_started')
+      })
+      await loadEngagementSnapshots()
+      setNotice('Snapshot created.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not create snapshot')
     } finally {
       setSaving(false)
     }
@@ -2331,6 +2384,14 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                   <Link className="text-xs text-primary-dark underline" to={`/portal/accounting/working-papers/engagements/${engagement.id}/adjustments`}>Adjustments</Link>
                                   <Link className="text-xs text-primary-dark underline" to={`/portal/accounting/working-papers/engagements/${engagement.id}/review`}>Reviewer Workflow</Link>
                                   <Link className="text-xs text-primary-dark underline" to={`/portal/accounting/working-papers/engagements/${engagement.id}`}>Engagement Dashboard</Link>
+                                  <button
+                                    type="button"
+                                    className="text-xs text-primary-dark underline"
+                                    disabled={saving}
+                                    onClick={() => { void onExportEngagementWorkbook(engagement.id) }}
+                                  >
+                                    Export Workbook (ExcelJS)
+                                  </button>
                                 </div>
                               </div>
                             ))}
@@ -2486,7 +2547,18 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/settings`} className="text-sm text-primary-dark underline self-center">
                               Edit workflow details
                             </Link>
+                            <button
+                              type="button"
+                              className="btn btn--secondary text-sm py-2 px-3"
+                              disabled={saving}
+                              onClick={() => { void onCreateSnapshot() }}
+                            >
+                              Create Snapshot
+                            </button>
                           </div>
+                          <p className="text-xs text-text-light mt-2">
+                            Snapshots captured: <span className="font-medium text-primary-dark">{engagementSnapshots.length}</span>
+                          </p>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                           <div className="rounded-lg border border-border p-4">
@@ -2530,6 +2602,20 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
                     {view === 'trialBalance' && (
                       <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div className="rounded-lg border border-border p-3">
+                            <p className="text-xs text-text-light">Current total (HyperFormula)</p>
+                            <p className="font-semibold text-primary-dark">{trialBalanceTotals.currentTotal.toFixed(2)}</p>
+                          </div>
+                          <div className="rounded-lg border border-border p-3">
+                            <p className="text-xs text-text-light">Prior total (HyperFormula)</p>
+                            <p className="font-semibold text-primary-dark">{trialBalanceTotals.priorTotal.toFixed(2)}</p>
+                          </div>
+                          <div className="rounded-lg border border-border p-3">
+                            <p className="text-xs text-text-light">Variance total (HyperFormula)</p>
+                            <p className="font-semibold text-primary-dark">{trialBalanceTotals.varianceTotal.toFixed(2)}</p>
+                          </div>
+                        </div>
                         <div className="rounded-lg border border-border p-4 space-y-3">
                           <h3 className="font-semibold text-primary-dark">Import Trial Balance (CSV/XLSX)</h3>
                           <input
@@ -2594,6 +2680,16 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
                     {view === 'leadSheets' && (
                       <div className="space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="rounded-lg border border-border p-3">
+                            <p className="text-xs text-text-light">Open notes total (HyperFormula)</p>
+                            <p className="font-semibold text-primary-dark">{leadSheetTotals.openNotesTotal}</p>
+                          </div>
+                          <div className="rounded-lg border border-border p-3">
+                            <p className="text-xs text-text-light">Documents total (HyperFormula)</p>
+                            <p className="font-semibold text-primary-dark">{leadSheetTotals.documentsTotal}</p>
+                          </div>
+                        </div>
                         <div className="flex justify-end">
                           <button type="button" className="btn btn--primary text-sm py-2 px-4" disabled={saving} onClick={() => { void onGenerateLeadSheets() }}>
                             Generate or Refresh Lead Sheets
@@ -2984,7 +3080,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                 )}
               </div>
 
-              {view !== 'companyProfile' && (
+              {view !== 'companyProfile' && view !== 'workingPapersWorkspace' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                   {(view === 'workspaceAdmin' ? workspaceAdminQuickLinks : quickLinks).map((item) => (
                     <Link

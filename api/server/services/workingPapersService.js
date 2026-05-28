@@ -18,6 +18,10 @@ import {
   recordAuditEvent,
   upsertReviewAssignment
 } from './repositories/auditWorkflowRepository.js'
+import {
+  ensureEngagementTemplate,
+  initializeEngagementFromTemplate
+} from './engagementTemplateService.js'
 
 const ENGAGEMENT_TYPES = new Set([
   'month_end_close',
@@ -427,6 +431,7 @@ export async function createEngagement (pool, clerkUserId, actorId, payload) {
   const assignedReviewerId = payload.assignedReviewerId ?? null
 
   await ensureStandardMappingGroups(pool, clerkUserId)
+  const templateId = await ensureEngagementTemplate(pool, actorId, payload)
   await assertAssignableWorkspaceMember(pool, payload.workspaceId || null, assignedPreparerId, 'assignedPreparerId')
   await assertAssignableWorkspaceMember(pool, payload.workspaceId || null, assignedReviewerId, 'assignedReviewerId')
 
@@ -457,6 +462,7 @@ export async function createEngagement (pool, clerkUserId, actorId, payload) {
       assignedReviewerId
     ]
   )
+  await initializeEngagementFromTemplate(pool, actorId, rows[0], templateId)
   await logAccountingAudit(pool, clerkUserId, actorId, 'engagement', rows[0].id, 'created', null, rows[0])
   return rows[0]
 }

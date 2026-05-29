@@ -40,7 +40,12 @@ function emitWorkspaceRecoveryTelemetry (reason: string, workspaceId: string | n
 
 function shouldRetryWithoutWorkspaceHeader (errorMessage: string): boolean {
   const message = String(errorMessage || '').toLowerCase()
-  return message.includes('workspace access denied') || message.includes('workspace not found') || message === 'forbidden'
+  return message.includes('workspace access denied') ||
+    message.includes('workspace not found') ||
+    message.includes('permission denied') ||
+    message.includes('workspace.read') ||
+    message.includes('workspace.manage') ||
+    message === 'forbidden'
 }
 
 function parseJsonBody<T> (text: string, allowEmpty: boolean): T {

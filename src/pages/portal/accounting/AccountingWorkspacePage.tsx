@@ -681,7 +681,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }, [activeWorkspace])
 
   useEffect(() => {
-    if (!showWorkspaceTools || !selectedWorkspaceId) return
+    if (!showWorkspaceTools || !selectedWorkspaceId || !activeWorkspace) return
     void loadWorkspaceMembers()
     void loadWorkspaceInvites()
     if (canManageWorkspaceMembers) {
@@ -689,10 +689,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     } else {
       setOrganizationSnapshot(null)
     }
-  }, [canManageWorkspaceMembers, loadOrganizationSnapshot, loadWorkspaceInvites, loadWorkspaceMembers, selectedWorkspaceId, showWorkspaceTools])
+  }, [activeWorkspace, canManageWorkspaceMembers, loadOrganizationSnapshot, loadWorkspaceInvites, loadWorkspaceMembers, selectedWorkspaceId, showWorkspaceTools])
 
   useEffect(() => {
-    if (view !== 'companyProfile' || !selectedWorkspaceId) return
+    if (view !== 'companyProfile' || !selectedWorkspaceId || !activeWorkspace) return
     void loadClients()
     void loadWorkspaceProfile()
     if (canManageWorkspaceMembers) {
@@ -700,7 +700,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     } else {
       setOrganizationSnapshot(null)
     }
-  }, [canManageWorkspaceMembers, loadClients, loadOrganizationSnapshot, loadWorkspaceProfile, selectedWorkspaceId, view])
+  }, [activeWorkspace, canManageWorkspaceMembers, loadClients, loadOrganizationSnapshot, loadWorkspaceProfile, selectedWorkspaceId, view])
 
   useEffect(() => {
     if (!workspaceProfile) return

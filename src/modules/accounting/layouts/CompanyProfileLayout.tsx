@@ -16,11 +16,11 @@ export const CompanyProfileTabs: FC<CompanyProfileTabsProps> = ({ entityTabLabel
       <NavLink to={basePath} end className={tabClass}>
         Business/Firm Details
       </NavLink>
-      <NavLink to={`${basePath}/entities`} className={tabClass}>
-        {entityTabLabel}
-      </NavLink>
       <NavLink to={`${basePath}/employees`} className={tabClass}>
         Invite Employees
+      </NavLink>
+      <NavLink to={`${basePath}/entities`} className={tabClass}>
+        {entityTabLabel}
       </NavLink>
     </div>
   )

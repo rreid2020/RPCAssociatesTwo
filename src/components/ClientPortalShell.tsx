@@ -12,9 +12,10 @@ import { getOnboardingStatus } from '../lib/onboarding/state'
 
 interface ClientPortalShellProps {
   children: ReactNode
+  wideContent?: boolean
 }
 
-const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
+const ClientPortalShell: FC<ClientPortalShellProps> = ({ children, wideContent = false }) => {
   const rolloutBypassEnabled = import.meta.env.VITE_FORCE_ENTERPRISE_ACCESS !== 'false'
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
@@ -23,7 +24,13 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
   const { signOut } = useClerk()
   const { permissions } = useWorkspaceAuthorization()
   const { workspaceId, setWorkspaceId } = useWorkspaceState()
-  const [workspaceOptions, setWorkspaceOptions] = useState<Array<{ id: string, name: string, workspaceType: 'business' | 'firm', role: string }>>([])
+  const [workspaceOptions, setWorkspaceOptions] = useState<Array<{
+    id: string
+    name: string
+    workspaceType: 'business' | 'firm'
+    profileBusinessType: string | null
+    role: string
+  }>>([])
   const [onboardingComplete, setOnboardingComplete] = useState(false)
   const handleSignOut = useCallback(() => {
     setWorkspaceId(null)
@@ -73,6 +80,7 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
   const navigationSections = useMemo(() => (
     buildNavigationSections({
       workspaceType: selectedWorkspace?.workspaceType || null,
+      profileBusinessType: selectedWorkspace?.profileBusinessType || null,
       onboardingComplete,
       features: { workingPapers, integrations },
       permissions
@@ -297,7 +305,7 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
 
         {/* Page content */}
         <main className="py-6 sm:py-8">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className={wideContent ? 'w-full px-4 sm:px-6 lg:px-8 xl:px-10' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'}>
             {children}
           </div>
         </main>

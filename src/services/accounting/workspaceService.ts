@@ -12,6 +12,7 @@ export async function listWorkspaces (getToken: TokenProvider): Promise<Accounti
     id: row.id,
     name: row.name,
     workspaceType: row.workspace_type || 'business',
+    profileBusinessType: row.profile_business_type || null,
     role: row.role
   }))
 }

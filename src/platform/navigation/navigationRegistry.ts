@@ -1,5 +1,8 @@
+import { resolveEntityProfilesNavLabel } from '../workspace/companyProfileLabels'
+
 export type NavigationContext = {
   workspaceType: 'business' | 'firm' | null
+  profileBusinessType: string | null
   onboardingComplete: boolean
   features: {
     workingPapers: boolean
@@ -62,19 +65,6 @@ const SECTIONS: NavigationSection[] = [
     items: []
   },
   {
-    id: 'accounting',
-    depth: 1,
-    items: [
-      { to: '/portal/accounting/workspaces', label: 'Workspace Admin', iconKey: 'workspace' },
-      { to: '/portal/accounting/working-papers/engagements', label: 'Engagements', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
-      { to: '/portal/accounting/working-papers/workspace', label: 'Working Papers', iconKey: 'document', requiredFeature: 'workingPapers', requiredPermission: 'working_papers.read' },
-      { to: '/portal/accounting/working-papers/engagements?approvalReady=false', label: 'Workflow Queue', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
-      { to: '/portal/accounting/working-papers/engagements?approvalReady=true', label: 'Approval Ready', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
-      { to: '/portal/accounting/working-papers/engagements/new', label: 'Create Engagement', iconKey: 'plus', requiredFeature: 'workingPapers', requiredPermission: 'engagement.manage' },
-      { to: '/portal/accounting/integrations', label: 'Integrations', iconKey: 'terminal', requiredFeature: 'integrations', requiredPermission: 'integrations.manage' }
-    ]
-  },
-  {
     id: 'company-profile-title',
     label: 'Business/Firm Profile',
     depth: 1,
@@ -85,8 +75,21 @@ const SECTIONS: NavigationSection[] = [
     depth: 2,
     items: [
       { to: '/portal/accounting/company-profile', label: 'Business/Firm Details', iconKey: 'workspace' },
-      { to: '/portal/accounting/company-profile/entities', label: 'Entity Profiles / Clients', iconKey: 'document' },
-      { to: '/portal/accounting/company-profile/employees', label: 'Invite Employees', iconKey: 'workspace' }
+      { to: '/portal/accounting/company-profile/employees', label: 'Invite Employees', iconKey: 'workspace' },
+      { to: '/portal/accounting/company-profile/entities', label: 'Entity Profiles / Clients', iconKey: 'document' }
+    ]
+  },
+  {
+    id: 'accounting',
+    depth: 1,
+    items: [
+      { to: '/portal/accounting/workspaces', label: 'Workspace Admin', iconKey: 'workspace' },
+      { to: '/portal/accounting/working-papers/engagements', label: 'Engagements', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
+      { to: '/portal/accounting/working-papers/workspace', label: 'Working Papers', iconKey: 'document', requiredFeature: 'workingPapers', requiredPermission: 'working_papers.read' },
+      { to: '/portal/accounting/working-papers/engagements?approvalReady=false', label: 'Workflow Queue', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
+      { to: '/portal/accounting/working-papers/engagements?approvalReady=true', label: 'Approval Ready', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
+      { to: '/portal/accounting/working-papers/engagements/new', label: 'Create Engagement', iconKey: 'plus', requiredFeature: 'workingPapers', requiredPermission: 'engagement.manage' },
+      { to: '/portal/accounting/integrations', label: 'Integrations', iconKey: 'terminal', requiredFeature: 'integrations', requiredPermission: 'integrations.manage' }
     ]
   },
   {
@@ -108,14 +111,8 @@ function isItemVisible (item: NavigationItem, context: NavigationContext) {
   return true
 }
 
-function resolveEntityProfilesNavLabel (workspaceType: NavigationContext['workspaceType']): string {
-  if (workspaceType === 'firm') return 'Client Profiles'
-  if (workspaceType === 'business') return 'Corporate Entity Profiles'
-  return 'Entity Profiles / Clients'
-}
-
 export function buildNavigationSections (context: NavigationContext): NavigationSection[] {
-  const entityProfilesLabel = resolveEntityProfilesNavLabel(context.workspaceType)
+  const entityProfilesLabel = resolveEntityProfilesNavLabel(context.profileBusinessType, context.workspaceType)
   return SECTIONS
     .map((section) => ({
       ...section,

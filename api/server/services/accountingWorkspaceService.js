@@ -533,6 +533,7 @@ export async function listWorkspacesForUser (pool, clerkUserId) {
     const { rows } = await pool.query(
       `SELECT w.*, m.role, m.status,
               p.company_legal_name AS profile_company_legal_name,
+              p.business_type AS profile_business_type,
               p.onboarding_completed_at AS profile_onboarding_completed_at
        FROM taxgpt.accounting_workspaces w
        INNER JOIN taxgpt.accounting_workspace_members m ON m.workspace_id = w.id

@@ -38,6 +38,13 @@ import { calculateLeadSheetTotals, calculateTrialBalanceTotals } from '../../../
 import { downloadBase64File, exportEngagementWorkbookDomain } from '../../../domains/import-export'
 import { createEngagementSnapshotDomain, fetchEngagementSnapshotsDomain } from '../../../domains/snapshots'
 import { CompanyProfileTabs } from '../../../modules/accounting/layouts/CompanyProfileLayout'
+import {
+  isAccountingFirmOrganization,
+  resolveClientRecordLabel,
+  resolveClientRecordLabelPlural,
+  resolveEntityProfileSingularLabel,
+  resolveEntityProfilesNavLabel
+} from '../../../platform/workspace/companyProfileLabels'
 
 type AccountingView =
   | 'landing'
@@ -658,14 +665,16 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     [workspaces, selectedWorkspaceId]
   )
   const isFirmWorkspace = activeWorkspace?.workspace_type === 'firm'
+  const profileBusinessType = companyProfileForm.businessType || workspaceProfile?.business_type || activeWorkspace?.profile_business_type || null
+  const isAccountingFirm = isAccountingFirmOrganization(profileBusinessType, activeWorkspace?.workspace_type)
   const canManageWorkspaceMembers = activeWorkspace?.role === 'owner' || activeWorkspace?.role === 'admin'
-  const clientLabel = isFirmWorkspace ? 'Accounting client' : 'Business entity'
-  const clientLabelPlural = isFirmWorkspace ? 'Accounting clients' : 'Business entities'
-  const entityProfileLabel = isFirmWorkspace ? 'Client profile' : 'Corporate business entity profile'
-  const entityProfilesNavLabel = isFirmWorkspace ? 'Client Profiles' : 'Corporate Entity Profiles'
+  const clientLabel = resolveClientRecordLabel(profileBusinessType, activeWorkspace?.workspace_type)
+  const clientLabelPlural = resolveClientRecordLabelPlural(profileBusinessType, activeWorkspace?.workspace_type)
+  const entityProfileLabel = resolveEntityProfileSingularLabel(profileBusinessType, activeWorkspace?.workspace_type)
+  const entityProfilesNavLabel = resolveEntityProfilesNavLabel(profileBusinessType, activeWorkspace?.workspace_type)
   const pageTitle = view === 'companyProfileEntities' ? entityProfilesNavLabel : titleByView[view]
   const pageDescription = view === 'companyProfileEntities'
-    ? (isFirmWorkspace
+    ? (isAccountingFirm
       ? 'Create and maintain client records that engagements will be attached to.'
       : 'Create reporting entities (subsidiary, division, or legal entity) that engagements will be attached to.')
     : descriptionByView[view]
@@ -1803,7 +1812,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
               : '/portal/accounting/working-papers/engagements'
         }
       />
-      <ClientPortalShell>
+      <ClientPortalShell wideContent={isCompanyProfileView(view)}>
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold text-primary-dark">{pageTitle}</h1>
@@ -2051,7 +2060,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                   </div>
                 </div>
               )}
-              <div className="bg-white p-6 rounded-lg border border-border shadow-sm">
+              <div className={isCompanyProfileView(view) ? 'space-y-4' : 'bg-white p-6 rounded-lg border border-border shadow-sm'}>
               {loading ? (
                   <p className="text-sm text-text-light">Loading&hellip;</p>
                 ) : (
@@ -2133,14 +2142,14 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
                     {view === 'companyProfile' && (
                       <div className="space-y-4">
-                        <div className="rounded-lg border border-border p-4 space-y-3">
+                        <div className="rounded-lg border border-border p-5 sm:p-6 space-y-4 bg-white">
                           <h4 className="font-semibold text-primary-dark">Business/Firm details</h4>
                           <p className="text-sm text-text-light">
                             Configure core business or firm information used across workspace operations.
                           </p>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             <select
-                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
                               value={companyProfileForm.businessType}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, businessType: e.target.value }))}
                             >
@@ -2149,85 +2158,85 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               ))}
                             </select>
                             <input
-                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
                               placeholder="Business/Firm legal name"
                               value={companyProfileForm.companyLegalName}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, companyLegalName: e.target.value }))}
                             />
                             <input
-                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
                               placeholder="Operating name"
                               value={companyProfileForm.companyOperatingName}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, companyOperatingName: e.target.value }))}
                             />
                             <input
-                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
                               placeholder="Business number"
                               value={companyProfileForm.taxIdentifier}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, taxIdentifier: e.target.value }))}
                             />
                             <input
-                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
                               placeholder="Website URL"
                               value={companyProfileForm.websiteUrl}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, websiteUrl: e.target.value }))}
                             />
                             <input
-                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
                               placeholder="Industry"
                               value={companyProfileForm.industry}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, industry: e.target.value }))}
                             />
                             <input
-                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
                               placeholder="Primary contact name"
                               value={companyProfileForm.primaryContactName}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, primaryContactName: e.target.value }))}
                             />
                             <input
-                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
                               placeholder="Primary contact email"
                               value={companyProfileForm.primaryContactEmail}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, primaryContactEmail: e.target.value }))}
                             />
                             <input
-                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
                               placeholder="Primary contact phone"
                               value={companyProfileForm.primaryContactPhone}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, primaryContactPhone: e.target.value }))}
                             />
                             <input
-                              className="border border-border rounded-md px-3 py-2 text-sm md:col-span-2"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm sm:col-span-2 xl:col-span-2"
                               placeholder="Address line 1"
                               value={companyProfileForm.addressLine1}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, addressLine1: e.target.value }))}
                             />
                             <input
-                              className="border border-border rounded-md px-3 py-2 text-sm md:col-span-2"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm sm:col-span-2 xl:col-span-2"
                               placeholder="Address line 2"
                               value={companyProfileForm.addressLine2}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, addressLine2: e.target.value }))}
                             />
                             <input
-                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
                               placeholder="City"
                               value={companyProfileForm.city}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, city: e.target.value }))}
                             />
                             <input
-                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
                               placeholder="Province/State"
                               value={companyProfileForm.provinceState}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, provinceState: e.target.value }))}
                             />
                             <input
-                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
                               placeholder="Postal code"
                               value={companyProfileForm.postalCode}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, postalCode: e.target.value }))}
                             />
                             <input
-                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
                               placeholder="Country code"
                               value={companyProfileForm.countryCode}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, countryCode: e.target.value.toUpperCase() }))}
@@ -2247,46 +2256,46 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
                     {view === 'companyProfileEntities' && (
                       <div className="space-y-4">
-                        <div className="rounded-lg border border-border p-4 space-y-3">
+                        <div className="rounded-lg border border-border p-5 sm:p-6 space-y-4 bg-white">
                           <h4 className="font-semibold text-primary-dark">{entityProfilesNavLabel}</h4>
-                          <p className="text-xs text-text-light">
-                            {isFirmWorkspace
+                          <p className="text-sm text-text-light">
+                            {isAccountingFirm
                               ? 'Create and maintain client records that engagements will be attached to.'
                               : 'Create reporting entities (subsidiary/division/legal entity) that engagements will be attached to.'}
                           </p>
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                             <input
-                              className="border border-border rounded-md px-3 py-2 text-sm"
-                              placeholder={isFirmWorkspace ? 'Client name' : 'Business entity name'}
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm xl:col-span-2"
+                              placeholder={isAccountingFirm ? 'Client name' : 'Business entity name'}
                               value={entityProfileForm.name}
                               onChange={(e) => setEntityProfileForm((prev) => ({ ...prev, name: e.target.value }))}
                             />
                             <input
-                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm xl:col-span-2"
                               placeholder="Legal name"
                               value={entityProfileForm.legalName}
                               onChange={(e) => setEntityProfileForm((prev) => ({ ...prev, legalName: e.target.value }))}
                             />
                             <input
-                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
                               placeholder="Business number"
                               value={entityProfileForm.businessNumber}
                               onChange={(e) => setEntityProfileForm((prev) => ({ ...prev, businessNumber: e.target.value }))}
                             />
                             <input
-                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
                               placeholder="Default currency (e.g., CAD)"
                               value={entityProfileForm.defaultCurrency}
                               onChange={(e) => setEntityProfileForm((prev) => ({ ...prev, defaultCurrency: e.target.value.toUpperCase() }))}
                             />
                             <input
-                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
                               placeholder="Fiscal year end month (1-12)"
                               value={entityProfileForm.fiscalYearEndMonth}
                               onChange={(e) => setEntityProfileForm((prev) => ({ ...prev, fiscalYearEndMonth: e.target.value }))}
                             />
                             <input
-                              className="border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
                               placeholder="Fiscal year end day (1-31)"
                               value={entityProfileForm.fiscalYearEndDay}
                               onChange={(e) => setEntityProfileForm((prev) => ({ ...prev, fiscalYearEndDay: e.target.value }))}
@@ -2360,7 +2369,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
                     {view === 'companyProfileEmployees' && (
                       <div className="space-y-4">
-                        <div className="rounded-lg border border-border p-4 space-y-3">
+                        <div className="rounded-lg border border-border p-5 sm:p-6 space-y-4 bg-white">
                           <h4 className="font-semibold text-primary-dark">Employee invite</h4>
                           <p className="text-sm text-text-light">
                             Invite employees to your organization and manage roster status before workspace assignments.

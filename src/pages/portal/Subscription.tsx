@@ -315,7 +315,7 @@ const Subscription: FC = () => {
         await saveWorkspaceProfile(selectedWorkspaceId, true)
         setOnboardingStep(3)
         setWorkspaceId(selectedWorkspaceId)
-        navigate('/portal/accounting/workspaces', { replace: true })
+        navigate('/portal/accounting/company-profile', { replace: true })
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Could not complete onboarding')
       } finally {
@@ -644,7 +644,7 @@ const Subscription: FC = () => {
                     </p>
                     {activeWorkspace && (
                       <p className="text-xs text-text-light">
-                        Need advanced team management? Use <Link className="underline font-medium" to="/portal/accounting/workspaces">Workspace Administration</Link>.
+                        Need advanced team management? Use <Link className="underline font-medium" to="/portal/accounting/company-profile/employees">Invite Employees</Link> in Business/Firm Profile.
                       </p>
                     )}
                   </div>

@@ -83,7 +83,6 @@ const SECTIONS: NavigationSection[] = [
     id: 'accounting',
     depth: 1,
     items: [
-      { to: '/portal/accounting/workspaces', label: 'Workspace Admin', iconKey: 'workspace' },
       { to: '/portal/accounting/working-papers/engagements', label: 'Engagements', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
       { to: '/portal/accounting/working-papers/workspace', label: 'Working Papers', iconKey: 'document', requiredFeature: 'workingPapers', requiredPermission: 'working_papers.read' },
       { to: '/portal/accounting/working-papers/engagements?approvalReady=false', label: 'Workflow Queue', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },

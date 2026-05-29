@@ -1,5 +1,5 @@
 import { Fragment, lazy } from 'react'
-import { Outlet, Route } from 'react-router-dom'
+import { Navigate, Outlet, Route } from 'react-router-dom'
 import { ProtectedRoute } from './route-guards'
 import RouteSuspense from './route-suspense'
 import { EntitlementGuard, PermissionGuard } from '../platform/api/guards'
@@ -13,7 +13,6 @@ function CompanyProfileOutlet () {
 
 type AccountingPageView =
   | 'landing'
-  | 'workspaceAdmin'
   | 'companyProfile'
   | 'companyProfileEntities'
   | 'companyProfileEmployees'
@@ -123,7 +122,14 @@ export function getAccountingRoutes () {
           element={guardedElement(<AccountingWorkspacePage view="companyProfileEmployees" />)}
         />
       </Route>
-      {accountingViewRoute('/portal/accounting/workspaces', 'workspaceAdmin')}
+      <Route
+        path="/portal/accounting/workspaces"
+        element={
+          <ProtectedRoute>
+            <Navigate to="/portal/accounting/company-profile" replace />
+          </ProtectedRoute>
+        }
+      />
       {accountingViewRoute('/portal/accounting/join', 'joinWorkspaceInvite')}
       {accountingViewRoute('/portal/accounting/working-papers/engagements', 'engagementList', 'workingPapers', 'engagement.read')}
       {accountingViewRoute('/portal/accounting/working-papers/workspace', 'workingPapersWorkspace', 'workingPapers', 'working_papers.read')}

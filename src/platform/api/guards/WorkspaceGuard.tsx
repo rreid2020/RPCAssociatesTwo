@@ -21,7 +21,7 @@ const WorkspaceGuard: FC<WorkspaceGuardProps> = ({ children }) => {
   if (bypass) return <>{children}</>
 
   if (!workspaceId && ROLLOUT_BYPASS_ENABLED) {
-    return <Navigate to="/portal/accounting/workspaces" replace />
+    return <Navigate to="/portal/accounting/company-profile" replace />
   }
 
   if (!workspaceId) {

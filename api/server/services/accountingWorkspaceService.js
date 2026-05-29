@@ -519,20 +519,46 @@ export async function getWorkspaceContext (pool, clerkUserId, requestedWorkspace
 }
 
 export async function listWorkspacesForUser (pool, clerkUserId) {
-  await ensurePersonalWorkspace(pool, clerkUserId)
-  const { rows } = await pool.query(
-    `SELECT w.*, m.role, m.status,
-            p.company_legal_name AS profile_company_legal_name,
-            p.onboarding_completed_at AS profile_onboarding_completed_at
-     FROM taxgpt.accounting_workspaces w
-     INNER JOIN taxgpt.accounting_workspace_members m ON m.workspace_id = w.id
-     LEFT JOIN taxgpt.accounting_workspace_profiles p ON p.workspace_id = w.id
-     WHERE m.clerk_user_id = $1
-       AND m.status = 'active'
-     ORDER BY w.created_at ASC`,
-    [clerkUserId]
-  )
-  return rows
+  // Bootstrap failures should not take down workspace listing.
+  try {
+    await ensurePersonalWorkspace(pool, clerkUserId)
+  } catch (error) {
+    console.warn('ensurePersonalWorkspace failed; returning existing memberships', {
+      clerkUserId,
+      message: error instanceof Error ? error.message : String(error)
+    })
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT w.*, m.role, m.status,
+              p.company_legal_name AS profile_company_legal_name,
+              p.onboarding_completed_at AS profile_onboarding_completed_at
+       FROM taxgpt.accounting_workspaces w
+       INNER JOIN taxgpt.accounting_workspace_members m ON m.workspace_id = w.id
+       LEFT JOIN taxgpt.accounting_workspace_profiles p ON p.workspace_id = w.id
+       WHERE m.clerk_user_id = $1
+         AND m.status = 'active'
+       ORDER BY w.created_at ASC`,
+      [clerkUserId]
+    )
+    return rows
+  } catch (error) {
+    // Backward-compatible fallback for partial schema states.
+    if (error && typeof error === 'object' && (error.code === '42P01' || error.code === '42703')) {
+      const { rows } = await pool.query(
+        `SELECT w.*, m.role, m.status
+         FROM taxgpt.accounting_workspaces w
+         INNER JOIN taxgpt.accounting_workspace_members m ON m.workspace_id = w.id
+         WHERE m.clerk_user_id = $1
+           AND m.status = 'active'
+         ORDER BY w.created_at ASC`,
+        [clerkUserId]
+      )
+      return rows
+    }
+    throw error
+  }
 }
 
 export async function getOnboardingStatusForUser (pool, clerkUserId) {

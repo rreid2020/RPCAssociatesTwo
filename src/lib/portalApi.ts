@@ -48,6 +48,10 @@ function shouldRetryWithoutWorkspaceHeader (errorMessage: string): boolean {
     message === 'forbidden'
 }
 
+function isDeadlockMessage (errorMessage: string): boolean {
+  return String(errorMessage || '').toLowerCase().includes('deadlock detected')
+}
+
 function parseJsonBody<T> (text: string, allowEmpty: boolean): T {
   const t = text.trim()
   if (!t) {
@@ -104,13 +108,23 @@ export async function portalFetch<T> (
   try {
     return await run(selectedWorkspaceId)
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
+    let nextError: unknown = error
+    let message = nextError instanceof Error ? nextError.message : String(nextError)
+    if (isDeadlockMessage(message)) {
+      await new Promise((resolve) => setTimeout(resolve, 80))
+      try {
+        return await run(selectedWorkspaceId)
+      } catch (retryError) {
+        nextError = retryError
+        message = nextError instanceof Error ? nextError.message : String(nextError)
+      }
+    }
     if (selectedWorkspaceId && shouldRetryWithoutWorkspaceHeader(message)) {
       emitWorkspaceRecoveryTelemetry(message, selectedWorkspaceId)
       clearSelectedAccountingWorkspaceId()
       return await run(null)
     }
-    throw error
+    throw nextError
   }
 }
 

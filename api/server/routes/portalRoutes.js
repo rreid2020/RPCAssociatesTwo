@@ -1039,7 +1039,7 @@ export function createPortalRouter (pool) {
     const authorized = await requireWorkspacePermission(session, req.params.workspaceId, 'workspace.read', res)
     if (!authorized) return
     try {
-      const data = await getWorkspaceProfile(pool, session.userId, req.params.workspaceId)
+      const data = await withDeadlockRetry(async () => await getWorkspaceProfile(pool, session.userId, req.params.workspaceId))
       res.json(data)
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load workspace profile' })

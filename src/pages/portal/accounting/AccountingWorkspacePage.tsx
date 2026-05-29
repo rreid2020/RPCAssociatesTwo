@@ -237,6 +237,10 @@ function formatWorkflowLabel (value: string): string {
   return value.replace(/_/g, ' ')
 }
 
+function isAccessDeniedMessage (message: string): boolean {
+  return /forbidden|403|access denied|permission denied|insufficient permissions|workspace\.[a-z_]+/i.test(message)
+}
+
 const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => {
   const { getToken } = useAuth()
   const { workspaceId, setWorkspaceId } = useWorkspaceState()
@@ -509,7 +513,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       const data = await portalFetch<any>(`/v1/accounting/workspaces/${workspaceIdToLoad}/organization`, getToken)
       setOrganizationSnapshot(data)
     } catch (e) {
-      if (e instanceof Error && /forbidden|403|access denied/i.test(e.message)) {
+      if (e instanceof Error && isAccessDeniedMessage(e.message)) {
         setOrganizationSnapshot(null)
         return
       }
@@ -524,7 +528,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       const data = await portalFetch<any>(`/v1/accounting/workspaces/${workspaceIdToLoad}/profile`, getToken)
       setWorkspaceProfile(data.profile || null)
     } catch (e) {
-      if (e instanceof Error && /forbidden|403|access denied/i.test(e.message)) {
+      if (e instanceof Error && isAccessDeniedMessage(e.message)) {
         setWorkspaceProfile(null)
         return
       }

@@ -300,9 +300,9 @@ export function createPortalRouter (pool) {
   }
   const requireWorkspacePermission = async (session, workspaceId, permission, res) => {
     try {
-      const workspace = await getWorkspaceContext(pool, session.userId, workspaceId, {
-        expectedClerkOrgId: session.orgId || null
-      })
+      // Explicit workspace routes authorize by membership + RBAC. Do not enforce
+      // Clerk org header context here; workspace listing already exposes member workspaces.
+      const workspace = await getWorkspaceContext(pool, session.userId, workspaceId)
       await assertWorkspacePermissionWithCustomRoles(pool, {
         workspaceId: workspace.id,
         workspaceRole: workspace.role,

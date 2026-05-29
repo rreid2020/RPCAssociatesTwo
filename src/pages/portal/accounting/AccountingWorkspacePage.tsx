@@ -692,17 +692,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }, [activeWorkspace, canManageWorkspaceMembers, loadOrganizationSnapshot, loadWorkspaceInvites, loadWorkspaceMembers, selectedWorkspaceId, showWorkspaceTools])
 
   useEffect(() => {
-    if (view !== 'companyProfile' || !selectedWorkspaceId || !activeWorkspace) return
-    void loadClients()
-    void loadWorkspaceProfile()
-    if (canManageWorkspaceMembers) {
-      void loadOrganizationSnapshot()
-    } else {
-      setOrganizationSnapshot(null)
-    }
-  }, [activeWorkspace, canManageWorkspaceMembers, loadClients, loadOrganizationSnapshot, loadWorkspaceProfile, selectedWorkspaceId, view])
-
-  useEffect(() => {
     if (!workspaceProfile) return
     setCompanyProfileForm({
       businessType: workspaceProfile.business_type || 'corporation',

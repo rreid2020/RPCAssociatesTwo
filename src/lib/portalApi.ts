@@ -38,14 +38,15 @@ function emitWorkspaceRecoveryTelemetry (reason: string, workspaceId: string | n
   })
 }
 
-function shouldRetryWithoutWorkspaceHeader (errorMessage: string): boolean {
+function isWorkspaceScopedPath (path: string): boolean {
+  return /\/v1\/accounting\/workspaces\/[^/?#]+/.test(path)
+}
+
+function shouldRetryWithoutWorkspaceHeader (errorMessage: string, path: string): boolean {
+  if (isWorkspaceScopedPath(path)) return false
   const message = String(errorMessage || '').toLowerCase()
   return message.includes('workspace access denied') ||
-    message.includes('workspace not found') ||
-    message.includes('permission denied') ||
-    message.includes('workspace.read') ||
-    message.includes('workspace.manage') ||
-    message === 'forbidden'
+    message.includes('workspace not found')
 }
 
 function isDeadlockMessage (errorMessage: string): boolean {
@@ -119,7 +120,7 @@ export async function portalFetch<T> (
         message = nextError instanceof Error ? nextError.message : String(nextError)
       }
     }
-    if (selectedWorkspaceId && shouldRetryWithoutWorkspaceHeader(message)) {
+    if (selectedWorkspaceId && shouldRetryWithoutWorkspaceHeader(message, path)) {
       emitWorkspaceRecoveryTelemetry(message, selectedWorkspaceId)
       clearSelectedAccountingWorkspaceId()
       return await run(null)

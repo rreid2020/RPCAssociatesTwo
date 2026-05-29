@@ -9,6 +9,7 @@ export const PLATFORM_ROLES = [
 ]
 
 export const PERMISSION_KEYS = [
+  'workspace.read',
   'workspace.manage',
   'workspace.invite',
   'billing.read',
@@ -35,11 +36,11 @@ export const PERMISSION_KEYS = [
 const ROLE_PERMISSION_MAP = {
   super_admin: PERMISSION_KEYS,
   firm_admin: PERMISSION_KEYS,
-  manager: ['engagement.read', 'engagement.manage', 'working_papers.read', 'working_papers.manage', 'workingpapers.edit', 'review_notes.manage', 'signoff.perform', 'documents.read', 'documents.write', 'documents.manage', 'workflows.manage', 'workflows.approve', 'billing.read', 'ai.use', 'tax.review'],
-  reviewer: ['engagement.read', 'working_papers.read', 'review_notes.manage', 'signoff.perform', 'documents.read', 'documents.manage', 'workflows.approve', 'billing.read', 'tax.review'],
-  staff: ['engagement.read', 'working_papers.read', 'working_papers.manage', 'workingpapers.edit', 'documents.read', 'documents.write', 'documents.manage', 'ai.use'],
-  client: ['engagement.read', 'working_papers.read', 'documents.read', 'billing.read'],
-  external_read_only: ['engagement.read', 'working_papers.read', 'documents.read', 'billing.read']
+  manager: ['workspace.read', 'engagement.read', 'engagement.manage', 'working_papers.read', 'working_papers.manage', 'workingpapers.edit', 'review_notes.manage', 'signoff.perform', 'documents.read', 'documents.write', 'documents.manage', 'workflows.manage', 'workflows.approve', 'billing.read', 'ai.use', 'tax.review'],
+  reviewer: ['workspace.read', 'engagement.read', 'working_papers.read', 'review_notes.manage', 'signoff.perform', 'documents.read', 'documents.manage', 'workflows.approve', 'billing.read', 'tax.review'],
+  staff: ['workspace.read', 'engagement.read', 'working_papers.read', 'working_papers.manage', 'workingpapers.edit', 'documents.read', 'documents.write', 'documents.manage', 'ai.use'],
+  client: ['workspace.read', 'engagement.read', 'working_papers.read', 'documents.read', 'billing.read'],
+  external_read_only: ['workspace.read', 'engagement.read', 'working_papers.read', 'documents.read', 'billing.read']
 }
 
 const WORKSPACE_ROLE_TO_PLATFORM_ROLE = {

@@ -1,5 +1,5 @@
 import { Fragment, lazy } from 'react'
-import { Route } from 'react-router-dom'
+import { Outlet, Route } from 'react-router-dom'
 import { ProtectedRoute } from './route-guards'
 import RouteSuspense from './route-suspense'
 import { EntitlementGuard, PermissionGuard } from '../platform/api/guards'
@@ -7,9 +7,33 @@ import { EntitlementGuard, PermissionGuard } from '../platform/api/guards'
 const AccountingWorkspacePage = lazy(async () => await import('../pages/portal/accounting/AccountingWorkspacePage'))
 const EngagementLayout = lazy(async () => await import('../modules/accounting/layouts/EngagementLayout'))
 
+function CompanyProfileOutlet () {
+  return <Outlet />
+}
+
+type AccountingPageView =
+  | 'landing'
+  | 'workspaceAdmin'
+  | 'companyProfile'
+  | 'companyProfileEntities'
+  | 'companyProfileEmployees'
+  | 'joinWorkspaceInvite'
+  | 'engagementList'
+  | 'workingPapersWorkspace'
+  | 'newEngagement'
+  | 'engagementDashboard'
+  | 'trialBalance'
+  | 'leadSheets'
+  | 'leadSheetDetail'
+  | 'documents'
+  | 'review'
+  | 'adjustments'
+  | 'settings'
+  | 'integrations'
+
 function accountingViewRoute (
   path: string,
-  view: 'landing' | 'workspaceAdmin' | 'companyProfile' | 'joinWorkspaceInvite' | 'engagementList' | 'workingPapersWorkspace' | 'newEngagement' | 'engagementDashboard' | 'trialBalance' | 'leadSheets' | 'leadSheetDetail' | 'documents' | 'review' | 'adjustments' | 'settings' | 'integrations',
+  view: AccountingPageView,
   feature: 'workingPapers' | 'integrations' | null = null,
   permission: string | null = null,
   allowRolloutBypass = true
@@ -82,7 +106,23 @@ export function getAccountingRoutes () {
   return (
     <Fragment>
       {accountingViewRoute('/portal/accounting', 'landing')}
-      {accountingViewRoute('/portal/accounting/company-profile', 'companyProfile')}
+      <Route
+        path="/portal/accounting/company-profile"
+        element={guardedElement(<CompanyProfileOutlet />)}
+      >
+        <Route
+          index
+          element={guardedElement(<AccountingWorkspacePage view="companyProfile" />)}
+        />
+        <Route
+          path="entities"
+          element={guardedElement(<AccountingWorkspacePage view="companyProfileEntities" />)}
+        />
+        <Route
+          path="employees"
+          element={guardedElement(<AccountingWorkspacePage view="companyProfileEmployees" />)}
+        />
+      </Route>
       {accountingViewRoute('/portal/accounting/workspaces', 'workspaceAdmin')}
       {accountingViewRoute('/portal/accounting/join', 'joinWorkspaceInvite')}
       {accountingViewRoute('/portal/accounting/working-papers/engagements', 'engagementList', 'workingPapers', 'engagement.read')}

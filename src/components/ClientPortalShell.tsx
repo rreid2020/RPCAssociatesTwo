@@ -112,7 +112,13 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children }) => {
     if (normalizedPath === '/portal/dashboard') {
       return location.pathname === '/portal/dashboard'
     }
-    if (!location.pathname.startsWith(normalizedPath)) return false
+    let pathMatches = false
+    if (normalizedPath === '/portal/accounting/company-profile') {
+      pathMatches = location.pathname === '/portal/accounting/company-profile'
+    } else {
+      pathMatches = location.pathname === normalizedPath || location.pathname.startsWith(`${normalizedPath}/`)
+    }
+    if (!pathMatches) return false
     if (!queryString) return true
     const expectedParams = new URLSearchParams(queryString)
     const currentParams = new URLSearchParams(location.search)

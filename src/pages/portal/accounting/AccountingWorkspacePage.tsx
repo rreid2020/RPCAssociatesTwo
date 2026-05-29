@@ -37,11 +37,14 @@ import { useWorkingPapersUiStore } from '../../../modules/working-papers/state/u
 import { calculateLeadSheetTotals, calculateTrialBalanceTotals } from '../../../domains/formulas'
 import { downloadBase64File, exportEngagementWorkbookDomain } from '../../../domains/import-export'
 import { createEngagementSnapshotDomain, fetchEngagementSnapshotsDomain } from '../../../domains/snapshots'
+import { CompanyProfileTabs } from '../../../modules/accounting/layouts/CompanyProfileLayout'
 
 type AccountingView =
   | 'landing'
   | 'workspaceAdmin'
   | 'companyProfile'
+  | 'companyProfileEntities'
+  | 'companyProfileEmployees'
   | 'engagementList'
   | 'workingPapersWorkspace'
   | 'newEngagement'
@@ -63,7 +66,9 @@ interface AccountingWorkspacePageProps {
 const titleByView: Record<AccountingView, string> = {
   landing: 'Accounting Operations',
   workspaceAdmin: 'Workspace Administration',
-  companyProfile: 'Business/Firm Profile Setup',
+  companyProfile: 'Business/Firm Details',
+  companyProfileEntities: 'Entity Profiles',
+  companyProfileEmployees: 'Invite Employees',
   engagementList: 'Engagements',
   workingPapersWorkspace: 'Working Papers',
   newEngagement: 'New Engagement',
@@ -82,7 +87,9 @@ const titleByView: Record<AccountingView, string> = {
 const descriptionByView: Record<AccountingView, string> = {
   landing: 'Manage workspace administration, engagements, working papers, and integrations from one place.',
   workspaceAdmin: 'Configure organization workspaces, employee onboarding, and role assignments.',
-  companyProfile: 'Set business/firm profile details, invite employees, and confirm roster before assignments.',
+  companyProfile: 'Set core business or firm information used across workspace operations.',
+  companyProfileEntities: 'Create and maintain reporting entities or client records for engagements.',
+  companyProfileEmployees: 'Invite employees and manage organization roster before workspace assignments.',
   engagementList: 'Search and manage accounting engagements.',
   workingPapersWorkspace: 'Run engagement-centric accounting execution across trial balance, lead sheets, adjustments, and review workflow.',
   newEngagement: 'Create a new accounting engagement.',
@@ -239,6 +246,10 @@ function formatWorkflowLabel (value: string): string {
 
 function isAccessDeniedMessage (message: string): boolean {
   return /forbidden|403|access denied|permission denied|insufficient permissions|workspace\.[a-z_]+/i.test(message)
+}
+
+function isCompanyProfileView (view: AccountingView): boolean {
+  return view === 'companyProfile' || view === 'companyProfileEntities' || view === 'companyProfileEmployees'
 }
 
 const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => {
@@ -541,29 +552,36 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     const run = async () => {
       setError(null)
       setNotice(null)
-      const blockWithLoadingState = view !== 'companyProfile'
+      const blockWithLoadingState = !isCompanyProfileView(view)
       if (blockWithLoadingState) setLoading(true)
       try {
         if (view === 'joinWorkspaceInvite') {
           await loadWorkspaces()
           return
         }
-        if (view === 'companyProfile') {
-          // Keep Business/Firm Profile interactive and avoid blocking paint;
-          // refresh workspace list in background and load selected scope only.
+        if (isCompanyProfileView(view)) {
           const workspaceState = await loadWorkspaces()
           const resolvedWorkspaceId = workspaceState?.workspaceId || null
           if (resolvedWorkspaceId) {
             const resolvedWorkspace = (workspaceState?.rows || []).find((workspace: any) => workspace.id === resolvedWorkspaceId)
             const canManageResolvedWorkspace = resolvedWorkspace?.role === 'owner' || resolvedWorkspace?.role === 'admin'
-            const profileTasks: Array<Promise<any>> = [loadWorkspaceProfile(resolvedWorkspaceId)]
-            if (canManageResolvedWorkspace) {
-              profileTasks.push(loadOrganizationSnapshot(resolvedWorkspaceId))
-            } else {
-              setOrganizationSnapshot(null)
+            const profileTasks: Array<Promise<any>> = []
+            if (view === 'companyProfile' || view === 'companyProfileEntities') {
+              profileTasks.push(loadWorkspaceProfile(resolvedWorkspaceId))
             }
-            profileTasks.push(loadClients())
-            await Promise.all(profileTasks)
+            if (view === 'companyProfileEntities') {
+              profileTasks.push(loadClients())
+            }
+            if (view === 'companyProfileEmployees') {
+              if (canManageResolvedWorkspace) {
+                profileTasks.push(loadOrganizationSnapshot(resolvedWorkspaceId))
+              } else {
+                setOrganizationSnapshot(null)
+              }
+            }
+            if (profileTasks.length > 0) {
+              await Promise.all(profileTasks)
+            }
           }
           return
         }
@@ -644,6 +662,13 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const clientLabel = isFirmWorkspace ? 'Accounting client' : 'Business entity'
   const clientLabelPlural = isFirmWorkspace ? 'Accounting clients' : 'Business entities'
   const entityProfileLabel = isFirmWorkspace ? 'Client profile' : 'Corporate business entity profile'
+  const entityProfilesNavLabel = isFirmWorkspace ? 'Client Profiles' : 'Corporate Entity Profiles'
+  const pageTitle = view === 'companyProfileEntities' ? entityProfilesNavLabel : titleByView[view]
+  const pageDescription = view === 'companyProfileEntities'
+    ? (isFirmWorkspace
+      ? 'Create and maintain client records that engagements will be attached to.'
+      : 'Create reporting entities (subsidiary, division, or legal entity) that engagements will be attached to.')
+    : descriptionByView[view]
   const currentReviewFlowStatus = String(dashboard?.engagement?.review_flow_status || 'not_started')
   const nextReviewFlowStatuses: string[] = Array.isArray(dashboard?.nextReviewFlowStatuses)
     ? dashboard.nextReviewFlowStatuses
@@ -1756,8 +1781,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   return (
     <>
       <SEO
-        title={`${titleByView[view]} | Client Portal`}
-        description={descriptionByView[view]}
+        title={`${pageTitle} | Client Portal`}
+        description={pageDescription}
         canonical={
           view === 'landing'
             ? '/portal/accounting'
@@ -1765,6 +1790,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
               ? '/portal/accounting/workspaces'
               : view === 'companyProfile'
                 ? '/portal/accounting/company-profile'
+              : view === 'companyProfileEntities'
+                ? '/portal/accounting/company-profile/entities'
+              : view === 'companyProfileEmployees'
+                ? '/portal/accounting/company-profile/employees'
               : view === 'joinWorkspaceInvite'
                 ? '/portal/accounting/join'
               : view === 'workingPapersWorkspace'
@@ -1777,8 +1806,13 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       <ClientPortalShell>
         <div className="space-y-6">
           <div>
-            <h1 className="text-3xl font-bold text-primary-dark">{titleByView[view]}</h1>
-            <p className="text-sm text-text-light mt-2">{descriptionByView[view]}</p>
+            <h1 className="text-3xl font-bold text-primary-dark">{pageTitle}</h1>
+            <p className="text-sm text-text-light mt-2">{pageDescription}</p>
+            {isCompanyProfileView(view) && (
+              <div className="mt-4">
+                <CompanyProfileTabs entityTabLabel={entityProfilesNavLabel} />
+              </div>
+            )}
           </div>
 
           <>
@@ -2099,14 +2133,11 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
                     {view === 'companyProfile' && (
                       <div className="space-y-4">
-                        <div className="rounded-lg border border-border p-4">
-                          <h3 className="font-semibold text-primary-dark mb-2">Business/Firm profile</h3>
-                          <p className="text-sm text-text-light">
-                            Configure core business/firm information, then invite employees before assignment to workspace/engagement/working paper scopes.
-                          </p>
-                        </div>
                         <div className="rounded-lg border border-border p-4 space-y-3">
                           <h4 className="font-semibold text-primary-dark">Business/Firm details</h4>
+                          <p className="text-sm text-text-light">
+                            Configure core business or firm information used across workspace operations.
+                          </p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <select
                               className="border border-border rounded-md px-3 py-2 text-sm"
@@ -2211,10 +2242,13 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             Save Business/Firm Profile
                           </button>
                         </div>
+                      </div>
+                    )}
+
+                    {view === 'companyProfileEntities' && (
+                      <div className="space-y-4">
                         <div className="rounded-lg border border-border p-4 space-y-3">
-                          <h4 className="font-semibold text-primary-dark">
-                            {isFirmWorkspace ? 'Client Profiles' : 'Corporate Business Entity Profiles'}
-                          </h4>
+                          <h4 className="font-semibold text-primary-dark">{entityProfilesNavLabel}</h4>
                           <p className="text-xs text-text-light">
                             {isFirmWorkspace
                               ? 'Create and maintain client records that engagements will be attached to.'
@@ -2321,8 +2355,21 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             </table>
                           </div>
                         </div>
+                      </div>
+                    )}
+
+                    {view === 'companyProfileEmployees' && (
+                      <div className="space-y-4">
                         <div className="rounded-lg border border-border p-4 space-y-3">
                           <h4 className="font-semibold text-primary-dark">Employee invite</h4>
+                          <p className="text-sm text-text-light">
+                            Invite employees to your organization and manage roster status before workspace assignments.
+                          </p>
+                          {!canManageWorkspaceMembers && (
+                            <p className="text-xs text-text-light">
+                              Only workspace owners and admins can invite or manage employees.
+                            </p>
+                          )}
                           <div className="flex flex-wrap items-center gap-2">
                             <input
                               className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
@@ -3272,7 +3319,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                 )}
               </div>
 
-              {view !== 'companyProfile' && view !== 'workingPapersWorkspace' && view !== 'engagementList' && (
+              {!isCompanyProfileView(view) && view !== 'workingPapersWorkspace' && view !== 'engagementList' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                   {(view === 'workspaceAdmin' ? workspaceAdminQuickLinks : quickLinks).map((item) => (
                     <Link

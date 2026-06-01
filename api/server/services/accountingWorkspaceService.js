@@ -24,6 +24,7 @@ import {
 } from './repositories/workspaceRepository.js'
 import {
   deactivateOrganizationMemberHierarchy,
+  deleteOrganizationMemberByUserId,
   fetchOrganizationAssignmentCounts,
   fetchOrganizationById,
   fetchOrganizationMembers,
@@ -909,8 +910,24 @@ export async function deleteOrganizationMember (pool, actorUserId, workspaceId, 
   if (!canManageWorkspace(workspace)) {
     throw new Error('Only owner/admin can remove organization members')
   }
-  await deactivateOrganizationMemberHierarchy(pool, workspace.organization_id, memberUserId)
-  return { organizationId: workspace.organization_id, clerkUserId: memberUserId, status: 'inactive' }
+  const normalizedMemberUserId = String(memberUserId || '').trim()
+  if (!normalizedMemberUserId) throw new Error('Member user id is required')
+  if (normalizedMemberUserId === String(actorUserId)) {
+    throw new Error('You cannot remove yourself from the organization roster')
+  }
+  if (workspace.owner_user_id === normalizedMemberUserId) {
+    throw new Error('The workspace owner cannot be removed from the organization roster')
+  }
+
+  const isPendingInvitePlaceholder = normalizedMemberUserId.startsWith('invite:')
+  if (!isPendingInvitePlaceholder) {
+    await deactivateOrganizationMemberHierarchy(pool, workspace.organization_id, normalizedMemberUserId)
+  }
+
+  const removed = await deleteOrganizationMemberByUserId(pool, workspace.organization_id, normalizedMemberUserId)
+  if (!removed) throw new Error('Organization member not found')
+
+  return { organizationId: workspace.organization_id, clerkUserId: normalizedMemberUserId, removed: true }
 }
 
 export async function acceptWorkspaceInvite (pool, actorUserId, actorEmail, inviteToken) {
@@ -1143,7 +1160,8 @@ export async function getOrganizationAdminSnapshot (pool, actorUserId, workspace
     await syncOrganizationMemberRolesForWorkspace(pool, workspace.id, workspace.organization_id)
   }
   const organization = await fetchOrganizationById(pool, workspace.organization_id)
-  const employees = await fetchOrganizationMembers(pool, workspace.organization_id)
+  const employees = (await fetchOrganizationMembers(pool, workspace.organization_id))
+    .filter((member) => String(member.status || '').toLowerCase() !== 'inactive')
   const enrichedEmployees = await enrichOrganizationEmployees(employees)
   const { rows: workspaceMemberRows } = await pool.query(
     `SELECT clerk_user_id, role

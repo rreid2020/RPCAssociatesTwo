@@ -1454,7 +1454,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
   const onDeleteOrganizationMember = async (memberUserId: string) => {
     if (!selectedWorkspaceId) return
-    if (!window.confirm('Remove this employee from organization assignments?')) return
+    if (!window.confirm('Remove this employee from the roster? This cannot be undone.')) return
     setSaving(true)
     setError(null)
     try {
@@ -1986,7 +1986,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                           className="text-xs text-primary-dark underline"
                                           onClick={() => { void onDeleteOrganizationMember(member.clerk_user_id) }}
                                         >
-                                          Delete
+                                          Remove
                                         </button>
                                       </div>
                                     </td>

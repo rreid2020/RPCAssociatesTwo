@@ -45,6 +45,16 @@ export async function updateOrganizationMemberByUserId (pool, organizationId, cl
   return rows[0] || null
 }
 
+export async function deleteOrganizationMemberByUserId (pool, organizationId, clerkUserId) {
+  const { rowCount } = await pool.query(
+    `DELETE FROM taxgpt.accounting_organization_members
+     WHERE organization_id = $1::uuid
+       AND clerk_user_id = $2`,
+    [organizationId, clerkUserId]
+  )
+  return Number(rowCount || 0) > 0
+}
+
 export async function deactivateOrganizationMemberHierarchy (pool, organizationId, clerkUserId) {
   await pool.query(
     `UPDATE taxgpt.accounting_organization_members

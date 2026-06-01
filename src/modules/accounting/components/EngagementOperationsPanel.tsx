@@ -26,9 +26,9 @@ type EngagementRecord = {
   fiscal_year?: number
   period_start?: string
   period_end?: string
-  due_date?: string
+  due_date?: string | null
   source_type?: string
-  deliverables?: string[]
+  deliverables?: string[] | null
   assigned_employee_ids?: string[]
   assigned_employee_count?: number
 }

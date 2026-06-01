@@ -39,6 +39,7 @@ import { downloadBase64File, exportEngagementWorkbookDomain } from '../../../dom
 import { createEngagementSnapshotDomain, fetchEngagementSnapshotsDomain } from '../../../domains/snapshots'
 import { CompanyProfileTabs } from '../../../modules/accounting/layouts/CompanyProfileLayout'
 import EngagementOperationsPanel from '../../../modules/accounting/components/EngagementOperationsPanel'
+import WorkingPapersWorkspacePanel from '../../../modules/working-papers/components/WorkingPapersWorkspacePanel'
 import {
   isAccountingFirmOrganization,
   resolveClientRecordLabel,
@@ -96,7 +97,7 @@ const descriptionByView: Record<AccountingView, string> = {
   companyProfileEntities: 'Create and maintain reporting entities or client records for engagements.',
   companyProfileEmployees: 'Invite employees and manage organization roster before workspace assignments.',
   engagementList: 'Create, update, and delete engagements with entity or client assignment and employee staffing.',
-  workingPapersWorkspace: 'Run engagement-centric accounting execution across trial balance, lead sheets, adjustments, and review workflow.',
+  workingPapersWorkspace: 'Select an engagement and run working paper tree, reviewer queue, adjustments, signoffs, and audit execution in one workspace.',
   newEngagement: 'Create a new accounting engagement.',
   engagementDashboard: 'View completion status, notes, tasks, and signoff readiness.',
   trialBalance: 'Import and map trial balance data.',
@@ -250,13 +251,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [clients, setClients] = useState<Client[]>([])
   const [engagements, setEngagements] = useState<Engagement[]>([])
   const [, setStatusSummary] = useState<Array<{ status: string; c: number }>>([])
-  const [workflowSummary, setWorkflowSummary] = useState<{
-    total_engagements: number
-    approval_ready_count: number
-    approval_blocked_count: number
-    open_review_notes: number
-    unreviewed_lead_sheets: number
-  } | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -326,8 +320,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [trialBalancePreview, setTrialBalancePreview] = useState<TrialBalancePreview | null>(null)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
-  const selectedEngagementIds = useWorkingPapersUiStore((state) => state.selectedEngagementIds)
-  const setSelectedEngagementIds = useWorkingPapersUiStore((state) => state.setSelectedEngagementIds)
   const resetWorkingPapersSelection = useWorkingPapersUiStore((state) => state.resetSelection)
   const [importPayload, setImportPayload] = useState<{ fileName: string; base64Content: string } | null>(null)
 
@@ -354,8 +346,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }, [getToken])
 
   const loadWorkflowSummary = useCallback(async () => {
-    const { summary } = await fetchEngagementWorkflowSummaryDomain(getToken)
-    setWorkflowSummary(summary)
+    await fetchEngagementWorkflowSummaryDomain(getToken)
   }, [getToken])
 
   const loadEngagementDashboard = useCallback(async () => {
@@ -555,7 +546,9 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         if (view === 'engagementList' || view === 'newEngagement') {
           await loadEngagements()
           await loadWorkspaceMembers()
-        } else if (['workingPapersWorkspace', 'landing'].includes(view)) {
+        } else if (view === 'workingPapersWorkspace') {
+          await loadEngagements()
+        } else if (view === 'landing') {
           await Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
         }
         if (view === 'engagementDashboard') {
@@ -713,13 +706,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     })
   }, [dashboard])
 
-  useEffect(() => {
-    const nextIds = selectedEngagementIds.filter((id) => engagements.some((engagement) => engagement.id === id))
-    if (nextIds.length !== selectedEngagementIds.length) {
-      setSelectedEngagementIds(nextIds)
-    }
-  }, [engagements, selectedEngagementIds, setSelectedEngagementIds])
-
   const refreshEngagementWorkflowViews = useCallback(async (
     options: { includeReviewNotes?: boolean; includeLeadSheetDetail?: boolean } = {}
   ) => {
@@ -845,60 +831,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       setSaving(false)
     }
   }
-
-  const engagementListColumnDefs = useMemo(() => ([
-    { field: 'name', headerName: 'Engagement', minWidth: 240 },
-    { field: 'client_name', headerName: clientLabel, minWidth: 170 },
-    { field: 'engagement_type', headerName: 'Type', minWidth: 170 },
-    { field: 'status', headerName: 'Status', minWidth: 130 },
-    {
-      field: 'review_flow_status',
-      headerName: 'Review Flow',
-      minWidth: 170,
-      valueGetter: (params: any) => formatWorkflowLabel(String(params.data?.review_flow_status || 'not_started'))
-    },
-    {
-      headerName: 'Workflow Blockers',
-      minWidth: 260,
-      valueGetter: (params: any) => {
-        const openNotes = Number(params.data?.open_review_note_count || 0)
-        const unreviewed = Number(params.data?.unreviewed_lead_sheet_count || 0)
-        if (openNotes > 0 || unreviewed > 0) return `Open notes: ${openNotes} | Unreviewed sheets: ${unreviewed}`
-        return 'None'
-      }
-    },
-    {
-      field: 'period_end',
-      headerName: 'Period End',
-      minWidth: 130,
-      valueFormatter: (params: any) => (params.value ? new Date(params.value).toLocaleDateString() : '—')
-    },
-    {
-      field: 'due_date',
-      headerName: 'Due Date',
-      minWidth: 130,
-      valueFormatter: (params: any) => (params.value ? new Date(params.value).toLocaleDateString() : '—')
-    },
-    {
-      field: 'deliverables',
-      headerName: 'Deliverables',
-      minWidth: 120,
-      valueGetter: (params: any) => (Array.isArray(params.data?.deliverables) ? params.data.deliverables.length : 0)
-    }
-  ]), [clientLabel])
-
-  const engagementListGridOptions = useMemo(() => ({
-    rowSelection: { mode: 'multiRow' as const },
-    onSelectionChanged: (event: any) => {
-      const selected = event.api.getSelectedRows().map((row: any) => row.id)
-      setSelectedEngagementIds(selected)
-    },
-    onRowDoubleClicked: (event: any) => {
-      const rowId = String(event.data?.id || '')
-      if (!rowId) return
-      navigate(`/portal/accounting/working-papers/engagements/${rowId}`)
-    }
-  }), [navigate])
 
   const onUpdateEngagementWorkflow = async () => {
     if (!engagementId) {
@@ -1882,7 +1814,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         clientLabelPlural={clientLabelPlural}
                         clients={clients}
                         workspaceMembers={workspaceMembers}
-                        engagements={engagements as any}
+                        engagements={engagements}
                         loading={loading}
                         saving={saving}
                         initialEditorMode={view === 'newEngagement' ? 'create' : null}
@@ -1912,67 +1844,14 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                     )}
 
                     {view === 'workingPapersWorkspace' && (
-                      <div className="space-y-4">
-                        <div className="rounded-lg border border-border p-4">
-                          <p className="text-sm text-text-light">
-                            Operational workspace for trial balance, lead sheets, adjustments, review workflow, and signoffs.
-                          </p>
-                          {workflowSummary && (
-                            <p className="text-xs text-text-light mt-2">
-                              Workspace engagements: {Number(workflowSummary.total_engagements || 0)} total, {Number(workflowSummary.approval_ready_count || 0)} approval ready.
-                            </p>
-                          )}
-                        </div>
-                        <AgGridTable
-                          rowData={engagements}
-                          height={360}
-                          columnDefs={engagementListColumnDefs}
-                          gridOptions={engagementListGridOptions}
-                          quickFilterText={search}
-                        />
-                        <div className="rounded-lg border border-border p-4 bg-white">
-                          <h3 className="font-semibold text-primary-dark mb-2">Operational Modules</h3>
-                          <p className="text-xs text-text-light">
-                            The workspace now runs execution modules for working paper tree, workflow queue, and journal adjustments from one centralized view.
-                          </p>
-                        </div>
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                          <WorkingPaperTreePanel sections={Array.isArray(workingPaperTree?.sections) ? workingPaperTree.sections : []} />
-                          <WorkflowQueuePanel queue={workflowQueue} />
-                        </div>
-                        <AdjustmentWorkspacePanel
-                          entries={adjustments}
-                          saving={saving}
-                          onCreateEntry={onCreateAdjustmentEntry}
-                          onUpdateLines={onUpsertAdjustmentLines}
-                        />
-                        {engagements.length === 0 ? (
-                          <p className="text-sm text-text-light">Create an engagement to start working papers execution.</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {engagements.slice(0, 20).map((engagement) => (
-                              <div key={`workspace-links-${engagement.id}`} className="rounded border border-border/70 p-3">
-                                <p className="text-sm font-medium text-primary-dark mb-2">{engagement.name}</p>
-                                <div className="flex flex-wrap gap-2">
-                                  <Link className="text-xs text-primary-dark underline" to={`/portal/accounting/working-papers/engagements/${engagement.id}/trial-balance`}>Trial Balance</Link>
-                                  <Link className="text-xs text-primary-dark underline" to={`/portal/accounting/working-papers/engagements/${engagement.id}/lead-sheets`}>Lead Sheets</Link>
-                                  <Link className="text-xs text-primary-dark underline" to={`/portal/accounting/working-papers/engagements/${engagement.id}/adjustments`}>Adjustments</Link>
-                                  <Link className="text-xs text-primary-dark underline" to={`/portal/accounting/working-papers/engagements/${engagement.id}/review`}>Reviewer Workflow</Link>
-                                  <Link className="text-xs text-primary-dark underline" to={`/portal/accounting/working-papers/engagements/${engagement.id}`}>Engagement Dashboard</Link>
-                                  <button
-                                    type="button"
-                                    className="text-xs text-primary-dark underline"
-                                    disabled={saving}
-                                    onClick={() => { void onExportEngagementWorkbook(engagement.id) }}
-                                  >
-                                    Export Workbook (ExcelJS)
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      <WorkingPapersWorkspacePanel
+                        getToken={getToken}
+                        clientLabel={clientLabel}
+                        engagements={engagements}
+                        listLoading={loading}
+                        onError={setError}
+                        onNotice={setNotice}
+                      />
                     )}
 
                     {view === 'engagementDashboard' && dashboard && (
@@ -2045,6 +1924,14 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/review`} className="btn btn--primary text-sm py-2 px-4">Review</Link>
                           <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/adjustments`} className="btn btn--primary text-sm py-2 px-4">Adjustments</Link>
                           <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/settings`} className="btn btn--primary text-sm py-2 px-4">Settings</Link>
+                          <button
+                            type="button"
+                            className="btn btn--secondary text-sm py-2 px-4"
+                            disabled={saving}
+                            onClick={() => { if (engagementId) void onExportEngagementWorkbook(engagementId) }}
+                          >
+                            Export workbook
+                          </button>
                         </div>
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                           <WorkingPaperTreePanel sections={Array.isArray(workingPaperTree?.sections) ? workingPaperTree.sections : []} />

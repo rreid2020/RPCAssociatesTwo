@@ -109,6 +109,13 @@ const descriptionByView: Record<AccountingView, string> = {
   joinWorkspaceInvite: 'Accept a workspace invitation and join your team workspace.',
 }
 
+function formatEmployeeRoleLabel (member: { workspace_role?: string | null; role?: string | null }) {
+  const role = String(member.workspace_role || member.role || '').trim().toLowerCase()
+  if (role === 'owner') return 'admin'
+  if (role === 'admin') return 'admin'
+  return role || '—'
+}
+
 const quickLinks = [
   { to: '/portal/accounting/company-profile', label: 'Business/Firm Profile' },
   { to: '/portal/accounting/working-papers/engagements', label: 'Engagements' },
@@ -1911,6 +1918,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           <h4 className="font-semibold text-primary-dark">Employee invite</h4>
                           <p className="text-sm text-text-light">
                             Invite employees to your organization and manage roster status before workspace assignments.
+                            Employee name and email are taken from their sign-in account after they accept the invite.
                           </p>
                           {!canManageWorkspaceMembers && (
                             <p className="text-xs text-text-light">
@@ -1962,7 +1970,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                   <tr key={member.clerk_user_id} className="border-b border-border/70">
                                     <td className="py-2">{member.display_name || member.email || 'Employee'}</td>
                                     <td className="py-2">{member.email || '—'}</td>
-                                    <td className="py-2">{member.role}</td>
+                                    <td className="py-2">{formatEmployeeRoleLabel(member)}</td>
                                     <td className="py-2">{member.status}</td>
                                     <td className="py-2">
                                       <div className="flex gap-2">

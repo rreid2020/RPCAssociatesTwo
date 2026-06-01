@@ -439,10 +439,47 @@ async function ensureWorkingPaperAssignmentsForWorkspaceMember (pool, workspace,
   }
 }
 
+async function resolveWorkspaceMemberRole (pool, workspaceId, clerkUserId, workspace = null) {
+  const { rows } = await pool.query(
+    `SELECT role
+     FROM taxgpt.accounting_workspace_members
+     WHERE workspace_id = $1::uuid
+       AND clerk_user_id = $2
+     LIMIT 1`,
+    [workspaceId, clerkUserId]
+  )
+  if (rows[0]?.role) return String(rows[0].role)
+  if (workspace?.owner_user_id === clerkUserId) return 'owner'
+  return 'member'
+}
+
+async function syncOrganizationMemberRolesForWorkspace (pool, workspaceId, organizationId) {
+  if (!workspaceId || !organizationId) return
+  const { rows } = await pool.query(
+    `SELECT wm.clerk_user_id, wm.role AS workspace_role
+     FROM taxgpt.accounting_workspace_members wm
+     WHERE wm.workspace_id = $1::uuid
+       AND wm.status = 'active'`,
+    [workspaceId]
+  )
+  for (const row of rows) {
+    const orgRole = mapWorkspaceRoleToOrganizationMemberRole(row.workspace_role)
+    await pool.query(
+      `UPDATE taxgpt.accounting_organization_members
+       SET role = $1, updated_at = now()
+       WHERE organization_id = $2::uuid
+         AND clerk_user_id = $3
+         AND role IS DISTINCT FROM $1`,
+      [orgRole, organizationId, row.clerk_user_id]
+    )
+  }
+}
+
 async function ensureHierarchyMembershipForWorkspaceUser (pool, workspace, clerkUserId, invitedBy = null) {
   const linkedWorkspace = await ensureOrganizationLinkForWorkspace(pool, workspace)
   if (!linkedWorkspace.organization_id) return linkedWorkspace
-  const orgRole = mapWorkspaceRoleToOrganizationMemberRole(linkedWorkspace.role)
+  const workspaceRole = await resolveWorkspaceMemberRole(pool, linkedWorkspace.id, clerkUserId, linkedWorkspace)
+  const orgRole = mapWorkspaceRoleToOrganizationMemberRole(workspaceRole)
   await ensureOrganizationMember(pool, linkedWorkspace.organization_id, clerkUserId, orgRole, invitedBy || clerkUserId)
   await ensureWorkspaceEmployeeAssignment(pool, linkedWorkspace, clerkUserId, invitedBy || clerkUserId, orgRole)
   return linkedWorkspace
@@ -1102,11 +1139,28 @@ export async function assertWorkingPaperAssignment (pool, workspace, leadSheetId
 
 export async function getOrganizationAdminSnapshot (pool, actorUserId, workspaceId) {
   const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
+  if (workspace.organization_id) {
+    await syncOrganizationMemberRolesForWorkspace(pool, workspace.id, workspace.organization_id)
+  }
   const organization = await fetchOrganizationById(pool, workspace.organization_id)
   const employees = await fetchOrganizationMembers(pool, workspace.organization_id)
   const enrichedEmployees = await enrichOrganizationEmployees(employees)
+  const { rows: workspaceMemberRows } = await pool.query(
+    `SELECT clerk_user_id, role
+     FROM taxgpt.accounting_workspace_members
+     WHERE workspace_id = $1::uuid
+       AND status = 'active'`,
+    [workspace.id]
+  )
+  const workspaceRoleByUserId = new Map(
+    workspaceMemberRows.map((row) => [String(row.clerk_user_id), String(row.role)])
+  )
+  const employeesWithWorkspaceRoles = enrichedEmployees.map((employee) => ({
+    ...employee,
+    workspace_role: workspaceRoleByUserId.get(String(employee.clerk_user_id || '')) || null
+  }))
   const { workspaceCounts, engagementCounts, paperCounts } = await fetchOrganizationAssignmentCounts(pool, workspace.organization_id)
-  return { workspace, organization, employees: enrichedEmployees, workspaceCounts, engagementCounts, paperCounts }
+  return { workspace, organization, employees: employeesWithWorkspaceRoles, workspaceCounts, engagementCounts, paperCounts }
 }
 
 export async function upsertWorkspaceEmployeeAssignment (pool, actorUserId, workspaceId, payload = {}) {

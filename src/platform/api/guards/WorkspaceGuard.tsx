@@ -1,6 +1,7 @@
 import { FC, ReactNode, useMemo } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useWorkspaceState } from '../../workspace/useWorkspaceState'
+import { useWorkspaceAuthorization } from '../../permissions/WorkspaceAuthorizationProvider'
 import { ROLLOUT_BYPASS_ENABLED } from '../../../lib/onboarding/state'
 
 type WorkspaceGuardProps = {
@@ -15,13 +16,21 @@ const BYPASS_PATHS = new Set([
 
 const WorkspaceGuard: FC<WorkspaceGuardProps> = ({ children }) => {
   const { workspaceId } = useWorkspaceState()
+  const { loading } = useWorkspaceAuthorization()
   const location = useLocation()
   const bypass = useMemo(() => BYPASS_PATHS.has(location.pathname), [location.pathname])
 
   if (bypass) return <>{children}</>
 
-  if (!workspaceId && ROLLOUT_BYPASS_ENABLED) {
-    return <Navigate to="/portal/accounting/company-profile" replace />
+  if (ROLLOUT_BYPASS_ENABLED) {
+    if (!workspaceId && loading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <p className="text-sm text-text-light">Loading portal…</p>
+        </div>
+      )
+    }
+    return <>{children}</>
   }
 
   if (!workspaceId) {

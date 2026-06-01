@@ -20,7 +20,7 @@ export function getMarketingRoutes () {
   return (
     <Fragment>
       <Route
-        path="/*"
+        path="*"
         element={(
           <>
             <Header />

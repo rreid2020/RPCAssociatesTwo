@@ -79,6 +79,8 @@ import {
   getWorkspacePermissionSnapshot,
   listWorkspaceInvites,
   listWorkspaceMembers,
+  listEngagementEmployeeAssignments,
+  replaceEngagementEmployeeAssignments,
   upsertEngagementEmployeeAssignment,
   upsertWorkingPaperEmployeeAssignment,
   upsertWorkspaceEmployeeAssignment,
@@ -1186,11 +1188,31 @@ export function createPortalRouter (pool) {
     }
   })
 
+  r.get('/v1/accounting/engagements/:engagementId/assignments', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    try {
+      const result = await listEngagementEmployeeAssignments(pool, session.userId, req.params.engagementId, {
+        workspaceId: scope.workspace.id
+      })
+      res.json(result)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load engagement assignments' })
+    }
+  })
+
   r.put('/v1/accounting/engagements/:engagementId/assignments', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     try {
-      const assignment = await upsertEngagementEmployeeAssignment(pool, session.userId, req.params.engagementId, req.body || {})
+      const assignment = await upsertEngagementEmployeeAssignment(pool, session.userId, req.params.engagementId, {
+        ...(req.body || {}),
+        workspaceId: scope.workspace.id
+      })
       res.json({ assignment })
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update engagement assignment' })
@@ -1407,9 +1429,12 @@ export function createPortalRouter (pool) {
         workspaceId: scope.workspace.id,
         organizationId: scope.organizationId
       })
-      await upsertEngagementEmployeeAssignment(pool, scope.actorUserId, engagement.id, {
+      const clerkUserIds = Array.isArray(req.body?.clerkUserIds)
+        ? req.body.clerkUserIds
+        : (req.body?.clerkUserId ? [req.body.clerkUserId] : [scope.actorUserId])
+      await replaceEngagementEmployeeAssignments(pool, scope.actorUserId, engagement.id, {
         workspaceId: scope.workspace.id,
-        clerkUserId: scope.actorUserId
+        clerkUserIds
       })
       res.json({ engagement })
     } catch (e) {

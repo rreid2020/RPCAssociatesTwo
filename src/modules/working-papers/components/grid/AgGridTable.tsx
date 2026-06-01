@@ -29,6 +29,7 @@ const AgGridTable = ({ rowData, columnDefs, height = 320, quickFilterText = '', 
   return (
     <div className="ag-theme-quartz w-full" style={{ height }}>
       <AgGridReact<any>
+        theme="legacy"
         rowData={rowData}
         columnDefs={columnDefs}
         defaultColDef={defaultColDef}

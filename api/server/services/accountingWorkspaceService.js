@@ -1567,12 +1567,126 @@ export async function upsertWorkspaceEmployeeAssignment (pool, actorUserId, work
 }
 
 export async function upsertEngagementEmployeeAssignment (pool, actorUserId, engagementId, payload = {}) {
+  const clerkUserIds = Array.isArray(payload.clerkUserIds)
+    ? payload.clerkUserIds.map((value) => String(value || '').trim()).filter(Boolean)
+    : []
+  if (clerkUserIds.length > 0) {
+    return replaceEngagementEmployeeAssignments(pool, actorUserId, engagementId, payload)
+  }
   const clerkUserId = String(payload.clerkUserId || '').trim()
   if (!clerkUserId) throw new Error('clerkUserId is required')
   const workspace = await getWorkspaceContext(pool, actorUserId, payload.workspaceId || null)
   await ensureWorkspaceEmployeeAssignment(pool, workspace, clerkUserId, actorUserId)
   await assertEngagementAssignment(pool, workspace, engagementId, clerkUserId, { assignedBy: actorUserId })
   return { engagementId, clerkUserId, status: 'active' }
+}
+
+export async function listEngagementEmployeeAssignments (pool, actorUserId, engagementId, payload = {}) {
+  const workspace = await getWorkspaceContext(pool, actorUserId, payload.workspaceId || null)
+  const { rows: engagementRows } = await pool.query(
+    `SELECT id, workspace_id, organization_id, clerk_user_id
+     FROM taxgpt.accounting_engagements
+     WHERE id = $1::uuid
+     LIMIT 1`,
+    [engagementId]
+  )
+  const engagement = engagementRows[0]
+  if (!engagement) throw new Error('Engagement not found')
+  if (String(engagement.workspace_id || '') !== String(workspace.id)) {
+    throw new Error('Engagement not found in active workspace')
+  }
+  await assertWorkspacePermissionWithCustomRoles(pool, {
+    workspaceId: workspace.id,
+    workspaceRole: workspace.role,
+    clerkUserId: actorUserId,
+    permission: 'engagement.read'
+  })
+
+  const { rows } = await pool.query(
+    `SELECT engagement_id, clerk_user_id, assignment_role, status, assigned_by, created_at, updated_at
+     FROM taxgpt.engagement_employee_assignments
+     WHERE engagement_id = $1::uuid
+       AND status = 'active'
+     ORDER BY created_at ASC`,
+    [engagementId]
+  )
+  const enriched = []
+  for (const row of rows) {
+    const clerkUserId = String(row.clerk_user_id || '')
+    let displayName = clerkUserId
+    let email = null
+    if (!clerkUserId.startsWith('invite:')) {
+      try {
+        const client = getClerkBackendClient()
+        const user = await client.users.getUser(clerkUserId)
+        displayName = buildDisplayNameFromClerkUser(user) || extractPrimaryEmailFromClerkUser(user) || clerkUserId
+        email = extractPrimaryEmailFromClerkUser(user)
+      } catch {
+        displayName = clerkUserId
+      }
+    }
+    enriched.push({
+      ...row,
+      display_name: displayName,
+      email
+    })
+  }
+  return { engagementId, assignments: enriched }
+}
+
+export async function replaceEngagementEmployeeAssignments (pool, actorUserId, engagementId, payload = {}) {
+  const workspace = await getWorkspaceContext(pool, actorUserId, payload.workspaceId || null)
+  await assertWorkspacePermissionWithCustomRoles(pool, {
+    workspaceId: workspace.id,
+    workspaceRole: workspace.role,
+    clerkUserId: actorUserId,
+    permission: 'engagement.manage'
+  })
+
+  const { rows: engagementRows } = await pool.query(
+    `SELECT id, workspace_id
+     FROM taxgpt.accounting_engagements
+     WHERE id = $1::uuid
+       AND clerk_user_id = $2
+     LIMIT 1`,
+    [engagementId, workspace.owner_user_id]
+  )
+  const engagement = engagementRows[0]
+  if (!engagement || String(engagement.workspace_id || '') !== String(workspace.id)) {
+    throw new Error('Engagement not found in active workspace')
+  }
+
+  const clerkUserIds = Array.from(new Set(
+    (Array.isArray(payload.clerkUserIds) ? payload.clerkUserIds : [])
+      .map((value) => String(value || '').trim())
+      .filter(Boolean)
+  ))
+  if (clerkUserIds.length === 0) {
+    throw new Error('At least one employee must be assigned to the engagement')
+  }
+
+  await pool.query(
+    `UPDATE taxgpt.engagement_employee_assignments
+     SET status = 'inactive',
+         updated_at = now()
+     WHERE engagement_id = $1::uuid
+       AND status = 'active'`,
+    [engagementId]
+  )
+
+  for (const clerkUserId of clerkUserIds) {
+    await ensureWorkspaceEmployeeAssignment(pool, workspace, clerkUserId, actorUserId)
+    await assertEngagementAssignment(pool, workspace, engagementId, clerkUserId, { assignedBy: actorUserId })
+  }
+
+  const listed = await listEngagementEmployeeAssignments(pool, actorUserId, engagementId, {
+    workspaceId: workspace.id
+  })
+  return {
+    engagementId,
+    clerkUserIds,
+    assignments: listed.assignments
+  }
 }
 
 export async function upsertWorkingPaperEmployeeAssignment (pool, actorUserId, leadSheetId, payload = {}) {

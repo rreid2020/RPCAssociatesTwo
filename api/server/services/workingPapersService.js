@@ -396,7 +396,19 @@ export async function listEngagements (pool, clerkUserId, query = {}) {
          FROM taxgpt.lead_sheets ls
          WHERE ls.engagement_id = e.id
            AND ls.status <> 'reviewed'
-       ) AS unreviewed_lead_sheet_count
+       ) AS unreviewed_lead_sheet_count,
+       (
+         SELECT count(*)::int
+         FROM taxgpt.engagement_employee_assignments eea
+         WHERE eea.engagement_id = e.id
+           AND eea.status = 'active'
+       ) AS assigned_employee_count,
+       (
+         SELECT coalesce(array_agg(eea.clerk_user_id ORDER BY eea.created_at), ARRAY[]::text[])
+         FROM taxgpt.engagement_employee_assignments eea
+         WHERE eea.engagement_id = e.id
+           AND eea.status = 'active'
+       ) AS assigned_employee_ids
      FROM taxgpt.accounting_engagements e
      INNER JOIN taxgpt.accounting_clients c ON c.id = e.client_id
      WHERE ${where.join(' AND ')}
@@ -487,29 +499,33 @@ export async function updateEngagement (pool, clerkUserId, actorId, engagementId
     : normalizeDeliverables(payload.deliverables)
   const assignedPreparerId = payload.assignedPreparerId ?? before.assigned_preparer_id ?? null
   const assignedReviewerId = payload.assignedReviewerId ?? before.assigned_reviewer_id ?? null
+  const clientId = payload.clientId || before.client_id
+  if (!clientId) throw new Error('clientId is required')
   await assertAssignableWorkspaceMember(pool, before.workspace_id || null, assignedPreparerId, 'assignedPreparerId')
   await assertAssignableWorkspaceMember(pool, before.workspace_id || null, assignedReviewerId, 'assignedReviewerId')
 
   const { rows } = await pool.query(
     `UPDATE taxgpt.accounting_engagements
-     SET name = $1,
-         engagement_type = $2,
-         fiscal_year = $3,
-         period_start = $4,
-         period_end = $5,
-        due_date = $6,
-        status = $7,
-        source_type = $8,
-        review_flow_status = $9,
-        deliverables = $10::jsonb,
-        materiality_amount = $11,
-        reporting_currency = $12,
-        assigned_preparer_id = $13,
-        assigned_reviewer_id = $14,
+     SET client_id = $1::uuid,
+         name = $2,
+         engagement_type = $3,
+         fiscal_year = $4,
+         period_start = $5,
+         period_end = $6,
+        due_date = $7,
+        status = $8,
+        source_type = $9,
+        review_flow_status = $10,
+        deliverables = $11::jsonb,
+        materiality_amount = $12,
+        reporting_currency = $13,
+        assigned_preparer_id = $14,
+        assigned_reviewer_id = $15,
          updated_at = now()
-     WHERE id = $15::uuid AND clerk_user_id = $16
+     WHERE id = $16::uuid AND clerk_user_id = $17
      RETURNING *`,
     [
+      clientId,
       payload.name || before.name,
       payload.engagementType || before.engagement_type,
       payload.fiscalYear || before.fiscal_year,

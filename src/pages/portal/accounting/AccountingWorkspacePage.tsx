@@ -1,4 +1,4 @@
-import { FC, FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { FC, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
@@ -38,6 +38,7 @@ import { calculateLeadSheetTotals, calculateTrialBalanceTotals } from '../../../
 import { downloadBase64File, exportEngagementWorkbookDomain } from '../../../domains/import-export'
 import { createEngagementSnapshotDomain, fetchEngagementSnapshotsDomain } from '../../../domains/snapshots'
 import { CompanyProfileTabs } from '../../../modules/accounting/layouts/CompanyProfileLayout'
+import EngagementOperationsPanel from '../../../modules/accounting/components/EngagementOperationsPanel'
 import {
   isAccountingFirmOrganization,
   resolveClientRecordLabel,
@@ -94,7 +95,7 @@ const descriptionByView: Record<AccountingView, string> = {
   companyProfile: 'Set core business or firm information used across workspace operations.',
   companyProfileEntities: 'Create and maintain reporting entities or client records for engagements.',
   companyProfileEmployees: 'Invite employees and manage organization roster before workspace assignments.',
-  engagementList: 'Search and manage accounting engagements.',
+  engagementList: 'Create, update, and delete engagements with entity or client assignment and employee staffing.',
   workingPapersWorkspace: 'Run engagement-centric accounting execution across trial balance, lead sheets, adjustments, and review workflow.',
   newEngagement: 'Create a new accounting engagement.',
   engagementDashboard: 'View completion status, notes, tasks, and signoff readiness.',
@@ -175,24 +176,6 @@ type Engagement = {
   updated_at: string
 }
 
-const engagementTypeOptions = [
-  'month_end_close',
-  'year_end_working_papers',
-  'compilation_support',
-  'review_support',
-  'tax_support',
-  'custom'
-]
-
-const sourceTypeOptions = ['qbo', 'excel', 'csv', 'google_sheets', 'manual']
-const statusOptions = ['draft', 'active', 'in_review', 'completed', 'archived']
-const reviewFlowStatusOptions = [
-  'not_started',
-  'preparer_in_progress',
-  'reviewer_in_progress',
-  'review_notes_open',
-  'approved'
-]
 const reviewFlowTransitions: Record<string, string[]> = {
   not_started: ['preparer_in_progress'],
   preparer_in_progress: ['reviewer_in_progress', 'review_notes_open'],
@@ -262,7 +245,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const { workspaceId, setWorkspaceId } = useWorkspaceState()
   const navigate = useNavigate()
   const location = useLocation()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const { engagementId, leadSheetId } = useParams()
   const [clients, setClients] = useState<Client[]>([])
   const [engagements, setEngagements] = useState<Engagement[]>([])
@@ -283,7 +266,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [approvalReadyFilter, setApprovalReadyFilter] = useState(() => searchParams.get('approvalReady') || '')
   const [clientFilter, setClientFilter] = useState(() => searchParams.get('clientId') || '')
   const [engagementTypeFilter, setEngagementTypeFilter] = useState(() => searchParams.get('engagementType') || '')
-  const [newClientName, setNewClientName] = useState('')
   const [entityProfileForm, setEntityProfileForm] = useState({
     id: '',
     name: '',
@@ -292,20 +274,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     fiscalYearEndMonth: '',
     fiscalYearEndDay: '',
     defaultCurrency: 'CAD'
-  })
-  const [newEngagement, setNewEngagement] = useState({
-    clientId: '',
-    name: '',
-    engagementType: 'year_end_working_papers',
-    fiscalYear: new Date().getFullYear(),
-    periodStart: `${new Date().getFullYear()}-01-01`,
-    periodEnd: `${new Date().getFullYear()}-12-31`,
-    dueDate: '',
-    sourceType: 'csv',
-    reviewFlowStatus: 'not_started',
-    deliverablesText: '',
-    assignedPreparerId: '',
-    assignedReviewerId: ''
   })
   const [engagementWorkflowForm, setEngagementWorkflowForm] = useState({
     dueDate: '',
@@ -359,12 +327,9 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [importFile, setImportFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const selectedEngagementIds = useWorkingPapersUiStore((state) => state.selectedEngagementIds)
-  const bulkTransitionStatus = useWorkingPapersUiStore((state) => state.bulkTransitionStatus)
   const setSelectedEngagementIds = useWorkingPapersUiStore((state) => state.setSelectedEngagementIds)
-  const setBulkTransitionStatus = useWorkingPapersUiStore((state) => state.setBulkTransitionStatus)
   const resetWorkingPapersSelection = useWorkingPapersUiStore((state) => state.resetSelection)
   const [importPayload, setImportPayload] = useState<{ fileName: string; base64Content: string } | null>(null)
-  const primarySelectedEngagementId = selectedEngagementIds[0] || null
 
   const loadClients = useCallback(async () => {
     const { clients: rows } = await fetchAccountingClientsDomain(getToken)
@@ -586,7 +551,9 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         // use a valid workspace header (avoids stale workspaceId lockout).
         await loadWorkspaces()
         await loadClients()
-        if (['engagementList', 'workingPapersWorkspace', 'newEngagement', 'landing'].includes(view)) {
+        if (view === 'engagementList' || view === 'newEngagement') {
+          await Promise.all([loadEngagements(), loadWorkspaceMembers()])
+        } else if (['workingPapersWorkspace', 'landing'].includes(view)) {
           await Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
         }
         if (view === 'engagementDashboard') {
@@ -768,27 +735,25 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     loadWorkspaceMembers
   ])
 
-  const onCreateClient = async () => {
-    const name = newClientName.trim()
-    if (!name) {
+  const createClientByName = async (name: string) => {
+    const trimmed = name.trim()
+    if (!trimmed) {
       setError(`${clientLabel} name is required.`)
-      return
+      return null
     }
     setSaving(true)
     setError(null)
     try {
       const { client } = await portalFetch<{ client: Client }>('/v1/accounting/clients', getToken, {
         method: 'POST',
-        body: JSON.stringify({ name })
+        body: JSON.stringify({ name: trimmed })
       })
-      setNewClientName('')
       await loadClients()
-      if (client?.id) {
-        setNewEngagement((prev) => ({ ...prev, clientId: client.id }))
-      }
-      setNotice('Client created')
+      setNotice(`${clientLabel} created.`)
+      return client
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not create client')
+      setError(e instanceof Error ? e.message : `Could not create ${clientLabel.toLowerCase()}`)
+      return null
     } finally {
       setSaving(false)
     }
@@ -851,7 +816,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         })
         setNotice(`${entityProfileLabel} updated.`)
       } else {
-        const { client } = await portalFetch<{ client: Client }>('/v1/accounting/clients', getToken, {
+        await portalFetch('/v1/accounting/clients', getToken, {
           method: 'POST',
           body: JSON.stringify({
             name,
@@ -863,9 +828,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
           })
         })
         setNotice(`${entityProfileLabel} created.`)
-        if (client?.id) {
-          setNewEngagement((prev) => ({ ...prev, clientId: client.id }))
-        }
       }
       await loadClients()
       onResetEntityProfileForm()
@@ -874,49 +836,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     } finally {
       setSaving(false)
     }
-  }
-
-  const onApplyEngagementFilters = () => {
-    const params = new URLSearchParams()
-    if (search.trim()) params.set('search', search.trim())
-    if (statusFilter) params.set('status', statusFilter)
-    if (reviewFlowStatusFilter) params.set('reviewFlowStatus', reviewFlowStatusFilter)
-    if (approvalReadyFilter) params.set('approvalReady', approvalReadyFilter)
-    if (clientFilter) params.set('clientId', clientFilter)
-    if (engagementTypeFilter) params.set('engagementType', engagementTypeFilter)
-    setSearchParams(params, { replace: true })
-    void loadEngagements()
-  }
-
-  const onSetEngagementFilterPreset = (preset: 'all' | 'queue' | 'ready') => {
-    const params = new URLSearchParams()
-    if (preset === 'queue') {
-      params.set('approvalReady', 'false')
-      setApprovalReadyFilter('false')
-    } else if (preset === 'ready') {
-      params.set('approvalReady', 'true')
-      setApprovalReadyFilter('true')
-    } else {
-      setApprovalReadyFilter('')
-    }
-    setSearch('')
-    setStatusFilter('')
-    setReviewFlowStatusFilter('')
-    setClientFilter('')
-    setEngagementTypeFilter('')
-    setSearchParams(params, { replace: true })
-    void Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
-  }
-
-  const onClearEngagementFilters = () => {
-    setSearch('')
-    setStatusFilter('')
-    setReviewFlowStatusFilter('')
-    setApprovalReadyFilter('')
-    setClientFilter('')
-    setEngagementTypeFilter('')
-    setSearchParams(new URLSearchParams(), { replace: true })
-    void Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
   }
 
   const engagementListColumnDefs = useMemo(() => ([
@@ -972,72 +891,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       navigate(`/portal/accounting/working-papers/engagements/${rowId}`)
     }
   }), [navigate])
-
-  const onRunBulkTransition = async () => {
-    if (!bulkTransitionStatus) {
-      setError('Choose a target review-flow status for bulk transition.')
-      return
-    }
-    if (!selectedEngagementIds.length) {
-      setError('Select at least one engagement to transition.')
-      return
-    }
-    setSaving(true)
-    setError(null)
-    try {
-      const result = await portalFetch<{ updated: Array<{ id: string }>, failed: Array<{ engagementId: string, reason: string }> }>(
-        '/v1/accounting/engagements/bulk-transition',
-        getToken,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            engagementIds: selectedEngagementIds,
-            reviewFlowStatus: bulkTransitionStatus
-          })
-        }
-      )
-      await Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
-      if (result.failed.length > 0) {
-        setNotice(`Bulk transition complete: ${result.updated.length} updated, ${result.failed.length} failed.`)
-      } else {
-        setNotice(`Bulk transition complete: ${result.updated.length} engagements updated.`)
-      }
-      resetWorkingPapersSelection()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not run bulk transition')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const onCreateEngagement = async (event: FormEvent) => {
-    event.preventDefault()
-    setSaving(true)
-    setError(null)
-    try {
-      const resolvedClientId = String(newEngagement.clientId || '').trim()
-      if (!resolvedClientId) {
-        setError(`Select a ${clientLabel.toLowerCase()} before creating an engagement. Use quick add and click Add first if needed.`)
-        return
-      }
-      const { engagement } = await portalFetch<{ engagement: Engagement }>('/v1/accounting/engagements', getToken, {
-        method: 'POST',
-        body: JSON.stringify({
-          ...newEngagement,
-          clientId: resolvedClientId,
-          dueDate: newEngagement.dueDate || null,
-          deliverables: parseDeliverablesText(newEngagement.deliverablesText),
-          status: 'draft'
-        })
-      })
-      setNotice('Engagement created')
-      navigate(`/portal/accounting/working-papers/engagements/${engagement.id}`)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not create engagement')
-    } finally {
-      setSaving(false)
-    }
-  }
 
   const onUpdateEngagementWorkflow = async () => {
     if (!engagementId) {
@@ -1477,28 +1330,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       setNotice('Employee removed.')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not remove employee')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const onDeleteSelectedEngagements = async () => {
-    if (selectedEngagementIds.length === 0) {
-      setError('Select at least one engagement to delete.')
-      return
-    }
-    if (!window.confirm(`Delete ${selectedEngagementIds.length} engagement(s) and all related working papers?`)) return
-    setSaving(true)
-    setError(null)
-    try {
-      for (const engagementIdToDelete of selectedEngagementIds) {
-        await portalFetch(`/v1/accounting/engagements/${engagementIdToDelete}`, getToken, { method: 'DELETE' })
-      }
-      await Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
-      resetWorkingPapersSelection()
-      setNotice(`${selectedEngagementIds.length} engagement(s) deleted.`)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not delete selected engagements')
     } finally {
       setSaving(false)
     }
@@ -2035,133 +1866,41 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                       </div>
                     )}
 
-                    {view === 'engagementList' && (
-                      <div className="space-y-4">
-                        <div className="flex flex-wrap gap-2">
-                          <div className="rounded-lg border border-border px-3 py-2 text-xs text-text-light">
-                            Total: <span className="font-medium text-primary-dark">{Number(workflowSummary?.total_engagements || 0)}</span>
-                          </div>
-                          <div className="rounded-lg border border-border px-3 py-2 text-xs text-text-light">
-                            Ready: <span className="font-medium text-primary-dark">{Number(workflowSummary?.approval_ready_count || 0)}</span>
-                          </div>
-                          <div className="rounded-lg border border-border px-3 py-2 text-xs text-text-light">
-                            Blocked: <span className="font-medium text-primary-dark">{Number(workflowSummary?.approval_blocked_count || 0)}</span>
-                          </div>
-                          <div className="rounded-lg border border-border px-3 py-2 text-xs text-text-light">
-                            Open notes: <span className="font-medium text-primary-dark">{Number(workflowSummary?.open_review_notes || 0)}</span>
-                          </div>
-                          <div className="rounded-lg border border-border px-3 py-2 text-xs text-text-light">
-                            Unreviewed sheets: <span className="font-medium text-primary-dark">{Number(workflowSummary?.unreviewed_lead_sheets || 0)}</span>
-                          </div>
-                          <button type="button" className="btn btn--secondary text-xs py-1.5 px-3" onClick={() => onSetEngagementFilterPreset('all')}>
-                            All
-                          </button>
-                          <button type="button" className="btn btn--secondary text-xs py-1.5 px-3" onClick={() => onSetEngagementFilterPreset('queue')}>
-                            Queue
-                          </button>
-                          <button type="button" className="btn btn--secondary text-xs py-1.5 px-3" onClick={() => onSetEngagementFilterPreset('ready')}>
-                            Ready
-                          </button>
-                          <input
-                            className="border border-border rounded-md px-3 py-2 text-sm"
-                            placeholder={`Search engagement or ${clientLabel.toLowerCase()}`}
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                          />
-                          <select className="border border-border rounded-md px-3 py-2 text-sm" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                            <option value="">All statuses</option>
-                            {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
-                          </select>
-                          <select className="border border-border rounded-md px-3 py-2 text-sm" value={reviewFlowStatusFilter} onChange={(e) => setReviewFlowStatusFilter(e.target.value)}>
-                            <option value="">All review-flow states</option>
-                            {reviewFlowStatusOptions.map((status) => (
-                              <option key={status} value={status}>{formatWorkflowLabel(status)}</option>
-                            ))}
-                          </select>
-                          <select className="border border-border rounded-md px-3 py-2 text-sm" value={approvalReadyFilter} onChange={(e) => setApprovalReadyFilter(e.target.value)}>
-                            <option value="">All approval states</option>
-                            <option value="true">Approval ready</option>
-                            <option value="false">Approval blocked</option>
-                          </select>
-                          <select className="border border-border rounded-md px-3 py-2 text-sm" value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}>
-                            <option value="">{`All ${clientLabelPlural.toLowerCase()}`}</option>
-                            {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
-                          </select>
-                          <select className="border border-border rounded-md px-3 py-2 text-sm" value={engagementTypeFilter} onChange={(e) => setEngagementTypeFilter(e.target.value)}>
-                            <option value="">All types</option>
-                            {engagementTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
-                          </select>
-                          <button type="button" className="btn btn--primary text-sm py-2 px-4" onClick={onApplyEngagementFilters}>
-                            Apply Filters
-                          </button>
-                          <button type="button" className="btn btn--secondary text-sm py-2 px-4" onClick={onClearEngagementFilters}>
-                            Clear Filters
-                          </button>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border p-3">
-                          <p className="text-xs text-text-light">
-                            Selected: <span className="font-medium text-primary-dark">{selectedEngagementIds.length}</span>
-                          </p>
-                          <button
-                            type="button"
-                            className="btn btn--primary text-sm py-2 px-4"
-                            disabled={saving}
-                            onClick={() => navigate('/portal/accounting/working-papers/engagements/new')}
-                          >
-                            Create Engagement
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn--secondary text-sm py-2 px-4"
-                            disabled={saving || selectedEngagementIds.length !== 1 || !primarySelectedEngagementId}
-                            onClick={() => {
-                              if (!primarySelectedEngagementId) return
-                              navigate(`/portal/accounting/working-papers/engagements/${primarySelectedEngagementId}/settings`)
-                            }}
-                          >
-                            Update Engagement
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn--secondary text-sm py-2 px-4"
-                            disabled={saving || selectedEngagementIds.length === 0}
-                            onClick={() => { void onDeleteSelectedEngagements() }}
-                          >
-                            Delete Selected
-                          </button>
-                          <select
-                            className="border border-border rounded-md px-3 py-2 text-sm"
-                            value={bulkTransitionStatus}
-                            onChange={(e) => setBulkTransitionStatus(e.target.value)}
-                          >
-                            <option value="">Bulk transition target...</option>
-                            {reviewFlowStatusOptions.map((status) => (
-                              <option key={status} value={status}>{formatWorkflowLabel(status)}</option>
-                            ))}
-                          </select>
-                          <button
-                            type="button"
-                            className="btn btn--primary text-sm py-2 px-4"
-                            disabled={saving || !selectedEngagementIds.length || !bulkTransitionStatus}
-                            onClick={() => { void onRunBulkTransition() }}
-                          >
-                            Run Bulk Transition
-                          </button>
-                        </div>
-                        <AgGridTable
-                          rowData={engagements}
-                          height={360}
-                          columnDefs={engagementListColumnDefs}
-                          gridOptions={engagementListGridOptions}
-                          quickFilterText={search}
-                        />
-                        <p className="text-xs text-text-light">
-                          Tip: select rows for bulk transitions, and double-click a row to open the engagement workspace.
-                        </p>
-                        {engagements.length === 0 && (
-                          <p className="text-sm text-text-light">No engagements match the current filters.</p>
-                        )}
-                      </div>
+                    {(view === 'engagementList' || view === 'newEngagement') && (
+                      <EngagementOperationsPanel
+                        getToken={getToken}
+                        selectedWorkspaceId={selectedWorkspaceId}
+                        clientLabel={clientLabel}
+                        clientLabelPlural={clientLabelPlural}
+                        clients={clients}
+                        workspaceMembers={workspaceMembers}
+                        engagements={engagements as any}
+                        loading={loading}
+                        saving={saving}
+                        initialEditorMode={view === 'newEngagement' ? 'create' : null}
+                        onReloadEngagements={async () => { await loadEngagements() }}
+                        onCreateClient={createClientByName}
+                        onDeleteSelected={async (engagementIds) => {
+                          if (!window.confirm(`Delete ${engagementIds.length} engagement(s) and all related working papers?`)) return
+                          setSaving(true)
+                          setError(null)
+                          try {
+                            for (const engagementIdToDelete of engagementIds) {
+                              await portalFetch(`/v1/accounting/engagements/${engagementIdToDelete}`, getToken, { method: 'DELETE' })
+                            }
+                            await loadEngagements()
+                            resetWorkingPapersSelection()
+                            setNotice(`${engagementIds.length} engagement(s) deleted.`)
+                          } catch (e) {
+                            setError(e instanceof Error ? e.message : 'Could not delete selected engagements')
+                          } finally {
+                            setSaving(false)
+                          }
+                        }}
+                        onError={setError}
+                        onNotice={setNotice}
+                        onSavingChange={setSaving}
+                      />
                     )}
 
                     {view === 'workingPapersWorkspace' && (
@@ -2170,6 +1909,11 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           <p className="text-sm text-text-light">
                             Operational workspace for trial balance, lead sheets, adjustments, review workflow, and signoffs.
                           </p>
+                          {workflowSummary && (
+                            <p className="text-xs text-text-light mt-2">
+                              Workspace engagements: {Number(workflowSummary.total_engagements || 0)} total, {Number(workflowSummary.approval_ready_count || 0)} approval ready.
+                            </p>
+                          )}
                         </div>
                         <AgGridTable
                           rowData={engagements}
@@ -2221,128 +1965,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           </div>
                         )}
                       </div>
-                    )}
-
-                    {view === 'newEngagement' && (
-                      <form className="space-y-4" onSubmit={onCreateEngagement}>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs text-text-light mb-1">{clientLabel}</label>
-                            <select
-                              className="border border-border rounded-md px-3 py-2 text-sm w-full"
-                              value={newEngagement.clientId}
-                              onChange={(e) => setNewEngagement((prev) => ({ ...prev, clientId: e.target.value }))}
-                            >
-                              <option value="">Select {clientLabel.toLowerCase()}</option>
-                              {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
-                            </select>
-                            <p className="mt-1 text-xs text-text-light">
-                              Step 1: choose an existing {clientLabel.toLowerCase()} or create one with quick add, then select it here.
-                            </p>
-                            {clients.length === 0 && (
-                              <p className="mt-1 text-xs text-text-light">
-                                No {clientLabelPlural.toLowerCase()} found yet. Use quick add to create one.
-                              </p>
-                            )}
-                          </div>
-                          <div>
-                            <label className="block text-xs text-text-light mb-1">New {clientLabel.toLowerCase()} (optional quick add)</label>
-                            <div className="flex gap-2">
-                              <input className="border border-border rounded-md px-3 py-2 text-sm w-full" placeholder={`New ${clientLabel.toLowerCase()} name`} value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
-                              <button type="button" className="btn btn--primary text-sm py-2 px-4" disabled={saving} onClick={() => { void onCreateClient() }}>
-                                Add
-                              </button>
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-xs text-text-light mb-1">Engagement name</label>
-                            <input
-                              className="border border-border rounded-md px-3 py-2 text-sm w-full"
-                              value={newEngagement.name}
-                              onChange={(e) => setNewEngagement((prev) => ({ ...prev, name: e.target.value }))}
-                              required
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-text-light mb-1">Engagement type</label>
-                            <select
-                              className="border border-border rounded-md px-3 py-2 text-sm w-full"
-                              value={newEngagement.engagementType}
-                              onChange={(e) => setNewEngagement((prev) => ({ ...prev, engagementType: e.target.value }))}
-                            >
-                              {engagementTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs text-text-light mb-1">Fiscal year</label>
-                            <input
-                              type="number"
-                              className="border border-border rounded-md px-3 py-2 text-sm w-full"
-                              value={newEngagement.fiscalYear}
-                              onChange={(e) => setNewEngagement((prev) => ({ ...prev, fiscalYear: Number(e.target.value) }))}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-text-light mb-1">Due date</label>
-                            <input
-                              type="date"
-                              className="border border-border rounded-md px-3 py-2 text-sm w-full"
-                              value={newEngagement.dueDate}
-                              onChange={(e) => setNewEngagement((prev) => ({ ...prev, dueDate: e.target.value }))}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-text-light mb-1">Source type</label>
-                            <select
-                              className="border border-border rounded-md px-3 py-2 text-sm w-full"
-                              value={newEngagement.sourceType}
-                              onChange={(e) => setNewEngagement((prev) => ({ ...prev, sourceType: e.target.value }))}
-                            >
-                              {sourceTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs text-text-light mb-1">Period start</label>
-                            <input
-                              type="date"
-                              className="border border-border rounded-md px-3 py-2 text-sm w-full"
-                              value={newEngagement.periodStart}
-                              onChange={(e) => setNewEngagement((prev) => ({ ...prev, periodStart: e.target.value }))}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-text-light mb-1">Period end</label>
-                            <input
-                              type="date"
-                              className="border border-border rounded-md px-3 py-2 text-sm w-full"
-                              value={newEngagement.periodEnd}
-                              onChange={(e) => setNewEngagement((prev) => ({ ...prev, periodEnd: e.target.value }))}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-text-light mb-1">Review flow status</label>
-                            <select
-                              className="border border-border rounded-md px-3 py-2 text-sm w-full"
-                              value={newEngagement.reviewFlowStatus}
-                              onChange={(e) => setNewEngagement((prev) => ({ ...prev, reviewFlowStatus: e.target.value }))}
-                            >
-                              {reviewFlowStatusOptions.map((status) => <option key={status} value={status}>{formatWorkflowLabel(status)}</option>)}
-                            </select>
-                          </div>
-                          <div className="md:col-span-2">
-                            <label className="block text-xs text-text-light mb-1">Deliverables (comma or line separated)</label>
-                            <textarea
-                              className="border border-border rounded-md px-3 py-2 text-sm w-full min-h-[92px]"
-                              value={newEngagement.deliverablesText}
-                              onChange={(e) => setNewEngagement((prev) => ({ ...prev, deliverablesText: e.target.value }))}
-                              placeholder="Working paper package, analytics memo, signoff checklist"
-                            />
-                          </div>
-                        </div>
-                        <button type="submit" className="btn btn--primary text-sm py-2 px-4" disabled={saving}>
-                          {saving ? 'Creating…' : 'Create engagement'}
-                        </button>
-                      </form>
                     )}
 
                     {view === 'engagementDashboard' && dashboard && (

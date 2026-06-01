@@ -489,16 +489,24 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setIntegrationsData(data)
   }, [getToken])
 
+  const resolvePreferredWorkspaceId = useCallback((rows: any[], currentId: string | null) => {
+    if (currentId && rows.some((workspace) => workspace.id === currentId)) return currentId
+    const teamWorkspaceWithProfile = rows.find(
+      (workspace) => !workspace.is_personal && workspace.profile_onboarding_completed_at
+    )
+    const teamWorkspace = rows.find((workspace) => !workspace.is_personal)
+    return teamWorkspaceWithProfile?.id || teamWorkspace?.id || rows[0]?.id || null
+  }, [])
+
   const loadWorkspaces = useCallback(async () => {
     const { workspaces: rows } = await portalFetch<{ workspaces: any[] }>('/v1/accounting/workspaces', getToken)
     setWorkspaces(rows)
-    const hasSelectedWorkspace = selectedWorkspaceId && rows.some((workspace) => workspace.id === selectedWorkspaceId)
-    const resolvedWorkspaceId = hasSelectedWorkspace ? selectedWorkspaceId : (rows[0]?.id || null)
-    if (!hasSelectedWorkspace) {
+    const resolvedWorkspaceId = resolvePreferredWorkspaceId(rows, selectedWorkspaceId)
+    if (resolvedWorkspaceId !== selectedWorkspaceId) {
       setWorkspaceId(resolvedWorkspaceId)
     }
     return { rows, workspaceId: resolvedWorkspaceId }
-  }, [getToken, selectedWorkspaceId, setWorkspaceId])
+  }, [getToken, resolvePreferredWorkspaceId, selectedWorkspaceId, setWorkspaceId])
 
   const loadWorkspaceMembers = useCallback(async () => {
     if (!selectedWorkspaceId) return
@@ -1690,12 +1698,20 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         <div className="rounded-lg border border-border p-5 sm:p-6 space-y-4 bg-white">
                           <h4 className="font-semibold text-primary-dark">Business/Firm details</h4>
                           <p className="text-sm text-text-light">
-                            Configure core business or firm information used across workspace operations.
+                            {canManageWorkspaceMembers
+                              ? 'Configure core business or firm information used across workspace operations.'
+                              : 'View your organization business or firm profile for the active workspace. Contact a workspace admin to request changes.'}
                           </p>
+                          {!canManageWorkspaceMembers && activeWorkspace?.is_personal && (
+                            <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                              You are viewing your personal workspace. Switch to your employer workspace in the header to see the company business profile.
+                            </p>
+                          )}
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             <select
-                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-text-light"
                               value={companyProfileForm.businessType}
+                              disabled={!canManageWorkspaceMembers}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, businessType: e.target.value }))}
                             >
                               {BUSINESS_TYPE_OPTIONS.map((option) => (
@@ -1703,90 +1719,105 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               ))}
                             </select>
                             <input
-                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-text-light"
                               placeholder="Business/Firm legal name"
                               value={companyProfileForm.companyLegalName}
+                              disabled={!canManageWorkspaceMembers}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, companyLegalName: e.target.value }))}
                             />
                             <input
-                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-text-light"
                               placeholder="Operating name"
                               value={companyProfileForm.companyOperatingName}
+                              disabled={!canManageWorkspaceMembers}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, companyOperatingName: e.target.value }))}
                             />
                             <input
-                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-text-light"
                               placeholder="Business number"
                               value={companyProfileForm.taxIdentifier}
+                              disabled={!canManageWorkspaceMembers}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, taxIdentifier: e.target.value }))}
                             />
                             <input
-                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-text-light"
                               placeholder="Website URL"
                               value={companyProfileForm.websiteUrl}
+                              disabled={!canManageWorkspaceMembers}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, websiteUrl: e.target.value }))}
                             />
                             <input
-                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-text-light"
                               placeholder="Industry"
                               value={companyProfileForm.industry}
+                              disabled={!canManageWorkspaceMembers}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, industry: e.target.value }))}
                             />
                             <input
-                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-text-light"
                               placeholder="Primary contact name"
                               value={companyProfileForm.primaryContactName}
+                              disabled={!canManageWorkspaceMembers}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, primaryContactName: e.target.value }))}
                             />
                             <input
-                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-text-light"
                               placeholder="Primary contact email"
                               value={companyProfileForm.primaryContactEmail}
+                              disabled={!canManageWorkspaceMembers}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, primaryContactEmail: e.target.value }))}
                             />
                             <input
-                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-text-light"
                               placeholder="Primary contact phone"
                               value={companyProfileForm.primaryContactPhone}
+                              disabled={!canManageWorkspaceMembers}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, primaryContactPhone: e.target.value }))}
                             />
                             <input
-                              className="w-full border border-border rounded-md px-3 py-2 text-sm sm:col-span-2 xl:col-span-2"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm sm:col-span-2 xl:col-span-2 disabled:bg-slate-50 disabled:text-text-light"
                               placeholder="Address line 1"
                               value={companyProfileForm.addressLine1}
+                              disabled={!canManageWorkspaceMembers}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, addressLine1: e.target.value }))}
                             />
                             <input
-                              className="w-full border border-border rounded-md px-3 py-2 text-sm sm:col-span-2 xl:col-span-2"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm sm:col-span-2 xl:col-span-2 disabled:bg-slate-50 disabled:text-text-light"
                               placeholder="Address line 2"
                               value={companyProfileForm.addressLine2}
+                              disabled={!canManageWorkspaceMembers}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, addressLine2: e.target.value }))}
                             />
                             <input
-                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-text-light"
                               placeholder="City"
                               value={companyProfileForm.city}
+                              disabled={!canManageWorkspaceMembers}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, city: e.target.value }))}
                             />
                             <input
-                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-text-light"
                               placeholder="Province/State"
                               value={companyProfileForm.provinceState}
+                              disabled={!canManageWorkspaceMembers}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, provinceState: e.target.value }))}
                             />
                             <input
-                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-text-light"
                               placeholder="Postal code"
                               value={companyProfileForm.postalCode}
+                              disabled={!canManageWorkspaceMembers}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, postalCode: e.target.value }))}
                             />
                             <input
-                              className="w-full border border-border rounded-md px-3 py-2 text-sm"
+                              className="w-full border border-border rounded-md px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-text-light"
                               placeholder="Country code"
                               value={companyProfileForm.countryCode}
+                              disabled={!canManageWorkspaceMembers}
                               onChange={(e) => setCompanyProfileForm((prev) => ({ ...prev, countryCode: e.target.value.toUpperCase() }))}
                             />
                           </div>
+                          {canManageWorkspaceMembers && (
                           <button
                             type="button"
                             className="btn btn--primary text-sm py-2 px-4"
@@ -1795,6 +1826,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           >
                             Save Business/Firm Profile
                           </button>
+                          )}
                         </div>
                       </div>
                     )}

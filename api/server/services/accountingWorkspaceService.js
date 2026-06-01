@@ -341,6 +341,56 @@ function mapWorkspaceRoleToOrganizationMemberRole (workspaceRole) {
   return ['owner', 'admin', 'manager'].includes(String(workspaceRole || '').toLowerCase()) ? 'admin' : 'member'
 }
 
+function mapOrganizationInviteRoleToWorkspaceRole (organizationRole) {
+  const normalized = String(organizationRole || 'member').trim().toLowerCase()
+  if (normalized === 'admin' || normalized === 'owner') return 'admin'
+  if (WORKSPACE_ROLES.has(normalized)) return normalized
+  return 'preparer'
+}
+
+async function finalizeOrganizationEmployeeMembership (pool, {
+  organizationId,
+  workspaceId,
+  clerkUserId,
+  inviteEmail = null,
+  workspaceRole = 'preparer',
+  invitedBy = null
+}) {
+  const resolvedWorkspaceRole = mapOrganizationInviteRoleToWorkspaceRole(workspaceRole)
+  const organizationRole = mapWorkspaceRoleToOrganizationMemberRole(resolvedWorkspaceRole)
+  const inviter = invitedBy || clerkUserId
+
+  await upsertWorkspaceMember(pool, workspaceId, clerkUserId, resolvedWorkspaceRole, inviter)
+
+  if (inviteEmail) {
+    const placeholderId = `invite:${normalizeInviteEmail(inviteEmail)}`
+    await deleteOrganizationMemberByUserId(pool, organizationId, placeholderId)
+  }
+
+  await ensureOrganizationMember(pool, organizationId, clerkUserId, organizationRole, inviter)
+
+  const { rows: workspaceRows } = await pool.query(
+    `SELECT *
+     FROM taxgpt.accounting_workspaces
+     WHERE id = $1::uuid
+     LIMIT 1`,
+    [workspaceId]
+  )
+  const workspace = workspaceRows[0]
+  if (workspace) {
+    await ensureWorkspaceEmployeeAssignment(pool, workspace, clerkUserId, inviter, organizationRole)
+    await ensureLegacyAssignmentsForWorkspaceUser(pool, workspace, clerkUserId, inviter)
+  }
+
+  return {
+    organizationId,
+    workspaceId,
+    clerkUserId,
+    workspaceRole: resolvedWorkspaceRole,
+    organizationRole
+  }
+}
+
 async function ensureOrganizationLinkForWorkspace (pool, workspace) {
   if (!workspace) throw new Error('Workspace is required')
   if (workspace.organization_id) return workspace
@@ -578,7 +628,9 @@ export async function listWorkspacesForUser (pool, clerkUserId) {
        LEFT JOIN taxgpt.accounting_workspace_profiles p ON p.workspace_id = w.id
        WHERE m.clerk_user_id = $1
          AND m.status = 'active'
-       ORDER BY w.created_at ASC`,
+       ORDER BY w.is_personal ASC,
+                (p.onboarding_completed_at IS NOT NULL) DESC,
+                w.created_at ASC`,
       [clerkUserId]
     )
     return rows
@@ -602,12 +654,21 @@ export async function listWorkspacesForUser (pool, clerkUserId) {
 
 export async function getOnboardingStatusForUser (pool, clerkUserId) {
   const workspaces = await listWorkspacesForUser(pool, clerkUserId)
-  const completedWorkspace = workspaces.find((workspace) => Boolean(workspace.profile_onboarding_completed_at)) || null
+  const teamWorkspaces = workspaces.filter((workspace) => !workspace.is_personal)
+  const completedWorkspace =
+    teamWorkspaces.find((workspace) => Boolean(workspace.profile_onboarding_completed_at)) ||
+    workspaces.find((workspace) => Boolean(workspace.profile_onboarding_completed_at)) ||
+    null
+  const primaryWorkspace =
+    completedWorkspace ||
+    teamWorkspaces[0] ||
+    workspaces[0] ||
+    null
   return {
     required: !completedWorkspace,
     hasWorkspace: workspaces.length > 0,
     hasCompletedProfile: Boolean(completedWorkspace),
-    primaryWorkspaceId: workspaces[0]?.id || null,
+    primaryWorkspaceId: primaryWorkspace?.id || null,
     completedWorkspaceId: completedWorkspace?.id || null
   }
 }
@@ -867,6 +928,7 @@ export async function createOrganizationEmployeeInvite (pool, actorUserId, works
         invite_type: 'organization_employee',
         organization_id: linkedWorkspace.organization_id,
         workspace_id: linkedWorkspace.id,
+        workspace_role: mapOrganizationInviteRoleToWorkspaceRole(memberRole),
         invited_by: actorUserId
       }
     })
@@ -878,15 +940,30 @@ export async function createOrganizationEmployeeInvite (pool, actorUserId, works
         invite_type: 'organization_employee',
         organization_id: linkedWorkspace.organization_id,
         workspace_id: linkedWorkspace.id,
+        workspace_role: mapOrganizationInviteRoleToWorkspaceRole(memberRole),
         invited_by: actorUserId
       }
     })
   }
   await upsertInvitedOrganizationMember(pool, linkedWorkspace.organization_id, inviteEmail, memberRole, actorUserId)
+  const workspaceRole = mapOrganizationInviteRoleToWorkspaceRole(memberRole)
+  const inviteToken = `clerk:${clerkInvitation.id}:${randomBytes(8).toString('hex')}`
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString()
+  await insertWorkspaceInviteRecord(pool, {
+    workspaceId: linkedWorkspace.id,
+    inviteEmail,
+    inviteToken,
+    role: workspaceRole,
+    clerkInvitationId: clerkInvitation.id,
+    invitedBy: actorUserId,
+    expiresAt
+  })
   return {
     organizationId: linkedWorkspace.organization_id,
+    workspaceId: linkedWorkspace.id,
     inviteEmail,
     role: memberRole,
+    workspaceRole,
     clerkInvitationId: clerkInvitation.id,
     clerkInvitationStatus: clerkInvitation.status || 'pending'
   }
@@ -992,9 +1069,11 @@ export async function acceptWorkspaceInvite (pool, actorUserId, actorEmail, invi
 export async function acceptPendingWorkspaceInvites (pool, actorUserId, actorEmail) {
   const normalizedEmail = String(actorEmail || '').trim().toLowerCase()
   if (!normalizedEmail) {
-    return { acceptedInvites: [] }
+    const organizationOnly = await acceptPendingOrganizationEmployeeInvites(pool, actorUserId, actorEmail)
+    return { acceptedInvites: [], acceptedOrganizationInvites: organizationOnly.acceptedInvites }
   }
   const client = await pool.connect()
+  let acceptedInvites = []
   try {
     await client.query('BEGIN')
     const { rows: pendingInvites } = await client.query(
@@ -1009,7 +1088,7 @@ export async function acceptPendingWorkspaceInvites (pool, actorUserId, actorEma
       [normalizedEmail]
     )
 
-    const acceptedInvites = []
+    acceptedInvites = []
     for (const invite of pendingInvites) {
       await client.query(
         `INSERT INTO taxgpt.accounting_workspace_members
@@ -1048,12 +1127,191 @@ export async function acceptPendingWorkspaceInvites (pool, actorUserId, actorEma
       })
     }
     await client.query('COMMIT')
-    return { acceptedInvites }
   } catch (e) {
     await client.query('ROLLBACK')
     throw e
   } finally {
     client.release()
+  }
+
+  const organizationAccepted = await acceptPendingOrganizationEmployeeInvites(pool, actorUserId, actorEmail)
+  return {
+    acceptedInvites,
+    acceptedOrganizationInvites: organizationAccepted.acceptedInvites
+  }
+}
+
+export async function acceptPendingOrganizationEmployeeInvites (pool, actorUserId, actorEmail) {
+  const normalizedEmail = normalizeInviteEmail(actorEmail)
+  if (!normalizedEmail) {
+    return { acceptedInvites: [] }
+  }
+
+  const acceptedInvites = []
+  const placeholderId = `invite:${normalizedEmail}`
+  const { rows: pendingPlaceholders } = await pool.query(
+    `SELECT organization_id, role, invited_by
+     FROM taxgpt.accounting_organization_members
+     WHERE clerk_user_id = $1
+       AND status IN ('invited', 'active')`,
+    [placeholderId]
+  )
+
+  for (const pending of pendingPlaceholders) {
+    const { rows: workspaces } = await pool.query(
+      `SELECT id, name
+       FROM taxgpt.accounting_workspaces
+       WHERE organization_id = $1::uuid
+         AND is_personal = false
+       ORDER BY created_at ASC`,
+      [pending.organization_id]
+    )
+    for (const workspace of workspaces) {
+      const result = await finalizeOrganizationEmployeeMembership(pool, {
+        organizationId: pending.organization_id,
+        workspaceId: workspace.id,
+        clerkUserId: actorUserId,
+        inviteEmail: normalizedEmail,
+        workspaceRole: pending.role,
+        invitedBy: pending.invited_by || actorUserId
+      })
+      acceptedInvites.push({
+        ...result,
+        workspaceName: workspace.name,
+        source: 'organization_invite_placeholder'
+      })
+    }
+  }
+
+  const { rows: activeOrgMemberships } = await pool.query(
+    `SELECT organization_id, role, invited_by
+     FROM taxgpt.accounting_organization_members
+     WHERE clerk_user_id = $1
+       AND status = 'active'`,
+    [actorUserId]
+  )
+
+  for (const membership of activeOrgMemberships) {
+    const { rows: workspaces } = await pool.query(
+      `SELECT w.id, w.name
+       FROM taxgpt.accounting_workspaces w
+       WHERE w.organization_id = $1::uuid
+         AND w.is_personal = false
+         AND NOT EXISTS (
+           SELECT 1
+           FROM taxgpt.accounting_workspace_members wm
+           WHERE wm.workspace_id = w.id
+             AND wm.clerk_user_id = $2
+             AND wm.status = 'active'
+         )
+       ORDER BY w.created_at ASC`,
+      [membership.organization_id, actorUserId]
+    )
+    for (const workspace of workspaces) {
+      const result = await finalizeOrganizationEmployeeMembership(pool, {
+        organizationId: membership.organization_id,
+        workspaceId: workspace.id,
+        clerkUserId: actorUserId,
+        workspaceRole: membership.role,
+        invitedBy: membership.invited_by || actorUserId
+      })
+      acceptedInvites.push({
+        ...result,
+        workspaceName: workspace.name,
+        source: 'organization_membership_repair'
+      })
+    }
+  }
+
+  return { acceptedInvites }
+}
+
+function resolveClerkUserIdFromMembershipPayload (payload = {}) {
+  return String(
+    payload.public_user_data?.user_id ||
+    payload.publicUserData?.userId ||
+    payload.publicUserData?.user_id ||
+    payload.user_id ||
+    payload.userId ||
+    ''
+  ).trim()
+}
+
+function resolveClerkOrgIdFromMembershipPayload (payload = {}) {
+  return String(
+    payload.organization?.id ||
+    payload.organization_id ||
+    payload.organizationId ||
+    ''
+  ).trim()
+}
+
+function mapClerkMembershipRoleToWorkspaceRole (payload = {}) {
+  const metadata = payload.public_metadata || payload.publicMetadata || {}
+  if (metadata.workspace_role) {
+    return mapOrganizationInviteRoleToWorkspaceRole(metadata.workspace_role)
+  }
+  const normalized = String(payload.role || '').trim().toLowerCase()
+  if (normalized === 'org:admin') return 'admin'
+  return 'preparer'
+}
+
+export async function syncOrganizationEmployeeFromClerkEvent (pool, payload = {}, options = {}) {
+  const clerkUserId = resolveClerkUserIdFromMembershipPayload(payload)
+  const clerkOrgId = resolveClerkOrgIdFromMembershipPayload(payload)
+  if (!clerkUserId || !clerkOrgId) {
+    return { ok: true, ignored: true, reason: 'missing_user_or_org' }
+  }
+
+  const { rows: workspaceRows } = await pool.query(
+    `SELECT id, organization_id
+     FROM taxgpt.accounting_workspaces
+     WHERE clerk_org_id = $1
+     LIMIT 1`,
+    [clerkOrgId]
+  )
+  const workspace = workspaceRows[0]
+  if (!workspace?.organization_id) {
+    return { ok: true, ignored: true, reason: 'workspace_org_not_linked' }
+  }
+
+  if (Boolean(options.deleted)) {
+    await deactivateOrganizationMemberHierarchy(pool, workspace.organization_id, clerkUserId)
+    return {
+      ok: true,
+      ignored: false,
+      deleted: true,
+      workspaceId: workspace.id,
+      organizationId: workspace.organization_id,
+      clerkUserId,
+      status: 'inactive'
+    }
+  }
+
+  const metadata = payload.public_metadata || payload.publicMetadata || {}
+  const membership = await finalizeOrganizationEmployeeMembership(pool, {
+    organizationId: workspace.organization_id,
+    workspaceId: workspace.id,
+    clerkUserId,
+    inviteEmail: metadata.invite_email || null,
+    workspaceRole: mapClerkMembershipRoleToWorkspaceRole(payload),
+    invitedBy: metadata.invited_by || clerkUserId
+  })
+
+  await pool.query(
+    `UPDATE taxgpt.accounting_workspace_members
+     SET clerk_org_membership_id = $1,
+         updated_at = now()
+     WHERE workspace_id = $2::uuid
+       AND clerk_user_id = $3`,
+    [payload.id || null, workspace.id, clerkUserId]
+  )
+
+  return {
+    ok: true,
+    ignored: false,
+    status: 'active',
+    ...membership
   }
 }
 

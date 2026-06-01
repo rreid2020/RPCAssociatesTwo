@@ -138,6 +138,18 @@ export async function updateWorkspaceMemberRecord (pool, workspaceId, clerkUserI
   return rows[0] || null
 }
 
+export async function revokePendingWorkspaceInvitesForEmail (pool, workspaceId, inviteEmail) {
+  await pool.query(
+    `UPDATE taxgpt.accounting_workspace_invites
+     SET status = 'revoked',
+         updated_at = now()
+     WHERE workspace_id = $1::uuid
+       AND lower(invite_email) = lower($2)
+       AND status = 'pending'`,
+    [workspaceId, inviteEmail]
+  )
+}
+
 export async function insertWorkspaceInviteRecord (pool, payload = {}) {
   const { rows } = await pool.query(
     `INSERT INTO taxgpt.accounting_workspace_invites

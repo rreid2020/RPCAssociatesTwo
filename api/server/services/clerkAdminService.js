@@ -16,6 +16,31 @@ export function getClerkBackendClient () {
   return cachedClient
 }
 
+export function formatClerkError (error) {
+  const clerkErrors = error?.errors
+  if (Array.isArray(clerkErrors) && clerkErrors.length > 0) {
+    return clerkErrors
+      .map((entry) => String(entry?.longMessage || entry?.message || '').trim())
+      .filter(Boolean)
+      .join(' ')
+  }
+  if (error instanceof Error && error.message) return error.message
+  return String(error || 'Clerk request failed')
+}
+
+export async function resolveClerkUserIdByEmail (emailAddress) {
+  const normalizedEmail = String(emailAddress || '').trim().toLowerCase()
+  if (!normalizedEmail) return null
+  const client = getClerkBackendClient()
+  const result = await client.users.getUserList({ emailAddress: [normalizedEmail], limit: 10 })
+  const users = Array.isArray(result?.data) ? result.data : []
+  const exactMatch = users.find((user) => {
+    const addresses = Array.isArray(user?.emailAddresses) ? user.emailAddresses : []
+    return addresses.some((entry) => String(entry?.emailAddress || '').trim().toLowerCase() === normalizedEmail)
+  })
+  return exactMatch?.id || users[0]?.id || null
+}
+
 export async function getClerkPrimaryEmail (userId) {
   if (!userId) return null
   const client = getClerkBackendClient()

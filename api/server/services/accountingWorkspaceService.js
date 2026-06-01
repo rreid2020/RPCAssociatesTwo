@@ -1,9 +1,11 @@
 import { randomBytes } from 'crypto'
 import {
   createClerkEmailInvite,
+  formatClerkError,
   getClerkBackendClient,
   createClerkOrganization,
-  createClerkOrganizationInvitation
+  createClerkOrganizationInvitation,
+  resolveClerkUserIdByEmail
 } from './clerkAdminService.js'
 import {
   assertWorkspacePermissionWithCustomRoles,
@@ -17,6 +19,7 @@ import {
   fetchWorkspaceMembers,
   fetchWorkspaceProfile,
   insertWorkspaceInviteRecord,
+  revokePendingWorkspaceInvitesForEmail,
   updateWorkspaceMemberRecord,
   updateWorkspaceRecord,
   upsertWorkspaceMember,
@@ -905,6 +908,42 @@ export async function createWorkspaceInvite (pool, actorUserId, workspaceId, pay
   }
 }
 
+async function fetchOrganizationMemberRecord (pool, organizationId, clerkUserId) {
+  const { rows } = await pool.query(
+    `SELECT organization_id, clerk_user_id, role, status, invited_by
+     FROM taxgpt.accounting_organization_members
+     WHERE organization_id = $1::uuid
+       AND clerk_user_id = $2
+     LIMIT 1`,
+    [organizationId, clerkUserId]
+  )
+  return rows[0] || null
+}
+
+async function reactivateOrganizationEmployeeMembership (pool, linkedWorkspace, {
+  clerkUserId,
+  inviteEmail,
+  memberRole,
+  actorUserId
+}) {
+  const workspaceRole = mapOrganizationInviteRoleToWorkspaceRole(memberRole)
+  await deleteOrganizationMemberByUserId(pool, linkedWorkspace.organization_id, `invite:${inviteEmail}`)
+  const membership = await finalizeOrganizationEmployeeMembership(pool, {
+    organizationId: linkedWorkspace.organization_id,
+    workspaceId: linkedWorkspace.id,
+    clerkUserId,
+    inviteEmail,
+    workspaceRole,
+    invitedBy: actorUserId
+  })
+  await revokePendingWorkspaceInvitesForEmail(pool, linkedWorkspace.id, inviteEmail)
+  return membership
+}
+
+function isClerkDuplicateMembershipError (message) {
+  return /already.*(member|invited|organization)|duplicate|identifier already exists/i.test(String(message || ''))
+}
+
 export async function createOrganizationEmployeeInvite (pool, actorUserId, workspaceId, payload = {}) {
   const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
   await assertWorkspacePermissionWithCustomRoles(pool, {
@@ -916,37 +955,100 @@ export async function createOrganizationEmployeeInvite (pool, actorUserId, works
   const inviteEmail = normalizeInviteEmail(payload?.email)
   const memberRole = String(payload?.role || 'member').trim().toLowerCase() || 'member'
   const linkedWorkspace = await safeEnsureWorkspaceClerkOrganization(pool, workspace, actorUserId)
-  let clerkInvitation = null
-  if (linkedWorkspace.clerk_org_id) {
-    clerkInvitation = await createClerkOrganizationInvitation({
-      organizationId: linkedWorkspace.clerk_org_id,
-      emailAddress: inviteEmail,
-      role: memberRole === 'admin' ? 'org:admin' : 'org:member',
-      inviterUserId: actorUserId,
-      redirectUrl: getInviteRedirectUrl(),
-      publicMetadata: {
-        invite_type: 'organization_employee',
-        organization_id: linkedWorkspace.organization_id,
-        workspace_id: linkedWorkspace.id,
-        workspace_role: mapOrganizationInviteRoleToWorkspaceRole(memberRole),
-        invited_by: actorUserId
-      }
-    })
-  } else {
-    clerkInvitation = await createClerkEmailInvite({
-      emailAddress: inviteEmail,
-      redirectUrl: getInviteRedirectUrl(),
-      publicMetadata: {
-        invite_type: 'organization_employee',
-        organization_id: linkedWorkspace.organization_id,
-        workspace_id: linkedWorkspace.id,
-        workspace_role: mapOrganizationInviteRoleToWorkspaceRole(memberRole),
-        invited_by: actorUserId
-      }
-    })
-  }
-  await upsertInvitedOrganizationMember(pool, linkedWorkspace.organization_id, inviteEmail, memberRole, actorUserId)
   const workspaceRole = mapOrganizationInviteRoleToWorkspaceRole(memberRole)
+  const placeholderId = `invite:${inviteEmail}`
+  const clerkUserId = await resolveClerkUserIdByEmail(inviteEmail)
+
+  const placeholderMember = await fetchOrganizationMemberRecord(pool, linkedWorkspace.organization_id, placeholderId)
+  const existingUserMember = clerkUserId
+    ? await fetchOrganizationMemberRecord(pool, linkedWorkspace.organization_id, clerkUserId)
+    : null
+
+  if (existingUserMember?.status === 'active') {
+    throw new Error('This employee is already active on your organization roster. Update their role instead of sending a new invite.')
+  }
+
+  if (existingUserMember) {
+    const membership = await reactivateOrganizationEmployeeMembership(pool, linkedWorkspace, {
+      clerkUserId,
+      inviteEmail,
+      memberRole,
+      actorUserId
+    })
+    return {
+      organizationId: linkedWorkspace.organization_id,
+      workspaceId: linkedWorkspace.id,
+      inviteEmail,
+      role: memberRole,
+      workspaceRole,
+      reactivated: true,
+      clerkInvitationStatus: 'existing_member',
+      membership
+    }
+  }
+
+  if (placeholderMember?.status === 'active') {
+    throw new Error('This employee is already active on your organization roster.')
+  }
+
+  if (placeholderMember?.status === 'invited') {
+    await revokePendingWorkspaceInvitesForEmail(pool, linkedWorkspace.id, inviteEmail)
+  }
+
+  let clerkInvitation = null
+  try {
+    if (linkedWorkspace.clerk_org_id) {
+      clerkInvitation = await createClerkOrganizationInvitation({
+        organizationId: linkedWorkspace.clerk_org_id,
+        emailAddress: inviteEmail,
+        role: memberRole === 'admin' ? 'org:admin' : 'org:member',
+        inviterUserId: actorUserId,
+        redirectUrl: getInviteRedirectUrl(),
+        publicMetadata: {
+          invite_type: 'organization_employee',
+          organization_id: linkedWorkspace.organization_id,
+          workspace_id: linkedWorkspace.id,
+          workspace_role: workspaceRole,
+          invited_by: actorUserId
+        }
+      })
+    } else {
+      clerkInvitation = await createClerkEmailInvite({
+        emailAddress: inviteEmail,
+        redirectUrl: getInviteRedirectUrl(),
+        publicMetadata: {
+          invite_type: 'organization_employee',
+          organization_id: linkedWorkspace.organization_id,
+          workspace_id: linkedWorkspace.id,
+          workspace_role: workspaceRole,
+          invited_by: actorUserId
+        }
+      })
+    }
+  } catch (error) {
+    const clerkMessage = formatClerkError(error)
+    if (clerkUserId && isClerkDuplicateMembershipError(clerkMessage)) {
+      const membership = await reactivateOrganizationEmployeeMembership(pool, linkedWorkspace, {
+        clerkUserId,
+        inviteEmail,
+        memberRole,
+        actorUserId
+      })
+      return {
+        organizationId: linkedWorkspace.organization_id,
+        workspaceId: linkedWorkspace.id,
+        inviteEmail,
+        role: memberRole,
+        workspaceRole,
+        reactivated: true,
+        clerkInvitationStatus: 'existing_member',
+        membership
+      }
+    }
+    throw new Error(clerkMessage || 'Could not create employee invitation')
+  }
+
+  await upsertInvitedOrganizationMember(pool, linkedWorkspace.organization_id, inviteEmail, memberRole, actorUserId)
   const inviteToken = `clerk:${clerkInvitation.id}:${randomBytes(8).toString('hex')}`
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString()
   await insertWorkspaceInviteRecord(pool, {
@@ -965,7 +1067,8 @@ export async function createOrganizationEmployeeInvite (pool, actorUserId, works
     role: memberRole,
     workspaceRole,
     clerkInvitationId: clerkInvitation.id,
-    clerkInvitationStatus: clerkInvitation.status || 'pending'
+    clerkInvitationStatus: clerkInvitation.status || 'pending',
+    reactivated: false
   }
 }
 
@@ -997,12 +1100,26 @@ export async function deleteOrganizationMember (pool, actorUserId, workspaceId, 
   }
 
   const isPendingInvitePlaceholder = normalizedMemberUserId.startsWith('invite:')
-  if (!isPendingInvitePlaceholder) {
+  const emailsToCleanup = new Set()
+  if (isPendingInvitePlaceholder) {
+    emailsToCleanup.add(normalizedMemberUserId.slice('invite:'.length))
+  } else {
     await deactivateOrganizationMemberHierarchy(pool, workspace.organization_id, normalizedMemberUserId)
+    try {
+      const client = getClerkBackendClient()
+      const user = await client.users.getUser(normalizedMemberUserId)
+      const primaryEmail = extractPrimaryEmailFromClerkUser(user)
+      if (primaryEmail) emailsToCleanup.add(normalizeInviteEmail(primaryEmail))
+    } catch {}
   }
 
   const removed = await deleteOrganizationMemberByUserId(pool, workspace.organization_id, normalizedMemberUserId)
   if (!removed) throw new Error('Organization member not found')
+
+  for (const email of emailsToCleanup) {
+    await deleteOrganizationMemberByUserId(pool, workspace.organization_id, `invite:${email}`)
+    await revokePendingWorkspaceInvitesForEmail(pool, workspace.id, email)
+  }
 
   return { organizationId: workspace.organization_id, clerkUserId: normalizedMemberUserId, removed: true }
 }

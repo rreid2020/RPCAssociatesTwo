@@ -1379,7 +1379,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setSaving(true)
     setError(null)
     try {
-      await portalFetch<{ invite: any }>(
+      const response = await portalFetch<{ invite: { reactivated?: boolean } }>(
         `/v1/accounting/workspaces/${selectedWorkspaceId}/organization/invites`,
         getToken,
         {
@@ -1392,7 +1392,11 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       )
       setNewInviteEmail('')
       await loadOrganizationSnapshot()
-      setNotice('Organization invite sent. After invite acceptance/confirmation, assign this employee to workspaces, engagements, and working papers.')
+      setNotice(
+        response.invite?.reactivated
+          ? 'Employee access was restored on this workspace with the selected role.'
+          : 'Organization invite sent. After invite acceptance/confirmation, assign this employee to workspaces, engagements, and working papers.'
+      )
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not create organization invite')
     } finally {

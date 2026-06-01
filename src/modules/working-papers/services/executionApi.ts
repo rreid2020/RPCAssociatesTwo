@@ -68,3 +68,20 @@ export async function createTickmark (
 export async function fetchAiFoundations (engagementId: string, getToken: () => Promise<string | null>) {
   return portalFetch<Record<string, unknown>>(`/v1/accounting/engagements/${engagementId}/ai-foundations`, getToken)
 }
+
+export type EngagementExecutionBundle = {
+  tree: { sections: any[] }
+  queue: { queue: any[] }
+  adjustments: { entries: any[] }
+  audit: { events: any[] }
+  signoffs: { signoffs: any[] }
+  aiFoundations: Record<string, unknown> | null
+  dashboard: any | null
+}
+
+export async function fetchEngagementExecutionBundle (
+  engagementId: string,
+  getToken: () => Promise<string | null>
+) {
+  return portalFetch<EngagementExecutionBundle>(`/v1/accounting/engagements/${engagementId}/execution-bundle`, getToken)
+}

@@ -1466,8 +1466,7 @@ export async function getWorkspacePermissionSnapshot (pool, actorUserId, workspa
 }
 
 export async function assertWorkspaceAssignment (pool, workspace, clerkUserId, options = {}) {
-  await ensureWorkspaceEmployeeAssignment(pool, workspace, clerkUserId, options.assignedBy || clerkUserId, options.assignmentRole || 'member')
-  const { rows } = await pool.query(
+  const { rows: existing } = await pool.query(
     `SELECT id
      FROM taxgpt.workspace_employee_assignments
      WHERE workspace_id = $1::uuid
@@ -1476,46 +1475,30 @@ export async function assertWorkspaceAssignment (pool, workspace, clerkUserId, o
      LIMIT 1`,
     [workspace.id, clerkUserId]
   )
-  if (!rows[0]) {
-    const error = new Error('Assignment denied: workspace')
-    error.code = 'ASSIGNMENT_DENIED_WORKSPACE'
-    throw error
-  }
+  if (existing[0]) return
+
+  const { withDeadlockRetry } = await import('../utils/deadlockRetry.js')
+  await withDeadlockRetry(async () => {
+    await ensureWorkspaceEmployeeAssignment(pool, workspace, clerkUserId, options.assignedBy || clerkUserId, options.assignmentRole || 'member')
+    const { rows } = await pool.query(
+      `SELECT id
+       FROM taxgpt.workspace_employee_assignments
+       WHERE workspace_id = $1::uuid
+         AND clerk_user_id = $2
+         AND status = 'active'
+       LIMIT 1`,
+      [workspace.id, clerkUserId]
+    )
+    if (!rows[0]) {
+      const error = new Error('Assignment denied: workspace')
+      error.code = 'ASSIGNMENT_DENIED_WORKSPACE'
+      throw error
+    }
+  })
 }
 
 export async function assertEngagementAssignment (pool, workspace, engagementId, clerkUserId, options = {}) {
-  const { rows: engagementRows } = await pool.query(
-    `SELECT id, workspace_id
-     FROM taxgpt.accounting_engagements
-     WHERE id = $1::uuid
-     LIMIT 1`,
-    [engagementId]
-  )
-  const engagement = engagementRows[0]
-  if (!engagement) {
-    const error = new Error('Engagement not found')
-    error.code = 'ENGAGEMENT_NOT_FOUND'
-    throw error
-  }
-  if (!engagement.workspace_id) {
-    await pool.query(
-      `UPDATE taxgpt.accounting_engagements
-       SET workspace_id = $1::uuid,
-           organization_id = COALESCE(organization_id, $2::uuid),
-           updated_at = now()
-       WHERE id = $3::uuid`,
-      [workspace.id, workspace.organization_id, engagementId]
-    )
-  }
-  await pool.query(
-    `INSERT INTO taxgpt.engagement_employee_assignments
-     (organization_id, workspace_id, engagement_id, clerk_user_id, assignment_role, status, assigned_by, created_at, updated_at)
-     VALUES ($1::uuid, $2::uuid, $3::uuid, $4, 'member', 'active', $5, now(), now())
-     ON CONFLICT (engagement_id, clerk_user_id)
-     DO UPDATE SET status = 'active', updated_at = now()`,
-    [workspace.organization_id, workspace.id, engagementId, clerkUserId, options.assignedBy || clerkUserId]
-  )
-  const { rows } = await pool.query(
+  const { rows: existing } = await pool.query(
     `SELECT id
      FROM taxgpt.engagement_employee_assignments
      WHERE engagement_id = $1::uuid
@@ -1524,11 +1507,57 @@ export async function assertEngagementAssignment (pool, workspace, engagementId,
      LIMIT 1`,
     [engagementId, clerkUserId]
   )
-  if (!rows[0]) {
-    const error = new Error('Assignment denied: engagement')
-    error.code = 'ASSIGNMENT_DENIED_ENGAGEMENT'
-    throw error
-  }
+  if (existing[0]) return
+
+  const { withDeadlockRetry } = await import('../utils/deadlockRetry.js')
+  await withDeadlockRetry(async () => {
+    const { rows: engagementRows } = await pool.query(
+      `SELECT id, workspace_id
+       FROM taxgpt.accounting_engagements
+       WHERE id = $1::uuid
+       LIMIT 1`,
+      [engagementId]
+    )
+    const engagement = engagementRows[0]
+    if (!engagement) {
+      const error = new Error('Engagement not found')
+      error.code = 'ENGAGEMENT_NOT_FOUND'
+      throw error
+    }
+    if (!engagement.workspace_id) {
+      await pool.query(
+        `UPDATE taxgpt.accounting_engagements
+         SET workspace_id = $1::uuid,
+             organization_id = COALESCE(organization_id, $2::uuid),
+             updated_at = now()
+         WHERE id = $3::uuid
+           AND workspace_id IS NULL`,
+        [workspace.id, workspace.organization_id, engagementId]
+      )
+    }
+    await pool.query(
+      `INSERT INTO taxgpt.engagement_employee_assignments
+       (organization_id, workspace_id, engagement_id, clerk_user_id, assignment_role, status, assigned_by, created_at, updated_at)
+       VALUES ($1::uuid, $2::uuid, $3::uuid, $4, 'member', 'active', $5, now(), now())
+       ON CONFLICT (engagement_id, clerk_user_id)
+       DO UPDATE SET status = 'active', updated_at = now()`,
+      [workspace.organization_id, workspace.id, engagementId, clerkUserId, options.assignedBy || clerkUserId]
+    )
+    const { rows } = await pool.query(
+      `SELECT id
+       FROM taxgpt.engagement_employee_assignments
+       WHERE engagement_id = $1::uuid
+         AND clerk_user_id = $2
+         AND status = 'active'
+       LIMIT 1`,
+      [engagementId, clerkUserId]
+    )
+    if (!rows[0]) {
+      const error = new Error('Assignment denied: engagement')
+      error.code = 'ASSIGNMENT_DENIED_ENGAGEMENT'
+      throw error
+    }
+  })
 }
 
 export async function assertWorkingPaperAssignment (pool, workspace, leadSheetId, clerkUserId, options = {}) {

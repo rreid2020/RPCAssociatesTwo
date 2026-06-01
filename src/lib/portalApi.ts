@@ -114,8 +114,10 @@ export async function portalFetch<T> (
   } catch (error) {
     let nextError: unknown = error
     let message = nextError instanceof Error ? nextError.message : String(nextError)
-    if (isDeadlockMessage(message)) {
-      await new Promise((resolve) => setTimeout(resolve, 80))
+    const shouldRetryTransient = isDeadlockMessage(message) ||
+      message.toLowerCase().includes('temporary database conflict')
+    if (shouldRetryTransient) {
+      await new Promise((resolve) => setTimeout(resolve, 120))
       try {
         return await run(selectedWorkspaceId)
       } catch (retryError) {

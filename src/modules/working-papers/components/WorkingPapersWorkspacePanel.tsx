@@ -8,16 +8,10 @@ import AdjustmentWorkspacePanel from './AdjustmentWorkspacePanel'
 import AuditTimelinePanel from './AuditTimelinePanel'
 import ReviewSignoffsPanel from './ReviewSignoffsPanel'
 import { portalFetch } from '../../../lib/portalApi'
-import { fetchAdjustmentsDomain } from '../../../domains/adjustments'
-import { fetchEngagementDashboardDomain } from '../../../domains/Accounting'
 import { downloadBase64File, exportEngagementWorkbookDomain } from '../../../domains/import-export'
 import {
   createReviewSignoff,
-  fetchAiFoundations,
-  fetchAuditEvents,
-  fetchReviewSignoffs,
-  fetchWorkflowQueue,
-  fetchWorkingPaperTree
+  fetchEngagementExecutionBundle
 } from '../services/executionApi'
 
 type EngagementRecord = {
@@ -96,22 +90,14 @@ const WorkingPapersWorkspacePanel: FC<WorkingPapersWorkspacePanelProps> = ({
     setExecutionLoading(true)
     onError(null)
     try {
-      const [tree, queue, adjustmentData, audit, signoffs, ai, dash] = await Promise.all([
-        fetchWorkingPaperTree(engagementId, getToken),
-        fetchWorkflowQueue(engagementId, getToken),
-        fetchAdjustmentsDomain(getToken, engagementId),
-        fetchAuditEvents(engagementId, getToken),
-        fetchReviewSignoffs(engagementId, getToken),
-        fetchAiFoundations(engagementId, getToken),
-        fetchEngagementDashboardDomain(getToken, engagementId)
-      ])
-      setWorkingPaperTree(tree)
-      setWorkflowQueue(Array.isArray(queue.queue) ? queue.queue : [])
-      setAdjustments(Array.isArray(adjustmentData.entries) ? adjustmentData.entries : [])
-      setAuditEvents(Array.isArray(audit.events) ? audit.events : [])
-      setReviewSignoffs(Array.isArray(signoffs.signoffs) ? signoffs.signoffs : [])
-      setAiFoundations(ai || null)
-      setDashboard(dash)
+      const bundle = await fetchEngagementExecutionBundle(engagementId, getToken)
+      setWorkingPaperTree(bundle.tree)
+      setWorkflowQueue(Array.isArray(bundle.queue?.queue) ? bundle.queue.queue : [])
+      setAdjustments(Array.isArray(bundle.adjustments?.entries) ? bundle.adjustments.entries : [])
+      setAuditEvents(Array.isArray(bundle.audit?.events) ? bundle.audit.events : [])
+      setReviewSignoffs(Array.isArray(bundle.signoffs?.signoffs) ? bundle.signoffs.signoffs : [])
+      setAiFoundations(bundle.aiFoundations || null)
+      setDashboard(bundle.dashboard || null)
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Could not load working papers execution data')
       setWorkingPaperTree(null)

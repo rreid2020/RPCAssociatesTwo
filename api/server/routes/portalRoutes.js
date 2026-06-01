@@ -59,6 +59,8 @@ import {
   getWorkingPaperExecutionTree
 } from '../services/workingPapersExecutionService.js'
 import { exportEngagementWorkbook } from '../services/importExportService.js'
+import { getEngagementExecutionBundle } from '../services/engagementExecutionBundleService.js'
+import { isDeadlockError, withDeadlockRetry } from '../utils/deadlockRetry.js'
 import {
   addWorkspaceMember,
   assertEngagementAssignment,
@@ -111,24 +113,6 @@ const MAX_UPLOAD_BYTES = parseInt(process.env.PORTAL_MAX_UPLOAD_BYTES || String(
 const folderNameRe = /^[^/\\<>:|?"*]+$/u
 
 const HOME_ROOT_NAME = 'My files'
-
-function isDeadlockError (error) {
-  const message = String(error?.message || '').toLowerCase()
-  return message.includes('deadlock detected')
-}
-
-async function withDeadlockRetry (operation, retries = 2, waitMs = 40) {
-  let attempt = 0
-  while (true) {
-    try {
-      return await operation()
-    } catch (error) {
-      if (!isDeadlockError(error) || attempt >= retries) throw error
-      attempt += 1
-      await new Promise((resolve) => setTimeout(resolve, waitMs * attempt))
-    }
-  }
-}
 
 async function recordCanonicalAuditEvent (pool, payload) {
   await pool.query(
@@ -331,6 +315,19 @@ export function createPortalRouter (pool) {
       return false
     }
   }
+  const hasScopePermission = async (session, scope, permission) => {
+    try {
+      await assertWorkspacePermissionWithCustomRoles(pool, {
+        workspaceId: scope.workspace.id,
+        workspaceRole: scope.workspace.role,
+        clerkUserId: session.userId,
+        permission
+      })
+      return true
+    } catch {
+      return false
+    }
+  }
   const resolveEngagementScope = async (req, res, session) => {
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return null
@@ -338,6 +335,10 @@ export function createPortalRouter (pool) {
       await assertEngagementAssignment(pool, scope.workspace, req.params.engagementId, session.userId, { assignedBy: scope.actorUserId })
       return scope
     } catch (e) {
+      if (isDeadlockError(e)) {
+        res.status(503).json({ error: 'Temporary database conflict. Please retry.' })
+        return null
+      }
       if (handleAssignmentError(res, e, 'Engagement assignment required')) return null
       res.status(403).json({ error: e instanceof Error ? e.message : 'Engagement access denied' })
       return null
@@ -1110,9 +1111,12 @@ export function createPortalRouter (pool) {
     const session = await getClerkUser(req, res)
     if (!session) return
     try {
-      const data = await getWorkspacePermissionSnapshot(pool, session.userId, req.params.workspaceId)
+      const data = await withDeadlockRetry(() => getWorkspacePermissionSnapshot(pool, session.userId, req.params.workspaceId))
       res.json(data)
     } catch (e) {
+      if (isDeadlockError(e)) {
+        return res.status(503).json({ error: 'Temporary database conflict. Please retry.' })
+      }
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load workspace permissions' })
     }
   })
@@ -1539,6 +1543,30 @@ export function createPortalRouter (pool) {
     const queue = await getEngagementWorkflowQueue(pool, scope.workspaceUserId, req.params.engagementId)
     if (!queue) return res.status(404).json({ error: 'Engagement not found' })
     res.json(queue)
+  })
+
+  r.get('/v1/accounting/engagements/:engagementId/execution-bundle', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.read', res))) return
+    const includeDashboard = await hasScopePermission(session, scope, 'engagement.read')
+    try {
+      const bundle = await withDeadlockRetry(() => getEngagementExecutionBundle(
+        pool,
+        scope.workspaceUserId,
+        req.params.engagementId,
+        { includeDashboard }
+      ))
+      if (!bundle) return res.status(404).json({ error: 'Engagement not found' })
+      res.json(bundle)
+    } catch (e) {
+      if (isDeadlockError(e)) {
+        return res.status(503).json({ error: 'Temporary database conflict. Please retry.' })
+      }
+      res.status(500).json({ error: e instanceof Error ? e.message : 'Could not load execution bundle' })
+    }
   })
 
   r.get('/v1/accounting/engagements/:engagementId/audit-events', async (req, res) => {

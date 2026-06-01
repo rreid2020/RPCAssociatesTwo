@@ -246,21 +246,6 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children, wideContent =
             </button>
             <div className="flex-1" />
             <div className="flex items-center gap-3 sm:gap-4">
-              <div className="hidden md:block min-w-[14rem]">
-                <label className="sr-only" htmlFor="global-workspace-switcher">Active workspace</label>
-                <select
-                  id="global-workspace-switcher"
-                  className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-text"
-                  value={workspaceId || ''}
-                  onChange={(e) => setWorkspaceId(e.target.value || null)}
-                >
-                  {workspaceOptions.map((workspace) => (
-                    <option key={workspace.id} value={workspace.id}>
-                      {workspace.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
               <button
                 type="button"
                 className="p-2 rounded-md text-text-light hover:bg-background"

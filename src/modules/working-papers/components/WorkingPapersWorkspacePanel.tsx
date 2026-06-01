@@ -2,17 +2,9 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ColDef, GridOptions } from 'ag-grid-community'
 import AgGridTable from './grid/AgGridTable'
-import WorkingPaperTreePanel from './WorkingPaperTreePanel'
-import WorkflowQueuePanel from './WorkflowQueuePanel'
-import AdjustmentWorkspacePanel from './AdjustmentWorkspacePanel'
-import AuditTimelinePanel from './AuditTimelinePanel'
-import ReviewSignoffsPanel from './ReviewSignoffsPanel'
 import { portalFetch } from '../../../lib/portalApi'
+import { fetchEngagementDashboardDomain } from '../../../domains/Accounting'
 import { downloadBase64File, exportEngagementWorkbookDomain } from '../../../domains/import-export'
-import {
-  createReviewSignoff,
-  fetchEngagementExecutionBundle
-} from '../services/executionApi'
 
 type EngagementRecord = {
   id: string
@@ -26,8 +18,6 @@ type EngagementRecord = {
   open_review_note_count?: number | null
   unreviewed_lead_sheet_count?: number | null
 }
-
-type WorkspaceTab = 'execution' | 'adjustments' | 'audit' | 'signoffs' | 'ai'
 
 type WorkingPapersWorkspacePanelProps = {
   getToken: () => Promise<string | null>
@@ -51,16 +41,8 @@ const WorkingPapersWorkspacePanel: FC<WorkingPapersWorkspacePanelProps> = ({
   onNotice
 }) => {
   const [activeEngagementId, setActiveEngagementId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>('execution')
-  const [executionLoading, setExecutionLoading] = useState(false)
+  const [detailLoading, setDetailLoading] = useState(false)
   const [saving, setSaving] = useState(false)
-
-  const [workingPaperTree, setWorkingPaperTree] = useState<{ sections: any[] } | null>(null)
-  const [workflowQueue, setWorkflowQueue] = useState<any[]>([])
-  const [adjustments, setAdjustments] = useState<any[]>([])
-  const [auditEvents, setAuditEvents] = useState<any[]>([])
-  const [reviewSignoffs, setReviewSignoffs] = useState<any[]>([])
-  const [aiFoundations, setAiFoundations] = useState<Record<string, unknown> | null>(null)
   const [dashboard, setDashboard] = useState<any | null>(null)
 
   const activeEngagement = useMemo(
@@ -86,29 +68,17 @@ const WorkingPapersWorkspacePanel: FC<WorkingPapersWorkspacePanelProps> = ({
     return transitions[current] || []
   }, [activeEngagement?.review_flow_status, dashboard])
 
-  const loadExecutionBundle = useCallback(async (engagementId: string) => {
-    setExecutionLoading(true)
+  const loadEngagementDetail = useCallback(async (engagementId: string) => {
+    setDetailLoading(true)
     onError(null)
     try {
-      const bundle = await fetchEngagementExecutionBundle(engagementId, getToken)
-      setWorkingPaperTree(bundle.tree)
-      setWorkflowQueue(Array.isArray(bundle.queue?.queue) ? bundle.queue.queue : [])
-      setAdjustments(Array.isArray(bundle.adjustments?.entries) ? bundle.adjustments.entries : [])
-      setAuditEvents(Array.isArray(bundle.audit?.events) ? bundle.audit.events : [])
-      setReviewSignoffs(Array.isArray(bundle.signoffs?.signoffs) ? bundle.signoffs.signoffs : [])
-      setAiFoundations(bundle.aiFoundations || null)
-      setDashboard(bundle.dashboard || null)
+      const dash = await fetchEngagementDashboardDomain(getToken, engagementId)
+      setDashboard(dash)
     } catch (e) {
-      onError(e instanceof Error ? e.message : 'Could not load working papers execution data')
-      setWorkingPaperTree(null)
-      setWorkflowQueue([])
-      setAdjustments([])
-      setAuditEvents([])
-      setReviewSignoffs([])
-      setAiFoundations(null)
+      onError(e instanceof Error ? e.message : 'Could not load engagement summary')
       setDashboard(null)
     } finally {
-      setExecutionLoading(false)
+      setDetailLoading(false)
     }
   }, [getToken, onError])
 
@@ -124,8 +94,8 @@ const WorkingPapersWorkspacePanel: FC<WorkingPapersWorkspacePanelProps> = ({
 
   useEffect(() => {
     if (!activeEngagementId) return
-    void loadExecutionBundle(activeEngagementId)
-  }, [activeEngagementId, loadExecutionBundle])
+    void loadEngagementDetail(activeEngagementId)
+  }, [activeEngagementId, loadEngagementDetail])
 
   const pickerColumnDefs = useMemo<Array<ColDef<EngagementRecord>>>(
     () => [
@@ -179,7 +149,7 @@ const WorkingPapersWorkspacePanel: FC<WorkingPapersWorkspacePanelProps> = ({
     try {
       await portalFetch(`/v1/accounting/engagements/${activeEngagementId}/lead-sheets/generate`, getToken, { method: 'POST' })
       onNotice('Lead sheets generated.')
-      await loadExecutionBundle(activeEngagementId)
+      await loadEngagementDetail(activeEngagementId)
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Could not generate lead sheets')
     } finally {
@@ -212,84 +182,13 @@ const WorkingPapersWorkspacePanel: FC<WorkingPapersWorkspacePanelProps> = ({
         body: JSON.stringify({ reviewFlowStatus: nextStatus })
       })
       onNotice(`Review flow moved to ${formatWorkflowLabel(nextStatus)}.`)
-      await loadExecutionBundle(activeEngagementId)
+      await loadEngagementDetail(activeEngagementId)
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Could not update review flow')
     } finally {
       setSaving(false)
     }
   }
-
-  const onCreateAdjustmentEntry = async (payload: { entryNumber: string, description: string }) => {
-    if (!activeEngagementId) return
-    setSaving(true)
-    onError(null)
-    try {
-      await portalFetch('/v1/accounting/adjustments', getToken, {
-        method: 'POST',
-        body: JSON.stringify({
-          engagementId: activeEngagementId,
-          entryNumber: payload.entryNumber,
-          description: payload.description,
-          status: 'draft',
-          source: 'manual'
-        })
-      })
-      onNotice('Adjustment entry created.')
-      await loadExecutionBundle(activeEngagementId)
-    } catch (e) {
-      onError(e instanceof Error ? e.message : 'Could not create adjustment entry')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const onUpsertAdjustmentLines = async (
-    adjustmentId: string,
-    lines: Array<{ accountName: string, debitAmount: number, creditAmount: number, memo?: string }>
-  ) => {
-    setSaving(true)
-    onError(null)
-    try {
-      await portalFetch(`/v1/accounting/adjustments/${adjustmentId}/lines`, getToken, {
-        method: 'PUT',
-        body: JSON.stringify({ lines })
-      })
-      onNotice('Adjustment lines saved.')
-      if (activeEngagementId) await loadExecutionBundle(activeEngagementId)
-    } catch (e) {
-      onError(e instanceof Error ? e.message : 'Could not save adjustment lines')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const onCaptureSignoff = async (signoffType: 'preparer' | 'reviewer') => {
-    if (!activeEngagementId) return
-    setSaving(true)
-    onError(null)
-    try {
-      await createReviewSignoff(
-        activeEngagementId,
-        { signoffType, signoffState: 'signed' },
-        getToken
-      )
-      onNotice(`${signoffType === 'preparer' ? 'Preparer' : 'Reviewer'} signoff captured.`)
-      await loadExecutionBundle(activeEngagementId)
-    } catch (e) {
-      onError(e instanceof Error ? e.message : 'Could not capture signoff')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const tabs: Array<{ id: WorkspaceTab, label: string }> = [
-    { id: 'execution', label: 'Execution' },
-    { id: 'adjustments', label: 'Adjustments' },
-    { id: 'audit', label: 'Audit trail' },
-    { id: 'signoffs', label: 'Signoffs' },
-    { id: 'ai', label: 'AI readiness' }
-  ]
 
   return (
     <div className="space-y-4">
@@ -298,7 +197,7 @@ const WorkingPapersWorkspacePanel: FC<WorkingPapersWorkspacePanelProps> = ({
           <div>
             <h3 className="font-semibold text-primary-dark">Active engagement</h3>
             <p className="text-sm text-text-light">
-              Select an engagement to run working paper tree, reviewer queue, adjustments, signoffs, and audit trail.
+              Select an engagement, then open trial balance, lead sheets, review, and adjustments from the actions below.
             </p>
           </div>
           <Link
@@ -312,7 +211,7 @@ const WorkingPapersWorkspacePanel: FC<WorkingPapersWorkspacePanelProps> = ({
           <p className="text-sm text-text-light">Loading engagements…</p>
         ) : engagements.length === 0 ? (
           <p className="text-sm text-text-light">
-            No engagements in this workspace. Create one from the Engagements page to start working papers.
+            No engagements yet. Create one from the Engagements page to start working papers.
           </p>
         ) : (
           <AgGridTable
@@ -325,136 +224,57 @@ const WorkingPapersWorkspacePanel: FC<WorkingPapersWorkspacePanelProps> = ({
       </div>
 
       {activeEngagement && engagementBasePath && (
-        <>
-          <div className="rounded-lg border border-border bg-white p-4 space-y-3">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-semibold text-primary-dark">{activeEngagement.name}</h3>
-                <p className="text-sm text-text-light">
-                  {activeEngagement.client_name || '—'} · {formatWorkflowLabel(String(activeEngagement.review_flow_status || 'not_started'))} · {activeEngagement.status}
-                </p>
-                <p className="text-xs text-text-light mt-1">
-                  Period end: {activeEngagement.period_end ? new Date(activeEngagement.period_end).toLocaleDateString() : '—'}
-                  {' '}| Due: {activeEngagement.due_date ? new Date(activeEngagement.due_date).toLocaleDateString() : '—'}
-                  {' '}| Open notes: {Number(dashboard?.workflowHealth?.openReviewNotes ?? activeEngagement.open_review_note_count ?? 0)}
-                  {' '}| Unreviewed sheets: {Number(dashboard?.workflowHealth?.unreviewedLeadSheets ?? activeEngagement.unreviewed_lead_sheet_count ?? 0)}
-                </p>
-              </div>
-              {executionLoading && (
-                <span className="text-xs text-text-light">Refreshing execution data…</span>
-              )}
+        <div className="rounded-lg border border-border bg-white p-4 space-y-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold text-primary-dark">{activeEngagement.name}</h3>
+              <p className="text-sm text-text-light">
+                {activeEngagement.client_name || '—'} · {formatWorkflowLabel(String(activeEngagement.review_flow_status || 'not_started'))} · {activeEngagement.status}
+              </p>
+              <p className="text-xs text-text-light mt-1">
+                Period end: {activeEngagement.period_end ? new Date(activeEngagement.period_end).toLocaleDateString() : '—'}
+                {' '}| Due: {activeEngagement.due_date ? new Date(activeEngagement.due_date).toLocaleDateString() : '—'}
+                {' '}| Open notes: {Number(dashboard?.workflowHealth?.openReviewNotes ?? activeEngagement.open_review_note_count ?? 0)}
+                {' '}| Unreviewed sheets: {Number(dashboard?.workflowHealth?.unreviewedLeadSheets ?? activeEngagement.unreviewed_lead_sheet_count ?? 0)}
+              </p>
             </div>
-
-            <div className="flex flex-wrap gap-2">
-              <Link to={engagementBasePath} className="btn btn--primary text-sm py-2 px-3">Engagement dashboard</Link>
-              <Link to={`${engagementBasePath}/trial-balance`} className="btn btn--secondary text-sm py-2 px-3">Trial balance</Link>
-              <Link to={`${engagementBasePath}/lead-sheets`} className="btn btn--secondary text-sm py-2 px-3">Lead sheets</Link>
-              <Link to={`${engagementBasePath}/documents`} className="btn btn--secondary text-sm py-2 px-3">Documents</Link>
-              <Link to={`${engagementBasePath}/review`} className="btn btn--secondary text-sm py-2 px-3">Review notes</Link>
-              <Link to={`${engagementBasePath}/settings`} className="btn btn--secondary text-sm py-2 px-3">Workflow settings</Link>
-              <button type="button" className="btn btn--secondary text-sm py-2 px-3" disabled={saving} onClick={() => { void onGenerateLeadSheets() }}>
-                Generate lead sheets
-              </button>
-              <button type="button" className="btn btn--secondary text-sm py-2 px-3" disabled={saving} onClick={() => { void onExportWorkbook() }}>
-                Export workbook
-              </button>
-            </div>
-
-            {nextReviewFlowStatuses.length > 0 && (
-              <div className="flex flex-wrap gap-2 pt-1 border-t border-border">
-                {nextReviewFlowStatuses.map((status) => (
-                  <button
-                    key={status}
-                    type="button"
-                    className="btn btn--secondary text-sm py-2 px-3"
-                    disabled={saving || executionLoading}
-                    onClick={() => { void onAdvanceReviewFlow(status) }}
-                  >
-                    Move to {formatWorkflowLabel(status)}
-                  </button>
-                ))}
-              </div>
+            {detailLoading && (
+              <span className="text-xs text-text-light">Refreshing engagement summary…</span>
             )}
           </div>
 
-          <div className="flex flex-wrap gap-1 border-b border-border">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-                  activeTab === tab.id
-                    ? 'border-primary-dark text-primary-dark'
-                    : 'border-transparent text-text-light hover:text-primary-dark'
-                }`}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {tab.label}
-              </button>
-            ))}
+          <div className="flex flex-wrap gap-2">
+            <Link to={engagementBasePath} className="btn btn--primary text-sm py-2 px-3">Engagement dashboard</Link>
+            <Link to={`${engagementBasePath}/trial-balance`} className="btn btn--secondary text-sm py-2 px-3">Trial balance</Link>
+            <Link to={`${engagementBasePath}/lead-sheets`} className="btn btn--secondary text-sm py-2 px-3">Lead sheets</Link>
+            <Link to={`${engagementBasePath}/documents`} className="btn btn--secondary text-sm py-2 px-3">Documents</Link>
+            <Link to={`${engagementBasePath}/review`} className="btn btn--secondary text-sm py-2 px-3">Review notes</Link>
+            <Link to={`${engagementBasePath}/adjustments`} className="btn btn--secondary text-sm py-2 px-3">Adjustments</Link>
+            <Link to={`${engagementBasePath}/settings`} className="btn btn--secondary text-sm py-2 px-3">Workflow settings</Link>
+            <button type="button" className="btn btn--secondary text-sm py-2 px-3" disabled={saving} onClick={() => { void onGenerateLeadSheets() }}>
+              Generate lead sheets
+            </button>
+            <button type="button" className="btn btn--secondary text-sm py-2 px-3" disabled={saving} onClick={() => { void onExportWorkbook() }}>
+              Export workbook
+            </button>
           </div>
 
-          {activeTab === 'execution' && (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              <WorkingPaperTreePanel sections={Array.isArray(workingPaperTree?.sections) ? workingPaperTree.sections : []} />
-              <WorkflowQueuePanel queue={workflowQueue} />
-            </div>
-          )}
-
-          {activeTab === 'adjustments' && (
-            <AdjustmentWorkspacePanel
-              entries={adjustments}
-              saving={saving}
-              onCreateEntry={onCreateAdjustmentEntry}
-              onUpdateLines={onUpsertAdjustmentLines}
-            />
-          )}
-
-          {activeTab === 'audit' && (
-            <AuditTimelinePanel events={auditEvents} />
-          )}
-
-          {activeTab === 'signoffs' && (
-            <div className="space-y-3">
-              <div className="flex flex-wrap gap-2">
+          {nextReviewFlowStatuses.length > 0 && (
+            <div className="flex flex-wrap gap-2 pt-1 border-t border-border">
+              {nextReviewFlowStatuses.map((status) => (
                 <button
+                  key={status}
                   type="button"
                   className="btn btn--secondary text-sm py-2 px-3"
-                  disabled={saving}
-                  onClick={() => { void onCaptureSignoff('preparer') }}
+                  disabled={saving || detailLoading}
+                  onClick={() => { void onAdvanceReviewFlow(status) }}
                 >
-                  Capture preparer signoff
+                  Move to {formatWorkflowLabel(status)}
                 </button>
-                <button
-                  type="button"
-                  className="btn btn--secondary text-sm py-2 px-3"
-                  disabled={saving}
-                  onClick={() => { void onCaptureSignoff('reviewer') }}
-                >
-                  Capture reviewer signoff
-                </button>
-              </div>
-              <ReviewSignoffsPanel signoffs={reviewSignoffs} />
+              ))}
             </div>
           )}
-
-          {activeTab === 'ai' && (
-            <div className="rounded-lg border border-border bg-white p-4 space-y-2">
-              <h3 className="font-semibold text-primary-dark">AI execution foundations</h3>
-              <p className="text-sm text-text-light">
-                Platform hooks for reconciliation, anomaly detection, notes generation, adjustment suggestions, document extraction, and account mapping.
-              </p>
-              <ul className="text-sm text-primary-dark space-y-1">
-                <li>Reconciliation assistant: {String(aiFoundations?.reconciliationAssistant || 'scaffolded')}</li>
-                <li>Anomaly detection: {String(aiFoundations?.anomalyDetection || 'scaffolded')}</li>
-                <li>Notes generation: {String(aiFoundations?.notesGeneration || 'scaffolded')}</li>
-                <li>Adjustment suggestions: {String(aiFoundations?.adjustmentSuggestions || 'scaffolded')}</li>
-                <li>Document extraction: {String(aiFoundations?.documentExtraction || 'scaffolded')}</li>
-                <li>Account mapping: {String(aiFoundations?.accountMapping || 'scaffolded')}</li>
-              </ul>
-            </div>
-          )}
-        </>
+        </div>
       )}
     </div>
   )

@@ -97,7 +97,7 @@ const descriptionByView: Record<AccountingView, string> = {
   companyProfileEntities: 'Create and maintain reporting entities or client records for engagements.',
   companyProfileEmployees: 'Invite employees and manage organization roster before workspace assignments.',
   engagementList: 'Create, update, and delete engagements with entity or client assignment and employee staffing.',
-  workingPapersWorkspace: 'Select an engagement and run working paper tree, reviewer queue, adjustments, signoffs, and audit execution in one workspace.',
+  workingPapersWorkspace: 'Select an engagement and open trial balance, lead sheets, review, adjustments, and related working paper workflows.',
   newEngagement: 'Create a new accounting engagement.',
   engagementDashboard: 'View completion status, notes, tasks, and signoff readiness.',
   trialBalance: 'Import and map trial balance data.',

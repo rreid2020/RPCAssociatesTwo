@@ -774,7 +774,34 @@ export async function upsertWorkspaceProfile (pool, actorUserId, workspaceId, pa
 export async function listWorkspaceMembers (pool, actorUserId, workspaceId) {
   const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
   const members = await fetchWorkspaceMembers(pool, workspace.id)
-  return { workspace, members }
+  const enriched = []
+  for (const member of members) {
+    const clerkUserId = String(member.clerk_user_id || '')
+    if (!clerkUserId || clerkUserId.startsWith('invite:')) {
+      enriched.push({
+        ...member,
+        display_name: clerkUserId.startsWith('invite:') ? clerkUserId.slice('invite:'.length) : clerkUserId,
+        email: clerkUserId.startsWith('invite:') ? clerkUserId.slice('invite:'.length) : null
+      })
+      continue
+    }
+    try {
+      const client = getClerkBackendClient()
+      const user = await client.users.getUser(clerkUserId)
+      enriched.push({
+        ...member,
+        display_name: buildDisplayNameFromClerkUser(user) || extractPrimaryEmailFromClerkUser(user) || clerkUserId,
+        email: extractPrimaryEmailFromClerkUser(user)
+      })
+    } catch {
+      enriched.push({
+        ...member,
+        display_name: clerkUserId,
+        email: null
+      })
+    }
+  }
+  return { workspace, members: enriched }
 }
 
 export async function addWorkspaceMember (pool, actorUserId, workspaceId, payload) {

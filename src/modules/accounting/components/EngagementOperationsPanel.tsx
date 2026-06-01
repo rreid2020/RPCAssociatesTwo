@@ -334,7 +334,6 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
   ]), [clientLabel, memberLabelByUserId])
 
   const gridOptions = useMemo(() => ({
-    theme: 'legacy' as const,
     rowSelection: { mode: 'multiRow' as const },
     onSelectionChanged: (event: any) => {
       const selected = event.api.getSelectedRows().map((row: any) => String(row.id))

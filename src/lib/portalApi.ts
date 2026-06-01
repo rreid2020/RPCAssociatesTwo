@@ -74,6 +74,9 @@ export async function portalFetch<T> (
   getToken: () => Promise<string | null>,
   init: RequestInit = {}
 ): Promise<T> {
+  if (typeof getToken !== 'function') {
+    throw new Error('Authentication is not ready. Refresh the page and sign in again.')
+  }
   const token = await getToken()
   if (!token) {
     throw new Error('Not signed in')

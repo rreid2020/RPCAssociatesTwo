@@ -1064,7 +1064,7 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/workspaces/:workspaceId/members', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const authorized = await requireWorkspacePermission(session, req.params.workspaceId, 'workspace.manage', res)
+    const authorized = await requireWorkspacePermission(session, req.params.workspaceId, 'workspace.read', res)
     if (!authorized) return
     try {
       const data = await listWorkspaceMembers(pool, session.userId, req.params.workspaceId)

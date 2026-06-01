@@ -332,12 +332,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [importPayload, setImportPayload] = useState<{ fileName: string; base64Content: string } | null>(null)
 
   const loadClients = useCallback(async () => {
-    const { clients: rows } = await fetchAccountingClientsDomain(getToken)
-    setClients(rows)
+    const { clients } = await fetchAccountingClientsDomain(getToken)
+    setClients(Array.isArray(clients) ? clients : [])
   }, [getToken])
 
   const loadEngagements = useCallback(async () => {
-    const { engagements: rows } = await fetchEngagementsDomain(getToken, {
+    const { engagements } = await fetchEngagementsDomain(getToken, {
       status: statusFilter,
       reviewFlowStatus: reviewFlowStatusFilter,
       approvalReady: approvalReadyFilter,
@@ -345,7 +345,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       engagementType: engagementTypeFilter,
       search
     })
-    setEngagements(rows)
+    setEngagements(Array.isArray(engagements) ? engagements : [])
   }, [approvalReadyFilter, clientFilter, engagementTypeFilter, getToken, reviewFlowStatusFilter, search, statusFilter])
 
   const loadStatusSummary = useCallback(async () => {
@@ -464,10 +464,11 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }, [])
 
   const loadWorkspaces = useCallback(async () => {
-    const { workspaces: rows } = await portalFetch<{ workspaces: any[] }>('/v1/accounting/workspaces', getToken)
+    const { workspaces } = await portalFetch<{ workspaces: any[] }>('/v1/accounting/workspaces', getToken)
+    const rows = Array.isArray(workspaces) ? workspaces : []
     setWorkspaces(rows)
     const resolvedWorkspaceId = resolvePreferredWorkspaceId(rows, selectedWorkspaceId)
-    if (resolvedWorkspaceId !== selectedWorkspaceId) {
+    if (resolvedWorkspaceId !== selectedWorkspaceId && typeof setWorkspaceId === 'function') {
       setWorkspaceId(resolvedWorkspaceId)
     }
     return { rows, workspaceId: resolvedWorkspaceId }
@@ -552,7 +553,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         await loadWorkspaces()
         await loadClients()
         if (view === 'engagementList' || view === 'newEngagement') {
-          await Promise.all([loadEngagements(), loadWorkspaceMembers()])
+          await loadEngagements()
+          await loadWorkspaceMembers()
         } else if (['workingPapersWorkspace', 'landing'].includes(view)) {
           await Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
         }
@@ -640,7 +642,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     [currentReviewFlowStatus, nextReviewFlowStatuses]
   )
   const assignmentCandidates = useMemo(
-    () => workspaceMembers.filter((member) => member.status === 'active'),
+    () => (Array.isArray(workspaceMembers) ? workspaceMembers : []).filter((member) => member.status === 'active'),
     [workspaceMembers]
   )
   const trialBalanceTotals = useMemo(
@@ -690,7 +692,13 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setApprovalReadyFilter(searchParams.get('approvalReady') || '')
     setClientFilter(searchParams.get('clientId') || '')
     setEngagementTypeFilter(searchParams.get('engagementType') || '')
-    void Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
+    void (async () => {
+      try {
+        await Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Could not refresh engagements')
+      }
+    })()
   }, [loadEngagements, loadStatusSummary, loadWorkflowSummary, searchParams, view])
 
   useEffect(() => {

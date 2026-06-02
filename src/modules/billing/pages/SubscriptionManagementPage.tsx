@@ -10,7 +10,7 @@ const SubscriptionManagementPage: FC = () => {
 
   return (
     <>
-      <SEO title="Subscription Management | Client Portal" description="Upgrade, downgrade, and manage workspace subscriptions." canonical="/portal/billing/subscription" />
+      <SEO title="Subscription Management | Client Portal" description="Upgrade, downgrade, and manage your subscription." canonical="/portal/billing/subscription" />
       <ClientPortalShell>
         <h1 className="text-3xl font-bold text-primary-dark mb-6">Subscription Management</h1>
         {loading && <p className="text-sm text-text-light mb-4">Loading subscription details...</p>}
@@ -26,7 +26,7 @@ const SubscriptionManagementPage: FC = () => {
         <div className="mt-6">
           <UpgradePromptCard
             title="Upgrade to unlock premium features"
-            description="Working Papers, advanced integrations, and higher limits are available through workspace subscriptions."
+            description="Working Papers, advanced integrations, and higher limits are available on paid plans."
           />
         </div>
       </ClientPortalShell>

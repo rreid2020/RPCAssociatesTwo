@@ -1,4 +1,4 @@
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { FC, useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../components/SEO'
@@ -7,8 +7,8 @@ import { useSubscription, useSubscriptionPlan } from '../../lib/subscriptions/ho
 import { SUBSCRIPTION_PLANS } from '../../lib/subscriptions/types'
 import { formatSubscriptionPrice } from '../../lib/subscriptions/utils'
 import { portalFetch } from '../../lib/portalApi'
-import { useWorkspaceState } from '../../platform/workspace/useWorkspaceState'
-import { listWorkspaces } from '../../services/accounting/workspaceService'
+import { useAccountContext } from '../../platform/account/AccountContextProvider'
+import { createAccount } from '../../services/accounting/accountService'
 
 type InviteDraft = {
   email: string
@@ -64,49 +64,29 @@ const Subscription: FC = () => {
   const onboardingRequested = searchParams.get('onboarding') === '1'
   const requestedStep = String(searchParams.get('step') || '').toLowerCase()
   const startAtInvites = onboardingRequested && requestedStep === 'invites'
-  const requestedWorkspaceId = String(searchParams.get('workspaceId') || '').trim()
   const selectedPlan = (searchParams.get('selectedPlan') || '').toUpperCase()
   const planStepRequired = onboardingRequested && selectedPlan.length > 0
-  const { setWorkspaceId } = useWorkspaceState()
-  const [loadingWorkspaces, setLoadingWorkspaces] = useState(true)
+  const { account, loading: loadingAccount, refreshAccount } = useAccountContext()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const [workspaces, setWorkspaces] = useState<any[]>([])
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState('')
-  const [newWorkspaceType, setNewWorkspaceType] = useState<'business' | 'firm'>('business')
-  const [newWorkspaceName, setNewWorkspaceName] = useState('')
+  const [newAccountType, setNewAccountType] = useState<'business' | 'firm'>('business')
+  const [newAccountName, setNewAccountName] = useState('')
   const [profileDraft, setProfileDraft] = useState<WorkspaceProfileDraft>(defaultProfileDraft)
   const [inviteDrafts, setInviteDrafts] = useState<InviteDraft[]>([{ email: '', role: 'manager' }])
   const [inviteSendSummary, setInviteSendSummary] = useState<InviteSendSummary>(null)
   const [onboardingStep, setOnboardingStep] = useState(1)
   const [planStepConfirmed, setPlanStepConfirmed] = useState(false)
-  const workspaceNameInputRef = useRef<HTMLInputElement | null>(null)
+  const accountNameInputRef = useRef<HTMLInputElement | null>(null)
   const companyLegalNameInputRef = useRef<HTMLInputElement | null>(null)
 
-  const loadWorkspaces = useCallback(async () => {
-    setLoadingWorkspaces(true)
-    try {
-      const rows = await listWorkspaces(getToken)
-      setWorkspaces(rows)
-      if (rows.length > 0) {
-        const preferredWorkspace = requestedWorkspaceId
-          ? rows.find((row) => row.id === requestedWorkspaceId) || rows[0]
-          : rows[0]
-        setSelectedWorkspaceId(preferredWorkspace.id)
-        setWorkspaceId(preferredWorkspace.id)
-        setOnboardingStep((current) => (current < 2 ? 2 : current))
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load workspace onboarding data')
-    } finally {
-      setLoadingWorkspaces(false)
-    }
-  }, [getToken, requestedWorkspaceId, setWorkspaceId])
-
   useEffect(() => {
-    void loadWorkspaces()
-  }, [loadWorkspaces])
+    if (account && !account.isPersonal && account.profileOnboardingCompletedAt) {
+      setOnboardingStep(3)
+    } else if (account && !account.isPersonal) {
+      setOnboardingStep((current) => (current < 2 ? 2 : current))
+    }
+  }, [account])
 
   useEffect(() => {
     if (!startAtInvites) return
@@ -125,18 +105,14 @@ const Subscription: FC = () => {
     setPlanStepConfirmed(false)
   }, [forceEnterpriseAccess, planStepRequired])
 
-  const activeWorkspace = useMemo(
-    () => workspaces.find((workspace) => workspace.id === selectedWorkspaceId) || null,
-    [workspaces, selectedWorkspaceId]
-  )
   const showPlanStep = planStepRequired && !planStepConfirmed
-  const showWorkspaceStep = planStepConfirmed && !startAtInvites && onboardingStep <= 1
+  const showAccountStep = planStepConfirmed && !startAtInvites && onboardingStep <= 1
   const showInviteStep = planStepConfirmed && onboardingStep === 2
   const showCompleteStep = planStepConfirmed && onboardingStep >= 3
 
-  const loadWorkspaceProfile = useCallback(async (workspaceId: string) => {
+  const loadCompanyProfile = useCallback(async () => {
     try {
-      const data = await portalFetch<{ profile: any | null }>(`/v1/accounting/workspaces/${workspaceId}/profile`, getToken)
+      const data = await portalFetch<{ profile: any | null }>('/v1/accounting/company-profile', getToken)
       const profile = data.profile
       if (!profile) return
       setProfileDraft({
@@ -164,15 +140,15 @@ const Subscription: FC = () => {
   }, [getToken])
 
   useEffect(() => {
-    if (!selectedWorkspaceId) return
-    void loadWorkspaceProfile(selectedWorkspaceId)
-  }, [loadWorkspaceProfile, selectedWorkspaceId])
+    if (!account || account.isPersonal) return
+    void loadCompanyProfile()
+  }, [account, loadCompanyProfile])
 
-  const saveWorkspaceProfile = async (workspaceId: string, onboardingCompleted: boolean) => {
-    return await portalFetch<{ profile: any }>(`/v1/accounting/workspaces/${workspaceId}/profile`, getToken, {
+  const saveCompanyProfile = async (onboardingCompleted: boolean) => {
+    return await portalFetch<{ profile: any }>('/v1/accounting/company-profile', getToken, {
       method: 'PUT',
       body: JSON.stringify({
-        organizationType: newWorkspaceType,
+        organizationType: newAccountType,
         companyLegalName: profileDraft.companyLegalName,
         companyOperatingName: profileDraft.companyOperatingName,
         industry: profileDraft.industry,
@@ -192,13 +168,10 @@ const Subscription: FC = () => {
     })
   }
 
-  const applySelectedPlanToWorkspace = async (workspaceId: string) => {
+  const applySelectedPlan = async () => {
     if (!selectedPlan) return
     await portalFetch('/v1/billing/subscription/sync', getToken, {
       method: 'POST',
-      headers: {
-        'x-accounting-workspace-id': workspaceId
-      },
       body: JSON.stringify({
         planId: selectedPlan,
         status: 'active',
@@ -207,30 +180,26 @@ const Subscription: FC = () => {
     })
     await portalFetch('/v1/billing/entitlements/sync', getToken, {
       method: 'POST',
-      headers: {
-        'x-accounting-workspace-id': workspaceId
-      },
       body: JSON.stringify({
         planId: selectedPlan
       })
     })
   }
 
-  const onCreateWorkspace = async () => {
-    // Browser autofill can update DOM inputs without triggering React change events.
-    const resolvedWorkspaceName = String(newWorkspaceName || workspaceNameInputRef.current?.value || '').trim()
+  const onCreateAccount = async () => {
+    const resolvedAccountName = String(newAccountName || accountNameInputRef.current?.value || '').trim()
     const resolvedCompanyLegalName = String(profileDraft.companyLegalName || companyLegalNameInputRef.current?.value || '').trim()
 
-    if (!resolvedWorkspaceName) {
-      setError('Workspace name is required.')
+    if (!resolvedAccountName) {
+      setError('Business or firm name is required.')
       return
     }
     if (!resolvedCompanyLegalName) {
       setError('Company/Firm legal name is required.')
       return
     }
-    if (resolvedWorkspaceName !== newWorkspaceName) {
-      setNewWorkspaceName(resolvedWorkspaceName)
+    if (resolvedAccountName !== newAccountName) {
+      setNewAccountName(resolvedAccountName)
     }
     if (resolvedCompanyLegalName !== profileDraft.companyLegalName) {
       setProfileDraft((current) => ({ ...current, companyLegalName: resolvedCompanyLegalName }))
@@ -239,31 +208,41 @@ const Subscription: FC = () => {
     setError(null)
     setNotice(null)
     try {
-      const created = await portalFetch<{ workspace: any }>('/v1/accounting/workspaces', getToken, {
-        method: 'POST',
-        body: JSON.stringify({
-          name: resolvedWorkspaceName,
-          workspaceType: newWorkspaceType
-        })
+      await createAccount(getToken, {
+        name: resolvedAccountName,
+        workspaceType: newAccountType,
+        profile: {
+          organizationType: newAccountType,
+          companyLegalName: resolvedCompanyLegalName,
+          companyOperatingName: profileDraft.companyOperatingName,
+          industry: profileDraft.industry,
+          websiteUrl: profileDraft.websiteUrl,
+          taxIdentifier: profileDraft.taxIdentifier,
+          primaryContactName: profileDraft.primaryContactName,
+          primaryContactEmail: profileDraft.primaryContactEmail,
+          primaryContactPhone: profileDraft.primaryContactPhone,
+          addressLine1: profileDraft.addressLine1,
+          addressLine2: profileDraft.addressLine2,
+          city: profileDraft.city,
+          provinceState: profileDraft.provinceState,
+          postalCode: profileDraft.postalCode,
+          countryCode: profileDraft.countryCode,
+          onboardingCompleted: false
+        }
       })
-      if (created.workspace?.id) {
-        await saveWorkspaceProfile(created.workspace.id, false)
-        await applySelectedPlanToWorkspace(created.workspace.id)
-      }
-      await loadWorkspaces()
-      setSelectedWorkspaceId(created.workspace?.id || '')
-      setWorkspaceId(created.workspace?.id || null)
+      await applySelectedPlan()
+      await refreshAccount()
       setOnboardingStep(2)
-      setNotice('Workspace and company/firm profile saved. Continue to invite employees.')
+      setNotice('Company/firm profile saved. Continue to invite employees.')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not create workspace')
+      setError(e instanceof Error ? e.message : 'Could not create account')
     } finally {
       setSaving(false)
     }
   }
 
   const onSendInviteEmails = async () => {
-    if (!selectedWorkspaceId) return
+    if (!account || account.isPersonal) return
     const validInvites = inviteDrafts
       .map((draft) => ({ email: draft.email.trim().toLowerCase(), role: draft.role }))
       .filter((draft) => draft.email.length > 0)
@@ -280,7 +259,7 @@ const Subscription: FC = () => {
       const sentEmails: string[] = []
       for (const invite of validInvites) {
         await portalFetch<{ invite: any }>(
-          `/v1/accounting/workspaces/${selectedWorkspaceId}/invites`,
+          '/v1/accounting/organization/invites',
           getToken,
           {
             method: 'POST',
@@ -303,8 +282,8 @@ const Subscription: FC = () => {
   }
 
   const onCompleteOnboarding = () => {
-    if (!selectedWorkspaceId) {
-      setError('Select or create a workspace first.')
+    if (!account || account.isPersonal) {
+      setError('Create your business or firm profile first.')
       return
     }
     void (async () => {
@@ -312,9 +291,9 @@ const Subscription: FC = () => {
       setError(null)
       setNotice(null)
       try {
-        await saveWorkspaceProfile(selectedWorkspaceId, true)
+        await saveCompanyProfile(true)
         setOnboardingStep(3)
-        setWorkspaceId(selectedWorkspaceId)
+        await refreshAccount()
         navigate('/portal/accounting/company-profile', { replace: true })
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Could not complete onboarding')
@@ -339,16 +318,16 @@ const Subscription: FC = () => {
             <p className="text-sm text-accent font-medium">
               {forceEnterpriseAccess
                 ? 'Temporary Access Mode: Enterprise enabled for all signed-in users during rollout/testing.'
-                : 'Workspace entitlement mode is active. Access is resolved from workspace subscription state.'}
+                : 'Subscription entitlements are resolved from your organization account.'}
             </p>
           </div>
 
-          {(onboardingRequested || workspaces.length === 0) && (
+          {(onboardingRequested || !account?.profileOnboardingCompletedAt) && (
             <div className="bg-white p-6 rounded-lg border border-border shadow-sm mb-8 space-y-4">
               <div>
                 <h2 className="text-xl font-semibold text-primary-dark">Company/Firm Onboarding</h2>
                 <p className="text-sm text-text-light mt-1">
-                  Complete this guided setup to configure your organization and invite employees into workspaces.
+                  Complete this guided setup to configure your organization and invite employees.
                 </p>
               </div>
 
@@ -370,7 +349,7 @@ const Subscription: FC = () => {
                   </div>
                 )}
                 <div className={`rounded-lg border px-3 py-2 ${onboardingStep >= 1 ? 'border-accent bg-accent/5' : 'border-border'}`}>
-                  Step 1: Workspace setup
+                  Step 1: Company/firm profile
                 </div>
                 <div className={`rounded-lg border px-3 py-2 ${onboardingStep >= 2 ? 'border-accent bg-accent/5' : 'border-border'}`}>
                   Step 2: Employee invites
@@ -380,7 +359,7 @@ const Subscription: FC = () => {
                 </div>
               </div>
 
-              {loadingWorkspaces ? (
+              {loadingAccount ? (
                 <p className="text-sm text-text-light">Loading onboarding data...</p>
               ) : (
                 <>
@@ -409,29 +388,29 @@ const Subscription: FC = () => {
                     </div>
                   )}
 
-                  {showWorkspaceStep && (
+                  {showAccountStep && (
                   <div className="rounded-lg border border-border p-4 space-y-3">
-                    <h3 className="font-semibold text-primary-dark">Step 1: Set up workspace and company/firm profile</h3>
+                    <h3 className="font-semibold text-primary-dark">Step 1: Set up your company or firm profile</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <label className="text-sm text-text-light">
-                        Workspace type
+                        Organization type
                         <select
                           className="mt-1 w-full border border-border rounded-md px-3 py-2 text-sm"
-                          value={newWorkspaceType}
-                          onChange={(e) => setNewWorkspaceType(e.target.value as 'business' | 'firm')}
+                          value={newAccountType}
+                          onChange={(e) => setNewAccountType(e.target.value as 'business' | 'firm')}
                         >
-                          <option value="business">Business workspace</option>
-                          <option value="firm">Accounting firm workspace</option>
+                          <option value="business">Business</option>
+                          <option value="firm">Accounting firm</option>
                         </select>
                       </label>
                       <label className="text-sm text-text-light">
-                        Workspace name
+                        Organization name
                         <input
-                          ref={workspaceNameInputRef}
+                          ref={accountNameInputRef}
                           className="mt-1 w-full border border-border rounded-md px-3 py-2 text-sm"
-                          placeholder={newWorkspaceType === 'firm' ? 'Example: NorthPoint CPA Firm' : 'Example: Maple Manufacturing Ltd'}
-                          value={newWorkspaceName}
-                          onChange={(e) => setNewWorkspaceName(e.target.value)}
+                          placeholder={newAccountType === 'firm' ? 'Example: NorthPoint CPA Firm' : 'Example: Maple Manufacturing Ltd'}
+                          value={newAccountName}
+                          onChange={(e) => setNewAccountName(e.target.value)}
                         />
                       </label>
                       <label className="text-sm text-text-light">
@@ -557,36 +536,21 @@ const Subscription: FC = () => {
                       type="button"
                       className="btn btn--primary text-sm py-2 px-4"
                       disabled={saving}
-                      onClick={() => { void onCreateWorkspace() }}
+                      onClick={() => { void onCreateAccount() }}
                     >
-                      {saving ? 'Saving...' : 'Create Workspace'}
+                      {saving ? 'Saving...' : 'Save profile'}
                     </button>
                   </div>
                   )}
 
                   {showInviteStep && (
                   <div className="rounded-lg border border-border p-4 space-y-3">
-                    <h3 className="font-semibold text-primary-dark">Step 2: Invite employees to workspace</h3>
-                    <label className="text-sm text-text-light block">
-                      Active workspace
-                      <select
-                        className="mt-1 w-full border border-border rounded-md px-3 py-2 text-sm"
-                        value={selectedWorkspaceId}
-                        onChange={(e) => {
-                          const nextId = e.target.value
-                          setSelectedWorkspaceId(nextId)
-                          setWorkspaceId(nextId || null)
-                        }}
-                        disabled={workspaces.length === 0}
-                      >
-                        {workspaces.length === 0 && <option value="">Create workspace first</option>}
-                        {workspaces.map((workspace) => (
-                          <option key={workspace.id} value={workspace.id}>
-                            {workspace.name} ({workspace.workspaceType || 'business'})
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                    <h3 className="font-semibold text-primary-dark">Step 2: Invite employees</h3>
+                    {account?.name && (
+                      <p className="text-sm text-text-light">
+                        Organization: <span className="font-medium text-primary-dark">{account.name}</span>
+                      </p>
+                    )}
                     <div className="space-y-2">
                       {inviteDrafts.map((draft, idx) => (
                         <div key={`invite-${idx}`} className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -626,7 +590,7 @@ const Subscription: FC = () => {
                     <button
                       type="button"
                       className="btn btn--primary text-sm py-2 px-4"
-                      disabled={saving || !selectedWorkspaceId}
+                      disabled={saving || !account || account.isPersonal}
                       onClick={() => { void onSendInviteEmails() }}
                     >
                       {saving ? 'Sending...' : 'Send Invite Emails'}
@@ -642,7 +606,7 @@ const Subscription: FC = () => {
                     <p className="text-xs text-text-light">
                       Clerk will email each invited employee with a secure account-setup link.
                     </p>
-                    {activeWorkspace && (
+                    {account && (
                       <p className="text-xs text-text-light">
                         Need advanced team management? Use <Link className="underline font-medium" to="/portal/accounting/company-profile/employees">Invite Employees</Link> in Business/Firm Profile.
                       </p>
@@ -654,12 +618,12 @@ const Subscription: FC = () => {
                   <div className="rounded-lg border border-border p-4">
                     <h3 className="font-semibold text-primary-dark mb-2">Step 3: Complete onboarding</h3>
                     <p className="text-sm text-text-light mb-3">
-                      Confirm setup and continue to workspace administration.
+                      Confirm setup and continue to company administration.
                     </p>
                     <button
                       type="button"
                       className="btn btn--primary text-sm py-2 px-4"
-                      disabled={!selectedWorkspaceId}
+                      disabled={!account || account.isPersonal}
                       onClick={onCompleteOnboarding}
                     >
                       Complete Onboarding

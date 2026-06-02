@@ -86,14 +86,15 @@ const SignUp: FC = () => {
   const activateSession = async (sessionId: string) => {
     await setActive({ session: sessionId })
     if (onboardingTarget) {
-      const workspaceId = await createWorkspaceProfileForOnboarding()
+      const created = await createWorkspaceProfileForOnboarding()
       const target = new URLSearchParams({
         onboarding: '1',
         selectedPlan: selectedPlanId
       })
       target.set('step', 'invites')
-      if (workspaceId) {
-        target.set('workspaceId', workspaceId)
+      if (!created) {
+        setError('Could not finish account setup. Try again from subscription onboarding.')
+        return
       }
       navigate(`/portal/subscription?${target.toString()}`)
       return
@@ -103,35 +104,27 @@ const SignUp: FC = () => {
 
   const createWorkspaceProfileForOnboarding = async (): Promise<string | null> => {
     const run = async () => {
-      const created = await portalFetch<{ workspace: { id: string } }>('/v1/accounting/workspaces', getToken, {
+      await portalFetch('/v1/accounting/account', getToken, {
         method: 'POST',
         body: JSON.stringify({
           name: workspaceName.trim(),
-          workspaceType
-        })
-      })
-      const workspaceId = created.workspace?.id
-      if (!workspaceId) return null
-      await portalFetch(`/v1/accounting/workspaces/${workspaceId}/profile`, getToken, {
-        method: 'PUT',
-        body: JSON.stringify({
-          organizationType: workspaceType,
-          companyLegalName: companyLegalName.trim(),
-          companyOperatingName: companyOperatingName.trim(),
-          industry: industry.trim(),
-          websiteUrl: websiteUrl.trim(),
-          taxIdentifier: taxIdentifier.trim(),
-          primaryContactName: primaryContactName.trim(),
-          primaryContactEmail: primaryContactEmail.trim(),
-          primaryContactPhone: primaryContactPhone.trim(),
-          onboardingCompleted: false
+          workspaceType,
+          profile: {
+            organizationType: workspaceType,
+            companyLegalName: companyLegalName.trim(),
+            companyOperatingName: companyOperatingName.trim(),
+            industry: industry.trim(),
+            websiteUrl: websiteUrl.trim(),
+            taxIdentifier: taxIdentifier.trim(),
+            primaryContactName: primaryContactName.trim(),
+            primaryContactEmail: primaryContactEmail.trim(),
+            primaryContactPhone: primaryContactPhone.trim(),
+            onboardingCompleted: false
+          }
         })
       })
       await portalFetch('/v1/billing/subscription/sync', getToken, {
         method: 'POST',
-        headers: {
-          'x-accounting-workspace-id': workspaceId
-        },
         body: JSON.stringify({
           planId: selectedPlanId,
           status: 'active',
@@ -140,14 +133,11 @@ const SignUp: FC = () => {
       })
       await portalFetch('/v1/billing/entitlements/sync', getToken, {
         method: 'POST',
-        headers: {
-          'x-accounting-workspace-id': workspaceId
-        },
         body: JSON.stringify({
           planId: selectedPlanId
         })
       })
-      return workspaceId
+      return 'created'
     }
 
     try {

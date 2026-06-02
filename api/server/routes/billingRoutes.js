@@ -22,8 +22,7 @@ export function createBillingRouter (pool) {
 
   const resolveScope = async (req, res, session) => {
     try {
-      const requestedWorkspaceId = req.headers['x-accounting-workspace-id'] || req.query.workspaceId || null
-      const workspace = await getWorkspaceContext(pool, session.userId, requestedWorkspaceId, {
+      const workspace = await getWorkspaceContext(pool, session.userId, null, {
         expectedClerkOrgId: session.orgId || null
       })
       return { workspace }

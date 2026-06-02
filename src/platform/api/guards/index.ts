@@ -1,5 +1,4 @@
 export { default as AuthGuard } from './AuthGuard'
-export { default as WorkspaceGuard } from './WorkspaceGuard'
 export { default as OnboardingGuard } from './OnboardingGuard'
 export { default as SubscriptionGuard } from './SubscriptionGuard'
 export { default as EntitlementGuard } from './EntitlementGuard'

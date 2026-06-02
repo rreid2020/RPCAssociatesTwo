@@ -1,6 +1,6 @@
-export function resolveTenantScope (headers = {}, params = {}) {
+export function resolveTenantScope (_headers = {}, params = {}) {
   return {
-    workspaceId: headers['x-accounting-workspace-id'] || null,
+    workspaceId: null,
     engagementId: params.engagementId || null
   }
 }

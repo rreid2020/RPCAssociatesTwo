@@ -662,17 +662,10 @@ export async function getOnboardingStatusForUser (pool, clerkUserId) {
     teamWorkspaces.find((workspace) => Boolean(workspace.profile_onboarding_completed_at)) ||
     workspaces.find((workspace) => Boolean(workspace.profile_onboarding_completed_at)) ||
     null
-  const primaryWorkspace =
-    completedWorkspace ||
-    teamWorkspaces[0] ||
-    workspaces[0] ||
-    null
   return {
     required: !completedWorkspace,
-    hasWorkspace: workspaces.length > 0,
-    hasCompletedProfile: Boolean(completedWorkspace),
-    primaryWorkspaceId: primaryWorkspace?.id || null,
-    completedWorkspaceId: completedWorkspace?.id || null
+    hasAccount: workspaces.length > 0,
+    hasCompletedProfile: Boolean(completedWorkspace)
   }
 }
 
@@ -1459,10 +1452,32 @@ export async function syncOrganizationEmployeeFromClerkEvent (pool, payload = {}
   }
 }
 
-export async function getWorkspacePermissionSnapshot (pool, actorUserId, workspaceId) {
+export async function getWorkspacePermissionSnapshot (pool, actorUserId, workspaceId = null) {
   const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
   const authz = await getWorkspaceAuthorizationContext(pool, workspace, actorUserId)
   return { workspace, authorization: authz }
+}
+
+export async function getAccountForUser (pool, clerkUserId, options = {}) {
+  const workspace = await getWorkspaceContext(pool, clerkUserId, null, {
+    expectedClerkOrgId: options.expectedClerkOrgId || null
+  })
+  await assertWorkspaceAssignment(pool, workspace, clerkUserId, { assignedBy: clerkUserId })
+  const { profile } = await getWorkspaceProfile(pool, clerkUserId, workspace.id)
+  const authorization = await getWorkspaceAuthorizationContext(pool, workspace, clerkUserId)
+  return {
+    account: {
+      businessType: workspace.workspace_type || 'business',
+      profileBusinessType: profile?.business_type || null,
+      role: workspace.role || null,
+      organizationId: workspace.organization_id || null,
+      name: workspace.name || null,
+      isPersonal: Boolean(workspace.is_personal),
+      profileOnboardingCompletedAt: profile?.onboarding_completed_at || null
+    },
+    profile,
+    authorization
+  }
 }
 
 export async function assertWorkspaceAssignment (pool, workspace, clerkUserId, options = {}) {

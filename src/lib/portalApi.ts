@@ -1,5 +1,3 @@
-import { trackAnalyticsEvent } from './analytics/events'
-
 /**
  * JSON API for the Express `/api/portal` routes. Uses Clerk session token.
  *
@@ -15,39 +13,6 @@ function getApiPrefix (): string {
 
 const htmlInsteadOfJsonHint =
   'The app received a web page instead of API data. The portal API must be reachable at /api (same host) or set VITE_API_BASE_URL to your API origin at build time, with CORS enabled on the API.'
-
-export const ACCOUNTING_WORKSPACE_STORAGE_KEY = 'accounting:selectedWorkspaceId'
-
-function getSelectedAccountingWorkspaceId (): string | null {
-  if (typeof window === 'undefined') return null
-  const id = window.localStorage.getItem(ACCOUNTING_WORKSPACE_STORAGE_KEY)
-  return id && id.trim() ? id.trim() : null
-}
-
-function clearSelectedAccountingWorkspaceId () {
-  if (typeof window === 'undefined') return
-  window.localStorage.removeItem(ACCOUNTING_WORKSPACE_STORAGE_KEY)
-}
-
-function emitWorkspaceRecoveryTelemetry (reason: string, workspaceId: string | null) {
-  trackAnalyticsEvent({
-    name: 'workspace_context_recovered',
-    domain: 'portal',
-    workspaceId: workspaceId || undefined,
-    metadata: { reason }
-  })
-}
-
-function isWorkspaceScopedPath (path: string): boolean {
-  return /\/v1\/accounting\/workspaces\/[^/?#]+/.test(path)
-}
-
-function shouldRetryWithoutWorkspaceHeader (errorMessage: string, path: string): boolean {
-  if (isWorkspaceScopedPath(path)) return false
-  const message = String(errorMessage || '').toLowerCase()
-  return message.includes('workspace access denied') ||
-    message.includes('workspace not found')
-}
 
 function isDeadlockMessage (errorMessage: string): boolean {
   return String(errorMessage || '').toLowerCase().includes('deadlock detected')
@@ -81,13 +46,13 @@ export async function portalFetch<T> (
   if (!token) {
     throw new Error('Not signed in')
   }
-  const run = async (workspaceId: string | null): Promise<T> => {
+
+  const request = async (): Promise<T> => {
     const res = await fetch(`${getApiPrefix()}${path}`, {
       ...init,
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
-        ...(workspaceId ? { 'x-accounting-workspace-id': workspaceId } : {}),
         ...init.headers
       }
     })
@@ -108,29 +73,17 @@ export async function portalFetch<T> (
     return parseJsonBody<T>(text, false)
   }
 
-  const selectedWorkspaceId = getSelectedAccountingWorkspaceId()
   try {
-    return await run(selectedWorkspaceId)
+    return await request()
   } catch (error) {
-    let nextError: unknown = error
-    let message = nextError instanceof Error ? nextError.message : String(nextError)
+    const message = error instanceof Error ? error.message : String(error)
     const shouldRetryTransient = isDeadlockMessage(message) ||
       message.toLowerCase().includes('temporary database conflict')
     if (shouldRetryTransient) {
       await new Promise((resolve) => setTimeout(resolve, 120))
-      try {
-        return await run(selectedWorkspaceId)
-      } catch (retryError) {
-        nextError = retryError
-        message = nextError instanceof Error ? nextError.message : String(nextError)
-      }
+      return await request()
     }
-    if (selectedWorkspaceId && shouldRetryWithoutWorkspaceHeader(message, path)) {
-      emitWorkspaceRecoveryTelemetry(message, selectedWorkspaceId)
-      clearSelectedAccountingWorkspaceId()
-      return await run(null)
-    }
-    throw nextError
+    throw error
   }
 }
 

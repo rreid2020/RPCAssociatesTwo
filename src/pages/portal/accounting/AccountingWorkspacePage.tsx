@@ -1,10 +1,10 @@
-import { FC, useCallback, useEffect, useMemo, useState } from 'react'
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
 import { portalFetch } from '../../../lib/portalApi'
-import { useWorkspaceState } from '../../../platform/workspace/useWorkspaceState'
+import { useAccountContext } from '../../../platform/account/AccountContextProvider'
 import WorkingPaperTreePanel from '../../../modules/working-papers/components/WorkingPaperTreePanel'
 import WorkflowQueuePanel from '../../../modules/working-papers/components/WorkflowQueuePanel'
 import AuditTimelinePanel from '../../../modules/working-papers/components/AuditTimelinePanel'
@@ -16,8 +16,10 @@ import {
   createTickmark,
   fetchAiFoundations,
   fetchAuditEvents,
+  fetchEngagementExecutionBundle,
   fetchEvidenceLinks,
   fetchReviewSignoffs,
+  type EngagementExecutionBundle,
   fetchWorkflowQueue,
   fetchWorkingPaperTree
 } from '../../../modules/working-papers/services/executionApi'
@@ -25,9 +27,7 @@ import {
   fetchAccountingClientsDomain,
   fetchEngagementDashboardDomain,
   fetchEngagementDocumentsDomain,
-  fetchEngagementsDomain,
-  fetchEngagementStatusSummaryDomain,
-  fetchEngagementWorkflowSummaryDomain
+  fetchEngagementsDomain
 } from '../../../domains/Accounting'
 import { fetchTrialBalanceAccountsDomain } from '../../../domains/trial-balance'
 import { fetchLeadSheetDetailDomain, fetchLeadSheetsDomain } from '../../../domains/leadsheets'
@@ -89,14 +89,14 @@ const titleByView: Record<AccountingView, string> = {
   adjustments: 'Adjustments',
   settings: 'Engagement Settings',
   integrations: 'Integrations',
-  joinWorkspaceInvite: 'Join Workspace',
+  joinWorkspaceInvite: 'Join Team',
 }
 
 const descriptionByView: Record<AccountingView, string> = {
-  landing: 'Manage workspace administration, engagements, working papers, and integrations from one place.',
-  companyProfile: 'Set core business or firm information used across workspace operations.',
+  landing: 'Manage your organization, engagements, working papers, and integrations from one place.',
+  companyProfile: 'Set core business or firm information used across your organization.',
   companyProfileEntities: 'Create and maintain reporting entities or client records for engagements.',
-  companyProfileEmployees: 'Invite employees and manage organization roster before workspace assignments.',
+  companyProfileEmployees: 'Invite employees and manage your organization roster before engagement assignments.',
   engagementList: 'Create, update, and delete engagements with entity or client assignment and employee staffing.',
   workingPapersWorkspace: 'Select an engagement and open trial balance, lead sheets, review, adjustments, and related working paper workflows.',
   newEngagement: 'Create a new accounting engagement.',
@@ -109,7 +109,7 @@ const descriptionByView: Record<AccountingView, string> = {
   adjustments: 'Build and reconcile journal adjustments.',
   settings: 'Configure engagement settings and assignments.',
   integrations: 'Configure accounting system integrations and connection states.',
-  joinWorkspaceInvite: 'Accept a workspace invitation and join your team workspace.',
+  joinWorkspaceInvite: 'Accept a team invitation and join your organization.',
 }
 
 function formatEmployeeRoleLabel (member: { workspace_role?: string | null; role?: string | null }) {
@@ -242,17 +242,22 @@ function isCompanyProfileView (view: AccountingView): boolean {
   return view === 'companyProfile' || view === 'companyProfileEntities' || view === 'companyProfileEmployees'
 }
 
+function isListCentricView (view: AccountingView): boolean {
+  return view === 'engagementList' || view === 'newEngagement' || view === 'workingPapersWorkspace'
+}
+
 const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => {
   const { getToken } = useAuth()
-  const { workspaceId, setWorkspaceId } = useWorkspaceState()
+  const { account, refreshAccount } = useAccountContext()
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const { engagementId, leadSheetId } = useParams()
   const [clients, setClients] = useState<Client[]>([])
   const [engagements, setEngagements] = useState<Engagement[]>([])
-  const [, setStatusSummary] = useState<Array<{ status: string; c: number }>>([])
   const [loading, setLoading] = useState(false)
+  const [listLoading, setListLoading] = useState(false)
+  const engagementListReadyRef = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [search, setSearch] = useState(() => searchParams.get('search') || '')
@@ -292,11 +297,9 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [aiFoundations, setAiFoundations] = useState<Record<string, unknown> | null>(null)
   const [repositoryFiles, setRepositoryFiles] = useState<any[]>([])
   const [integrationsData, setIntegrationsData] = useState<any | null>(null)
-  const [workspaces, setWorkspaces] = useState<any[]>([])
   const [workspaceMembers, setWorkspaceMembers] = useState<any[]>([])
   const [organizationSnapshot, setOrganizationSnapshot] = useState<any | null>(null)
   const [workspaceProfile, setWorkspaceProfile] = useState<any | null>(null)
-  const selectedWorkspaceId = workspaceId || ''
   const [newInviteEmail, setNewInviteEmail] = useState('')
   const [newInviteRole, setNewInviteRole] = useState('preparer')
   const [companyProfileForm, setCompanyProfileForm] = useState({
@@ -340,15 +343,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     })
     setEngagements(Array.isArray(engagements) ? engagements : [])
   }, [approvalReadyFilter, clientFilter, engagementTypeFilter, getToken, reviewFlowStatusFilter, search, statusFilter])
-
-  const loadStatusSummary = useCallback(async () => {
-    const { summary } = await fetchEngagementStatusSummaryDomain(getToken)
-    setStatusSummary(summary)
-  }, [getToken])
-
-  const loadWorkflowSummary = useCallback(async () => {
-    await fetchEngagementWorkflowSummaryDomain(getToken)
-  }, [getToken])
 
   const loadEngagementDashboard = useCallback(async () => {
     if (!engagementId) return
@@ -409,11 +403,32 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setAdjustments(entries || [])
   }, [engagementId, getToken])
 
+  const applyEngagementExecutionBundle = useCallback((bundle: EngagementExecutionBundle) => {
+    if (bundle.tree) setWorkingPaperTree(bundle.tree)
+    setWorkflowQueue(Array.isArray(bundle.queue?.queue) ? bundle.queue.queue : [])
+    setAdjustments(Array.isArray(bundle.adjustments?.entries) ? bundle.adjustments.entries : [])
+    setAuditEvents(Array.isArray(bundle.audit?.events) ? bundle.audit.events : [])
+    setReviewSignoffs(Array.isArray(bundle.signoffs?.signoffs) ? bundle.signoffs.signoffs : [])
+    setAiFoundations(bundle.aiFoundations ?? null)
+    if (bundle.dashboard) setDashboard(bundle.dashboard)
+  }, [])
+
+  const loadEngagementExecutionBundle = useCallback(async (options?: { includeDashboardFallback?: boolean }) => {
+    if (!engagementId) return
+    const bundle = await fetchEngagementExecutionBundle(engagementId, getToken)
+    applyEngagementExecutionBundle(bundle)
+    if (options?.includeDashboardFallback && !bundle.dashboard) {
+      await loadEngagementDashboard()
+    }
+  }, [applyEngagementExecutionBundle, engagementId, getToken, loadEngagementDashboard])
+
   const loadWorkingPaperExecution = useCallback(async () => {
     if (!engagementId) return
-    const tree = await fetchWorkingPaperTree(engagementId, getToken)
+    const [tree, queue] = await Promise.all([
+      fetchWorkingPaperTree(engagementId, getToken),
+      fetchWorkflowQueue(engagementId, getToken)
+    ])
     setWorkingPaperTree(tree)
-    const queue = await fetchWorkflowQueue(engagementId, getToken)
     setWorkflowQueue(queue.queue || [])
   }, [engagementId, getToken])
 
@@ -446,45 +461,18 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setIntegrationsData(data)
   }, [getToken])
 
-  const resolvePreferredWorkspaceId = useCallback((rows: any[], currentId: string | null) => {
-    if (currentId && rows.some((workspace) => workspace.id === currentId)) return currentId
-    const teamWorkspaceWithProfile = rows.find(
-      (workspace) => !workspace.is_personal && workspace.profile_onboarding_completed_at
-    )
-    const teamWorkspace = rows.find((workspace) => !workspace.is_personal)
-    return teamWorkspaceWithProfile?.id || teamWorkspace?.id || rows[0]?.id || null
-  }, [])
-
-  const loadWorkspaces = useCallback(async () => {
-    const { workspaces } = await portalFetch<{ workspaces: any[] }>('/v1/accounting/workspaces', getToken)
-    const rows = Array.isArray(workspaces) ? workspaces : []
-    setWorkspaces(rows)
-    const resolvedWorkspaceId = resolvePreferredWorkspaceId(rows, selectedWorkspaceId)
-    if (resolvedWorkspaceId !== selectedWorkspaceId && typeof setWorkspaceId === 'function') {
-      setWorkspaceId(resolvedWorkspaceId)
-    }
-    return { rows, workspaceId: resolvedWorkspaceId }
-  }, [getToken, resolvePreferredWorkspaceId, selectedWorkspaceId, setWorkspaceId])
-
-  const loadWorkspaceMembers = useCallback(async (workspaceIdOverride?: string | null) => {
-    const workspaceIdToLoad = workspaceIdOverride || selectedWorkspaceId
-    if (!workspaceIdToLoad) return
+  const loadWorkspaceMembers = useCallback(async () => {
     try {
-      const data = await portalFetch<{ members: any[] }>(
-        `/v1/accounting/workspaces/${workspaceIdToLoad}/members`,
-        getToken
-      )
+      const data = await portalFetch<{ members: any[] }>('/v1/accounting/members', getToken)
       setWorkspaceMembers(Array.isArray(data.members) ? data.members : [])
     } catch {
       setWorkspaceMembers([])
     }
-  }, [getToken, selectedWorkspaceId])
+  }, [getToken])
 
-  const loadOrganizationSnapshot = useCallback(async (workspaceIdOverride?: string | null) => {
-    const workspaceIdToLoad = workspaceIdOverride || selectedWorkspaceId
-    if (!workspaceIdToLoad) return
+  const loadOrganizationSnapshot = useCallback(async () => {
     try {
-      const data = await portalFetch<any>(`/v1/accounting/workspaces/${workspaceIdToLoad}/organization`, getToken)
+      const data = await portalFetch<any>('/v1/accounting/organization', getToken)
       setOrganizationSnapshot(data)
     } catch (e) {
       if (e instanceof Error && isAccessDeniedMessage(e.message)) {
@@ -493,13 +481,11 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       }
       throw e
     }
-  }, [getToken, selectedWorkspaceId])
+  }, [getToken])
 
-  const loadWorkspaceProfile = useCallback(async (workspaceIdOverride?: string | null) => {
-    const workspaceIdToLoad = workspaceIdOverride || selectedWorkspaceId
-    if (!workspaceIdToLoad) return
+  const loadWorkspaceProfile = useCallback(async () => {
     try {
-      const data = await portalFetch<any>(`/v1/accounting/workspaces/${workspaceIdToLoad}/profile`, getToken)
+      const data = await portalFetch<any>('/v1/accounting/company-profile', getToken)
       setWorkspaceProfile(data.profile || null)
     } catch (e) {
       if (e instanceof Error && isAccessDeniedMessage(e.message)) {
@@ -508,76 +494,61 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       }
       throw e
     }
-  }, [getToken, selectedWorkspaceId])
+  }, [getToken])
 
   useEffect(() => {
     let mounted = true
     const run = async () => {
       setError(null)
       setNotice(null)
-      const blockWithLoadingState = !isCompanyProfileView(view)
+      const listCentricView = isListCentricView(view)
+      const blockWithLoadingState = !isCompanyProfileView(view) && !listCentricView
       if (blockWithLoadingState) setLoading(true)
+      if (listCentricView) setListLoading(true)
       try {
         if (view === 'joinWorkspaceInvite') {
-          await loadWorkspaces()
+          await refreshAccount()
           return
         }
         if (isCompanyProfileView(view)) {
-          const workspaceState = await loadWorkspaces()
-          const resolvedWorkspaceId = workspaceState?.workspaceId || null
-          if (resolvedWorkspaceId) {
-            const resolvedWorkspace = (workspaceState?.rows || []).find((workspace: any) => workspace.id === resolvedWorkspaceId)
-            const canManageResolvedWorkspace = resolvedWorkspace?.role === 'owner' || resolvedWorkspace?.role === 'admin'
-            const profileTasks: Array<Promise<any>> = []
-            if (view === 'companyProfile' || view === 'companyProfileEntities') {
-              profileTasks.push(loadWorkspaceProfile(resolvedWorkspaceId))
+          const canManageAccount = account?.role === 'owner' || account?.role === 'admin'
+          const profileTasks: Array<Promise<any>> = []
+          if (view === 'companyProfile' || view === 'companyProfileEntities') {
+            profileTasks.push(loadWorkspaceProfile())
+          }
+          if (view === 'companyProfileEntities') {
+            profileTasks.push(loadClients())
+          }
+          if (view === 'companyProfileEmployees') {
+            if (canManageAccount) {
+              profileTasks.push(loadOrganizationSnapshot())
+            } else {
+              setOrganizationSnapshot(null)
             }
-            if (view === 'companyProfileEntities') {
-              profileTasks.push(loadClients())
-            }
-            if (view === 'companyProfileEmployees') {
-              if (canManageResolvedWorkspace) {
-                profileTasks.push(loadOrganizationSnapshot(resolvedWorkspaceId))
-              } else {
-                setOrganizationSnapshot(null)
-              }
-            }
-            if (profileTasks.length > 0) {
-              await Promise.all(profileTasks)
-            }
+          }
+          if (profileTasks.length > 0) {
+            await Promise.all(profileTasks)
           }
           return
         }
-        const hasCachedWorkspace = Boolean(
-          selectedWorkspaceId && workspaces.some((workspace) => workspace.id === selectedWorkspaceId)
-        )
-        const workspaceState = hasCachedWorkspace
-          ? { rows: workspaces, workspaceId: selectedWorkspaceId }
-          : await loadWorkspaces()
-        const activeWorkspaceId = workspaceState?.workspaceId || selectedWorkspaceId
 
         if (view === 'engagementList' || view === 'newEngagement') {
           await Promise.all([
             loadEngagements(),
             loadClients(),
-            loadWorkspaceMembers(activeWorkspaceId)
+            loadWorkspaceMembers()
           ])
+          engagementListReadyRef.current = true
         } else if (view === 'workingPapersWorkspace') {
           await loadEngagements()
-        } else if (view === 'landing') {
-          await Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
         } else if (view === 'engagementDashboard') {
           await Promise.all([
-            loadEngagementDashboard(),
-            loadWorkspaceMembers(activeWorkspaceId),
-            loadWorkingPaperExecution(),
-            loadWorkflowSummary(),
-            loadAuditEvents(),
-            loadAiFoundations(),
+            loadEngagementExecutionBundle({ includeDashboardFallback: true }),
+            loadWorkspaceMembers(),
             loadEngagementSnapshots()
           ])
         } else if (view === 'trialBalance') {
-          await Promise.all([loadTrialBalance(), loadWorkingPaperExecution(), loadAdjustments()])
+          await Promise.all([loadTrialBalance(), loadEngagementExecutionBundle()])
         } else if (view === 'leadSheets') {
           await loadLeadSheets()
         } else if (view === 'leadSheetDetail') {
@@ -587,20 +558,19 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         } else if (view === 'review') {
           await Promise.all([
             loadReviewNotes(),
-            loadWorkspaceMembers(activeWorkspaceId),
-            loadWorkingPaperExecution(),
-            loadReviewSignoffs(),
-            loadAuditEvents(),
-            loadAiFoundations()
+            loadWorkspaceMembers(),
+            loadEngagementExecutionBundle()
           ])
         } else if (view === 'adjustments') {
-          await Promise.all([loadAdjustments(), loadAuditEvents(), loadWorkspaceMembers(activeWorkspaceId)])
+          await Promise.all([
+            loadEngagementExecutionBundle(),
+            loadWorkspaceMembers()
+          ])
         } else if (view === 'settings') {
           await Promise.all([
             loadTasks(),
-            loadWorkspaceMembers(activeWorkspaceId),
-            loadEngagementDashboard(),
-            loadAdjustments()
+            loadWorkspaceMembers(),
+            loadEngagementExecutionBundle({ includeDashboardFallback: true })
           ])
         } else if (view === 'integrations') {
           await loadIntegrations()
@@ -609,6 +579,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         if (mounted) setError(e instanceof Error ? e.message : 'Could not load data')
       } finally {
         if (mounted && blockWithLoadingState) setLoading(false)
+        if (mounted && listCentricView) setListLoading(false)
       }
     }
     void run()
@@ -618,11 +589,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }, [
     loadClients,
     loadDocuments,
-    loadEngagementDashboard,
     loadEngagementSnapshots,
+    loadAuditEvents,
     loadEngagements,
     loadIntegrations,
-    loadAuditEvents,
     loadAiFoundations,
     loadAdjustments,
     loadEvidenceLinks,
@@ -632,23 +602,27 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     loadRepositoryFiles,
     loadReviewNotes,
     loadReviewSignoffs,
-    loadStatusSummary,
-    loadWorkflowSummary,
+    loadEngagementExecutionBundle,
     loadTasks,
     loadTrialBalance,
     loadWorkingPaperExecution,
     loadWorkspaceProfile,
     loadWorkspaceMembers,
-    loadWorkspaces,
-    selectedWorkspaceId,
+    refreshAccount,
+    account?.role,
     view
-    // workspaces intentionally omitted — including it re-runs the effect after hydration and duplicates API calls
   ])
 
-  const activeWorkspace = useMemo(
-    () => workspaces.find((workspace) => workspace.id === selectedWorkspaceId) || null,
-    [workspaces, selectedWorkspaceId]
-  )
+  const activeWorkspace = useMemo(() => {
+    if (!account) return null
+    return {
+      workspace_type: account.businessType,
+      profile_business_type: account.profileBusinessType,
+      role: account.role,
+      is_personal: account.isPersonal,
+      name: account.name
+    }
+  }, [account])
   const isFirmWorkspace = activeWorkspace?.workspace_type === 'firm'
   const profileBusinessType = companyProfileForm.businessType || workspaceProfile?.business_type || activeWorkspace?.profile_business_type || null
   const isAccountingFirm = isAccountingFirmOrganization(profileBusinessType, activeWorkspace?.workspace_type)
@@ -722,14 +696,40 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setApprovalReadyFilter(searchParams.get('approvalReady') || '')
     setClientFilter(searchParams.get('clientId') || '')
     setEngagementTypeFilter(searchParams.get('engagementType') || '')
-    void (async () => {
+  }, [searchParams, view])
+
+  useEffect(() => {
+    if (view !== 'engagementList' && view !== 'newEngagement') {
+      engagementListReadyRef.current = false
+      return
+    }
+    if (!engagementListReadyRef.current) return
+    let mounted = true
+    const run = async () => {
+      setListLoading(true)
+      setError(null)
       try {
-        await Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
+        await loadEngagements()
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Could not refresh engagements')
+        if (mounted) setError(e instanceof Error ? e.message : 'Could not refresh engagements')
+      } finally {
+        if (mounted) setListLoading(false)
       }
-    })()
-  }, [loadEngagements, loadStatusSummary, loadWorkflowSummary, searchParams, view])
+    }
+    void run()
+    return () => {
+      mounted = false
+    }
+  }, [
+    approvalReadyFilter,
+    clientFilter,
+    engagementTypeFilter,
+    loadEngagements,
+    reviewFlowStatusFilter,
+    search,
+    statusFilter,
+    view
+  ])
 
   useEffect(() => {
     const engagement = dashboard?.engagement
@@ -747,22 +747,18 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     options: { includeReviewNotes?: boolean; includeLeadSheetDetail?: boolean } = {}
   ) => {
     const tasks: Array<Promise<any>> = [
-      loadEngagementDashboard(),
+      loadEngagementExecutionBundle({ includeDashboardFallback: true }),
       loadEngagements(),
-      loadStatusSummary(),
-      loadWorkflowSummary(),
       loadWorkspaceMembers()
     ]
     if (options.includeReviewNotes) tasks.push(loadReviewNotes())
     if (options.includeLeadSheetDetail) tasks.push(loadLeadSheetDetail())
     await Promise.all(tasks)
   }, [
-    loadEngagementDashboard,
+    loadEngagementExecutionBundle,
     loadEngagements,
     loadLeadSheetDetail,
     loadReviewNotes,
-    loadStatusSummary,
-    loadWorkflowSummary,
     loadWorkspaceMembers
   ])
 
@@ -1197,8 +1193,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }
 
   const onCreateWorkspaceInvite = async () => {
-    if (!selectedWorkspaceId) {
-      setError('Select a workspace before sending an invite.')
+    if (!account) {
+      setError('Account is still loading. Try again in a moment.')
       return
     }
     const inviteEmail = newInviteEmail.trim().toLowerCase()
@@ -1210,7 +1206,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setError(null)
     try {
       const response = await portalFetch<{ invite: { reactivated?: boolean } }>(
-        `/v1/accounting/workspaces/${selectedWorkspaceId}/organization/invites`,
+        '/v1/accounting/organization/invites',
         getToken,
         {
           method: 'POST',
@@ -1224,8 +1220,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       await loadOrganizationSnapshot()
       setNotice(
         response.invite?.reactivated
-          ? 'Employee access was restored on this workspace with the selected role.'
-          : 'Organization invite sent. After invite acceptance/confirmation, assign this employee to workspaces, engagements, and working papers.'
+          ? 'Employee access was restored with the selected role.'
+          : 'Organization invite sent. After acceptance, assign this employee to engagements and working papers as needed.'
       )
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not create organization invite')
@@ -1235,8 +1231,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }
 
   const onSaveCompanyProfile = async () => {
-    if (!selectedWorkspaceId) {
-      setError('Select a workspace before saving Business/Firm profile.')
+    if (!account) {
+      setError('Account is still loading. Try again in a moment.')
       return
     }
     if (!companyProfileForm.companyLegalName.trim()) {
@@ -1246,7 +1242,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setSaving(true)
     setError(null)
     try {
-      await portalFetch(`/v1/accounting/workspaces/${selectedWorkspaceId}/profile`, getToken, {
+      await portalFetch('/v1/accounting/company-profile', getToken, {
         method: 'PUT',
         body: JSON.stringify({
           businessType: companyProfileForm.businessType,
@@ -1277,11 +1273,11 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }
 
   const onUpdateOrganizationMember = async (memberUserId: string, role: string, status: string) => {
-    if (!selectedWorkspaceId) return
+    if (!account) return
     setSaving(true)
     setError(null)
     try {
-      await portalFetch(`/v1/accounting/workspaces/${selectedWorkspaceId}/organization/members/${encodeURIComponent(memberUserId)}`, getToken, {
+      await portalFetch(`/v1/accounting/organization/members/${encodeURIComponent(memberUserId)}`, getToken, {
         method: 'PATCH',
         body: JSON.stringify({ role, status })
       })
@@ -1295,12 +1291,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }
 
   const onDeleteOrganizationMember = async (memberUserId: string) => {
-    if (!selectedWorkspaceId) return
+    if (!account) return
     if (!window.confirm('Remove this employee from the roster? This cannot be undone.')) return
     setSaving(true)
     setError(null)
     try {
-      await portalFetch(`/v1/accounting/workspaces/${selectedWorkspaceId}/organization/members/${encodeURIComponent(memberUserId)}`, getToken, {
+      await portalFetch(`/v1/accounting/organization/members/${encodeURIComponent(memberUserId)}`, getToken, {
         method: 'DELETE'
       })
       await Promise.all([loadOrganizationSnapshot(), loadWorkspaceMembers()])
@@ -1376,15 +1372,16 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         getToken,
         { method: 'POST' }
       )
-      setWorkspaceId(accepted.workspace.id)
-      setNotice(`Invite accepted. You joined ${accepted.workspace.name}.`)
+      await refreshAccount()
+      const joinedName = accepted.workspace?.name || account?.name || 'your organization'
+      setNotice(`Invite accepted. You joined ${joinedName}.`)
       navigate('/portal/accounting', { replace: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not accept invite')
     } finally {
       setSaving(false)
     }
-  }, [getToken, location.search, navigate, setWorkspaceId, view])
+  }, [account?.name, getToken, location.search, navigate, refreshAccount, view])
 
   const onConnectIntegration = async (providerId: string) => {
     if (providerId !== 'quickbooks_online' && providerId !== 'google_sheets') {
@@ -1458,16 +1455,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                 </div>
               )}
               <div className={isCompanyProfileView(view) ? 'space-y-4' : 'bg-white p-6 rounded-lg border border-border shadow-sm'}>
-              {loading ? (
-                  <PageLoadingSkeleton
-                    variant={
-                      view === 'engagementList' || view === 'newEngagement' || view === 'workingPapersWorkspace'
-                        ? 'table'
-                        : view === 'landing'
-                          ? 'cards'
-                          : 'default'
-                    }
-                  />
+              {loading && !isListCentricView(view) ? (
+                  <PageLoadingSkeleton variant={view === 'landing' ? 'cards' : 'default'} />
                 ) : (
                   <div className="space-y-4">
                     {view === 'joinWorkspaceInvite' && (
@@ -1519,12 +1508,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           <h4 className="font-semibold text-primary-dark">Business/Firm details</h4>
                           <p className="text-sm text-text-light">
                             {canManageWorkspaceMembers
-                              ? 'Configure core business or firm information used across workspace operations.'
-                              : 'View your organization business or firm profile for the active workspace. Contact a workspace admin to request changes.'}
+                              ? 'Configure core business or firm information used across your organization.'
+                              : 'View your organization business or firm profile. Contact an organization admin to request changes.'}
                           </p>
                           {!canManageWorkspaceMembers && activeWorkspace?.is_personal && (
                             <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                              You are viewing your personal workspace. Switch to your employer workspace in the header to see the company business profile.
+                              You are on a personal account. Your employer&apos;s business profile is managed by organization administrators.
                             </p>
                           )}
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -1732,7 +1721,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                 {clients.length === 0 ? (
                                   <tr>
                                     <td className="py-3 text-text-light" colSpan={6}>
-                                      No {clientLabelPlural.toLowerCase()} found in this workspace.
+                                      No {clientLabelPlural.toLowerCase()} found in your organization.
                                     </td>
                                   </tr>
                                 ) : clients.map((client) => (
@@ -1769,12 +1758,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         <div className="rounded-lg border border-border p-5 sm:p-6 space-y-4 bg-white">
                           <h4 className="font-semibold text-primary-dark">Employee invite</h4>
                           <p className="text-sm text-text-light">
-                            Invite employees to your organization and manage roster status before workspace assignments.
+                            Invite employees to your organization and manage roster status before engagement assignments.
                             Employee name and email are taken from their sign-in account after they accept the invite.
                           </p>
                           {!canManageWorkspaceMembers && (
                             <p className="text-xs text-text-light">
-                              Only workspace owners and admins can invite or manage employees.
+                              Only organization owners and admins can invite or manage employees.
                             </p>
                           )}
                           <div className="flex flex-wrap items-center gap-2">
@@ -1854,13 +1843,13 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                     {(view === 'engagementList' || view === 'newEngagement') && (
                       <EngagementOperationsPanel
                         getToken={getToken}
-                        selectedWorkspaceId={selectedWorkspaceId}
+                        accountReady={Boolean(account)}
                         clientLabel={clientLabel}
                         clientLabelPlural={clientLabelPlural}
                         clients={clients}
                         workspaceMembers={workspaceMembers}
                         engagements={engagements}
-                        loading={loading}
+                        loading={listLoading}
                         saving={saving}
                         initialEditorMode={view === 'newEngagement' ? 'create' : null}
                         onReloadEngagements={async () => { await loadEngagements() }}
@@ -1893,7 +1882,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         getToken={getToken}
                         clientLabel={clientLabel}
                         engagements={engagements}
-                        listLoading={loading}
+                        listLoading={listLoading}
                         onError={setError}
                         onNotice={setNotice}
                       />
@@ -2412,7 +2401,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         <div className="rounded-lg border border-border p-4">
                           <h3 className="font-semibold text-primary-dark mb-2">Task summary</h3>
                           <p className="text-sm text-text-light mb-2">
-                            {clientLabelPlural} in active workspace: {clients.length} | Tasks in engagement: {tasks.length}
+                            {clientLabelPlural} in organization: {clients.length} | Tasks in engagement: {tasks.length}
                           </p>
                           <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/review`} className="text-sm text-primary-dark underline">
                             Manage review notes and workflow
@@ -2455,7 +2444,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         <div className="rounded-lg border border-border p-4">
                           <h3 className="font-semibold text-primary-dark mb-2">Connection records</h3>
                           {integrationsData.connections.length === 0 ? (
-                            <p className="text-sm text-text-light">No integration connections recorded yet for this workspace.</p>
+                            <p className="text-sm text-text-light">No integration connections recorded yet for your organization.</p>
                           ) : (
                             <ul className="space-y-1 text-sm text-text">
                               {integrationsData.connections.map((connection: any) => (

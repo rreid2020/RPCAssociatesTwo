@@ -87,7 +87,7 @@ function formatEmployeeLabels (
 
 type EngagementOperationsPanelProps = {
   getToken: () => Promise<string | null>
-  selectedWorkspaceId: string
+  accountReady: boolean
   clientLabel: string
   clientLabelPlural: string
   clients: ClientRecord[]
@@ -106,7 +106,7 @@ type EngagementOperationsPanelProps = {
 
 const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
   getToken,
-  selectedWorkspaceId,
+  accountReady,
   clientLabel,
   clientLabelPlural,
   clients,
@@ -236,8 +236,8 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault()
-    if (!selectedWorkspaceId) {
-      onError('Select a workspace before saving an engagement.')
+    if (!accountReady) {
+      onError('Your account is still loading. Try again in a moment.')
       return
     }
     const resolvedClientId = String(form.clientId || '').trim()

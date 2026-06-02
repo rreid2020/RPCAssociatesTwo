@@ -3,11 +3,9 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth, useUser, useClerk } from '@clerk/clerk-react'
 import { useFeatureAccess } from '../lib/subscriptions/hooks'
 import AxiomWordmark from './AxiomWordmark'
-import { useWorkspaceAuthorization } from '../platform/permissions/WorkspaceAuthorizationProvider'
-import { useWorkspaceState } from '../platform/workspace/useWorkspaceState'
+import { useAccountAuthorization } from '../platform/permissions/AccountAuthorizationProvider'
+import { useAccountContext } from '../platform/account/AccountContextProvider'
 import { buildNavigationSections, type NavigationItem } from '../platform/navigation/navigationRegistry'
-import { ACCOUNTING_WORKSPACE_STORAGE_KEY } from '../lib/portalApi'
-import { listWorkspaces } from '../services/accounting/workspaceService'
 import { getOnboardingStatus } from '../lib/onboarding/state'
 
 interface ClientPortalShellProps {
@@ -22,70 +20,53 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children, wideContent =
   const { user } = useUser()
   const { getToken, isLoaded, isSignedIn } = useAuth()
   const { signOut } = useClerk()
-  const { permissions } = useWorkspaceAuthorization()
-  const { workspaceId, setWorkspaceId } = useWorkspaceState()
-  const [workspaceOptions, setWorkspaceOptions] = useState<Array<{
-    id: string
-    name: string
-    workspaceType: 'business' | 'firm'
-    profileBusinessType: string | null
-    role: string
-  }>>([])
+  const { permissions } = useAccountAuthorization()
+  const { account } = useAccountContext()
   const [onboardingComplete, setOnboardingComplete] = useState(false)
   const handleSignOut = useCallback(() => {
-    setWorkspaceId(null)
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(ACCOUNTING_WORKSPACE_STORAGE_KEY)
-    }
     const ts = Date.now()
     const redirectUrl = `${window.location.origin}/portal/sign-in?fresh=${ts}`
     void signOut({ redirectUrl })
-  }, [setWorkspaceId, signOut])
+  }, [signOut])
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) {
-      setWorkspaceOptions([])
+      setOnboardingComplete(false)
       return
     }
     let cancelled = false
-    const loadWorkspaceOptions = async () => {
+    const resolveOnboarding = async () => {
+      if (account?.profileOnboardingCompletedAt) {
+        if (!cancelled) setOnboardingComplete(true)
+        return
+      }
       try {
-        const rows = await listWorkspaces(getToken)
-        if (!cancelled) setWorkspaceOptions(rows)
-        const completedWorkspace = rows.find((workspace: any) => Boolean(workspace.profile_onboarding_completed_at))
-        if (!cancelled) setOnboardingComplete(Boolean(completedWorkspace))
-        if (!completedWorkspace) {
-          const onboarding = await getOnboardingStatus(getToken)
-          if (!cancelled) setOnboardingComplete(!onboarding.required)
-        }
+        const onboarding = await getOnboardingStatus(getToken)
+        if (!cancelled) setOnboardingComplete(!onboarding.required)
       } catch {
-        if (!cancelled) setWorkspaceOptions([])
         if (!cancelled) setOnboardingComplete(false)
       }
     }
-    void loadWorkspaceOptions()
+    void resolveOnboarding()
     return () => {
       cancelled = true
     }
-  }, [getToken, isLoaded, isSignedIn, workspaceId])
+  }, [account?.profileOnboardingCompletedAt, getToken, isLoaded, isSignedIn])
 
-  const selectedWorkspace = useMemo(
-    () => workspaceOptions.find((workspace) => workspace.id === workspaceId) || null,
-    [workspaceId, workspaceOptions]
-  )
+  const workspaceType = account?.businessType === 'firm' ? 'firm' : account?.businessType ? 'business' : null
 
   const workingPapers = useFeatureAccess('workingPapers')
   const integrations = useFeatureAccess('integrations')
 
   const navigationSections = useMemo(() => (
     buildNavigationSections({
-      workspaceType: selectedWorkspace?.workspaceType || null,
-      profileBusinessType: selectedWorkspace?.profileBusinessType || null,
+      workspaceType,
+      profileBusinessType: account?.profileBusinessType || null,
       onboardingComplete,
       features: { workingPapers, integrations },
       permissions
     })
-  ), [integrations, onboardingComplete, permissions, selectedWorkspace, workingPapers])
+  ), [account?.profileBusinessType, integrations, onboardingComplete, permissions, workspaceType, workingPapers])
 
   const iconForKey = (iconKey: string, active: boolean) => {
     const iconClass = active ? 'text-white' : 'text-text-light'

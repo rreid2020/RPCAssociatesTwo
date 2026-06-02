@@ -1,6 +1,6 @@
-import { useWorkspaceAuthorization } from './WorkspaceAuthorizationProvider'
+import { useAccountAuthorization } from './AccountAuthorizationProvider'
 
 export function usePermission (permission: string): boolean {
-  const { permissions } = useWorkspaceAuthorization()
+  const { permissions } = useAccountAuthorization()
   return permissions.includes(permission)
 }

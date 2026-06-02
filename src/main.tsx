@@ -5,8 +5,8 @@ import App from './App.tsx'
 import './styles/global.css'
 import { getFrontendEnvConfig } from './config/env'
 import ObservabilityProvider from './providers/ObservabilityProvider'
-import { WorkspaceContextProvider } from './domains/Workspace'
-import { WorkspaceAuthorizationProvider } from './platform/permissions/WorkspaceAuthorizationProvider'
+import AccountContextProvider from './platform/account/AccountContextProvider'
+import { AccountAuthorizationProvider } from './platform/permissions/AccountAuthorizationProvider'
 
 const env = getFrontendEnvConfig()
 const clerkPubKey = env.clerkPublishableKey
@@ -20,22 +20,21 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     {clerkPubKey ? (
       <ClerkProvider publishableKey={clerkPubKey}>
         <ObservabilityProvider>
-          <WorkspaceContextProvider>
-            <WorkspaceAuthorizationProvider>
+          <AccountContextProvider>
+            <AccountAuthorizationProvider>
               <App />
-            </WorkspaceAuthorizationProvider>
-          </WorkspaceContextProvider>
+            </AccountAuthorizationProvider>
+          </AccountContextProvider>
         </ObservabilityProvider>
       </ClerkProvider>
     ) : (
       <ObservabilityProvider>
-        <WorkspaceContextProvider>
-          <WorkspaceAuthorizationProvider>
+        <AccountContextProvider>
+          <AccountAuthorizationProvider>
             <App />
-          </WorkspaceAuthorizationProvider>
-        </WorkspaceContextProvider>
+          </AccountAuthorizationProvider>
+        </AccountContextProvider>
       </ObservabilityProvider>
     )}
   </React.StrictMode>,
 )
-

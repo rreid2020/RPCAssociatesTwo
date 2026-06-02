@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { resolveTenantScope } from '../../api/server/services/authz/tenantScope.js'
 
 describe('tenant scope resolver', () => {
-  it('extracts workspace header and engagement param', () => {
+  it('ignores legacy workspace header and reads engagement param', () => {
     const scope = resolveTenantScope(
       { 'x-accounting-workspace-id': 'ws_123' },
       { engagementId: 'eng_999' }
     )
-    expect(scope.workspaceId).toBe('ws_123')
+    expect(scope.workspaceId).toBeNull()
     expect(scope.engagementId).toBe('eng_999')
   })
 

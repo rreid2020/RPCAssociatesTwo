@@ -76,6 +76,7 @@ import {
   getOrganizationAdminSnapshot,
   getWorkspaceProfile,
   getWorkspaceContext,
+  getAccountForUser,
   getOnboardingStatusForUser,
   getWorkspaceOrgMigrationHealth,
   getWorkspacePermissionSnapshot,
@@ -249,8 +250,7 @@ export function createPortalRouter (pool) {
   }
   const resolveAccountingScope = async (req, res, session) => {
     try {
-      const requestedWorkspaceId = req.headers['x-accounting-workspace-id'] || req.query.workspaceId || null
-      const workspace = await getWorkspaceContext(pool, session.userId, requestedWorkspaceId, {
+      const workspace = await getWorkspaceContext(pool, session.userId, null, {
         expectedClerkOrgId: session.orgId || null
       })
       if (!workspace.organization_id) {
@@ -284,6 +284,26 @@ export function createPortalRouter (pool) {
       return false
     }
   }
+  const requireAccountWorkspace = async (session, permission, res) => {
+    try {
+      const workspace = await getWorkspaceContext(pool, session.userId, null, {
+        expectedClerkOrgId: session.orgId || null
+      })
+      if (permission) {
+        await assertWorkspacePermissionWithCustomRoles(pool, {
+          workspaceId: workspace.id,
+          workspaceRole: workspace.role,
+          clerkUserId: session.userId,
+          permission
+        })
+      }
+      return workspace
+    } catch (e) {
+      res.status(403).json({ error: e instanceof Error ? e.message : 'Forbidden' })
+      return null
+    }
+  }
+
   const requireWorkspacePermission = async (session, workspaceId, permission, res) => {
     try {
       // Explicit workspace routes authorize by membership + RBAC. Do not enforce
@@ -982,6 +1002,149 @@ export function createPortalRouter (pool) {
       res.json({ onboarding })
     } catch (e) {
       res.status(500).json({ error: e instanceof Error ? e.message : 'Could not load onboarding status' })
+    }
+  })
+
+  r.get('/v1/accounting/account', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const account = await withDeadlockRetry(async () => await getAccountForUser(pool, session.userId, {
+        expectedClerkOrgId: session.orgId || null
+      }))
+      res.json(account)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load account' })
+    }
+  })
+
+  r.post('/v1/accounting/account', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const workspace = await createWorkspace(pool, session.userId, req.body || {})
+      const profile = req.body?.profile
+        ? await upsertWorkspaceProfile(pool, session.userId, workspace.id, req.body.profile)
+        : null
+      res.json({ account: workspace, profile: profile?.profile || null })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create account' })
+    }
+  })
+
+  r.get('/v1/accounting/company-profile', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const workspace = await requireAccountWorkspace(session, 'workspace.read', res)
+    if (!workspace) return
+    try {
+      const data = await withDeadlockRetry(async () => await getWorkspaceProfile(pool, session.userId, workspace.id))
+      res.json(data)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load company profile' })
+    }
+  })
+
+  r.put('/v1/accounting/company-profile', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const workspace = await requireAccountWorkspace(session, 'workspace.manage', res)
+    if (!workspace) return
+    try {
+      const data = await upsertWorkspaceProfile(pool, session.userId, workspace.id, req.body || {})
+      res.json(data)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not save company profile' })
+    }
+  })
+
+  r.get('/v1/accounting/permissions', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const data = await withDeadlockRetry(() => getWorkspacePermissionSnapshot(pool, session.userId, null))
+      res.json(data)
+    } catch (e) {
+      if (isDeadlockError(e)) {
+        return res.status(503).json({ error: 'Temporary database conflict. Please retry.' })
+      }
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load permissions' })
+    }
+  })
+
+  r.get('/v1/accounting/members', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const workspace = await requireAccountWorkspace(session, 'workspace.read', res)
+    if (!workspace) return
+    try {
+      const data = await listWorkspaceMembers(pool, session.userId, workspace.id)
+      res.json(data)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load members' })
+    }
+  })
+
+  r.get('/v1/accounting/organization', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const workspace = await requireAccountWorkspace(session, 'workspace.manage', res)
+    if (!workspace) return
+    try {
+      const snapshot = await getOrganizationAdminSnapshot(pool, session.userId, workspace.id)
+      res.json(snapshot)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load organization' })
+    }
+  })
+
+  r.post('/v1/accounting/organization/invites', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const workspace = await requireAccountWorkspace(session, 'workspace.invite', res)
+    if (!workspace) return
+    try {
+      const invite = await createOrganizationEmployeeInvite(pool, session.userId, workspace.id, req.body || {})
+      res.json({ invite })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create employee invite' })
+    }
+  })
+
+  r.patch('/v1/accounting/organization/members/:memberUserId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const workspace = await requireAccountWorkspace(session, 'workspace.manage', res)
+    if (!workspace) return
+    try {
+      const member = await updateOrganizationMember(
+        pool,
+        session.userId,
+        workspace.id,
+        req.params.memberUserId,
+        req.body || {}
+      )
+      res.json({ member })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update organization member' })
+    }
+  })
+
+  r.delete('/v1/accounting/organization/members/:memberUserId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const workspace = await requireAccountWorkspace(session, 'workspace.manage', res)
+    if (!workspace) return
+    try {
+      const ok = await deleteOrganizationMember(
+        pool,
+        session.userId,
+        workspace.id,
+        req.params.memberUserId
+      )
+      res.json({ ok })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not remove organization member' })
     }
   })
 

@@ -16,10 +16,8 @@ describe('onboarding state contracts', () => {
     mockedPortalFetch.mockResolvedValue({
       onboarding: {
         required: true,
-        hasWorkspace: true,
-        hasCompletedProfile: false,
-        primaryWorkspaceId: 'ws_1',
-        completedWorkspaceId: null
+        hasAccount: true,
+        hasCompletedProfile: false
       }
     })
 
@@ -32,10 +30,8 @@ describe('onboarding state contracts', () => {
     mockedPortalFetch.mockResolvedValue({
       onboarding: {
         required: false,
-        hasWorkspace: true,
-        hasCompletedProfile: true,
-        primaryWorkspaceId: 'ws_1',
-        completedWorkspaceId: 'ws_1'
+        hasAccount: true,
+        hasCompletedProfile: true
       }
     })
 

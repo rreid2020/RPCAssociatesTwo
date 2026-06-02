@@ -2,10 +2,8 @@ import { portalFetch } from '../portalApi'
 
 export type OnboardingStatus = {
   required: boolean
-  hasWorkspace: boolean
+  hasAccount: boolean
   hasCompletedProfile: boolean
-  primaryWorkspaceId: string | null
-  completedWorkspaceId: string | null
 }
 
 export const ONBOARDING_REQUIRED_PATH = '/portal/subscription?onboarding=1'
@@ -22,10 +20,8 @@ const ONBOARDING_BYPASS_PATHS = new Set([
 
 const defaultStatus: OnboardingStatus = {
   required: true,
-  hasWorkspace: false,
-  hasCompletedProfile: false,
-  primaryWorkspaceId: null,
-  completedWorkspaceId: null
+  hasAccount: false,
+  hasCompletedProfile: false
 }
 
 export async function getOnboardingStatus (
@@ -38,10 +34,8 @@ export async function getOnboardingStatus (
     )
     return {
       required: Boolean(response.onboarding?.required),
-      hasWorkspace: Boolean(response.onboarding?.hasWorkspace),
-      hasCompletedProfile: Boolean(response.onboarding?.hasCompletedProfile),
-      primaryWorkspaceId: response.onboarding?.primaryWorkspaceId || null,
-      completedWorkspaceId: response.onboarding?.completedWorkspaceId || null
+      hasAccount: Boolean(response.onboarding?.hasAccount),
+      hasCompletedProfile: Boolean(response.onboarding?.hasCompletedProfile)
     }
   } catch {
     return defaultStatus

@@ -1,2 +1,2 @@
-export * from './WorkspaceAuthorizationProvider'
+export * from './AccountAuthorizationProvider'
 export * from './usePermission'

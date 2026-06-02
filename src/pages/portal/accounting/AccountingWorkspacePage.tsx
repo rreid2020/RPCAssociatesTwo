@@ -40,6 +40,7 @@ import { createEngagementSnapshotDomain, fetchEngagementSnapshotsDomain } from '
 import { CompanyProfileTabs } from '../../../modules/accounting/layouts/CompanyProfileLayout'
 import EngagementOperationsPanel from '../../../modules/accounting/components/EngagementOperationsPanel'
 import WorkingPapersWorkspacePanel from '../../../modules/working-papers/components/WorkingPapersWorkspacePanel'
+import PageLoadingSkeleton from '../../../shared/loading/PageLoadingSkeleton'
 import {
   isAccountingFirmOrganization,
   resolveClientRecordLabel,
@@ -465,10 +466,18 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     return { rows, workspaceId: resolvedWorkspaceId }
   }, [getToken, resolvePreferredWorkspaceId, selectedWorkspaceId, setWorkspaceId])
 
-  const loadWorkspaceMembers = useCallback(async () => {
-    if (!selectedWorkspaceId) return
-    const data = await portalFetch<{ members: any[] }>(`/v1/accounting/workspaces/${selectedWorkspaceId}/members`, getToken)
-    setWorkspaceMembers(data.members || [])
+  const loadWorkspaceMembers = useCallback(async (workspaceIdOverride?: string | null) => {
+    const workspaceIdToLoad = workspaceIdOverride || selectedWorkspaceId
+    if (!workspaceIdToLoad) return
+    try {
+      const data = await portalFetch<{ members: any[] }>(
+        `/v1/accounting/workspaces/${workspaceIdToLoad}/members`,
+        getToken
+      )
+      setWorkspaceMembers(Array.isArray(data.members) ? data.members : [])
+    } catch {
+      setWorkspaceMembers([])
+    }
   }, [getToken, selectedWorkspaceId])
 
   const loadOrganizationSnapshot = useCallback(async (workspaceIdOverride?: string | null) => {
@@ -539,36 +548,63 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
           }
           return
         }
-        // Always refresh workspace selection first so downstream API calls
-        // use a valid workspace header (avoids stale workspaceId lockout).
-        await loadWorkspaces()
-        await loadClients()
+        const hasCachedWorkspace = Boolean(
+          selectedWorkspaceId && workspaces.some((workspace) => workspace.id === selectedWorkspaceId)
+        )
+        const workspaceState = hasCachedWorkspace
+          ? { rows: workspaces, workspaceId: selectedWorkspaceId }
+          : await loadWorkspaces()
+        const activeWorkspaceId = workspaceState?.workspaceId || selectedWorkspaceId
+
         if (view === 'engagementList' || view === 'newEngagement') {
-          await loadEngagements()
-          await loadWorkspaceMembers()
+          await Promise.all([
+            loadEngagements(),
+            loadClients(),
+            loadWorkspaceMembers(activeWorkspaceId)
+          ])
         } else if (view === 'workingPapersWorkspace') {
           await loadEngagements()
         } else if (view === 'landing') {
           await Promise.all([loadEngagements(), loadStatusSummary(), loadWorkflowSummary()])
+        } else if (view === 'engagementDashboard') {
+          await Promise.all([
+            loadEngagementDashboard(),
+            loadWorkspaceMembers(activeWorkspaceId),
+            loadWorkingPaperExecution(),
+            loadWorkflowSummary(),
+            loadAuditEvents(),
+            loadAiFoundations(),
+            loadEngagementSnapshots()
+          ])
+        } else if (view === 'trialBalance') {
+          await Promise.all([loadTrialBalance(), loadWorkingPaperExecution(), loadAdjustments()])
+        } else if (view === 'leadSheets') {
+          await loadLeadSheets()
+        } else if (view === 'leadSheetDetail') {
+          await Promise.all([loadLeadSheetDetail(), loadEvidenceLinks()])
+        } else if (view === 'documents') {
+          await Promise.all([loadDocuments(), loadRepositoryFiles()])
+        } else if (view === 'review') {
+          await Promise.all([
+            loadReviewNotes(),
+            loadWorkspaceMembers(activeWorkspaceId),
+            loadWorkingPaperExecution(),
+            loadReviewSignoffs(),
+            loadAuditEvents(),
+            loadAiFoundations()
+          ])
+        } else if (view === 'adjustments') {
+          await Promise.all([loadAdjustments(), loadAuditEvents(), loadWorkspaceMembers(activeWorkspaceId)])
+        } else if (view === 'settings') {
+          await Promise.all([
+            loadTasks(),
+            loadWorkspaceMembers(activeWorkspaceId),
+            loadEngagementDashboard(),
+            loadAdjustments()
+          ])
+        } else if (view === 'integrations') {
+          await loadIntegrations()
         }
-        if (view === 'engagementDashboard') {
-          await Promise.all([loadEngagementDashboard(), loadWorkspaceMembers(), loadWorkingPaperExecution(), loadWorkflowSummary(), loadAuditEvents(), loadAiFoundations(), loadEngagementSnapshots()])
-        }
-        if (view === 'trialBalance') await Promise.all([loadTrialBalance(), loadWorkingPaperExecution(), loadAdjustments()])
-        if (view === 'leadSheets') await loadLeadSheets()
-        if (view === 'leadSheetDetail') await Promise.all([loadLeadSheetDetail(), loadEvidenceLinks()])
-        if (view === 'documents') {
-          await loadDocuments()
-          await loadRepositoryFiles()
-        }
-        if (view === 'review') {
-          await Promise.all([loadReviewNotes(), loadWorkspaceMembers(), loadWorkingPaperExecution(), loadReviewSignoffs(), loadAuditEvents(), loadAiFoundations()])
-        }
-        if (view === 'adjustments') {
-          await Promise.all([loadAdjustments(), loadAuditEvents(), loadWorkspaceMembers()])
-        }
-        if (view === 'settings') await Promise.all([loadTasks(), loadWorkspaceMembers(), loadEngagementDashboard(), loadAdjustments()])
-        if (view === 'integrations') await loadIntegrations()
       } catch (e) {
         if (mounted) setError(e instanceof Error ? e.message : 'Could not load data')
       } finally {
@@ -606,6 +642,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     loadWorkspaces,
     selectedWorkspaceId,
     view
+    // workspaces intentionally omitted — including it re-runs the effect after hydration and duplicates API calls
   ])
 
   const activeWorkspace = useMemo(
@@ -1422,7 +1459,15 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
               )}
               <div className={isCompanyProfileView(view) ? 'space-y-4' : 'bg-white p-6 rounded-lg border border-border shadow-sm'}>
               {loading ? (
-                  <p className="text-sm text-text-light">Loading&hellip;</p>
+                  <PageLoadingSkeleton
+                    variant={
+                      view === 'engagementList' || view === 'newEngagement' || view === 'workingPapersWorkspace'
+                        ? 'table'
+                        : view === 'landing'
+                          ? 'cards'
+                          : 'default'
+                    }
+                  />
                 ) : (
                   <div className="space-y-4">
                     {view === 'joinWorkspaceInvite' && (

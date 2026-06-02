@@ -3,6 +3,7 @@ import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../components/SEO'
 import ClientPortalShell from '../../components/ClientPortalShell'
 import { portalFetch, PortalDashboard } from '../../lib/portalApi'
+import PageLoadingSkeleton from '../../shared/loading/PageLoadingSkeleton'
 
 const Dashboard: FC = () => {
   const { getToken } = useAuth()
@@ -63,7 +64,9 @@ const Dashboard: FC = () => {
           )}
 
           {loading && (
-            <p className="text-text-light">Loading&hellip;</p>
+            <div className="rounded-lg border border-border bg-white p-6">
+              <PageLoadingSkeleton variant="cards" />
+            </div>
           )}
 
           {!loading && data && (

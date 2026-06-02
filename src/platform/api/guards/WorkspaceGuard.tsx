@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { useWorkspaceState } from '../../workspace/useWorkspaceState'
 import { useWorkspaceAuthorization } from '../../permissions/WorkspaceAuthorizationProvider'
 import { ROLLOUT_BYPASS_ENABLED } from '../../../lib/onboarding/state'
+import PageLoadingSkeleton from '../../../shared/loading/PageLoadingSkeleton'
 
 type WorkspaceGuardProps = {
   children: ReactNode
@@ -25,8 +26,10 @@ const WorkspaceGuard: FC<WorkspaceGuardProps> = ({ children }) => {
   if (ROLLOUT_BYPASS_ENABLED) {
     if (!workspaceId && loading) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <p className="text-sm text-text-light">Loading portal…</p>
+        <div className="min-h-screen flex items-center justify-center bg-background px-6">
+          <div className="w-full max-w-md">
+            <PageLoadingSkeleton variant="default" />
+          </div>
         </div>
       )
     }

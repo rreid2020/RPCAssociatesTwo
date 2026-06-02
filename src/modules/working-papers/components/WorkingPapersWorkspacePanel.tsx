@@ -2,6 +2,7 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ColDef, GridOptions } from 'ag-grid-community'
 import AgGridTable from './grid/AgGridTable'
+import PageLoadingSkeleton from '../../../shared/loading/PageLoadingSkeleton'
 import { portalFetch } from '../../../lib/portalApi'
 import { fetchEngagementDashboardDomain } from '../../../domains/Accounting'
 import { downloadBase64File, exportEngagementWorkbookDomain } from '../../../domains/import-export'
@@ -208,7 +209,7 @@ const WorkingPapersWorkspacePanel: FC<WorkingPapersWorkspacePanelProps> = ({
           </Link>
         </div>
         {listLoading ? (
-          <p className="text-sm text-text-light">Loading engagements…</p>
+          <PageLoadingSkeleton variant="table" />
         ) : engagements.length === 0 ? (
           <p className="text-sm text-text-light">
             No engagements yet. Create one from the Engagements page to start working papers.

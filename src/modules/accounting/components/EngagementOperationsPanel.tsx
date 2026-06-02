@@ -1,6 +1,7 @@
 import { FC, FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AgGridTable from '../../working-papers/components/grid/AgGridTable'
+import PageLoadingSkeleton from '../../../shared/loading/PageLoadingSkeleton'
 import { portalFetch } from '../../../lib/portalApi'
 
 const engagementTypeOptions = [
@@ -524,7 +525,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       )}
 
       {loading ? (
-        <p className="text-sm text-text-light">Loading engagements…</p>
+        <PageLoadingSkeleton variant="table" />
       ) : (
         <AgGridTable
           rowData={filteredEngagements}

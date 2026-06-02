@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { AllCommunityModule, ModuleRegistry, type ColDef, type GridApi, type GridOptions, type GridReadyEvent } from 'ag-grid-community'
 import 'ag-grid-community/styles/ag-grid.css'
+import 'ag-grid-community/styles/ag-theme-quartz.css'
+import 'ag-grid-community/styles/agGridQuartzFont.css'
 
 let agGridModulesRegistered = false
 if (!agGridModulesRegistered) {
@@ -15,6 +17,7 @@ type AgGridTableProps = {
   height?: number
   quickFilterText?: string
   gridOptions?: GridOptions<any>
+  defaultColDef?: ColDef<any>
   fitColumnsToViewport?: boolean
 }
 
@@ -24,6 +27,7 @@ const AgGridTable = ({
   height = 320,
   quickFilterText = '',
   gridOptions,
+  defaultColDef: defaultColDefOverride,
   fitColumnsToViewport = true
 }: AgGridTableProps) => {
   const gridApiRef = useRef<GridApi | null>(null)
@@ -36,9 +40,10 @@ const AgGridTable = ({
       flex: 1,
       minWidth: 100,
       wrapHeaderText: true,
-      autoHeaderHeight: true
+      autoHeaderHeight: true,
+      ...defaultColDefOverride
     }),
-    []
+    [defaultColDefOverride]
   )
 
   const fitColumns = useCallback(() => {

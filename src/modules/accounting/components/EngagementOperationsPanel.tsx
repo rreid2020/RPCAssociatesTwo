@@ -1,7 +1,8 @@
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import type { CellEditingStoppedEvent, ColDef, ICellRendererParams, RowClassParams } from 'ag-grid-community'
+import { useSearchParams } from 'react-router-dom'
+import type { CellEditingStoppedEvent, ColDef, GridApi, ICellRendererParams, RowClassParams } from 'ag-grid-community'
 import AgGridTable from '../../working-papers/components/grid/AgGridTable'
+import AssignedEmployeesCellEditor from './AssignedEmployeesCellEditor'
 import PageLoadingSkeleton from '../../../shared/loading/PageLoadingSkeleton'
 import { portalFetch } from '../../../lib/portalApi'
 
@@ -40,8 +41,9 @@ type ClientRecord = { id: string; name: string }
 type WorkspaceMember = { clerk_user_id: string; display_name?: string; email?: string; role?: string; status?: string }
 
 type EngagementGridContext = {
-  onOpen: (engagementId: string) => void
+  onEdit: (row: EngagementRecord) => void
   onDelete: (row: EngagementRecord) => void
+  activeMembers: WorkspaceMember[]
   saving: boolean
 }
 
@@ -59,7 +61,7 @@ function toDateInput (value: unknown): string {
   return String(value).slice(0, 10)
 }
 
-function createDraftRow (defaultAssigneeIds: string[]): EngagementRecord {
+function createDraftRow (): EngagementRecord {
   const year = new Date().getFullYear()
   return {
     id: `draft-${Date.now()}`,
@@ -75,7 +77,7 @@ function createDraftRow (defaultAssigneeIds: string[]): EngagementRecord {
     period_end: `${year}-12-31`,
     due_date: null,
     source_type: 'csv',
-    assigned_employee_ids: defaultAssigneeIds
+    assigned_employee_ids: []
   }
 }
 
@@ -86,16 +88,14 @@ const EngagementActionsCell: FC<ICellRendererParams<EngagementRecord, unknown, E
 
   return (
     <div className="flex h-full items-center gap-2">
-      {!row.isNew && (
-        <button
-          type="button"
-          className="text-xs font-medium text-primary-dark hover:underline disabled:opacity-50"
-          disabled={context.saving}
-          onClick={() => context.onOpen(String(row.id))}
-        >
-          Open
-        </button>
-      )}
+      <button
+        type="button"
+        className="text-xs font-medium text-primary-dark hover:underline disabled:opacity-50"
+        disabled={context.saving}
+        onClick={() => context.onEdit(row)}
+      >
+        Edit
+      </button>
       <button
         type="button"
         className="text-xs font-medium text-red-700 hover:underline disabled:opacity-50"
@@ -141,8 +141,8 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
   onNotice,
   onSavingChange
 }) => {
-  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const gridApiRef = useRef<GridApi<EngagementRecord> | null>(null)
   const [draftRows, setDraftRows] = useState<EngagementRecord[]>([])
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -156,7 +156,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
   )
 
   const defaultAssigneeIds = useMemo(
-    () => activeMembers.map((member) => member.clerk_user_id).filter(Boolean).slice(0, 1),
+    () => activeMembers.map((member) => member.clerk_user_id).filter(Boolean),
     [activeMembers]
   )
 
@@ -199,9 +199,9 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
   )
 
   const addDraftRow = useCallback(() => {
-    setDraftRows((prev) => [createDraftRow(defaultAssigneeIds), ...prev])
+    setDraftRows((prev) => [createDraftRow(), ...prev])
     onError(null)
-  }, [defaultAssigneeIds, onError])
+  }, [onError])
 
   useEffect(() => {
     const updateHeight = () => setGridHeight(Math.max(520, window.innerHeight - 260))
@@ -320,6 +320,20 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       row.client_name = clientNameById.get(String(row.client_id || '')) || row.client_name
     }
 
+    if (event.colDef.field === 'assigned_employee_ids') {
+      const assignees = Array.isArray(row.assigned_employee_ids) ? row.assigned_employee_ids : []
+      if (assignees.length === 0) {
+        onError('Assign at least one employee to the engagement.')
+        return
+      }
+      if (row.isNew) {
+        setDraftRows((prev) => prev.map((draft) => (draft.id === row.id ? { ...row } : draft)))
+        if (!String(row.name || '').trim() || !String(row.client_id || '').trim()) return
+      }
+      await persistRow(row)
+      return
+    }
+
     if (row.isNew) {
       if (!String(row.name || '').trim() || !String(row.client_id || '').trim()) return
       await persistRow(row)
@@ -327,7 +341,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     }
 
     await persistRow(row)
-  }, [clientNameById, persistRow])
+  }, [clientNameById, onError, persistRow])
 
   const handleDelete = useCallback(async (row: EngagementRecord) => {
     if (row.isNew) {
@@ -348,22 +362,27 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     }
   }, [onDeleteEngagement, onError, onNotice, onReloadEngagements, onSavingChange])
 
-  const handleOpen = useCallback((engagementId: string) => {
-    navigate(`/portal/accounting/working-papers/engagements/${engagementId}`)
-  }, [navigate])
+  const handleEdit = useCallback((row: EngagementRecord) => {
+    const api = gridApiRef.current
+    if (!api) return
+    const rowNode = api.getRowNode(String(row.id))
+    if (!rowNode || rowNode.rowIndex == null) return
+    api.startEditingCell({ rowIndex: rowNode.rowIndex, colKey: 'name' })
+  }, [])
 
   const gridContext = useMemo<EngagementGridContext>(() => ({
-    onOpen: handleOpen,
+    onEdit: handleEdit,
     onDelete: (row) => { void handleDelete(row) },
+    activeMembers,
     saving
-  }), [handleDelete, handleOpen, saving])
+  }), [activeMembers, handleDelete, handleEdit, saving])
 
   const columnDefs = useMemo(() => ([
     {
       colId: 'actions',
       headerName: 'Actions',
-      width: 130,
-      maxWidth: 140,
+      width: 120,
+      maxWidth: 130,
       pinned: 'right',
       sortable: false,
       filter: false,
@@ -409,11 +428,19 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       cellEditorParams: { values: statusOptions }
     },
     {
+      field: 'assigned_employee_ids',
       headerName: 'Assigned employees',
-      flex: 1.2,
-      minWidth: 150,
-      editable: false,
-      valueGetter: (params) => formatEmployeeLabels(params.data?.assigned_employee_ids, memberLabelByUserId)
+      flex: 1.4,
+      minWidth: 180,
+      editable: true,
+      sortable: false,
+      filter: false,
+      cellEditor: AssignedEmployeesCellEditor,
+      cellEditorPopup: true,
+      valueFormatter: (params) => formatEmployeeLabels(
+        Array.isArray(params.value) ? params.value : params.data?.assigned_employee_ids,
+        memberLabelByUserId
+      )
     },
     {
       field: 'period_end',
@@ -437,21 +464,30 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     }
   ] as ColDef<EngagementRecord>[]), [clientIds, clientLabel, clientNameById, memberLabelByUserId])
 
+  const gridDefaultColDef = useMemo<ColDef<EngagementRecord>>(
+    () => ({
+      sortable: true,
+      filter: false,
+      resizable: true,
+      suppressHeaderMenuButton: true,
+      suppressHeaderFilterButton: true
+    }),
+    []
+  )
+
   const gridOptions = useMemo(() => ({
     context: gridContext,
     singleClickEdit: true,
     stopEditingWhenCellsLoseFocus: true,
+    onGridReady: (event: { api: GridApi<EngagementRecord> }) => {
+      gridApiRef.current = event.api
+    },
     onCellEditingStopped: (event: CellEditingStoppedEvent<EngagementRecord>) => {
       void onCellEditingStopped(event)
     },
-    onRowDoubleClicked: (event: { data?: EngagementRecord }) => {
-      const rowId = String(event.data?.id || '')
-      if (!rowId || event.data?.isNew) return
-      handleOpen(rowId)
-    },
     getRowId: (params: { data: EngagementRecord }) => String(params.data.id),
     getRowClass: (params: RowClassParams<EngagementRecord>) => (params.data?.isNew ? 'engagement-draft-row' : '')
-  }), [gridContext, handleOpen, onCellEditingStopped])
+  }), [gridContext, onCellEditingStopped])
 
   return (
     <div className="space-y-3 min-w-0">
@@ -479,7 +515,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
           {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
         </select>
         <p className="text-xs text-text-light w-full sm:w-auto">
-          Click a cell to edit. Double-click a row to open working papers.
+          Click a cell to edit, or use Edit in the actions column. Click Assigned employees to select multiple staff.
         </p>
       </div>
 
@@ -490,6 +526,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
           rowData={gridRows}
           height={gridHeight}
           columnDefs={columnDefs}
+          defaultColDef={gridDefaultColDef}
           gridOptions={gridOptions}
           quickFilterText={search}
           fitColumnsToViewport

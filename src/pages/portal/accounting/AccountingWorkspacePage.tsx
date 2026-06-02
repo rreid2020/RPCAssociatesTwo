@@ -1,16 +1,11 @@
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { FC, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
 import { portalFetch } from '../../../lib/portalApi'
 import { useAccountContext } from '../../../platform/account/AccountContextProvider'
-import WorkingPaperTreePanel from '../../../modules/working-papers/components/WorkingPaperTreePanel'
-import WorkflowQueuePanel from '../../../modules/working-papers/components/WorkflowQueuePanel'
-import AuditTimelinePanel from '../../../modules/working-papers/components/AuditTimelinePanel'
-import AdjustmentWorkspacePanel from '../../../modules/working-papers/components/AdjustmentWorkspacePanel'
-import AgGridTable from '../../../modules/working-papers/components/grid/AgGridTable'
-import TrialBalanceGridPanel from '../../../modules/working-papers/components/TrialBalanceGridPanel'
+import { ensureStringArray } from '../../../shared/collections/ensureStringArray'
 import {
   createEvidenceLink,
   createReviewSignoff,
@@ -39,9 +34,18 @@ import { calculateLeadSheetTotals, calculateTrialBalanceTotals } from '../../../
 import { downloadBase64File, exportEngagementWorkbookDomain } from '../../../domains/import-export'
 import { createEngagementSnapshotDomain, fetchEngagementSnapshotsDomain } from '../../../domains/snapshots'
 import { CompanyProfileTabs } from '../../../modules/accounting/layouts/CompanyProfileLayout'
-import EngagementOperationsPanel from '../../../modules/accounting/components/EngagementOperationsPanel'
-import WorkingPapersWorkspacePanel from '../../../modules/working-papers/components/WorkingPapersWorkspacePanel'
 import PageLoadingSkeleton from '../../../shared/loading/PageLoadingSkeleton'
+
+const LazyEngagementOperationsPanel = lazy(() => import('../../../modules/accounting/components/EngagementOperationsPanel'))
+const LazyWorkingPapersWorkspacePanel = lazy(() => import('../../../modules/working-papers/components/WorkingPapersWorkspacePanel'))
+const LazyTrialBalanceGridPanel = lazy(() => import('../../../modules/working-papers/components/TrialBalanceGridPanel'))
+const LazyAgGridTable = lazy(() => import('../../../modules/working-papers/components/grid/AgGridTable'))
+const LazyWorkingPaperTreePanel = lazy(() => import('../../../modules/working-papers/components/WorkingPaperTreePanel'))
+const LazyWorkflowQueuePanel = lazy(() => import('../../../modules/working-papers/components/WorkflowQueuePanel'))
+const LazyAuditTimelinePanel = lazy(() => import('../../../modules/working-papers/components/AuditTimelinePanel'))
+const LazyAdjustmentWorkspacePanel = lazy(() => import('../../../modules/working-papers/components/AdjustmentWorkspacePanel'))
+
+const AccountingPanelFallback = () => <PageLoadingSkeleton variant="table" />
 import {
   isAccountingFirmOrganization,
   resolveClientRecordLabel,
@@ -703,9 +707,11 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       : 'Create reporting entities (subsidiary, division, or legal entity) that engagements will be attached to.')
     : descriptionByView[view]
   const currentReviewFlowStatus = String(dashboard?.engagement?.review_flow_status || 'not_started')
-  const nextReviewFlowStatuses: string[] = Array.isArray(dashboard?.nextReviewFlowStatuses)
-    ? dashboard.nextReviewFlowStatuses
-    : (reviewFlowTransitions[currentReviewFlowStatus] || [])
+  const nextReviewFlowStatuses = useMemo((): string[] => {
+    const fromDashboard = ensureStringArray(dashboard?.nextReviewFlowStatuses)
+    if (fromDashboard.length > 0) return fromDashboard
+    return ensureStringArray(reviewFlowTransitions[currentReviewFlowStatus])
+  }, [currentReviewFlowStatus, dashboard?.nextReviewFlowStatuses])
   const editableReviewFlowOptions = useMemo(
     () => Array.from(new Set([currentReviewFlowStatus, ...nextReviewFlowStatuses])),
     [currentReviewFlowStatus, nextReviewFlowStatuses]
@@ -726,7 +732,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   )
   const assignmentLabelByUserId = useMemo(() => {
     const map = new Map<string, string>()
-    for (const member of workspaceMembers) {
+    for (const member of (Array.isArray(workspaceMembers) ? workspaceMembers : [])) {
       const key = String(member.clerk_user_id || '')
       if (!key) continue
       map.set(key, String(member.display_name || member.email || member.clerk_user_id))
@@ -1878,7 +1884,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                     )}
 
                     {(view === 'engagementList' || view === 'newEngagement') && (
-                      <EngagementOperationsPanel
+                      <Suspense fallback={<AccountingPanelFallback />}>
+                      <LazyEngagementOperationsPanel
                         getToken={getToken}
                         accountReady={Boolean(account)}
                         clientLabel={clientLabel}
@@ -1897,10 +1904,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         onNotice={setNotice}
                         onSavingChange={setSaving}
                       />
+                      </Suspense>
                     )}
 
                     {view === 'workingPapersWorkspace' && (
-                      <WorkingPapersWorkspacePanel
+                      <Suspense fallback={<AccountingPanelFallback />}>
+                      <LazyWorkingPapersWorkspacePanel
                         getToken={getToken}
                         clientLabel={clientLabel}
                         engagements={engagements}
@@ -1908,6 +1917,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         onError={setError}
                         onNotice={setNotice}
                       />
+                      </Suspense>
                     )}
 
                     {view === 'engagementDashboard' && dashboard && (
@@ -1990,10 +2000,16 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           </button>
                         </div>
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                          <WorkingPaperTreePanel sections={Array.isArray(workingPaperTree?.sections) ? workingPaperTree.sections : []} />
-                          <WorkflowQueuePanel queue={workflowQueue} />
+                          <Suspense fallback={<AccountingPanelFallback />}>
+                            <LazyWorkingPaperTreePanel sections={Array.isArray(workingPaperTree?.sections) ? workingPaperTree.sections : []} />
+                          </Suspense>
+                          <Suspense fallback={<AccountingPanelFallback />}>
+                            <LazyWorkflowQueuePanel queue={workflowQueue} />
+                          </Suspense>
                         </div>
-                        <AuditTimelinePanel events={auditEvents} />
+                        <Suspense fallback={<AccountingPanelFallback />}>
+                          <LazyAuditTimelinePanel events={auditEvents} />
+                        </Suspense>
                         <div className="rounded-lg border border-border p-4">
                           <h3 className="font-semibold text-primary-dark">AI Foundations</h3>
                           <p className="text-xs text-text-light mt-1">
@@ -2050,7 +2066,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         {trialBalanceAccounts.length === 0 ? (
                           <p className="text-sm text-text-light">No trial balance accounts imported yet.</p>
                         ) : (
-                          <TrialBalanceGridPanel
+                          <Suspense fallback={<AccountingPanelFallback />}>
+                          <LazyTrialBalanceGridPanel
                             getToken={getToken}
                             accounts={trialBalanceAccounts}
                             saving={saving}
@@ -2059,6 +2076,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             onNotice={setNotice}
                             onSavingChange={setSaving}
                           />
+                          </Suspense>
                         )}
                       </div>
                     )}
@@ -2083,21 +2101,23 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         {leadSheets.length === 0 ? (
                           <p className="text-sm text-text-light">No lead sheets generated yet.</p>
                         ) : (
-                          <AgGridTable
-                            rowData={leadSheets}
-                            height={320}
-                            columnDefs={[
-                              {
-                                headerName: 'Section',
-                                minWidth: 240,
-                                valueGetter: (params) => `${params.data?.section_code || ''} - ${params.data?.section_name || ''}`
-                              },
-                              { field: 'status', headerName: 'Status', minWidth: 130 },
-                              { field: 'risk_level', headerName: 'Risk', minWidth: 120 },
-                              { field: 'open_note_count', headerName: 'Open Notes', minWidth: 120 },
-                              { field: 'document_count', headerName: 'Docs', minWidth: 90 }
-                            ]}
-                          />
+                          <Suspense fallback={<AccountingPanelFallback />}>
+                            <LazyAgGridTable
+                              rowData={leadSheets}
+                              height={320}
+                              columnDefs={[
+                                {
+                                  headerName: 'Section',
+                                  minWidth: 240,
+                                  valueGetter: (params) => `${params.data?.section_code || ''} - ${params.data?.section_name || ''}`
+                                },
+                                { field: 'status', headerName: 'Status', minWidth: 130 },
+                                { field: 'risk_level', headerName: 'Risk', minWidth: 120 },
+                                { field: 'open_note_count', headerName: 'Open Notes', minWidth: 120 },
+                                { field: 'document_count', headerName: 'Docs', minWidth: 90 }
+                              ]}
+                            />
+                          </Suspense>
                         )}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                           {leadSheets.map((sheet) => (
@@ -2248,20 +2268,24 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             Capture Reviewer Signoff
                           </button>
                         </div>
-                        <WorkflowQueuePanel queue={workflowQueue} />
+                        <Suspense fallback={<AccountingPanelFallback />}>
+                          <LazyWorkflowQueuePanel queue={workflowQueue} />
+                        </Suspense>
                         {reviewNotes.length === 0 ? (
                           <p className="text-sm text-text-light">No review notes for this engagement.</p>
                         ) : (
                           <>
-                            <AgGridTable
-                              rowData={reviewNotes}
-                              height={280}
-                              columnDefs={[
-                                { field: 'priority', headerName: 'Priority', minWidth: 110 },
-                                { field: 'status', headerName: 'Status', minWidth: 130 },
-                                { field: 'note_text', headerName: 'Note', minWidth: 360 }
-                              ]}
-                            />
+                            <Suspense fallback={<AccountingPanelFallback />}>
+                              <LazyAgGridTable
+                                rowData={reviewNotes}
+                                height={280}
+                                columnDefs={[
+                                  { field: 'priority', headerName: 'Priority', minWidth: 110 },
+                                  { field: 'status', headerName: 'Status', minWidth: 130 },
+                                  { field: 'note_text', headerName: 'Note', minWidth: 360 }
+                                ]}
+                              />
+                            </Suspense>
                             <div className="space-y-2">
                               {reviewNotes.map((note) => (
                                 <div key={`review-actions-${note.id}`} className="rounded border border-border/70 p-2">
@@ -2295,19 +2319,25 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             ))}
                           </div>
                         </div>
-                        <AuditTimelinePanel events={auditEvents} />
+                        <Suspense fallback={<AccountingPanelFallback />}>
+                          <LazyAuditTimelinePanel events={auditEvents} />
+                        </Suspense>
                       </div>
                     )}
 
                     {view === 'adjustments' && (
                       <div className="space-y-4">
-                        <AdjustmentWorkspacePanel
-                          entries={adjustments}
-                          saving={saving}
-                          onCreateEntry={onCreateAdjustmentEntry}
-                          onUpdateLines={onUpsertAdjustmentLines}
-                        />
-                        <AuditTimelinePanel events={auditEvents} />
+                        <Suspense fallback={<AccountingPanelFallback />}>
+                          <LazyAdjustmentWorkspacePanel
+                            entries={adjustments}
+                            saving={saving}
+                            onCreateEntry={onCreateAdjustmentEntry}
+                            onUpdateLines={onUpsertAdjustmentLines}
+                          />
+                        </Suspense>
+                        <Suspense fallback={<AccountingPanelFallback />}>
+                          <LazyAuditTimelinePanel events={auditEvents} />
+                        </Suspense>
                       </div>
                     )}
 
@@ -2424,7 +2454,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                     {view === 'integrations' && integrationsData && (
                       <div className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          {integrationsData.providers.map((provider: any) => (
+                          {(Array.isArray(integrationsData?.providers) ? integrationsData.providers : []).map((provider: any) => (
                             <div key={provider.id} className="rounded-lg border border-border p-4">
                               <h3 className="font-semibold text-primary-dark mb-1">{provider.name}</h3>
                               <p className="text-xs text-text-light mb-2">
@@ -2447,11 +2477,11 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         </div>
                         <div className="rounded-lg border border-border p-4">
                           <h3 className="font-semibold text-primary-dark mb-2">Connection records</h3>
-                          {integrationsData.connections.length === 0 ? (
+                          {(Array.isArray(integrationsData?.connections) ? integrationsData.connections : []).length === 0 ? (
                             <p className="text-sm text-text-light">No integration connections recorded yet for your organization.</p>
                           ) : (
                             <ul className="space-y-1 text-sm text-text">
-                              {integrationsData.connections.map((connection: any) => (
+                              {(Array.isArray(integrationsData?.connections) ? integrationsData.connections : []).map((connection: any) => (
                                 <li key={connection.id}>
                                   {connection.provider} - {connection.connection_status}
                                 </li>

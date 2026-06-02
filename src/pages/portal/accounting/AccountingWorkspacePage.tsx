@@ -378,7 +378,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const loadTrialBalance = useCallback(async () => {
     if (!engagementId) return
     const { accounts } = await fetchTrialBalanceAccountsDomain(getToken, engagementId)
-    setTrialBalanceAccounts(accounts)
+    setTrialBalanceAccounts(Array.isArray(accounts) ? accounts : [])
   }, [engagementId, getToken])
 
   const loadEngagementSnapshots = useCallback(async () => {
@@ -390,7 +390,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const loadLeadSheets = useCallback(async () => {
     if (!engagementId) return
     const { leadSheets: rows } = await fetchLeadSheetsDomain(getToken, engagementId)
-    setLeadSheets(rows)
+    setLeadSheets(Array.isArray(rows) ? rows : [])
   }, [engagementId, getToken])
 
   const loadLeadSheetDetail = useCallback(async () => {
@@ -715,12 +715,14 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     [workspaceMembers]
   )
   const trialBalanceTotals = useMemo(
-    () => calculateTrialBalanceTotals(trialBalanceAccounts),
-    [trialBalanceAccounts]
+    () => (view === 'trialBalance' ? calculateTrialBalanceTotals(trialBalanceAccounts) : { currentTotal: 0, priorTotal: 0, varianceTotal: 0 }),
+    [trialBalanceAccounts, view]
   )
   const leadSheetTotals = useMemo(
-    () => calculateLeadSheetTotals(leadSheets),
-    [leadSheets]
+    () => (view === 'leadSheets' || view === 'leadSheetDetail'
+      ? calculateLeadSheetTotals(leadSheets)
+      : { openNotesTotal: 0, documentsTotal: 0 }),
+    [leadSheets, view]
   )
   const assignmentLabelByUserId = useMemo(() => {
     const map = new Map<string, string>()
@@ -2005,15 +2007,15 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                       <div className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                           <div className="rounded-lg border border-border p-3">
-                            <p className="text-xs text-text-light">Current total (HyperFormula)</p>
+                            <p className="text-xs text-text-light">Current total</p>
                             <p className="font-semibold text-primary-dark">{trialBalanceTotals.currentTotal.toFixed(2)}</p>
                           </div>
                           <div className="rounded-lg border border-border p-3">
-                            <p className="text-xs text-text-light">Prior total (HyperFormula)</p>
+                            <p className="text-xs text-text-light">Prior total</p>
                             <p className="font-semibold text-primary-dark">{trialBalanceTotals.priorTotal.toFixed(2)}</p>
                           </div>
                           <div className="rounded-lg border border-border p-3">
-                            <p className="text-xs text-text-light">Variance total (HyperFormula)</p>
+                            <p className="text-xs text-text-light">Variance total</p>
                             <p className="font-semibold text-primary-dark">{trialBalanceTotals.varianceTotal.toFixed(2)}</p>
                           </div>
                         </div>
@@ -2065,11 +2067,11 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                       <div className="space-y-3">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="rounded-lg border border-border p-3">
-                            <p className="text-xs text-text-light">Open notes total (HyperFormula)</p>
+                            <p className="text-xs text-text-light">Open notes total</p>
                             <p className="font-semibold text-primary-dark">{leadSheetTotals.openNotesTotal}</p>
                           </div>
                           <div className="rounded-lg border border-border p-3">
-                            <p className="text-xs text-text-light">Documents total (HyperFormula)</p>
+                            <p className="text-xs text-text-light">Documents total</p>
                             <p className="font-semibold text-primary-dark">{leadSheetTotals.documentsTotal}</p>
                           </div>
                         </div>

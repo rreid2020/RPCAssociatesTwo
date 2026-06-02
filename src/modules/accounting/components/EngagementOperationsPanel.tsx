@@ -178,11 +178,15 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     return map
   }, [clients])
 
-  const clientIds = useMemo(() => clients.map((client) => client.id), [clients])
+  const clientIds = useMemo(
+    () => (Array.isArray(clients) ? clients : []).map((client) => client.id),
+    [clients]
+  )
 
   const filteredEngagements = useMemo(() => {
     const term = search.trim().toLowerCase()
-    return engagements.filter((engagement) => {
+    const rows = Array.isArray(engagements) ? engagements : []
+    return rows.filter((engagement) => {
       if (statusFilter && engagement.status !== statusFilter) return false
       if (clientFilter && engagement.client_id !== clientFilter) return false
       if (!term) return true
@@ -194,7 +198,10 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
   }, [clientFilter, engagements, search, statusFilter])
 
   const gridRows = useMemo(
-    () => [...draftRows, ...filteredEngagements],
+    () => [
+      ...(Array.isArray(draftRows) ? draftRows : []),
+      ...(Array.isArray(filteredEngagements) ? filteredEngagements : [])
+    ],
     [draftRows, filteredEngagements]
   )
 

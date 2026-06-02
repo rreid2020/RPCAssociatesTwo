@@ -40,6 +40,7 @@ import {
   updateReviewNoteStatus,
   updateTask,
   updateTrialBalanceAccountMapping,
+  updateTrialBalanceAccountWorkingPaper,
   upsertAdjustmentLines,
   upsertIntegrationConnection
 } from '../services/workingPapersService.js'
@@ -1966,6 +1967,27 @@ export function createPortalRouter (pool) {
       res.json({ account })
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update mapping' })
+    }
+  })
+
+  r.patch('/v1/accounting/trial-balance/accounts/:accountId/working-paper', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.manage', res))) return
+    try {
+      const account = await updateTrialBalanceAccountWorkingPaper(
+        pool,
+        scope.workspaceUserId,
+        scope.actorUserId,
+        req.params.accountId,
+        req.body || {}
+      )
+      if (!account) return res.status(404).json({ error: 'Account not found' })
+      res.json({ account })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update trial balance account' })
     }
   })
 

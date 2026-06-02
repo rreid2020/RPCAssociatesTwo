@@ -528,6 +528,10 @@ const STATEMENTS = [
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 )`,
   'CREATE INDEX IF NOT EXISTS trial_balance_accounts_tb_idx ON taxgpt.trial_balance_accounts(trial_balance_id)',
+  'ALTER TABLE taxgpt.trial_balance_accounts ADD COLUMN IF NOT EXISTS adjustment_debit NUMERIC(14,2) NOT NULL DEFAULT 0',
+  'ALTER TABLE taxgpt.trial_balance_accounts ADD COLUMN IF NOT EXISTS adjustment_credit NUMERIC(14,2) NOT NULL DEFAULT 0',
+  'ALTER TABLE taxgpt.trial_balance_accounts ADD COLUMN IF NOT EXISTS review_status VARCHAR(24) NOT NULL DEFAULT \'needs_work\'',
+  'ALTER TABLE taxgpt.trial_balance_accounts ADD COLUMN IF NOT EXISTS workpaper_note TEXT',
 
   `CREATE TABLE IF NOT EXISTS taxgpt.lead_sheets (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

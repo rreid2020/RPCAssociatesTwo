@@ -43,6 +43,75 @@ export async function fetchLeadSheetForAccess(pool, leadSheetId, clerkUserId) {
   return rows[0] || null
 }
 
+const TRIAL_BALANCE_REVIEW_STATUSES = new Set(['needs_work', 'in_review', 'complete'])
+
+export async function updateTrialBalanceAccountWorkingPaperRecord(pool, accountId, payload) {
+  const sets = []
+  const values = []
+  let index = 1
+
+  if (payload.adjustmentDebit !== undefined) {
+    const adjustmentDebit = Number(payload.adjustmentDebit)
+    if (!Number.isFinite(adjustmentDebit) || adjustmentDebit < 0) {
+      throw new Error('Adjustment debit must be zero or greater')
+    }
+    sets.push(`adjustment_debit = $${index++}`)
+    values.push(adjustmentDebit)
+  }
+
+  if (payload.adjustmentCredit !== undefined) {
+    const adjustmentCredit = Number(payload.adjustmentCredit)
+    if (!Number.isFinite(adjustmentCredit) || adjustmentCredit < 0) {
+      throw new Error('Adjustment credit must be zero or greater')
+    }
+    sets.push(`adjustment_credit = $${index++}`)
+    values.push(adjustmentCredit)
+  }
+
+  if (payload.reviewStatus !== undefined) {
+    const reviewStatus = String(payload.reviewStatus || '').trim()
+    if (!TRIAL_BALANCE_REVIEW_STATUSES.has(reviewStatus)) {
+      throw new Error('Invalid review status')
+    }
+    sets.push(`review_status = $${index++}`)
+    values.push(reviewStatus)
+  }
+
+  if (payload.workpaperNote !== undefined) {
+    const workpaperNote = payload.workpaperNote == null ? null : String(payload.workpaperNote).trim()
+    sets.push(`workpaper_note = $${index++}`)
+    values.push(workpaperNote || null)
+  }
+
+  if (sets.length === 0) {
+    const { rows } = await pool.query('SELECT * FROM taxgpt.trial_balance_accounts WHERE id = $1::uuid', [accountId])
+    return rows[0] || null
+  }
+
+  sets.push('updated_at = now()')
+  values.push(accountId)
+  const { rows } = await pool.query(
+    `UPDATE taxgpt.trial_balance_accounts
+     SET ${sets.join(', ')}
+     WHERE id = $${index}::uuid
+     RETURNING *`,
+    values
+  )
+  return rows[0] || null
+}
+
+export async function fetchTrialBalanceAccountEngagementId(pool, accountId) {
+  const { rows } = await pool.query(
+    `SELECT tb.engagement_id
+     FROM taxgpt.trial_balance_accounts tba
+     INNER JOIN taxgpt.trial_balances tb ON tb.id = tba.trial_balance_id
+     WHERE tba.id = $1::uuid
+     LIMIT 1`,
+    [accountId]
+  )
+  return rows[0]?.engagement_id || null
+}
+
 export async function listTrialBalanceAccountsForEngagement(pool, engagementId) {
   const { rows } = await pool.query(
     `SELECT tba.*, tb.name AS trial_balance_name

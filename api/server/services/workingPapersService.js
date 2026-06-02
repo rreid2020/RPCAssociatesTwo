@@ -8,7 +8,9 @@ import {
   listAdjustmentEntriesForEngagement,
   listLeadSheetsForEngagement,
   listReviewNotesForEngagement,
+  fetchTrialBalanceAccountEngagementId,
   listTrialBalanceAccountsForEngagement,
+  updateTrialBalanceAccountWorkingPaperRecord,
   patchReviewNoteStatusRecord,
   replaceAdjustmentLines,
   updateAdjustmentStatusRecord
@@ -762,6 +764,25 @@ export async function listTrialBalanceAccounts (pool, clerkUserId, engagementId)
   const engagement = await fetchEngagementForAccess(pool, engagementId, clerkUserId)
   if (!engagement) return null
   return listTrialBalanceAccountsForEngagement(pool, engagementId)
+}
+
+export async function updateTrialBalanceAccountWorkingPaper (pool, clerkUserId, actorId, accountId, payload) {
+  const engagementId = await fetchTrialBalanceAccountEngagementId(pool, accountId)
+  if (!engagementId) return null
+  const engagement = await fetchEngagementForAccess(pool, engagementId, clerkUserId)
+  if (!engagement) return null
+
+  const { rows: beforeRows } = await pool.query(
+    'SELECT * FROM taxgpt.trial_balance_accounts WHERE id = $1::uuid',
+    [accountId]
+  )
+  if (!beforeRows[0]) return null
+
+  const updated = await updateTrialBalanceAccountWorkingPaperRecord(pool, accountId, payload)
+  if (!updated) return null
+
+  await logAccountingAudit(pool, clerkUserId, actorId, 'trial_balance_account', accountId, 'working_paper_updated', beforeRows[0], updated)
+  return updated
 }
 
 export async function updateTrialBalanceAccountMapping (pool, clerkUserId, actorId, accountId, payload) {

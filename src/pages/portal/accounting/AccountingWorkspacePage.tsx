@@ -10,6 +10,7 @@ import WorkflowQueuePanel from '../../../modules/working-papers/components/Workf
 import AuditTimelinePanel from '../../../modules/working-papers/components/AuditTimelinePanel'
 import AdjustmentWorkspacePanel from '../../../modules/working-papers/components/AdjustmentWorkspacePanel'
 import AgGridTable from '../../../modules/working-papers/components/grid/AgGridTable'
+import TrialBalanceGridPanel from '../../../modules/working-papers/components/TrialBalanceGridPanel'
 import {
   createEvidenceLink,
   createReviewSignoff,
@@ -2047,32 +2048,14 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         {trialBalanceAccounts.length === 0 ? (
                           <p className="text-sm text-text-light">No trial balance accounts imported yet.</p>
                         ) : (
-                          <AgGridTable
-                            rowData={trialBalanceAccounts}
-                            height={360}
-                            columnDefs={[
-                              {
-                                headerName: 'Account',
-                                minWidth: 260,
-                                valueGetter: (params) => `${params.data?.account_number || '—'} ${params.data?.account_name || ''}`
-                              },
-                              { field: 'current_period_balance', headerName: 'Current', minWidth: 130 },
-                              { field: 'prior_period_balance', headerName: 'Prior', minWidth: 130 },
-                              { field: 'variance_amount', headerName: 'Variance', minWidth: 130 },
-                              {
-                                headerName: '%',
-                                minWidth: 110,
-                                valueGetter: (params) => {
-                                  const value = params.data?.variance_percent
-                                  return value != null ? `${(Number(value) * 100).toFixed(1)}%` : (params.data?.variance_label || '—')
-                                }
-                              },
-                              {
-                                headerName: 'Flags',
-                                minWidth: 130,
-                                valueGetter: (params) => (params.data?.is_material ? 'Material' : (params.data?.is_unusual ? 'Unusual' : '—'))
-                              }
-                            ]}
+                          <TrialBalanceGridPanel
+                            getToken={getToken}
+                            accounts={trialBalanceAccounts}
+                            saving={saving}
+                            onReload={loadTrialBalance}
+                            onError={setError}
+                            onNotice={setNotice}
+                            onSavingChange={setSaving}
                           />
                         )}
                       </div>

@@ -257,7 +257,16 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [engagements, setEngagements] = useState<Engagement[]>([])
   const [loading, setLoading] = useState(false)
   const [listLoading, setListLoading] = useState(false)
-  const engagementListReadyRef = useRef(false)
+  const listBootstrapViewRef = useRef<string | null>(null)
+  const lastLoadedEngagementFiltersRef = useRef('')
+  const engagementFiltersRef = useRef({
+    search: '',
+    statusFilter: '',
+    reviewFlowStatusFilter: '',
+    approvalReadyFilter: '',
+    clientFilter: '',
+    engagementTypeFilter: ''
+  })
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [search, setSearch] = useState(() => searchParams.get('search') || '')
@@ -332,17 +341,32 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setClients(Array.isArray(clients) ? clients : [])
   }, [getToken])
 
+  engagementFiltersRef.current = {
+    search,
+    statusFilter,
+    reviewFlowStatusFilter,
+    approvalReadyFilter,
+    clientFilter,
+    engagementTypeFilter
+  }
+
+  const engagementFilterSignature = useMemo(
+    () => JSON.stringify(engagementFiltersRef.current),
+    [approvalReadyFilter, clientFilter, engagementTypeFilter, reviewFlowStatusFilter, search, statusFilter]
+  )
+
   const loadEngagements = useCallback(async () => {
-    const { engagements } = await fetchEngagementsDomain(getToken, {
-      status: statusFilter,
-      reviewFlowStatus: reviewFlowStatusFilter,
-      approvalReady: approvalReadyFilter,
-      clientId: clientFilter,
-      engagementType: engagementTypeFilter,
-      search
+    const filters = engagementFiltersRef.current
+    const { engagements: rows } = await fetchEngagementsDomain(getToken, {
+      status: filters.statusFilter,
+      reviewFlowStatus: filters.reviewFlowStatusFilter,
+      approvalReady: filters.approvalReadyFilter,
+      clientId: filters.clientFilter,
+      engagementType: filters.engagementTypeFilter,
+      search: filters.search
     })
-    setEngagements(Array.isArray(engagements) ? engagements : [])
-  }, [approvalReadyFilter, clientFilter, engagementTypeFilter, getToken, reviewFlowStatusFilter, search, statusFilter])
+    setEngagements(Array.isArray(rows) ? rows : [])
+  }, [getToken])
 
   const loadEngagementDashboard = useCallback(async () => {
     if (!engagementId) return
@@ -497,21 +521,20 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }, [getToken])
 
   useEffect(() => {
+    if (isListCentricView(view)) return
+
     let mounted = true
     const run = async () => {
       setError(null)
       setNotice(null)
-      const listCentricView = isListCentricView(view)
-      const blockWithLoadingState = !isCompanyProfileView(view) && !listCentricView
+      const blockWithLoadingState = !isCompanyProfileView(view)
       if (blockWithLoadingState) setLoading(true)
-      if (listCentricView) setListLoading(true)
       try {
         if (view === 'joinWorkspaceInvite') {
           await refreshAccount()
           return
         }
         if (isCompanyProfileView(view)) {
-          const canManageAccount = account?.role === 'owner' || account?.role === 'admin'
           const profileTasks: Array<Promise<any>> = []
           if (view === 'companyProfile' || view === 'companyProfileEntities') {
             profileTasks.push(loadWorkspaceProfile())
@@ -519,29 +542,13 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
           if (view === 'companyProfileEntities') {
             profileTasks.push(loadClients())
           }
-          if (view === 'companyProfileEmployees') {
-            if (canManageAccount) {
-              profileTasks.push(loadOrganizationSnapshot())
-            } else {
-              setOrganizationSnapshot(null)
-            }
-          }
           if (profileTasks.length > 0) {
             await Promise.all(profileTasks)
           }
           return
         }
 
-        if (view === 'engagementList' || view === 'newEngagement') {
-          await Promise.all([
-            loadEngagements(),
-            loadClients(),
-            loadWorkspaceMembers()
-          ])
-          engagementListReadyRef.current = true
-        } else if (view === 'workingPapersWorkspace') {
-          await loadEngagements()
-        } else if (view === 'engagementDashboard') {
+        if (view === 'engagementDashboard') {
           await Promise.all([
             loadEngagementExecutionBundle({ includeDashboardFallback: true }),
             loadWorkspaceMembers(),
@@ -579,7 +586,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         if (mounted) setError(e instanceof Error ? e.message : 'Could not load data')
       } finally {
         if (mounted && blockWithLoadingState) setLoading(false)
-        if (mounted && listCentricView) setListLoading(false)
       }
     }
     void run()
@@ -609,9 +615,67 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     loadWorkspaceProfile,
     loadWorkspaceMembers,
     refreshAccount,
-    account?.role,
     view
   ])
+
+  useEffect(() => {
+    if (view !== 'companyProfileEmployees') return
+    const canManageAccount = account?.role === 'owner' || account?.role === 'admin'
+    if (!canManageAccount) {
+      setOrganizationSnapshot(null)
+      return
+    }
+    let mounted = true
+    const run = async () => {
+      try {
+        await loadOrganizationSnapshot()
+      } catch (e) {
+        if (mounted) setError(e instanceof Error ? e.message : 'Could not load organization')
+      }
+    }
+    void run()
+    return () => {
+      mounted = false
+    }
+  }, [account?.role, loadOrganizationSnapshot, view])
+
+  useEffect(() => {
+    if (!isListCentricView(view)) {
+      listBootstrapViewRef.current = null
+      lastLoadedEngagementFiltersRef.current = ''
+      return
+    }
+    if (listBootstrapViewRef.current === view) return
+
+    let mounted = true
+    const run = async () => {
+      setListLoading(true)
+      setError(null)
+      try {
+        if (view === 'engagementList' || view === 'newEngagement') {
+          await Promise.all([
+            loadEngagements(),
+            loadClients(),
+            loadWorkspaceMembers()
+          ])
+        } else {
+          await loadEngagements()
+        }
+        if (mounted) {
+          listBootstrapViewRef.current = view
+          lastLoadedEngagementFiltersRef.current = JSON.stringify(engagementFiltersRef.current)
+        }
+      } catch (e) {
+        if (mounted) setError(e instanceof Error ? e.message : 'Could not load data')
+      } finally {
+        if (mounted) setListLoading(false)
+      }
+    }
+    void run()
+    return () => {
+      mounted = false
+    }
+  }, [loadClients, loadEngagements, loadWorkspaceMembers, view])
 
   const activeWorkspace = useMemo(() => {
     if (!account) return null
@@ -699,37 +763,31 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }, [searchParams, view])
 
   useEffect(() => {
-    if (view !== 'engagementList' && view !== 'newEngagement') {
-      engagementListReadyRef.current = false
-      return
-    }
-    if (!engagementListReadyRef.current) return
+    if (view !== 'engagementList' && view !== 'newEngagement') return
+    if (listBootstrapViewRef.current !== view) return
+    if (engagementFilterSignature === lastLoadedEngagementFiltersRef.current) return
+
     let mounted = true
+    const showSkeleton = engagements.length === 0
     const run = async () => {
-      setListLoading(true)
+      if (showSkeleton) setListLoading(true)
       setError(null)
       try {
         await loadEngagements()
+        if (mounted) {
+          lastLoadedEngagementFiltersRef.current = engagementFilterSignature
+        }
       } catch (e) {
         if (mounted) setError(e instanceof Error ? e.message : 'Could not refresh engagements')
       } finally {
-        if (mounted) setListLoading(false)
+        if (mounted && showSkeleton) setListLoading(false)
       }
     }
     void run()
     return () => {
       mounted = false
     }
-  }, [
-    approvalReadyFilter,
-    clientFilter,
-    engagementTypeFilter,
-    loadEngagements,
-    reviewFlowStatusFilter,
-    search,
-    statusFilter,
-    view
-  ])
+  }, [engagementFilterSignature, engagements.length, loadEngagements, view])
 
   useEffect(() => {
     const engagement = dashboard?.engagement
@@ -761,30 +819,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     loadReviewNotes,
     loadWorkspaceMembers
   ])
-
-  const createClientByName = async (name: string) => {
-    const trimmed = name.trim()
-    if (!trimmed) {
-      setError(`${clientLabel} name is required.`)
-      return null
-    }
-    setSaving(true)
-    setError(null)
-    try {
-      const { client } = await portalFetch<{ client: Client }>('/v1/accounting/clients', getToken, {
-        method: 'POST',
-        body: JSON.stringify({ name: trimmed })
-      })
-      await loadClients()
-      setNotice(`${clientLabel} created.`)
-      return client
-    } catch (e) {
-      setError(e instanceof Error ? e.message : `Could not create ${clientLabel.toLowerCase()}`)
-      return null
-    } finally {
-      setSaving(false)
-    }
-  }
 
   const onSelectEntityProfile = (client: Client) => {
     setEntityProfileForm({
@@ -1431,7 +1465,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
               : '/portal/accounting/working-papers/engagements'
         }
       />
-      <ClientPortalShell wideContent={isCompanyProfileView(view)}>
+      <ClientPortalShell wideContent={isCompanyProfileView(view) || view === 'engagementList' || view === 'newEngagement'}>
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold text-primary-dark">{pageTitle}</h1>
@@ -1851,25 +1885,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         engagements={engagements}
                         loading={listLoading}
                         saving={saving}
-                        initialEditorMode={view === 'newEngagement' ? 'create' : null}
                         onReloadEngagements={async () => { await loadEngagements() }}
-                        onCreateClient={createClientByName}
-                        onDeleteSelected={async (engagementIds) => {
-                          if (!window.confirm(`Delete ${engagementIds.length} engagement(s) and all related working papers?`)) return
-                          setSaving(true)
-                          setError(null)
-                          try {
-                            for (const engagementIdToDelete of engagementIds) {
-                              await portalFetch(`/v1/accounting/engagements/${engagementIdToDelete}`, getToken, { method: 'DELETE' })
-                            }
-                            await loadEngagements()
-                            resetWorkingPapersSelection()
-                            setNotice(`${engagementIds.length} engagement(s) deleted.`)
-                          } catch (e) {
-                            setError(e instanceof Error ? e.message : 'Could not delete selected engagements')
-                          } finally {
-                            setSaving(false)
-                          }
+                        onDeleteEngagement={async (engagementId) => {
+                          await portalFetch(`/v1/accounting/engagements/${engagementId}`, getToken, { method: 'DELETE' })
+                          resetWorkingPapersSelection()
                         }}
                         onError={setError}
                         onNotice={setNotice}

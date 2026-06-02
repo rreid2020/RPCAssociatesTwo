@@ -133,7 +133,14 @@ export function getAccountingRoutes () {
       {accountingViewRoute('/portal/accounting/join', 'joinWorkspaceInvite')}
       {accountingViewRoute('/portal/accounting/working-papers/engagements', 'engagementList', 'workingPapers', 'engagement.read')}
       {accountingViewRoute('/portal/accounting/working-papers/workspace', 'workingPapersWorkspace', 'workingPapers', 'working_papers.read')}
-      {accountingViewRoute('/portal/accounting/working-papers/engagements/new', 'newEngagement', 'workingPapers', 'engagement.manage')}
+      <Route
+        path="/portal/accounting/working-papers/engagements/new"
+        element={
+          <ProtectedRoute>
+            <Navigate to="/portal/accounting/working-papers/engagements?create=1" replace />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/portal/accounting/working-papers/engagements/:engagementId"
         element={guardedElement(<EngagementLayout />, 'workingPapers', 'engagement.read')}

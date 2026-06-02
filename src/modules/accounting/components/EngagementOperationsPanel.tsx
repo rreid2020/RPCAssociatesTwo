@@ -1,5 +1,6 @@
-import { FC, FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import type { CellEditingStoppedEvent, ColDef, ICellRendererParams, RowClassParams } from 'ag-grid-community'
 import AgGridTable from '../../working-papers/components/grid/AgGridTable'
 import PageLoadingSkeleton from '../../../shared/loading/PageLoadingSkeleton'
 import { portalFetch } from '../../../lib/portalApi'
@@ -13,8 +14,9 @@ const engagementTypeOptions = [
   'other'
 ]
 
-const sourceTypeOptions = ['qbo', 'excel', 'csv', 'google_sheets', 'manual']
 const statusOptions = ['draft', 'active', 'in_review', 'completed', 'archived']
+
+const formatTypeLabel = (value: string) => String(value || '').replace(/_/g, ' ')
 
 type EngagementRecord = {
   id: string
@@ -31,49 +33,16 @@ type EngagementRecord = {
   source_type?: string
   deliverables?: string[] | null
   assigned_employee_ids?: string[]
-  assigned_employee_count?: number
+  isNew?: boolean
 }
 
 type ClientRecord = { id: string; name: string }
 type WorkspaceMember = { clerk_user_id: string; display_name?: string; email?: string; role?: string; status?: string }
 
-export type EngagementEditorMode = 'create' | 'edit' | null
-
-export type EngagementFormState = {
-  clientId: string
-  name: string
-  engagementType: string
-  fiscalYear: number
-  periodStart: string
-  periodEnd: string
-  dueDate: string
-  sourceType: string
-  status: string
-  reviewFlowStatus: string
-  deliverablesText: string
-  assignedEmployeeIds: string[]
-}
-
-const defaultEngagementForm = (): EngagementFormState => ({
-  clientId: '',
-  name: '',
-  engagementType: 'year_end_working_papers',
-  fiscalYear: new Date().getFullYear(),
-  periodStart: `${new Date().getFullYear()}-01-01`,
-  periodEnd: `${new Date().getFullYear()}-12-31`,
-  dueDate: '',
-  sourceType: 'csv',
-  status: 'draft',
-  reviewFlowStatus: 'not_started',
-  deliverablesText: '',
-  assignedEmployeeIds: []
-})
-
-function parseDeliverablesText (value: string): string[] {
-  return String(value || '')
-    .split(/[\n,]/)
-    .map((entry) => entry.trim())
-    .filter(Boolean)
+type EngagementGridContext = {
+  onOpen: (engagementId: string) => void
+  onDelete: (row: EngagementRecord) => void
+  saving: boolean
 }
 
 function formatEmployeeLabels (
@@ -83,6 +52,60 @@ function formatEmployeeLabels (
   const ids = Array.isArray(employeeIds) ? employeeIds : []
   if (ids.length === 0) return '—'
   return ids.map((id) => memberLabelByUserId.get(id) || id).join(', ')
+}
+
+function toDateInput (value: unknown): string {
+  if (!value) return ''
+  return String(value).slice(0, 10)
+}
+
+function createDraftRow (defaultAssigneeIds: string[]): EngagementRecord {
+  const year = new Date().getFullYear()
+  return {
+    id: `draft-${Date.now()}`,
+    isNew: true,
+    name: '',
+    client_id: '',
+    client_name: '',
+    engagement_type: 'year_end_working_papers',
+    status: 'draft',
+    review_flow_status: 'not_started',
+    fiscal_year: year,
+    period_start: `${year}-01-01`,
+    period_end: `${year}-12-31`,
+    due_date: null,
+    source_type: 'csv',
+    assigned_employee_ids: defaultAssigneeIds
+  }
+}
+
+const EngagementActionsCell: FC<ICellRendererParams<EngagementRecord, unknown, EngagementGridContext>> = (params) => {
+  const row = params.data
+  const context = params.context
+  if (!row || !context) return null
+
+  return (
+    <div className="flex h-full items-center gap-2">
+      {!row.isNew && (
+        <button
+          type="button"
+          className="text-xs font-medium text-primary-dark hover:underline disabled:opacity-50"
+          disabled={context.saving}
+          onClick={() => context.onOpen(String(row.id))}
+        >
+          Open
+        </button>
+      )}
+      <button
+        type="button"
+        className="text-xs font-medium text-red-700 hover:underline disabled:opacity-50"
+        disabled={context.saving}
+        onClick={() => context.onDelete(row)}
+      >
+        {row.isNew ? 'Cancel' : 'Delete'}
+      </button>
+    </div>
+  )
 }
 
 type EngagementOperationsPanelProps = {
@@ -95,10 +118,8 @@ type EngagementOperationsPanelProps = {
   engagements: EngagementRecord[]
   loading: boolean
   saving: boolean
-  initialEditorMode?: EngagementEditorMode
   onReloadEngagements: () => Promise<void>
-  onCreateClient: (name: string) => Promise<ClientRecord | null>
-  onDeleteSelected: (engagementIds: string[]) => Promise<void>
+  onDeleteEngagement: (engagementId: string) => Promise<void>
   onError: (message: string | null) => void
   onNotice: (message: string | null) => void
   onSavingChange: (saving: boolean) => void
@@ -114,27 +135,29 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
   engagements,
   loading,
   saving,
-  initialEditorMode = null,
   onReloadEngagements,
-  onCreateClient,
-  onDeleteSelected,
+  onDeleteEngagement,
   onError,
   onNotice,
   onSavingChange
 }) => {
   const navigate = useNavigate()
-  const [editorMode, setEditorMode] = useState<EngagementEditorMode>(initialEditorMode)
-  const [editingEngagementId, setEditingEngagementId] = useState<string | null>(null)
-  const [form, setForm] = useState<EngagementFormState>(defaultEngagementForm)
-  const [newClientName, setNewClientName] = useState('')
-  const [selectedEngagementIds, setSelectedEngagementIds] = useState<string[]>([])
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [draftRows, setDraftRows] = useState<EngagementRecord[]>([])
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [clientFilter, setClientFilter] = useState('')
+  const [gridHeight, setGridHeight] = useState(560)
+  const createRowRequestedRef = useRef(false)
 
   const activeMembers = useMemo(
     () => workspaceMembers.filter((member) => member.status === 'active'),
     [workspaceMembers]
+  )
+
+  const defaultAssigneeIds = useMemo(
+    () => activeMembers.map((member) => member.clerk_user_id).filter(Boolean).slice(0, 1),
+    [activeMembers]
   )
 
   const memberLabelByUserId = useMemo(() => {
@@ -146,6 +169,16 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     }
     return map
   }, [activeMembers])
+
+  const clientNameById = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const client of clients) {
+      map.set(client.id, client.name)
+    }
+    return map
+  }, [clients])
+
+  const clientIds = useMemo(() => clients.map((client) => client.id), [clients])
 
   const filteredEngagements = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -160,72 +193,32 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     })
   }, [clientFilter, engagements, search, statusFilter])
 
-  const primarySelectedEngagementId = selectedEngagementIds.length === 1 ? selectedEngagementIds[0] : null
+  const gridRows = useMemo(
+    () => [...draftRows, ...filteredEngagements],
+    [draftRows, filteredEngagements]
+  )
 
-  const resetEditor = useCallback(() => {
-    setEditorMode(null)
-    setEditingEngagementId(null)
-    setForm(defaultEngagementForm())
-    setNewClientName('')
+  const addDraftRow = useCallback(() => {
+    setDraftRows((prev) => [createDraftRow(defaultAssigneeIds), ...prev])
+    onError(null)
+  }, [defaultAssigneeIds, onError])
+
+  useEffect(() => {
+    const updateHeight = () => setGridHeight(Math.max(520, window.innerHeight - 260))
+    updateHeight()
+    window.addEventListener('resize', updateHeight)
+    return () => window.removeEventListener('resize', updateHeight)
   }, [])
 
   useEffect(() => {
-    if (initialEditorMode === 'create') {
-      setEditorMode('create')
-      setEditingEngagementId(null)
-      setForm(defaultEngagementForm())
-    }
-  }, [initialEditorMode])
-
-  const openCreateEditor = () => {
-    setEditorMode('create')
-    setEditingEngagementId(null)
-    setForm(defaultEngagementForm())
-    onError(null)
-  }
-
-  const openEditEditor = async (engagementId: string) => {
-    const engagement = engagements.find((row) => row.id === engagementId)
-    if (!engagement) return
-    onError(null)
-    setEditorMode('edit')
-    setEditingEngagementId(engagementId)
-    let assignedEmployeeIds = Array.isArray(engagement.assigned_employee_ids)
-      ? [...engagement.assigned_employee_ids]
-      : []
-    try {
-      const assignmentData = await portalFetch<{ assignments: Array<{ clerk_user_id: string }> }>(
-        `/v1/accounting/engagements/${engagementId}/assignments`,
-        getToken
-      )
-      assignedEmployeeIds = (assignmentData.assignments || []).map((row) => row.clerk_user_id)
-    } catch {
-      // Fall back to list payload when assignment endpoint is unavailable.
-    }
-    setForm({
-      clientId: engagement.client_id || '',
-      name: engagement.name || '',
-      engagementType: engagement.engagement_type || 'year_end_working_papers',
-      fiscalYear: Number(engagement.fiscal_year || new Date().getFullYear()),
-      periodStart: engagement.period_start ? String(engagement.period_start).slice(0, 10) : defaultEngagementForm().periodStart,
-      periodEnd: engagement.period_end ? String(engagement.period_end).slice(0, 10) : defaultEngagementForm().periodEnd,
-      dueDate: engagement.due_date ? String(engagement.due_date).slice(0, 10) : '',
-      sourceType: engagement.source_type || 'csv',
-      status: engagement.status || 'draft',
-      reviewFlowStatus: engagement.review_flow_status || 'not_started',
-      deliverablesText: Array.isArray(engagement.deliverables) ? engagement.deliverables.join('\n') : '',
-      assignedEmployeeIds
-    })
-  }
-
-  const toggleAssignedEmployee = (clerkUserId: string) => {
-    setForm((prev) => {
-      const set = new Set(prev.assignedEmployeeIds)
-      if (set.has(clerkUserId)) set.delete(clerkUserId)
-      else set.add(clerkUserId)
-      return { ...prev, assignedEmployeeIds: Array.from(set) }
-    })
-  }
+    if (createRowRequestedRef.current) return
+    if (searchParams.get('create') !== '1') return
+    createRowRequestedRef.current = true
+    addDraftRow()
+    const next = new URLSearchParams(searchParams)
+    next.delete('create')
+    setSearchParams(next, { replace: true })
+  }, [addDraftRow, searchParams, setSearchParams])
 
   const saveEngagementAssignments = async (engagementId: string, clerkUserIds: string[]) => {
     await portalFetch(`/v1/accounting/engagements/${engagementId}/assignments`, getToken, {
@@ -234,308 +227,275 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     })
   }
 
-  const onSubmit = async (event: FormEvent) => {
-    event.preventDefault()
+  const persistRow = useCallback(async (row: EngagementRecord) => {
     if (!accountReady) {
       onError('Your account is still loading. Try again in a moment.')
       return
     }
-    const resolvedClientId = String(form.clientId || '').trim()
+
+    const resolvedClientId = String(row.client_id || '').trim()
     if (!resolvedClientId) {
       onError(`Select a ${clientLabel.toLowerCase()} for this engagement.`)
       return
     }
-    if (!form.name.trim()) {
+    if (!String(row.name || '').trim()) {
       onError('Engagement name is required.')
-      return
-    }
-    if (form.assignedEmployeeIds.length === 0) {
-      onError('Assign at least one employee to the engagement.')
       return
     }
 
     onSavingChange(true)
     onError(null)
     try {
-      if (editorMode === 'create') {
+      if (row.isNew) {
+        const assignees = Array.isArray(row.assigned_employee_ids) && row.assigned_employee_ids.length > 0
+          ? row.assigned_employee_ids
+          : defaultAssigneeIds
+        if (assignees.length === 0) {
+          onError('Assign at least one employee to the engagement.')
+          return
+        }
         await portalFetch<{ engagement: { id: string } }>('/v1/accounting/engagements', getToken, {
           method: 'POST',
           body: JSON.stringify({
             clientId: resolvedClientId,
-            name: form.name.trim(),
-            engagementType: form.engagementType,
-            fiscalYear: form.fiscalYear,
-            periodStart: form.periodStart,
-            periodEnd: form.periodEnd,
-            dueDate: form.dueDate || null,
-            sourceType: form.sourceType,
-            status: form.status,
-            reviewFlowStatus: form.reviewFlowStatus,
-            deliverables: parseDeliverablesText(form.deliverablesText),
-            clerkUserIds: form.assignedEmployeeIds
+            name: String(row.name).trim(),
+            engagementType: row.engagement_type || 'year_end_working_papers',
+            fiscalYear: Number(row.fiscal_year || new Date().getFullYear()),
+            periodStart: toDateInput(row.period_start) || `${new Date().getFullYear()}-01-01`,
+            periodEnd: toDateInput(row.period_end) || `${new Date().getFullYear()}-12-31`,
+            dueDate: row.due_date ? toDateInput(row.due_date) : null,
+            sourceType: row.source_type || 'csv',
+            status: row.status || 'draft',
+            reviewFlowStatus: row.review_flow_status || 'not_started',
+            deliverables: [],
+            clerkUserIds: assignees
           })
         })
+        setDraftRows((prev) => prev.filter((draft) => draft.id !== row.id))
         onNotice('Engagement created.')
-        resetEditor()
-        await onReloadEngagements()
-        return
-      }
-
-      if (editorMode === 'edit' && editingEngagementId) {
-        await portalFetch(`/v1/accounting/engagements/${editingEngagementId}`, getToken, {
+      } else {
+        await portalFetch(`/v1/accounting/engagements/${row.id}`, getToken, {
           method: 'PATCH',
           body: JSON.stringify({
-            clientId: resolvedClientId,
-            name: form.name.trim(),
-            engagementType: form.engagementType,
-            fiscalYear: form.fiscalYear,
-            periodStart: form.periodStart,
-            periodEnd: form.periodEnd,
-            dueDate: form.dueDate || null,
-            sourceType: form.sourceType,
-            status: form.status,
-            reviewFlowStatus: form.reviewFlowStatus,
-            deliverables: parseDeliverablesText(form.deliverablesText)
+            clientId: row.client_id,
+            name: String(row.name).trim(),
+            engagementType: row.engagement_type,
+            fiscalYear: Number(row.fiscal_year || new Date().getFullYear()),
+            periodStart: toDateInput(row.period_start),
+            periodEnd: toDateInput(row.period_end),
+            dueDate: row.due_date ? toDateInput(row.due_date) : null,
+            sourceType: row.source_type || 'csv',
+            status: row.status || 'draft',
+            reviewFlowStatus: row.review_flow_status || 'not_started',
+            deliverables: Array.isArray(row.deliverables) ? row.deliverables : []
           })
         })
-        await saveEngagementAssignments(editingEngagementId, form.assignedEmployeeIds)
+        if (Array.isArray(row.assigned_employee_ids) && row.assigned_employee_ids.length > 0) {
+          await saveEngagementAssignments(row.id, row.assigned_employee_ids)
+        }
         onNotice('Engagement updated.')
-        resetEditor()
-        await onReloadEngagements()
       }
+      await onReloadEngagements()
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Could not save engagement')
     } finally {
       onSavingChange(false)
     }
-  }
+  }, [
+    accountReady,
+    clientLabel,
+    defaultAssigneeIds,
+    getToken,
+    onError,
+    onNotice,
+    onReloadEngagements,
+    onSavingChange
+  ])
+
+  const onCellEditingStopped = useCallback(async (event: CellEditingStoppedEvent<EngagementRecord>) => {
+    const row = event.data
+    if (!row) return
+
+    if (event.colDef.field === 'client_id') {
+      row.client_name = clientNameById.get(String(row.client_id || '')) || row.client_name
+    }
+
+    if (row.isNew) {
+      if (!String(row.name || '').trim() || !String(row.client_id || '').trim()) return
+      await persistRow(row)
+      return
+    }
+
+    await persistRow(row)
+  }, [clientNameById, persistRow])
+
+  const handleDelete = useCallback(async (row: EngagementRecord) => {
+    if (row.isNew) {
+      setDraftRows((prev) => prev.filter((draft) => draft.id !== row.id))
+      return
+    }
+    if (!window.confirm(`Delete "${row.name}" and all related working papers?`)) return
+    onSavingChange(true)
+    onError(null)
+    try {
+      await onDeleteEngagement(String(row.id))
+      onNotice('Engagement deleted.')
+      await onReloadEngagements()
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Could not delete engagement')
+    } finally {
+      onSavingChange(false)
+    }
+  }, [onDeleteEngagement, onError, onNotice, onReloadEngagements, onSavingChange])
+
+  const handleOpen = useCallback((engagementId: string) => {
+    navigate(`/portal/accounting/working-papers/engagements/${engagementId}`)
+  }, [navigate])
+
+  const gridContext = useMemo<EngagementGridContext>(() => ({
+    onOpen: handleOpen,
+    onDelete: (row) => { void handleDelete(row) },
+    saving
+  }), [handleDelete, handleOpen, saving])
 
   const columnDefs = useMemo(() => ([
-    { field: 'name', headerName: 'Engagement', minWidth: 220 },
-    { field: 'client_name', headerName: clientLabel, minWidth: 180 },
-    { field: 'engagement_type', headerName: 'Type', minWidth: 160 },
-    { field: 'status', headerName: 'Status', minWidth: 120 },
+    {
+      colId: 'actions',
+      headerName: 'Actions',
+      width: 130,
+      maxWidth: 140,
+      pinned: 'right',
+      sortable: false,
+      filter: false,
+      editable: false,
+      resizable: false,
+      suppressHeaderMenuButton: true,
+      cellRenderer: EngagementActionsCell
+    },
+    {
+      field: 'name',
+      headerName: 'Engagement',
+      editable: true,
+      flex: 1.4,
+      minWidth: 160
+    },
+    {
+      field: 'client_id',
+      headerName: clientLabel,
+      editable: true,
+      flex: 1.2,
+      minWidth: 140,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: { values: ['', ...clientIds] },
+      valueFormatter: (params) => clientNameById.get(String(params.value || '')) || params.data?.client_name || '—'
+    },
+    {
+      field: 'engagement_type',
+      headerName: 'Type',
+      editable: true,
+      flex: 1,
+      minWidth: 130,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: { values: engagementTypeOptions },
+      valueFormatter: (params) => formatTypeLabel(String(params.value || ''))
+    },
+    {
+      field: 'status',
+      headerName: 'Status',
+      editable: true,
+      flex: 0.8,
+      minWidth: 110,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: { values: statusOptions }
+    },
     {
       headerName: 'Assigned employees',
-      minWidth: 220,
-      valueGetter: (params: any) => formatEmployeeLabels(params.data?.assigned_employee_ids, memberLabelByUserId)
+      flex: 1.2,
+      minWidth: 150,
+      editable: false,
+      valueGetter: (params) => formatEmployeeLabels(params.data?.assigned_employee_ids, memberLabelByUserId)
     },
     {
       field: 'period_end',
       headerName: 'Period end',
-      minWidth: 130,
-      valueFormatter: (params: any) => (params.value ? new Date(params.value).toLocaleDateString() : '—')
+      editable: true,
+      flex: 0.9,
+      minWidth: 120,
+      cellEditor: 'agDateCellEditor',
+      valueFormatter: (params) => (params.value ? new Date(params.value).toLocaleDateString() : '—'),
+      valueParser: (params) => toDateInput(params.newValue)
     },
     {
       field: 'due_date',
       headerName: 'Due date',
-      minWidth: 130,
-      valueFormatter: (params: any) => (params.value ? new Date(params.value).toLocaleDateString() : '—')
+      editable: true,
+      flex: 0.9,
+      minWidth: 120,
+      cellEditor: 'agDateCellEditor',
+      valueFormatter: (params) => (params.value ? new Date(params.value).toLocaleDateString() : '—'),
+      valueParser: (params) => toDateInput(params.newValue) || null
     }
-  ]), [clientLabel, memberLabelByUserId])
+  ] as ColDef<EngagementRecord>[]), [clientIds, clientLabel, clientNameById, memberLabelByUserId])
 
   const gridOptions = useMemo(() => ({
-    rowSelection: { mode: 'multiRow' as const },
-    onSelectionChanged: (event: any) => {
-      const selected = event.api.getSelectedRows().map((row: any) => String(row.id))
-      setSelectedEngagementIds(selected)
+    context: gridContext,
+    singleClickEdit: true,
+    stopEditingWhenCellsLoseFocus: true,
+    onCellEditingStopped: (event: CellEditingStoppedEvent<EngagementRecord>) => {
+      void onCellEditingStopped(event)
     },
-    onRowDoubleClicked: (event: any) => {
+    onRowDoubleClicked: (event: { data?: EngagementRecord }) => {
       const rowId = String(event.data?.id || '')
-      if (!rowId) return
-      void openEditEditor(rowId)
-    }
-  }), [])
+      if (!rowId || event.data?.isNew) return
+      handleOpen(rowId)
+    },
+    getRowId: (params: { data: EngagementRecord }) => String(params.data.id),
+    getRowClass: (params: RowClassParams<EngagementRecord>) => (params.data?.isNew ? 'engagement-draft-row' : '')
+  }), [gridContext, handleOpen, onCellEditingStopped])
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-lg border border-border bg-white p-4 space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <button type="button" className="btn btn--primary text-sm py-2 px-4" onClick={openCreateEditor}>
-            New engagement
-          </button>
-          <button
-            type="button"
-            className="btn btn--secondary text-sm py-2 px-4"
-            disabled={!primarySelectedEngagementId}
-            onClick={() => {
-              if (!primarySelectedEngagementId) return
-              void openEditEditor(primarySelectedEngagementId)
-            }}
-          >
-            Edit selected
-          </button>
-          <button
-            type="button"
-            className="btn btn--secondary text-sm py-2 px-4"
-            disabled={selectedEngagementIds.length === 0 || saving}
-            onClick={() => { void onDeleteSelected(selectedEngagementIds) }}
-          >
-            Delete selected
-          </button>
-          <button
-            type="button"
-            className="btn btn--secondary text-sm py-2 px-4"
-            disabled={!primarySelectedEngagementId}
-            onClick={() => {
-              if (!primarySelectedEngagementId) return
-              navigate(`/portal/accounting/working-papers/engagements/${primarySelectedEngagementId}`)
-            }}
-          >
-            Open working papers
-          </button>
-          {editorMode && (
-            <button type="button" className="btn btn--secondary text-sm py-2 px-4" onClick={resetEditor}>
-              Close editor
-            </button>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <input
-            className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
-            placeholder={`Search engagement or ${clientLabel.toLowerCase()}`}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <select className="border border-border rounded-md px-3 py-2 text-sm" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="">All statuses</option>
-            {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
-          </select>
-          <select className="border border-border rounded-md px-3 py-2 text-sm" value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}>
-            <option value="">{`All ${clientLabelPlural.toLowerCase()}`}</option>
-            {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
-          </select>
-        </div>
+    <div className="space-y-3 min-w-0">
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className="btn btn--primary text-sm py-2 px-4"
+          disabled={saving}
+          onClick={addDraftRow}
+        >
+          Add engagement row
+        </button>
+        <input
+          className="border border-border rounded-md px-3 py-2 text-sm min-w-[12rem] flex-1 max-w-md"
+          placeholder={`Search engagement or ${clientLabel.toLowerCase()}`}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <select className="border border-border rounded-md px-3 py-2 text-sm" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="">All statuses</option>
+          {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
+        </select>
+        <select className="border border-border rounded-md px-3 py-2 text-sm" value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}>
+          <option value="">{`All ${clientLabelPlural.toLowerCase()}`}</option>
+          {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
+        </select>
+        <p className="text-xs text-text-light w-full sm:w-auto">
+          Click a cell to edit. Double-click a row to open working papers.
+        </p>
       </div>
-
-      {editorMode && (
-        <form className="rounded-lg border border-border bg-white p-5 space-y-4" onSubmit={(event) => { void onSubmit(event) }}>
-          <h3 className="font-semibold text-primary-dark">
-            {editorMode === 'create' ? 'Create engagement' : 'Edit engagement'}
-          </h3>
-          <p className="text-sm text-text-light">
-            Select the {clientLabel.toLowerCase()} for this engagement and assign one or more employees. Employees can be assigned to multiple engagements.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs text-text-light mb-1">{clientLabel}</label>
-              <select
-                className="border border-border rounded-md px-3 py-2 text-sm w-full"
-                value={form.clientId}
-                onChange={(e) => setForm((prev) => ({ ...prev, clientId: e.target.value }))}
-                required
-              >
-                <option value="">{`Select ${clientLabel.toLowerCase()}`}</option>
-                {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-text-light mb-1">Quick add {clientLabel.toLowerCase()}</label>
-              <div className="flex gap-2">
-                <input
-                  className="border border-border rounded-md px-3 py-2 text-sm w-full"
-                  placeholder={`New ${clientLabel.toLowerCase()} name`}
-                  value={newClientName}
-                  onChange={(e) => setNewClientName(e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="btn btn--secondary text-sm py-2 px-3"
-                  disabled={saving}
-                  onClick={() => {
-                    void (async () => {
-                      const created = await onCreateClient(newClientName)
-                      if (created?.id) {
-                        setForm((prev) => ({ ...prev, clientId: created.id }))
-                        setNewClientName('')
-                      }
-                    })()
-                  }}
-                >
-                  Add
-                </button>
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs text-text-light mb-1">Engagement name</label>
-              <input className="border border-border rounded-md px-3 py-2 text-sm w-full" value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} required />
-            </div>
-            <div>
-              <label className="block text-xs text-text-light mb-1">Engagement type</label>
-              <select className="border border-border rounded-md px-3 py-2 text-sm w-full" value={form.engagementType} onChange={(e) => setForm((prev) => ({ ...prev, engagementType: e.target.value }))}>
-                {engagementTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-text-light mb-1">Status</label>
-              <select className="border border-border rounded-md px-3 py-2 text-sm w-full" value={form.status} onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value }))}>
-                {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-text-light mb-1">Fiscal year</label>
-              <input type="number" className="border border-border rounded-md px-3 py-2 text-sm w-full" value={form.fiscalYear} onChange={(e) => setForm((prev) => ({ ...prev, fiscalYear: Number(e.target.value) }))} />
-            </div>
-            <div>
-              <label className="block text-xs text-text-light mb-1">Period start</label>
-              <input type="date" className="border border-border rounded-md px-3 py-2 text-sm w-full" value={form.periodStart} onChange={(e) => setForm((prev) => ({ ...prev, periodStart: e.target.value }))} />
-            </div>
-            <div>
-              <label className="block text-xs text-text-light mb-1">Period end</label>
-              <input type="date" className="border border-border rounded-md px-3 py-2 text-sm w-full" value={form.periodEnd} onChange={(e) => setForm((prev) => ({ ...prev, periodEnd: e.target.value }))} />
-            </div>
-            <div>
-              <label className="block text-xs text-text-light mb-1">Due date</label>
-              <input type="date" className="border border-border rounded-md px-3 py-2 text-sm w-full" value={form.dueDate} onChange={(e) => setForm((prev) => ({ ...prev, dueDate: e.target.value }))} />
-            </div>
-            <div>
-              <label className="block text-xs text-text-light mb-1">Source type</label>
-              <select className="border border-border rounded-md px-3 py-2 text-sm w-full" value={form.sourceType} onChange={(e) => setForm((prev) => ({ ...prev, sourceType: e.target.value }))}>
-                {sourceTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
-              </select>
-            </div>
-            <div className="md:col-span-2 lg:col-span-3">
-              <label className="block text-xs text-text-light mb-1">Deliverables</label>
-              <textarea className="border border-border rounded-md px-3 py-2 text-sm w-full min-h-[80px]" value={form.deliverablesText} onChange={(e) => setForm((prev) => ({ ...prev, deliverablesText: e.target.value }))} />
-            </div>
-          </div>
-          <div className="rounded-md border border-border p-3 space-y-2">
-            <p className="text-sm font-medium text-primary-dark">Assigned employees</p>
-            {activeMembers.length === 0 ? (
-              <p className="text-sm text-text-light">No active workspace employees available. Invite employees first.</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {activeMembers.map((member) => (
-                  <label key={member.clerk_user_id} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={form.assignedEmployeeIds.includes(member.clerk_user_id)}
-                      onChange={() => toggleAssignedEmployee(member.clerk_user_id)}
-                    />
-                    <span>{memberLabelByUserId.get(member.clerk_user_id) || member.clerk_user_id}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-          <button type="submit" className="btn btn--primary text-sm py-2 px-4" disabled={saving}>
-            {saving ? 'Saving…' : editorMode === 'create' ? 'Create engagement' : 'Save changes'}
-          </button>
-        </form>
-      )}
 
       {loading ? (
         <PageLoadingSkeleton variant="table" />
       ) : (
         <AgGridTable
-          rowData={filteredEngagements}
-          height={420}
+          rowData={gridRows}
+          height={gridHeight}
           columnDefs={columnDefs}
           gridOptions={gridOptions}
           quickFilterText={search}
+          fitColumnsToViewport
         />
       )}
-      {!loading && filteredEngagements.length === 0 && (
+      {!loading && gridRows.length === 0 && (
         <p className="text-sm text-text-light">No engagements match the current filters.</p>
       )}
     </div>

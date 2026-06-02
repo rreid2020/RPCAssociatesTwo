@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { AgGridReact } from 'ag-grid-react'
-import { AllCommunityModule, ModuleRegistry, type ColDef, type GridOptions } from 'ag-grid-community'
+import { AllCommunityModule, ModuleRegistry, type ColDef, type GridApi, type GridOptions, type GridReadyEvent } from 'ag-grid-community'
 import 'ag-grid-community/styles/ag-grid.css'
 
 let agGridModulesRegistered = false
@@ -15,32 +15,71 @@ type AgGridTableProps = {
   height?: number
   quickFilterText?: string
   gridOptions?: GridOptions<any>
+  fitColumnsToViewport?: boolean
 }
 
-const AgGridTable = ({ rowData, columnDefs, height = 320, quickFilterText = '', gridOptions }: AgGridTableProps) => {
+const AgGridTable = ({
+  rowData,
+  columnDefs,
+  height = 320,
+  quickFilterText = '',
+  gridOptions,
+  fitColumnsToViewport = true
+}: AgGridTableProps) => {
+  const gridApiRef = useRef<GridApi | null>(null)
+
   const defaultColDef = useMemo<ColDef<any>>(
     () => ({
       sortable: true,
       filter: true,
       resizable: true,
       flex: 1,
-      minWidth: 120
+      minWidth: 100,
+      wrapHeaderText: true,
+      autoHeaderHeight: true
     }),
     []
   )
 
+  const fitColumns = useCallback(() => {
+    if (!fitColumnsToViewport || !gridApiRef.current) return
+    gridApiRef.current.sizeColumnsToFit({ defaultMinWidth: 90 })
+  }, [fitColumnsToViewport])
+
+  const onGridReady = useCallback((event: GridReadyEvent) => {
+    gridApiRef.current = event.api
+    fitColumns()
+    gridOptions?.onGridReady?.(event)
+  }, [fitColumns, gridOptions])
+
+  useEffect(() => {
+    if (!fitColumnsToViewport) return
+    const onResize = () => fitColumns()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [fitColumns, fitColumnsToViewport])
+
+  useEffect(() => {
+    fitColumns()
+  }, [columnDefs, fitColumns, rowData])
+
+  const mergedGridOptions = useMemo<GridOptions<any>>(() => ({
+    ...gridOptions,
+    onGridReady,
+    suppressHorizontalScroll: fitColumnsToViewport
+  }), [fitColumnsToViewport, gridOptions, onGridReady])
+
   return (
-    <div className="ag-theme-quartz w-full" style={{ height }}>
+    <div className="ag-theme-quartz w-full min-w-0 overflow-hidden" style={{ height }}>
       <AgGridReact<any>
         theme="legacy"
         rowData={rowData}
         columnDefs={columnDefs}
         defaultColDef={defaultColDef}
-        rowSelection={{ mode: 'singleRow' }}
         animateRows
         suppressCellFocus={false}
         quickFilterText={quickFilterText}
-        {...gridOptions}
+        {...mergedGridOptions}
       />
     </div>
   )

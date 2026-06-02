@@ -117,4 +117,8 @@
     @apply flex flex-wrap items-center;
   }
 
+  .ag-theme-quartz .ag-row.engagement-draft-row {
+    background-color: rgb(240 249 255);
+  }
+
 }

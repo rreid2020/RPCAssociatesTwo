@@ -386,24 +386,12 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
 
   const columnDefs = useMemo(() => ([
     {
-      colId: 'actions',
-      headerName: 'Actions',
-      width: 120,
-      maxWidth: 130,
-      pinned: 'right',
-      sortable: false,
-      filter: false,
-      editable: false,
-      resizable: false,
-      suppressHeaderMenuButton: true,
-      cellRenderer: EngagementActionsCell
-    },
-    {
       field: 'name',
       headerName: 'Engagement',
       editable: true,
       flex: 1.4,
-      minWidth: 160
+      minWidth: 160,
+      filter: 'agTextColumnFilter'
     },
     {
       field: 'client_id',
@@ -411,9 +399,11 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       editable: true,
       flex: 1.2,
       minWidth: 140,
+      filter: 'agTextColumnFilter',
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: { values: ['', ...clientIds] },
-      valueFormatter: (params) => clientNameById.get(String(params.value || '')) || params.data?.client_name || '—'
+      valueFormatter: (params) => clientNameById.get(String(params.value || '')) || params.data?.client_name || '—',
+      filterValueGetter: (params) => clientNameById.get(String(params.data?.client_id || '')) || params.data?.client_name || ''
     },
     {
       field: 'engagement_type',
@@ -421,9 +411,11 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       editable: true,
       flex: 1,
       minWidth: 130,
+      filter: 'agTextColumnFilter',
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: { values: engagementTypeOptions },
-      valueFormatter: (params) => formatTypeLabel(String(params.value || ''))
+      valueFormatter: (params) => formatTypeLabel(String(params.value || '')),
+      filterValueGetter: (params) => formatTypeLabel(String(params.data?.engagement_type || ''))
     },
     {
       field: 'status',
@@ -431,6 +423,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       editable: true,
       flex: 0.8,
       minWidth: 110,
+      filter: 'agTextColumnFilter',
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: { values: statusOptions }
     },
@@ -440,8 +433,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       flex: 1.4,
       minWidth: 180,
       editable: true,
-      sortable: false,
-      filter: false,
+      filter: 'agTextColumnFilter',
       cellDataType: 'object',
       cellEditor: AssignedEmployeesCellEditor,
       cellEditorPopup: true,
@@ -454,7 +446,18 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       valueFormatter: (params) => formatEmployeeLabels(
         Array.isArray(params.value) ? params.value : params.data?.assigned_employee_ids,
         memberLabelByUserId
-      )
+      ),
+      filterValueGetter: (params) => formatEmployeeLabels(
+        params.data?.assigned_employee_ids,
+        memberLabelByUserId
+      ),
+      comparator: (valueA, valueB) => formatEmployeeLabels(
+        Array.isArray(valueA) ? valueA : [],
+        memberLabelByUserId
+      ).localeCompare(formatEmployeeLabels(
+        Array.isArray(valueB) ? valueB : [],
+        memberLabelByUserId
+      ))
     },
     {
       field: 'period_end',
@@ -462,6 +465,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       editable: true,
       flex: 0.9,
       minWidth: 120,
+      filter: 'agDateColumnFilter',
       cellEditor: 'agDateCellEditor',
       valueFormatter: (params) => (params.value ? new Date(params.value).toLocaleDateString() : '—'),
       valueParser: (params) => toDateInput(params.newValue)
@@ -472,19 +476,35 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       editable: true,
       flex: 0.9,
       minWidth: 120,
+      filter: 'agDateColumnFilter',
       cellEditor: 'agDateCellEditor',
       valueFormatter: (params) => (params.value ? new Date(params.value).toLocaleDateString() : '—'),
       valueParser: (params) => toDateInput(params.newValue) || null
+    },
+    {
+      colId: 'actions',
+      headerName: 'Actions',
+      width: 120,
+      maxWidth: 130,
+      pinned: 'right',
+      sortable: false,
+      filter: false,
+      floatingFilter: false,
+      editable: false,
+      resizable: false,
+      suppressHeaderMenuButton: true,
+      cellRenderer: EngagementActionsCell
     }
   ] as ColDef<EngagementRecord>[]), [clientIds, clientLabel, clientNameById, memberLabelByUserId])
 
   const gridDefaultColDef = useMemo<ColDef<EngagementRecord>>(
     () => ({
       sortable: true,
-      filter: false,
+      filter: true,
+      floatingFilter: true,
       resizable: true,
-      suppressHeaderMenuButton: true,
-      suppressHeaderFilterButton: true
+      suppressHeaderMenuButton: false,
+      suppressHeaderFilterButton: false
     }),
     []
   )
@@ -529,7 +549,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
           {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
         </select>
         <p className="text-xs text-text-light w-full sm:w-auto">
-          Click a cell to edit, or use Edit in the actions column. Click Assigned employees to select multiple staff.
+          Click a cell to edit, or use Edit in the actions column. Use column headers to sort; use the filter row under headers for column filters.
         </p>
       </div>
 

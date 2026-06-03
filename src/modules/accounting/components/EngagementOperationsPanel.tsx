@@ -442,8 +442,15 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       editable: true,
       sortable: false,
       filter: false,
+      cellDataType: 'object',
       cellEditor: AssignedEmployeesCellEditor,
       cellEditorPopup: true,
+      valueParser: (params) => {
+        const value = params.newValue
+        if (Array.isArray(value)) return value.map((entry) => String(entry)).filter(Boolean)
+        if (value == null || value === '') return []
+        return [String(value)]
+      },
       valueFormatter: (params) => formatEmployeeLabels(
         Array.isArray(params.value) ? params.value : params.data?.assigned_employee_ids,
         memberLabelByUserId

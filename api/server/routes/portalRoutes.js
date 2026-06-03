@@ -95,6 +95,7 @@ import {
   updateOrganizationMember
 } from '../services/accountingWorkspaceService.js'
 import {
+  assertAnyWorkspacePermissionWithCustomRoles,
   assertWorkspacePermissionWithCustomRoles,
   assignWorkspaceMemberRole,
   listWorkspaceRoles,
@@ -1015,7 +1016,10 @@ export function createPortalRouter (pool) {
       }))
       res.json(account)
     } catch (e) {
-      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load account' })
+      if (handleAssignmentError(res, e, 'Workspace assignment required')) return
+      const message = e instanceof Error ? e.message : 'Could not load account'
+      const status = /denied|forbidden|mismatch/i.test(message) ? 403 : 400
+      res.status(status).json({ error: message })
     }
   })
 
@@ -1036,26 +1040,44 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/company-profile', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const workspace = await requireAccountWorkspace(session, 'workspace.read', res)
-    if (!workspace) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     try {
-      const data = await withDeadlockRetry(async () => await getWorkspaceProfile(pool, session.userId, workspace.id))
+      await assertAnyWorkspacePermissionWithCustomRoles(pool, {
+        workspaceId: scope.workspace.id,
+        workspaceRole: scope.workspace.role,
+        clerkUserId: session.userId,
+        permissions: ['workspace.read', 'engagement.read', 'engagement.manage']
+      })
+      const data = await withDeadlockRetry(async () => await getWorkspaceProfile(pool, session.userId, scope.workspace.id))
       res.json(data)
     } catch (e) {
-      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load company profile' })
+      if (handleAssignmentError(res, e, 'Workspace assignment required')) return
+      const message = e instanceof Error ? e.message : 'Could not load company profile'
+      const status = /denied|forbidden|mismatch/i.test(message) ? 403 : 400
+      res.status(status).json({ error: message })
     }
   })
 
   r.put('/v1/accounting/company-profile', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const workspace = await requireAccountWorkspace(session, 'workspace.manage', res)
-    if (!workspace) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     try {
-      const data = await upsertWorkspaceProfile(pool, session.userId, workspace.id, req.body || {})
+      await assertAnyWorkspacePermissionWithCustomRoles(pool, {
+        workspaceId: scope.workspace.id,
+        workspaceRole: scope.workspace.role,
+        clerkUserId: session.userId,
+        permissions: ['workspace.manage', 'engagement.manage']
+      })
+      const data = await upsertWorkspaceProfile(pool, session.userId, scope.workspace.id, req.body || {})
       res.json(data)
     } catch (e) {
-      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not save company profile' })
+      if (handleAssignmentError(res, e, 'Workspace assignment required')) return
+      const message = e instanceof Error ? e.message : 'Could not save company profile'
+      const status = /denied|forbidden|mismatch/i.test(message) ? 403 : 400
+      res.status(status).json({ error: message })
     }
   })
 
@@ -1076,13 +1098,22 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/members', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const workspace = await requireAccountWorkspace(session, 'workspace.read', res)
-    if (!workspace) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
     try {
-      const data = await listWorkspaceMembers(pool, session.userId, workspace.id)
+      await assertAnyWorkspacePermissionWithCustomRoles(pool, {
+        workspaceId: scope.workspace.id,
+        workspaceRole: scope.workspace.role,
+        clerkUserId: session.userId,
+        permissions: ['workspace.read', 'engagement.read', 'engagement.manage']
+      })
+      const data = await listWorkspaceMembers(pool, session.userId, scope.workspace.id)
       res.json(data)
     } catch (e) {
-      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load members' })
+      if (handleAssignmentError(res, e, 'Workspace assignment required')) return
+      const message = e instanceof Error ? e.message : 'Could not load members'
+      const status = /denied|forbidden|mismatch/i.test(message) ? 403 : 400
+      res.status(status).json({ error: message })
     }
   })
 

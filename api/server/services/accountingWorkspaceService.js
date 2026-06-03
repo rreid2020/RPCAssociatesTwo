@@ -555,6 +555,19 @@ export async function getWorkspaceAuthorizationContext (pool, workspace, actorUs
   }
 }
 
+async function finalizeWorkspaceContext (pool, workspace, clerkUserId, expectedClerkOrgId) {
+  if (expectedClerkOrgId && workspace.clerk_org_id && workspace.clerk_org_id !== expectedClerkOrgId) {
+    throw new Error('Workspace organization context mismatch')
+  }
+  if (!workspace.organization_id) {
+    workspace = await ensureOrganizationLinkForWorkspace(pool, workspace)
+  }
+  if (!workspace.clerk_org_id && canManageWorkspace(workspace)) {
+    return await safeEnsureWorkspaceClerkOrganization(pool, workspace, clerkUserId)
+  }
+  return workspace
+}
+
 export async function getWorkspaceContext (pool, clerkUserId, requestedWorkspaceId = null, options = {}) {
   const expectedClerkOrgId = String(options?.expectedClerkOrgId || '').trim() || null
   if (!requestedWorkspaceId) {
@@ -572,41 +585,31 @@ export async function getWorkspaceContext (pool, clerkUserId, requestedWorkspace
       [requestedWorkspaceId, clerkUserId]
     )
     if (!rows[0]) throw new Error('Workspace access denied')
-    let workspace = rows[0]
-    if (expectedClerkOrgId && workspace.clerk_org_id && workspace.clerk_org_id !== expectedClerkOrgId) {
-      throw new Error('Workspace organization context mismatch')
-    }
-    if (!workspace.organization_id) {
-      workspace = await ensureOrganizationLinkForWorkspace(pool, workspace)
-    }
-    if (!workspace.clerk_org_id && canManageWorkspace(workspace)) {
-      return await safeEnsureWorkspaceClerkOrganization(pool, workspace, clerkUserId)
-    }
-    return workspace
+    return finalizeWorkspaceContext(pool, rows[0], clerkUserId, expectedClerkOrgId)
   }
 
+  const orgFilterClause = expectedClerkOrgId
+    ? 'AND (w.clerk_org_id IS NULL OR w.clerk_org_id = $2)'
+    : ''
+  const queryParams = expectedClerkOrgId ? [clerkUserId, expectedClerkOrgId] : [clerkUserId]
   const { rows } = await pool.query(
     `SELECT w.*, m.role, m.status
      FROM taxgpt.accounting_workspaces w
      INNER JOIN taxgpt.accounting_workspace_members m ON m.workspace_id = w.id
+     LEFT JOIN taxgpt.accounting_workspace_profiles p ON p.workspace_id = w.id
      WHERE m.clerk_user_id = $1
        AND m.status = 'active'
-     ORDER BY CASE WHEN m.role = 'owner' THEN 0 ELSE 1 END, w.created_at ASC
+       ${orgFilterClause}
+     ORDER BY ${expectedClerkOrgId ? 'CASE WHEN w.clerk_org_id = $2 THEN 0 ELSE 1 END,' : ''}
+              w.is_personal ASC,
+              (p.onboarding_completed_at IS NOT NULL) DESC,
+              CASE WHEN m.role = 'owner' THEN 0 ELSE 1 END,
+              w.created_at ASC
      LIMIT 1`,
-    [clerkUserId]
+    queryParams
   )
   if (!rows[0]) throw new Error('Workspace not found')
-  let workspace = rows[0]
-  if (expectedClerkOrgId && workspace.clerk_org_id && workspace.clerk_org_id !== expectedClerkOrgId) {
-    throw new Error('Workspace organization context mismatch')
-  }
-  if (!workspace.organization_id) {
-    workspace = await ensureOrganizationLinkForWorkspace(pool, workspace)
-  }
-  if (!workspace.clerk_org_id && canManageWorkspace(workspace)) {
-    return await safeEnsureWorkspaceClerkOrganization(pool, workspace, clerkUserId)
-  }
-  return workspace
+  return finalizeWorkspaceContext(pool, rows[0], clerkUserId, expectedClerkOrgId)
 }
 
 export async function listWorkspacesForUser (pool, clerkUserId) {

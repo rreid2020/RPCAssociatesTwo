@@ -145,9 +145,34 @@ export async function resolveEffectiveWorkspacePermissions (pool, workspaceId, w
 }
 
 export async function assertWorkspacePermissionWithCustomRoles (pool, { workspaceId, workspaceRole, clerkUserId, permission }) {
+  const normalizedRole = String(workspaceRole || '').trim().toLowerCase()
+  if (normalizedRole === 'owner' || normalizedRole === 'admin') {
+    return resolveEffectiveWorkspacePermissions(pool, workspaceId, workspaceRole, clerkUserId)
+  }
   const resolved = await resolveEffectiveWorkspacePermissions(pool, workspaceId, workspaceRole, clerkUserId)
   if (!resolved.permissions.includes(permission) && !hasPermission(resolved.platformRole, permission)) {
     throw new Error(`Permission denied: ${permission}`)
   }
   return resolved
+}
+
+export async function assertAnyWorkspacePermissionWithCustomRoles (pool, { workspaceId, workspaceRole, clerkUserId, permissions }) {
+  const permissionList = Array.isArray(permissions) ? permissions.filter(Boolean) : []
+  if (permissionList.length === 0) {
+    throw new Error('Permission required')
+  }
+  let lastError = null
+  for (const permission of permissionList) {
+    try {
+      return await assertWorkspacePermissionWithCustomRoles(pool, {
+        workspaceId,
+        workspaceRole,
+        clerkUserId,
+        permission
+      })
+    } catch (error) {
+      lastError = error
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error('Permission denied')
 }

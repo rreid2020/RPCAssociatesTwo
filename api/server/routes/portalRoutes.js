@@ -1040,6 +1040,7 @@ export function createPortalRouter (pool) {
     if (!scope) return
     try {
       await assertAnyWorkspacePermissionWithCustomRoles(pool, {
+        organizationId: scope.organizationId,
         workspaceId: scope.workspace.id,
         workspaceRole: scope.workspace.role,
         clerkUserId: session.userId,
@@ -1062,6 +1063,7 @@ export function createPortalRouter (pool) {
     if (!scope) return
     try {
       await assertAnyWorkspacePermissionWithCustomRoles(pool, {
+        organizationId: scope.organizationId,
         workspaceId: scope.workspace.id,
         workspaceRole: scope.workspace.role,
         clerkUserId: session.userId,
@@ -1103,6 +1105,7 @@ export function createPortalRouter (pool) {
     if (!scope) return
     try {
       await assertAnyWorkspacePermissionWithCustomRoles(pool, {
+        organizationId: scope.organizationId,
         workspaceId: scope.workspace.id,
         workspaceRole: scope.workspace.role,
         clerkUserId: session.userId,

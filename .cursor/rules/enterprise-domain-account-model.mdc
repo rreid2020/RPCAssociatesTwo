@@ -1,0 +1,38 @@
+---
+description: Authoritative company/firm account domain model (not workspaces)
+alwaysApply: true
+---
+
+# Company / Firm Account Domain Model
+
+## Authoritative Tenant Model
+
+The product tenant is a **company** or **firm** (`taxgpt.accounting_organizations`), not a workspace.
+
+- **Company (business)**: has **corporate entity profiles** (subsidiaries/divisions/legal entities) and **employees** with permissions.
+- **Firm (accounting firm)**: has **clients** and **employees** with permissions.
+- **Engagements** attach to an entity profile (company) or client (firm).
+
+`accounting_workspaces` is a **legacy execution scope** retained for persistence and migration compatibility. Do not introduce new user-facing "workspace" concepts, routes, or APIs.
+
+## Naming in New Code
+
+| Concept | Use in UI/API/service naming | Legacy persistence (transitional) |
+|--------|------------------------------|-----------------------------------|
+| Company or firm | `organization`, `account`, `company` | `accounting_organizations` |
+| Employee | `organization member`, `employee` | `accounting_organization_members`, `accounting_workspace_members` |
+| Company sub-entity | `entity profile`, `reporting entity` | `accounting_clients` (business org type) |
+| Firm client | `client` | `accounting_clients` (firm org type) |
+| Employee permissions | `organization member permissions` | `workspace_*` RBAC tables until migrated |
+
+## Authorization
+
+- Enforce RBAC and entitlements at **organization (company/firm) scope** for employees.
+- Custom roles may still live in legacy `workspace_*` tables; cache and resolve permissions by **`organization_id` + `clerk_user_id`**.
+- Frontend account context (`AccountContextProvider`) is the authoritative session scope for the active company/firm.
+
+## Do Not
+
+- Add new features framed as "workspace" in UX, navigation, or public API names.
+- Query across organizations without explicit organization membership checks.
+- Treat personal bootstrap workspaces as a second product tenant model for accounting operations.

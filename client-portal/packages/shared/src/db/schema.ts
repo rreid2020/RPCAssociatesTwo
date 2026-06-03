@@ -1,4 +1,4 @@
-import { pgTable, pgSchema, text, timestamp, jsonb, integer, uuid, varchar, customType, boolean, numeric, date } from 'drizzle-orm/pg-core';
+import { pgTable, pgSchema, text, timestamp, jsonb, integer, uuid, varchar, customType, boolean, numeric, date, primaryKey } from 'drizzle-orm/pg-core';
 import type { SourceType, SourceCategory, IngestStatus, Priority, RiskLevel } from '../types';
 
 // Create a dedicated schema for this application
@@ -814,6 +814,20 @@ export const workspaceMemberRoles = taxgptSchema.table('workspace_member_roles',
   createdBy: text('created_by').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
+
+/** Cached effective permissions for a company/firm employee (organization member). */
+export const organizationMemberRbacCache = taxgptSchema.table('organization_member_rbac_cache', {
+  organizationId: uuid('organization_id').notNull().references(() => accountingOrganizations.id, { onDelete: 'cascade' }),
+  clerkUserId: text('clerk_user_id').notNull(),
+  workspaceId: uuid('workspace_id').notNull().references(() => accountingWorkspaces.id, { onDelete: 'cascade' }),
+  memberRole: text('member_role').notNull(),
+  platformRole: text('platform_role').notNull(),
+  customRoles: jsonb('custom_roles').$type<string[]>().notNull().default([]),
+  permissions: jsonb('permissions').$type<string[]>().notNull().default([]),
+  computedAt: timestamp('computed_at').notNull().defaultNow(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.organizationId, table.clerkUserId] })
+}));
 
 export const workspaceEmployeeAssignments = taxgptSchema.table('workspace_employee_assignments', {
   id: uuid('id').primaryKey().defaultRandom(),

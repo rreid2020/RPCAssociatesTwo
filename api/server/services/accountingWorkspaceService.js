@@ -10,9 +10,9 @@ import {
 import {
   assertWorkspacePermissionWithCustomRoles,
   ensureWorkspaceRbacTables,
-  resolveEffectiveWorkspacePermissions
+  invalidateOrganizationMemberRbacCache,
+  resolveEffectiveOrganizationMemberPermissions
 } from './authz/workspaceRbacService.js'
-import { listPermissionsForRole, mapWorkspaceRoleToPlatformRole } from './authz/rolePermissions.js'
 import { ensurePortalSchema } from '../db/ensurePortalSchema.js'
 import {
   deleteWorkspaceRecord,
@@ -583,18 +583,12 @@ export async function prepareAccountingWorkspaceScope (pool, clerkUserId, option
 }
 
 export async function getWorkspaceAuthorizationContext (pool, workspace, actorUserId) {
-  const normalizedRole = String(workspace.role || '').trim().toLowerCase()
-  if (normalizedRole === 'owner' || normalizedRole === 'admin') {
-    const platformRole = mapWorkspaceRoleToPlatformRole(workspace.role)
-    return {
-      workspaceId: workspace.id,
-      workspaceRole: workspace.role,
-      platformRole,
-      customRoles: [],
-      permissions: listPermissionsForRole(platformRole)
-    }
-  }
-  const resolved = await resolveEffectiveWorkspacePermissions(pool, workspace.id, workspace.role, actorUserId)
+  const resolved = await resolveEffectiveOrganizationMemberPermissions(pool, {
+    organizationId: workspace.organization_id,
+    workspaceId: workspace.id,
+    memberRole: workspace.role,
+    clerkUserId: actorUserId
+  })
   return {
     workspaceId: workspace.id,
     workspaceRole: workspace.role,
@@ -914,6 +908,7 @@ export async function addWorkspaceMember (pool, actorUserId, workspaceId, payloa
     mapWorkspaceRoleToOrganizationMemberRole(role)
   )
   await ensureLegacyAssignmentsForWorkspaceUser(pool, workspace, clerkUserId, actorUserId)
+  await invalidateOrganizationMemberRbacCache(pool, workspace.organization_id, clerkUserId)
   await writeWorkspaceAuditEvent(pool, workspace.id, actorUserId, 'workspace.member_added', 'workspace_member', clerkUserId, null, member)
   return member
 }
@@ -930,6 +925,7 @@ export async function updateWorkspaceMember (pool, actorUserId, workspaceId, mem
 
   const member = await updateWorkspaceMemberRecord(pool, workspace.id, memberUserId, role, status)
   if (!member) throw new Error('Member not found')
+  await invalidateOrganizationMemberRbacCache(pool, workspace.organization_id, memberUserId)
   await writeWorkspaceAuditEvent(pool, workspace.id, actorUserId, 'workspace.member_updated', 'workspace_member', memberUserId, null, member)
   return member
 }

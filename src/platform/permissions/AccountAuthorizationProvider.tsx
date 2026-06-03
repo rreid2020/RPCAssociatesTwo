@@ -1,6 +1,9 @@
 import { createContext, FC, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
 import { portalFetch } from '../../lib/portalApi'
+import { useAccountContext } from '../account/AccountContextProvider'
+import { ROLE_PERMISSIONS } from '../../lib/permissions/policies'
+import type { PermissionKey, PlatformRole } from '../../lib/permissions/types'
 
 type AccountAuthorizationState = {
   workspaceRole: string | null
@@ -13,8 +16,29 @@ type AccountAuthorizationState = {
 
 const AccountAuthorizationContext = createContext<AccountAuthorizationState | null>(null)
 
+function mapWorkspaceRoleToPlatformRole (workspaceRole: string | null | undefined): PlatformRole {
+  const normalized = String(workspaceRole || '').trim().toLowerCase()
+  if (normalized === 'owner' || normalized === 'admin') return 'firm_admin'
+  if (normalized === 'manager') return 'manager'
+  if (normalized === 'reviewer') return 'reviewer'
+  if (normalized === 'preparer') return 'staff'
+  if (normalized === 'client') return 'client'
+  return 'external_read_only'
+}
+
+function fallbackAuthorizationFromAccountRole (workspaceRole: string | null | undefined) {
+  const platformRole = mapWorkspaceRoleToPlatformRole(workspaceRole)
+  return {
+    workspaceRole: workspaceRole || null,
+    platformRole,
+    customRoles: [] as string[],
+    permissions: [...ROLE_PERMISSIONS[platformRole]] as PermissionKey[]
+  }
+}
+
 export const AccountAuthorizationProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const { getToken, isLoaded, isSignedIn } = useAuth()
+  const { account } = useAccountContext()
   const [workspaceRole, setWorkspaceRole] = useState<string | null>(null)
   const [platformRole, setPlatformRole] = useState<string | null>(null)
   const [customRoles, setCustomRoles] = useState<string[]>([])
@@ -40,18 +64,36 @@ export const AccountAuthorizationProvider: FC<{ children: ReactNode }> = ({ chil
       setCustomRoles(data.authorization?.customRoles || [])
       setPermissions(data.authorization?.permissions || [])
     } catch {
-      setWorkspaceRole(null)
-      setPlatformRole(null)
-      setCustomRoles([])
-      setPermissions([])
+      const fallback = fallbackAuthorizationFromAccountRole(account?.role)
+      if (fallback.permissions.length > 0) {
+        setWorkspaceRole(fallback.workspaceRole)
+        setPlatformRole(fallback.platformRole)
+        setCustomRoles(fallback.customRoles)
+        setPermissions(fallback.permissions)
+      } else {
+        setWorkspaceRole(null)
+        setPlatformRole(null)
+        setCustomRoles([])
+        setPermissions([])
+      }
     } finally {
       setLoading(false)
     }
-  }, [getToken, isLoaded, isSignedIn])
+  }, [account?.role, getToken, isLoaded, isSignedIn])
 
   useEffect(() => {
     void refresh()
   }, [refresh])
+
+  useEffect(() => {
+    if (!isSignedIn || permissions.length > 0) return
+    const fallback = fallbackAuthorizationFromAccountRole(account?.role)
+    if (fallback.permissions.length === 0) return
+    setWorkspaceRole(fallback.workspaceRole)
+    setPlatformRole(fallback.platformRole)
+    setCustomRoles(fallback.customRoles)
+    setPermissions(fallback.permissions)
+  }, [account?.role, isSignedIn, permissions.length])
 
   const value = useMemo(() => ({
     workspaceRole,

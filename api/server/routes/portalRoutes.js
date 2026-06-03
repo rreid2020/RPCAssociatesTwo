@@ -1085,13 +1085,18 @@ export function createPortalRouter (pool) {
     const session = await getClerkUser(req, res)
     if (!session) return
     try {
-      const data = await withDeadlockRetry(() => getWorkspacePermissionSnapshot(pool, session.userId, null))
+      const data = await withDeadlockRetry(() => getWorkspacePermissionSnapshot(pool, session.userId, null, {
+        expectedClerkOrgId: session.orgId || null,
+        skipClerkOrgSync: true
+      }))
       res.json(data)
     } catch (e) {
       if (isDeadlockError(e)) {
         return res.status(503).json({ error: 'Temporary database conflict. Please retry.' })
       }
-      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load permissions' })
+      const message = e instanceof Error ? e.message : 'Could not load permissions'
+      const status = /denied|forbidden|mismatch/i.test(message) ? 403 : 400
+      res.status(status).json({ error: message })
     }
   })
 
@@ -1306,7 +1311,10 @@ export function createPortalRouter (pool) {
     const session = await getClerkUser(req, res)
     if (!session) return
     try {
-      const data = await withDeadlockRetry(() => getWorkspacePermissionSnapshot(pool, session.userId, req.params.workspaceId))
+      const data = await withDeadlockRetry(() => getWorkspacePermissionSnapshot(pool, session.userId, req.params.workspaceId, {
+        expectedClerkOrgId: session.orgId || null,
+        skipClerkOrgSync: true
+      }))
       res.json(data)
     } catch (e) {
       if (isDeadlockError(e)) {

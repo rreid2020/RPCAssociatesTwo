@@ -1,6 +1,6 @@
 import type { PermissionKey, PlatformRole } from './types'
 
-const ROLE_PERMISSIONS: Record<PlatformRole, PermissionKey[]> = {
+export const ROLE_PERMISSIONS: Record<PlatformRole, PermissionKey[]> = {
   super_admin: [
     'workspace.manage',
     'workspace.invite',

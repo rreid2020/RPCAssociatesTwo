@@ -269,9 +269,15 @@ export async function ensureWorkspaceClerkOrganization (pool, workspace, actorUs
   return rows[0] || workspace
 }
 
+const CLERK_ORG_SYNC_TIMEOUT_MS = 8000
+
 async function safeEnsureWorkspaceClerkOrganization (pool, workspace, actorUserId) {
   try {
-    return await ensureWorkspaceClerkOrganization(pool, workspace, actorUserId)
+    const syncPromise = ensureWorkspaceClerkOrganization(pool, workspace, actorUserId)
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Clerk organization sync timed out')), CLERK_ORG_SYNC_TIMEOUT_MS)
+    })
+    return await Promise.race([syncPromise, timeoutPromise])
   } catch (error) {
     console.warn('Workspace Clerk org sync deferred:', {
       workspaceId: workspace?.id,
@@ -555,14 +561,15 @@ export async function getWorkspaceAuthorizationContext (pool, workspace, actorUs
   }
 }
 
-async function finalizeWorkspaceContext (pool, workspace, clerkUserId, expectedClerkOrgId) {
+async function finalizeWorkspaceContext (pool, workspace, clerkUserId, expectedClerkOrgId, options = {}) {
   if (expectedClerkOrgId && workspace.clerk_org_id && workspace.clerk_org_id !== expectedClerkOrgId) {
     throw new Error('Workspace organization context mismatch')
   }
   if (!workspace.organization_id) {
     workspace = await ensureOrganizationLinkForWorkspace(pool, workspace)
   }
-  if (!workspace.clerk_org_id && canManageWorkspace(workspace)) {
+  const skipClerkOrgSync = Boolean(options?.skipClerkOrgSync)
+  if (!skipClerkOrgSync && !workspace.clerk_org_id && canManageWorkspace(workspace)) {
     return await safeEnsureWorkspaceClerkOrganization(pool, workspace, clerkUserId)
   }
   return workspace
@@ -585,7 +592,7 @@ export async function getWorkspaceContext (pool, clerkUserId, requestedWorkspace
       [requestedWorkspaceId, clerkUserId]
     )
     if (!rows[0]) throw new Error('Workspace access denied')
-    return finalizeWorkspaceContext(pool, rows[0], clerkUserId, expectedClerkOrgId)
+    return finalizeWorkspaceContext(pool, rows[0], clerkUserId, expectedClerkOrgId, options)
   }
 
   const orgFilterClause = expectedClerkOrgId
@@ -1455,15 +1462,19 @@ export async function syncOrganizationEmployeeFromClerkEvent (pool, payload = {}
   }
 }
 
-export async function getWorkspacePermissionSnapshot (pool, actorUserId, workspaceId = null) {
-  const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
+export async function getWorkspacePermissionSnapshot (pool, actorUserId, workspaceId = null, options = {}) {
+  const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId, {
+    expectedClerkOrgId: options.expectedClerkOrgId || null,
+    skipClerkOrgSync: options.skipClerkOrgSync !== false
+  })
   const authz = await getWorkspaceAuthorizationContext(pool, workspace, actorUserId)
   return { workspace, authorization: authz }
 }
 
 export async function getAccountForUser (pool, clerkUserId, options = {}) {
   const workspace = await getWorkspaceContext(pool, clerkUserId, null, {
-    expectedClerkOrgId: options.expectedClerkOrgId || null
+    expectedClerkOrgId: options.expectedClerkOrgId || null,
+    skipClerkOrgSync: true
   })
   await assertWorkspaceAssignment(pool, workspace, clerkUserId, { assignedBy: clerkUserId })
   const { profile } = await getWorkspaceProfile(pool, clerkUserId, workspace.id)

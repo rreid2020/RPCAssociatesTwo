@@ -9,7 +9,7 @@ import {
   useRef,
   useState
 } from 'react'
-import { useAuth } from '@clerk/clerk-react'
+import { useAuth, useOrganization } from '@clerk/clerk-react'
 import { portalFetch } from '../../lib/portalApi'
 
 export type AccountSummary = {
@@ -33,6 +33,7 @@ const AccountContext = createContext<AccountContextValue | null>(null)
 
 const AccountContextProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const { getToken, isLoaded, isSignedIn } = useAuth()
+  const { organization, isLoaded: isOrganizationLoaded } = useOrganization()
   const [account, setAccount] = useState<AccountSummary | null>(null)
   const [profile, setProfile] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(false)
@@ -66,13 +67,15 @@ const AccountContextProvider: FC<{ children: ReactNode }> = ({ children }) => {
   }, [getToken])
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) {
-      setAccount(null)
-      setProfile(null)
+    if (!isLoaded || !isSignedIn || !isOrganizationLoaded) {
+      if (!isSignedIn) {
+        setAccount(null)
+        setProfile(null)
+      }
       return
     }
     void refreshAccount()
-  }, [isLoaded, isSignedIn, refreshAccount])
+  }, [isLoaded, isOrganizationLoaded, isSignedIn, organization?.id, refreshAccount])
 
   const value = useMemo(
     () => ({ account, profile, loading, refreshAccount }),

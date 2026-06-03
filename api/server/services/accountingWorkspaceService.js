@@ -220,8 +220,7 @@ export async function ensurePersonalWorkspace (pool, clerkUserId) {
     [clerkUserId]
   )
   if (existing[0]) {
-    const linked = await ensureHierarchyMembershipForWorkspaceUser(pool, existing[0], clerkUserId, clerkUserId)
-    return linked
+    return existing[0]
   }
 
   const baseSlug = `personal-${slugifyWorkspaceName(clerkUserId)}`
@@ -561,8 +560,38 @@ export async function getWorkspaceAuthorizationContext (pool, workspace, actorUs
   }
 }
 
+async function queryDefaultWorkspaceRow (pool, clerkUserId, expectedClerkOrgId, applyOrgFilter) {
+  const orgFilterClause = applyOrgFilter && expectedClerkOrgId
+    ? 'AND (w.clerk_org_id IS NULL OR w.clerk_org_id = $2)'
+    : ''
+  const queryParams = applyOrgFilter && expectedClerkOrgId ? [clerkUserId, expectedClerkOrgId] : [clerkUserId]
+  const { rows } = await pool.query(
+    `SELECT w.*, m.role, m.status
+     FROM taxgpt.accounting_workspaces w
+     INNER JOIN taxgpt.accounting_workspace_members m ON m.workspace_id = w.id
+     LEFT JOIN taxgpt.accounting_workspace_profiles p ON p.workspace_id = w.id
+     WHERE m.clerk_user_id = $1
+       AND m.status = 'active'
+       ${orgFilterClause}
+     ORDER BY ${expectedClerkOrgId && applyOrgFilter ? 'CASE WHEN w.clerk_org_id = $2 THEN 0 ELSE 1 END,' : ''}
+              w.is_personal ASC,
+              (p.onboarding_completed_at IS NOT NULL) DESC,
+              CASE WHEN m.role = 'owner' THEN 0 ELSE 1 END,
+              w.created_at ASC
+     LIMIT 1`,
+    queryParams
+  )
+  return rows[0] || null
+}
+
 async function finalizeWorkspaceContext (pool, workspace, clerkUserId, expectedClerkOrgId, options = {}) {
-  if (expectedClerkOrgId && workspace.clerk_org_id && workspace.clerk_org_id !== expectedClerkOrgId) {
+  const relaxedOrgContext = Boolean(options.relaxedOrgContext || options.skipClerkOrgSync)
+  if (
+    !relaxedOrgContext
+    && expectedClerkOrgId
+    && workspace.clerk_org_id
+    && workspace.clerk_org_id !== expectedClerkOrgId
+  ) {
     throw new Error('Workspace organization context mismatch')
   }
   if (!workspace.organization_id) {
@@ -578,7 +607,17 @@ async function finalizeWorkspaceContext (pool, workspace, clerkUserId, expectedC
 export async function getWorkspaceContext (pool, clerkUserId, requestedWorkspaceId = null, options = {}) {
   const expectedClerkOrgId = String(options?.expectedClerkOrgId || '').trim() || null
   if (!requestedWorkspaceId) {
-    await ensurePersonalWorkspace(pool, clerkUserId)
+    const { rows: membershipRows } = await pool.query(
+      `SELECT 1
+       FROM taxgpt.accounting_workspace_members
+       WHERE clerk_user_id = $1
+         AND status = 'active'
+       LIMIT 1`,
+      [clerkUserId]
+    )
+    if (!membershipRows[0]) {
+      await ensurePersonalWorkspace(pool, clerkUserId)
+    }
   }
   if (requestedWorkspaceId) {
     const { rows } = await pool.query(
@@ -595,28 +634,12 @@ export async function getWorkspaceContext (pool, clerkUserId, requestedWorkspace
     return finalizeWorkspaceContext(pool, rows[0], clerkUserId, expectedClerkOrgId, options)
   }
 
-  const orgFilterClause = expectedClerkOrgId
-    ? 'AND (w.clerk_org_id IS NULL OR w.clerk_org_id = $2)'
-    : ''
-  const queryParams = expectedClerkOrgId ? [clerkUserId, expectedClerkOrgId] : [clerkUserId]
-  const { rows } = await pool.query(
-    `SELECT w.*, m.role, m.status
-     FROM taxgpt.accounting_workspaces w
-     INNER JOIN taxgpt.accounting_workspace_members m ON m.workspace_id = w.id
-     LEFT JOIN taxgpt.accounting_workspace_profiles p ON p.workspace_id = w.id
-     WHERE m.clerk_user_id = $1
-       AND m.status = 'active'
-       ${orgFilterClause}
-     ORDER BY ${expectedClerkOrgId ? 'CASE WHEN w.clerk_org_id = $2 THEN 0 ELSE 1 END,' : ''}
-              w.is_personal ASC,
-              (p.onboarding_completed_at IS NOT NULL) DESC,
-              CASE WHEN m.role = 'owner' THEN 0 ELSE 1 END,
-              w.created_at ASC
-     LIMIT 1`,
-    queryParams
-  )
-  if (!rows[0]) throw new Error('Workspace not found')
-  return finalizeWorkspaceContext(pool, rows[0], clerkUserId, expectedClerkOrgId)
+  let workspace = await queryDefaultWorkspaceRow(pool, clerkUserId, expectedClerkOrgId, true)
+  if (!workspace && expectedClerkOrgId) {
+    workspace = await queryDefaultWorkspaceRow(pool, clerkUserId, expectedClerkOrgId, false)
+  }
+  if (!workspace) throw new Error('Workspace not found')
+  return finalizeWorkspaceContext(pool, workspace, clerkUserId, expectedClerkOrgId, options)
 }
 
 export async function listWorkspacesForUser (pool, clerkUserId) {
@@ -1465,7 +1488,8 @@ export async function syncOrganizationEmployeeFromClerkEvent (pool, payload = {}
 export async function getWorkspacePermissionSnapshot (pool, actorUserId, workspaceId = null, options = {}) {
   const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId, {
     expectedClerkOrgId: options.expectedClerkOrgId || null,
-    skipClerkOrgSync: options.skipClerkOrgSync !== false
+    skipClerkOrgSync: options.skipClerkOrgSync !== false,
+    relaxedOrgContext: true
   })
   const authz = await getWorkspaceAuthorizationContext(pool, workspace, actorUserId)
   return { workspace, authorization: authz }
@@ -1474,10 +1498,26 @@ export async function getWorkspacePermissionSnapshot (pool, actorUserId, workspa
 export async function getAccountForUser (pool, clerkUserId, options = {}) {
   const workspace = await getWorkspaceContext(pool, clerkUserId, null, {
     expectedClerkOrgId: options.expectedClerkOrgId || null,
-    skipClerkOrgSync: true
+    skipClerkOrgSync: true,
+    relaxedOrgContext: true
   })
-  await assertWorkspaceAssignment(pool, workspace, clerkUserId, { assignedBy: clerkUserId })
-  const { profile } = await getWorkspaceProfile(pool, clerkUserId, workspace.id)
+  try {
+    await assertWorkspaceAssignment(pool, workspace, clerkUserId, { assignedBy: clerkUserId })
+  } catch (error) {
+    if (!canManageWorkspace(workspace)) throw error
+    if (workspace.organization_id) {
+      await ensureWorkspaceEmployeeAssignment(
+        pool,
+        workspace,
+        clerkUserId,
+        clerkUserId,
+        mapWorkspaceRoleToOrganizationMemberRole(workspace.role)
+      )
+    } else {
+      throw error
+    }
+  }
+  const profile = await fetchWorkspaceProfile(pool, workspace.id)
   const authorization = await getWorkspaceAuthorizationContext(pool, workspace, clerkUserId)
   return {
     account: {

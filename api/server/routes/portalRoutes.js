@@ -253,7 +253,9 @@ export function createPortalRouter (pool) {
   const resolveAccountingScope = async (req, res, session) => {
     try {
       const workspace = await getWorkspaceContext(pool, session.userId, null, {
-        expectedClerkOrgId: session.orgId || null
+        expectedClerkOrgId: session.orgId || null,
+        skipClerkOrgSync: true,
+        relaxedOrgContext: true
       })
       if (!workspace.organization_id) {
         res.status(400).json({ error: 'Workspace is not linked to an organization. Please complete organization linking first.' })

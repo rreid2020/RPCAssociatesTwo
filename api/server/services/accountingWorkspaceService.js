@@ -12,6 +12,7 @@ import {
   ensureWorkspaceRbacTables,
   resolveEffectiveWorkspacePermissions
 } from './authz/workspaceRbacService.js'
+import { listPermissionsForRole, mapWorkspaceRoleToPlatformRole } from './authz/rolePermissions.js'
 import { ensurePortalSchema } from '../db/ensurePortalSchema.js'
 import {
   deleteWorkspaceRecord,
@@ -549,7 +550,50 @@ async function ensureLegacyAssignmentsForWorkspaceUser (pool, workspace, clerkUs
   await ensureWorkingPaperAssignmentsForWorkspaceMember(pool, workspace, clerkUserId, assignedBy)
 }
 
+export async function prepareAccountingWorkspaceScope (pool, clerkUserId, options = {}) {
+  let workspace = await getWorkspaceContext(pool, clerkUserId, null, {
+    expectedClerkOrgId: options.expectedClerkOrgId || null,
+    skipClerkOrgSync: true,
+    relaxedOrgContext: true
+  })
+  if (!workspace.organization_id) {
+    workspace = await ensureOrganizationLinkForWorkspace(pool, workspace)
+  }
+  if (!workspace.organization_id) {
+    throw new Error('Workspace is not linked to an organization. Please complete organization linking first.')
+  }
+  try {
+    await assertWorkspaceAssignment(pool, workspace, clerkUserId, { assignedBy: clerkUserId })
+  } catch (error) {
+    if (!canManageWorkspace(workspace)) throw error
+    await ensureWorkspaceEmployeeAssignment(
+      pool,
+      workspace,
+      clerkUserId,
+      clerkUserId,
+      mapWorkspaceRoleToOrganizationMemberRole(workspace.role)
+    )
+  }
+  return {
+    workspace,
+    organizationId: workspace.organization_id,
+    workspaceUserId: workspace.owner_user_id,
+    actorUserId: clerkUserId
+  }
+}
+
 export async function getWorkspaceAuthorizationContext (pool, workspace, actorUserId) {
+  const normalizedRole = String(workspace.role || '').trim().toLowerCase()
+  if (normalizedRole === 'owner' || normalizedRole === 'admin') {
+    const platformRole = mapWorkspaceRoleToPlatformRole(workspace.role)
+    return {
+      workspaceId: workspace.id,
+      workspaceRole: workspace.role,
+      platformRole,
+      customRoles: [],
+      permissions: listPermissionsForRole(platformRole)
+    }
+  }
   const resolved = await resolveEffectiveWorkspacePermissions(pool, workspace.id, workspace.role, actorUserId)
   return {
     workspaceId: workspace.id,
@@ -797,36 +841,40 @@ export async function upsertWorkspaceProfile (pool, actorUserId, workspaceId, pa
   return { workspace, profile }
 }
 
-export async function listWorkspaceMembers (pool, actorUserId, workspaceId) {
-  const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
-  const members = await fetchWorkspaceMembers(pool, workspace.id)
-  const enriched = []
-  for (const member of members) {
-    const clerkUserId = String(member.clerk_user_id || '')
-    if (!clerkUserId || clerkUserId.startsWith('invite:')) {
-      enriched.push({
-        ...member,
-        display_name: clerkUserId.startsWith('invite:') ? clerkUserId.slice('invite:'.length) : clerkUserId,
-        email: clerkUserId.startsWith('invite:') ? clerkUserId.slice('invite:'.length) : null
-      })
-      continue
-    }
-    try {
-      const client = getClerkBackendClient()
-      const user = await client.users.getUser(clerkUserId)
-      enriched.push({
-        ...member,
-        display_name: buildDisplayNameFromClerkUser(user) || extractPrimaryEmailFromClerkUser(user) || clerkUserId,
-        email: extractPrimaryEmailFromClerkUser(user)
-      })
-    } catch {
-      enriched.push({
-        ...member,
-        display_name: clerkUserId,
-        email: null
-      })
+async function enrichWorkspaceMemberRecord (member) {
+  const clerkUserId = String(member.clerk_user_id || '')
+  if (!clerkUserId || clerkUserId.startsWith('invite:')) {
+    return {
+      ...member,
+      display_name: clerkUserId.startsWith('invite:') ? clerkUserId.slice('invite:'.length) : clerkUserId,
+      email: clerkUserId.startsWith('invite:') ? clerkUserId.slice('invite:'.length) : null
     }
   }
+  try {
+    const client = getClerkBackendClient()
+    const user = await client.users.getUser(clerkUserId)
+    return {
+      ...member,
+      display_name: buildDisplayNameFromClerkUser(user) || extractPrimaryEmailFromClerkUser(user) || clerkUserId,
+      email: extractPrimaryEmailFromClerkUser(user)
+    }
+  } catch {
+    return {
+      ...member,
+      display_name: clerkUserId,
+      email: null
+    }
+  }
+}
+
+export async function listWorkspaceMembers (pool, actorUserId, workspaceId, options = {}) {
+  const workspace = options.workspace || await getWorkspaceContext(pool, actorUserId, workspaceId, {
+    expectedClerkOrgId: options.expectedClerkOrgId || null,
+    skipClerkOrgSync: true,
+    relaxedOrgContext: true
+  })
+  const members = await fetchWorkspaceMembers(pool, workspace.id)
+  const enriched = await Promise.all(members.map((member) => enrichWorkspaceMemberRecord(member)))
   return { workspace, members: enriched }
 }
 

@@ -81,6 +81,7 @@ import {
   getOnboardingStatusForUser,
   getWorkspaceOrgMigrationHealth,
   getWorkspacePermissionSnapshot,
+  prepareAccountingWorkspaceScope,
   listWorkspaceInvites,
   listWorkspaceMembers,
   listEngagementEmployeeAssignments,
@@ -252,25 +253,18 @@ export function createPortalRouter (pool) {
   }
   const resolveAccountingScope = async (req, res, session) => {
     try {
-      const workspace = await getWorkspaceContext(pool, session.userId, null, {
-        expectedClerkOrgId: session.orgId || null,
-        skipClerkOrgSync: true,
-        relaxedOrgContext: true
+      return await prepareAccountingWorkspaceScope(pool, session.userId, {
+        expectedClerkOrgId: session.orgId || null
       })
-      if (!workspace.organization_id) {
-        res.status(400).json({ error: 'Workspace is not linked to an organization. Please complete organization linking first.' })
-        return null
-      }
-      await assertWorkspaceAssignment(pool, workspace, session.userId, { assignedBy: session.userId })
-      return {
-        workspace,
-        organizationId: workspace.organization_id,
-        workspaceUserId: workspace.owner_user_id,
-        actorUserId: session.userId
-      }
     } catch (e) {
       if (handleAssignmentError(res, e, 'Workspace assignment required')) return null
-      res.status(403).json({ error: e instanceof Error ? e.message : 'Workspace access denied' })
+      const message = e instanceof Error ? e.message : 'Workspace access denied'
+      if (message.includes('not linked to an organization')) {
+        res.status(400).json({ error: message })
+        return null
+      }
+      const status = /denied|forbidden|mismatch/i.test(message) ? 403 : 400
+      res.status(status).json({ error: message })
       return null
     }
   }
@@ -1087,10 +1081,10 @@ export function createPortalRouter (pool) {
     const session = await getClerkUser(req, res)
     if (!session) return
     try {
-      const data = await withDeadlockRetry(() => getWorkspacePermissionSnapshot(pool, session.userId, null, {
+      const data = await getWorkspacePermissionSnapshot(pool, session.userId, null, {
         expectedClerkOrgId: session.orgId || null,
         skipClerkOrgSync: true
-      }))
+      })
       res.json(data)
     } catch (e) {
       if (isDeadlockError(e)) {
@@ -1114,7 +1108,10 @@ export function createPortalRouter (pool) {
         clerkUserId: session.userId,
         permissions: ['workspace.read', 'engagement.read', 'engagement.manage']
       })
-      const data = await listWorkspaceMembers(pool, session.userId, scope.workspace.id)
+      const data = await listWorkspaceMembers(pool, session.userId, scope.workspace.id, {
+        workspace: scope.workspace,
+        expectedClerkOrgId: session.orgId || null
+      })
       res.json(data)
     } catch (e) {
       if (handleAssignmentError(res, e, 'Workspace assignment required')) return

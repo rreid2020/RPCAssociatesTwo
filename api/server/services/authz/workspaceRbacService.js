@@ -28,8 +28,32 @@ function normalizeSourceRole (value) {
   return sourceRole
 }
 
+let workspaceRbacTablesEnsurePromise = null
+
 export async function ensureWorkspaceRbacTables (pool) {
-  await ensurePortalSchema(pool)
+  if (!workspaceRbacTablesEnsurePromise) {
+    workspaceRbacTablesEnsurePromise = (async () => {
+      const { rows } = await pool.query(
+        `SELECT to_regclass('taxgpt.workspace_custom_roles') IS NOT NULL AS ok`
+      )
+      if (!rows[0]?.ok) {
+        await ensurePortalSchema(pool)
+      }
+    })().catch((error) => {
+      workspaceRbacTablesEnsurePromise = null
+      throw error
+    })
+  }
+  await workspaceRbacTablesEnsurePromise
+}
+
+function buildResolvedWorkspacePermissions (workspaceRole) {
+  const platformRole = mapWorkspaceRoleToPlatformRole(workspaceRole)
+  return {
+    platformRole,
+    customRoles: [],
+    permissions: listPermissionsForRole(platformRole)
+  }
 }
 
 export async function listWorkspaceRoles (pool, workspaceId) {
@@ -147,7 +171,7 @@ export async function resolveEffectiveWorkspacePermissions (pool, workspaceId, w
 export async function assertWorkspacePermissionWithCustomRoles (pool, { workspaceId, workspaceRole, clerkUserId, permission }) {
   const normalizedRole = String(workspaceRole || '').trim().toLowerCase()
   if (normalizedRole === 'owner' || normalizedRole === 'admin') {
-    return resolveEffectiveWorkspacePermissions(pool, workspaceId, workspaceRole, clerkUserId)
+    return buildResolvedWorkspacePermissions(workspaceRole)
   }
   const resolved = await resolveEffectiveWorkspacePermissions(pool, workspaceId, workspaceRole, clerkUserId)
   if (!resolved.permissions.includes(permission) && !hasPermission(resolved.platformRole, permission)) {

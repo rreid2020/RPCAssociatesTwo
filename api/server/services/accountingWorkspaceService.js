@@ -1758,6 +1758,9 @@ export async function upsertWorkspaceEmployeeAssignment (pool, actorUserId, work
 }
 
 export async function upsertEngagementEmployeeAssignment (pool, actorUserId, engagementId, payload = {}) {
+  if (Array.isArray(payload.assignments)) {
+    return replaceEngagementEmployeeAssignments(pool, actorUserId, engagementId, payload)
+  }
   const clerkUserIds = Array.isArray(payload.clerkUserIds)
     ? payload.clerkUserIds.map((value) => String(value || '').trim()).filter(Boolean)
     : []

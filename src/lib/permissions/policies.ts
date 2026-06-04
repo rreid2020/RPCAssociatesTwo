@@ -52,7 +52,10 @@ export const ROLE_PERMISSIONS: Record<PlatformRole, PermissionKey[]> = {
     'workingpapers.edit',
     'review_notes.manage',
     'signoff.perform',
-    'documents.manage'
+    'documents.manage',
+    'execution.read',
+    'execution.manage',
+    'templates.manage'
   ],
   reviewer: [
     'engagement.read',

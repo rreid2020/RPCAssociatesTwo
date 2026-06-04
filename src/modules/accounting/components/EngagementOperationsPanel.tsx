@@ -1,5 +1,5 @@
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import type { CellEditingStoppedEvent, ColDef, GridApi, ICellRendererParams, RowClassParams, RowSelectedEvent } from 'ag-grid-community'
 import AgGridTable from '../../working-papers/components/grid/AgGridTable'
 import EngagementDateCellEditor from './EngagementDateCellEditor'
@@ -96,8 +96,20 @@ const EngagementActionsCell: FC<ICellRendererParams<EngagementRecord, unknown, E
   const context = params.context
   if (!row || !context) return null
 
+  const engagementPath = row.isNew
+    ? null
+    : `/portal/accounting/working-papers/engagements/${row.id}`
+
   return (
     <div className="flex h-full items-center gap-2">
+      {engagementPath && (
+        <Link
+          to={`${engagementPath}/execution`}
+          className="text-xs font-medium text-primary-dark hover:underline"
+        >
+          Execution
+        </Link>
+      )}
       <button
         type="button"
         className="text-xs font-medium text-primary-dark hover:underline disabled:opacity-50"
@@ -643,8 +655,8 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     {
       colId: 'actions',
       headerName: 'Actions',
-      width: 120,
-      maxWidth: 130,
+      width: 168,
+      maxWidth: 180,
       pinned: 'right',
       sortable: false,
       filter: false,

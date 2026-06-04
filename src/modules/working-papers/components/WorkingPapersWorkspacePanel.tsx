@@ -246,6 +246,7 @@ const WorkingPapersWorkspacePanel: FC<WorkingPapersWorkspacePanelProps> = ({
 
           <div className="flex flex-wrap gap-2">
             <Link to={engagementBasePath} className="btn btn--primary text-sm py-2 px-3">Engagement dashboard</Link>
+            <Link to={`${engagementBasePath}/execution`} className="btn btn--primary text-sm py-2 px-3">Execution</Link>
             <Link to={`${engagementBasePath}/trial-balance`} className="btn btn--secondary text-sm py-2 px-3">Trial balance</Link>
             <Link to={`${engagementBasePath}/lead-sheets`} className="btn btn--secondary text-sm py-2 px-3">Lead sheets</Link>
             <Link to={`${engagementBasePath}/documents`} className="btn btn--secondary text-sm py-2 px-3">Documents</Link>

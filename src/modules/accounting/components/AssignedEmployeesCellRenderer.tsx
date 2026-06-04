@@ -2,7 +2,8 @@ import type { ICellRendererParams } from 'ag-grid-community'
 import {
   formatStaffAssignmentLabels,
   normalizeEngagementStaffAssignments,
-  staffAssignmentsFromEmployeeIds
+  staffAssignmentsFromEmployeeIds,
+  type EngagementStaffAssignment
 } from '../utils/engagementStaffAssignments'
 
 type WorkspaceMember = {
@@ -11,19 +12,25 @@ type WorkspaceMember = {
   email?: string
 }
 
+type EngagementRow = {
+  assigned_employees?: EngagementStaffAssignment[]
+  assigned_employee_ids?: string[]
+}
+
 type RendererContext = {
   activeMembers?: WorkspaceMember[]
 }
 
 const AssignedEmployeesCellRenderer = (
-  params: ICellRendererParams<unknown, unknown, RendererContext>
+  params: ICellRendererParams<EngagementRow, EngagementStaffAssignment[] | undefined, RendererContext>
 ) => {
+  const row = params.data
   const assignments = normalizeEngagementStaffAssignments(
-    params.value ?? params.data?.assigned_employees
+    params.value ?? row?.assigned_employees
   )
   const resolved = assignments.length > 0
     ? assignments
-    : staffAssignmentsFromEmployeeIds(params.data?.assigned_employee_ids)
+    : staffAssignmentsFromEmployeeIds(row?.assigned_employee_ids)
 
   const memberLabelByUserId = new Map<string, string>()
   for (const member of params.context?.activeMembers || []) {

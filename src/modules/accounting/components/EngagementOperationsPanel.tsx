@@ -39,8 +39,8 @@ type EngagementRecord = {
   status?: string
   review_flow_status?: string | null
   fiscal_year?: number
-  period_start?: string
-  period_end?: string
+  period_start?: string | null
+  period_end?: string | null
   due_date?: string | null
   source_type?: string
   deliverables?: string[] | null
@@ -59,13 +59,10 @@ type EngagementGridContext = {
   saving: boolean
 }
 
-function formatEmployeeLabels (
-  employeeIds: string[] | undefined,
-  memberLabelByUserId: Map<string, string>
-): string {
-  const ids = normalizeAssignedEmployeeIds(employeeIds)
-  if (ids.length === 0) return '—'
-  return ids.map((id) => memberLabelByUserId.get(id) || id).join(', ')
+function resolveRowStaffing (row: EngagementRecord): EngagementStaffAssignment[] {
+  const assignments = normalizeEngagementStaffAssignments(row.assigned_employees)
+  if (assignments.length > 0) return assignments
+  return staffAssignmentsFromEmployeeIds(row.assigned_employee_ids)
 }
 
 function createDraftRow (): EngagementRecord {
@@ -268,11 +265,17 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     }
     if (row.isNew) {
       setDraftRows((prev) => prev.map((draft) => (
-        draft.id === row.id ? { ...draft, assigned_employee_ids: assignees } : draft
+        draft.id === row.id
+          ? {
+            ...draft,
+            assigned_employees: assignments,
+            assigned_employee_ids: assignments.map((entry) => entry.clerk_user_id)
+          }
+          : draft
       )))
       if (!String(row.name || '').trim() || !String(row.client_id || '').trim()) return true
     }
-    if (assignees.length === 0) {
+    if (assignments.length === 0) {
       onError('Assign at least one employee to the engagement.')
       return false
     }
@@ -281,9 +284,10 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     onError(null)
     try {
       if (!row.isNew) {
-        await saveEngagementAssignments(row.id, assignees)
+        await saveEngagementStaffing(row.id, assignments)
       }
-      row.assigned_employee_ids = assignees
+      row.assigned_employees = assignments
+      row.assigned_employee_ids = assignments.map((entry) => entry.clerk_user_id)
       if (!row.isNew) {
         onNotice('Engagement staffing updated.')
         await onReloadEngagements()
@@ -428,21 +432,25 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     }
 
     if (field === 'period_end' || field === 'due_date') {
-      row[field] = toEngagementDateInput(event.newValue ?? row[field]) as string | null
+      const parsedDate = toEngagementDateInput(event.newValue ?? row[field])
+      row[field] = parsedDate
       if (!row.isNew) {
         await persistEngagementDates(row, field)
         return
       }
     }
 
-    if (field === 'assigned_employee_ids') {
-      const assignees = normalizeAssignedEmployeeIds(event.newValue ?? row.assigned_employee_ids)
-      row.assigned_employee_ids = assignees
+    if (field === 'assigned_employees') {
+      const assignments = dedupeStaffAssignments(
+        normalizeEngagementStaffAssignments(event.newValue ?? row.assigned_employees)
+      )
+      row.assigned_employees = assignments
+      row.assigned_employee_ids = assignments.map((entry) => entry.clerk_user_id)
       if (row.isNew && String(row.name || '').trim() && String(row.client_id || '').trim()) {
-        await persistRow({ ...row, assigned_employee_ids: assignees })
+        await persistRow({ ...row, assigned_employees: assignments })
         return
       }
-      await persistAssigneesOnly(row, assignees)
+      await persistStaffingOnly(row, assignments)
       return
     }
 
@@ -587,6 +595,11 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       filterValueGetter: (params) => {
         const iso = toEngagementDateInput(params.data?.period_end)
         return iso ? new Date(`${iso}T12:00:00`).toLocaleDateString() : ''
+      },
+      valueSetter: (params) => {
+        if (!params.data) return false
+        params.data.period_end = toEngagementDateInput(params.newValue)
+        return true
       },
       valueParser: (params) => toEngagementDateInput(params.newValue)
     },

@@ -1,14 +1,12 @@
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import type { CellEditingStoppedEvent, ColDef, GridApi, ICellRendererParams, RowClassParams } from 'ag-grid-community'
+import type { CellEditingStoppedEvent, ColDef, GridApi, ICellRendererParams, RowClassParams, RowSelectedEvent } from 'ag-grid-community'
 import AgGridTable from '../../working-papers/components/grid/AgGridTable'
-import AssignedEmployeesCellEditor from './AssignedEmployeesCellEditor'
-import AssignedEmployeesCellRenderer from './AssignedEmployeesCellRenderer'
 import EngagementDateCellEditor from './EngagementDateCellEditor'
+import EngagementStaffingPanel from './EngagementStaffingPanel'
 import { toEngagementDateInput } from '../utils/engagementDateInput'
 import {
   dedupeStaffAssignments,
-  formatStaffAssignmentLabels,
   normalizeEngagementStaffAssignments,
   staffAssignmentsFromEmployeeIds,
   toAssignmentApiPayload,
@@ -55,7 +53,6 @@ type WorkspaceMember = { clerk_user_id: string; display_name?: string; email?: s
 type EngagementGridContext = {
   onEdit: (row: EngagementRecord) => void
   onDelete: (row: EngagementRecord) => void
-  activeMembers: WorkspaceMember[]
   saving: boolean
 }
 
@@ -63,6 +60,10 @@ function resolveRowStaffing (row: EngagementRecord): EngagementStaffAssignment[]
   const assignments = normalizeEngagementStaffAssignments(row.assigned_employees)
   if (assignments.length > 0) return assignments
   return staffAssignmentsFromEmployeeIds(row.assigned_employee_ids)
+}
+
+function engagementStaffCount (row: EngagementRecord): number {
+  return resolveRowStaffing(row).length
 }
 
 function createDraftRow (): EngagementRecord {
@@ -84,6 +85,10 @@ function createDraftRow (): EngagementRecord {
     assigned_employees: [],
     assigned_employee_ids: []
   }
+}
+
+function isEngagementReadyForStaffing (row: EngagementRecord): boolean {
+  return Boolean(String(row.name || '').trim() && String(row.client_id || '').trim())
 }
 
 const EngagementActionsCell: FC<ICellRendererParams<EngagementRecord, unknown, EngagementGridContext>> = (params) => {
@@ -152,17 +157,14 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [clientFilter, setClientFilter] = useState('')
-  const [gridHeight, setGridHeight] = useState(560)
+  const [engagementGridHeight, setEngagementGridHeight] = useState(420)
+  const [selectedEngagementId, setSelectedEngagementId] = useState<string | null>(null)
+  const [staffingAssignments, setStaffingAssignments] = useState<EngagementStaffAssignment[]>([])
   const createRowRequestedRef = useRef(false)
 
   const activeMembers = useMemo(
     () => workspaceMembers.filter((member) => member.status === 'active'),
     [workspaceMembers]
-  )
-
-  const defaultAssigneeIds = useMemo(
-    () => activeMembers.map((member) => member.clerk_user_id).filter(Boolean),
-    [activeMembers]
   )
 
   const memberLabelByUserId = useMemo(() => {
@@ -223,13 +225,42 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     [draftRows, filteredEngagements]
   )
 
+  const selectedEngagement = useMemo(
+    () => gridRows.find((row) => row.id === selectedEngagementId) || null,
+    [gridRows, selectedEngagementId]
+  )
+
+  const syncSelectionToGrid = useCallback((engagementId: string | null) => {
+    const api = gridApiRef.current
+    if (!api) return
+    api.forEachNode((node) => {
+      const shouldSelect = engagementId != null && String(node.data?.id) === engagementId
+      node.setSelected(Boolean(shouldSelect))
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!selectedEngagementId) {
+      setStaffingAssignments([])
+      return
+    }
+    const row = gridRows.find((entry) => entry.id === selectedEngagementId)
+    setStaffingAssignments(row ? resolveRowStaffing(row) : [])
+  }, [gridRows, selectedEngagementId])
+
+  useEffect(() => {
+    syncSelectionToGrid(selectedEngagementId)
+  }, [gridRows, selectedEngagementId, syncSelectionToGrid])
+
   const addDraftRow = useCallback(() => {
-    setDraftRows((prev) => [createDraftRow(), ...prev])
+    const draft = createDraftRow()
+    setDraftRows((prev) => [draft, ...prev])
+    setSelectedEngagementId(draft.id)
     onError(null)
   }, [onError])
 
   useEffect(() => {
-    const updateHeight = () => setGridHeight(Math.max(520, window.innerHeight - 260))
+    const updateHeight = () => setEngagementGridHeight(Math.max(360, Math.floor((window.innerHeight - 380) * 0.52)))
     updateHeight()
     window.addEventListener('resize', updateHeight)
     return () => window.removeEventListener('resize', updateHeight)
@@ -245,61 +276,19 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     setSearchParams(next, { replace: true })
   }, [addDraftRow, searchParams, setSearchParams])
 
-  const saveEngagementStaffing = async (
+  const saveEngagementStaffing = useCallback(async (
     engagementId: string,
     assignments: EngagementStaffAssignment[]
   ) => {
-    await portalFetch(`/v1/accounting/engagements/${engagementId}/assignments`, getToken, {
+    const result = await portalFetch<{
+      assignment?: { assignments?: Array<{ clerk_user_id: string; assignment_role: string }> }
+    }>(`/v1/accounting/engagements/${engagementId}/assignments`, getToken, {
       method: 'PUT',
       body: JSON.stringify({ assignments: toAssignmentApiPayload(assignments) })
     })
-  }
-
-  const persistStaffingOnly = useCallback(async (
-    row: EngagementRecord,
-    assignments: EngagementStaffAssignment[]
-  ) => {
-    if (!accountReady) {
-      onError('Your account is still loading. Try again in a moment.')
-      return false
-    }
-    if (row.isNew) {
-      setDraftRows((prev) => prev.map((draft) => (
-        draft.id === row.id
-          ? {
-            ...draft,
-            assigned_employees: assignments,
-            assigned_employee_ids: assignments.map((entry) => entry.clerk_user_id)
-          }
-          : draft
-      )))
-      if (!String(row.name || '').trim() || !String(row.client_id || '').trim()) return true
-    }
-    if (assignments.length === 0) {
-      onError('Assign at least one employee to the engagement.')
-      return false
-    }
-
-    onSavingChange(true)
-    onError(null)
-    try {
-      if (!row.isNew) {
-        await saveEngagementStaffing(row.id, assignments)
-      }
-      row.assigned_employees = assignments
-      row.assigned_employee_ids = assignments.map((entry) => entry.clerk_user_id)
-      if (!row.isNew) {
-        onNotice('Engagement staffing updated.')
-        await onReloadEngagements()
-      }
-      return true
-    } catch (e) {
-      onError(e instanceof Error ? e.message : 'Could not update engagement staffing')
-      return false
-    } finally {
-      onSavingChange(false)
-    }
-  }, [accountReady, getToken, onError, onNotice, onReloadEngagements, onSavingChange])
+    const saved = normalizeEngagementStaffAssignments(result?.assignment?.assignments)
+    return saved.length > 0 ? saved : assignments
+  }, [getToken])
 
   const persistEngagementDates = useCallback(async (
     row: EngagementRecord,
@@ -331,94 +320,144 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     }
   }, [accountReady, getToken, onError, onNotice, onReloadEngagements, onSavingChange])
 
-  const persistRow = useCallback(async (row: EngagementRecord) => {
+  const persistRow = useCallback(async (
+    row: EngagementRecord,
+    options?: { staffing?: EngagementStaffAssignment[]; selectAfterCreate?: boolean }
+  ) => {
     if (!accountReady) {
       onError('Your account is still loading. Try again in a moment.')
-      return
+      return null
     }
 
     const resolvedClientId = String(row.client_id || '').trim()
     if (!resolvedClientId) {
       onError(`Select a ${clientLabel.toLowerCase()} for this engagement.`)
-      return
+      return null
     }
     if (!String(row.name || '').trim()) {
       onError('Engagement name is required.')
-      return
+      return null
     }
 
     onSavingChange(true)
     onError(null)
     try {
       if (row.isNew) {
-        const staffing = resolveRowStaffing(row)
-        const resolvedStaffing = staffing.length > 0
-          ? staffing
-          : defaultAssigneeIds.map((clerk_user_id) => ({
-            clerk_user_id,
-            assignment_role: 'preparer' as const
-          }))
-        if (resolvedStaffing.length === 0) {
-          onError('Assign at least one employee to the engagement.')
-          return
+        const staffing = dedupeStaffAssignments(options?.staffing ?? resolveRowStaffing(row))
+        const body: Record<string, unknown> = {
+          clientId: resolvedClientId,
+          name: String(row.name).trim(),
+          engagementType: row.engagement_type || 'year_end_working_papers',
+          fiscalYear: Number(row.fiscal_year || new Date().getFullYear()),
+          periodStart: toEngagementDateInput(row.period_start) || `${new Date().getFullYear()}-01-01`,
+          periodEnd: toEngagementDateInput(row.period_end) || `${new Date().getFullYear()}-12-31`,
+          dueDate: toEngagementDateInput(row.due_date),
+          sourceType: row.source_type || 'csv',
+          status: row.status || 'draft',
+          reviewFlowStatus: row.review_flow_status || 'not_started',
+          deliverables: []
         }
-        await portalFetch<{ engagement: { id: string } }>('/v1/accounting/engagements', getToken, {
+        if (staffing.length > 0) {
+          body.assignments = toAssignmentApiPayload(staffing)
+        }
+        const created = await portalFetch<{ engagement: { id: string } }>('/v1/accounting/engagements', getToken, {
           method: 'POST',
-          body: JSON.stringify({
-            clientId: resolvedClientId,
-            name: String(row.name).trim(),
-            engagementType: row.engagement_type || 'year_end_working_papers',
-            fiscalYear: Number(row.fiscal_year || new Date().getFullYear()),
-            periodStart: toEngagementDateInput(row.period_start) || `${new Date().getFullYear()}-01-01`,
-            periodEnd: toEngagementDateInput(row.period_end) || `${new Date().getFullYear()}-12-31`,
-            dueDate: toEngagementDateInput(row.due_date),
-            sourceType: row.source_type || 'csv',
-            status: row.status || 'draft',
-            reviewFlowStatus: row.review_flow_status || 'not_started',
-            deliverables: [],
-            assignments: toAssignmentApiPayload(resolvedStaffing)
-          })
+          body: JSON.stringify(body)
         })
+        const createdId = String(created?.engagement?.id || '')
         setDraftRows((prev) => prev.filter((draft) => draft.id !== row.id))
         onNotice('Engagement created.')
-      } else {
-        await portalFetch(`/v1/accounting/engagements/${row.id}`, getToken, {
-          method: 'PATCH',
-          body: JSON.stringify({
-            clientId: row.client_id,
-            name: String(row.name).trim(),
-            engagementType: row.engagement_type,
-            fiscalYear: Number(row.fiscal_year || new Date().getFullYear()),
-            periodStart: toEngagementDateInput(row.period_start),
-            periodEnd: toEngagementDateInput(row.period_end),
-            dueDate: toEngagementDateInput(row.due_date),
-            sourceType: row.source_type || 'csv',
-            status: row.status || 'draft',
-            reviewFlowStatus: row.review_flow_status || 'not_started',
-            deliverables: Array.isArray(row.deliverables) ? row.deliverables : []
-          })
-        })
-        const staffing = resolveRowStaffing(row)
-        if (staffing.length > 0) {
-          await saveEngagementStaffing(row.id, staffing)
+        await onReloadEngagements()
+        if (options?.selectAfterCreate !== false && createdId) {
+          setSelectedEngagementId(createdId)
         }
-        onNotice('Engagement updated.')
+        return createdId || null
       }
+
+      await portalFetch(`/v1/accounting/engagements/${row.id}`, getToken, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          clientId: row.client_id,
+          name: String(row.name).trim(),
+          engagementType: row.engagement_type,
+          fiscalYear: Number(row.fiscal_year || new Date().getFullYear()),
+          periodStart: toEngagementDateInput(row.period_start),
+          periodEnd: toEngagementDateInput(row.period_end),
+          dueDate: toEngagementDateInput(row.due_date),
+          sourceType: row.source_type || 'csv',
+          status: row.status || 'draft',
+          reviewFlowStatus: row.review_flow_status || 'not_started',
+          deliverables: Array.isArray(row.deliverables) ? row.deliverables : []
+        })
+      })
+      onNotice('Engagement updated.')
       await onReloadEngagements()
+      return row.id
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Could not save engagement')
+      return null
     } finally {
       onSavingChange(false)
     }
   }, [
     accountReady,
     clientLabel,
-    defaultAssigneeIds,
     getToken,
     onError,
     onNotice,
     onReloadEngagements,
     onSavingChange
+  ])
+
+  const handleSaveStaffing = useCallback(async () => {
+    if (!selectedEngagement) {
+      onError('Select an engagement first.')
+      return
+    }
+    if (!isEngagementReadyForStaffing(selectedEngagement)) {
+      onError(`Enter an engagement name and select a ${clientLabel.toLowerCase()} before saving assignments.`)
+      return
+    }
+    const assignments = dedupeStaffAssignments(staffingAssignments)
+    if (assignments.length === 0) {
+      onError('Add at least one employee before saving assignments.')
+      return
+    }
+
+    onSavingChange(true)
+    onError(null)
+    try {
+      if (selectedEngagement.isNew) {
+        const createdId = await persistRow(selectedEngagement, {
+          staffing: assignments,
+          selectAfterCreate: true
+        })
+        if (createdId) {
+          setStaffingAssignments(assignments)
+          onNotice('Engagement created with employee assignments.')
+        }
+        return
+      }
+
+      const saved = await saveEngagementStaffing(selectedEngagement.id, assignments)
+      setStaffingAssignments(saved)
+      onNotice('Engagement staffing updated.')
+      await onReloadEngagements()
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Could not save engagement staffing')
+    } finally {
+      onSavingChange(false)
+    }
+  }, [
+    clientLabel,
+    onError,
+    onNotice,
+    onReloadEngagements,
+    onSavingChange,
+    persistRow,
+    saveEngagementStaffing,
+    selectedEngagement,
+    staffingAssignments
   ])
 
   const onCellEditingStopped = useCallback(async (event: CellEditingStoppedEvent<EngagementRecord>) => {
@@ -440,32 +479,21 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       }
     }
 
-    if (field === 'assigned_employees') {
-      const assignments = dedupeStaffAssignments(
-        normalizeEngagementStaffAssignments(event.newValue ?? row.assigned_employees)
-      )
-      row.assigned_employees = assignments
-      row.assigned_employee_ids = assignments.map((entry) => entry.clerk_user_id)
-      if (row.isNew && String(row.name || '').trim() && String(row.client_id || '').trim()) {
-        await persistRow({ ...row, assigned_employees: assignments })
-        return
-      }
-      await persistStaffingOnly(row, assignments)
-      return
-    }
-
     if (row.isNew) {
-      if (!String(row.name || '').trim() || !String(row.client_id || '').trim()) return
-      await persistRow(row)
+      if (!isEngagementReadyForStaffing(row)) return
+      await persistRow(row, { staffing: staffingAssignments, selectAfterCreate: true })
       return
     }
 
     await persistRow(row)
-  }, [clientNameById, persistEngagementDates, persistRow, persistStaffingOnly])
+  }, [clientNameById, persistEngagementDates, persistRow, staffingAssignments])
 
   const handleDelete = useCallback(async (row: EngagementRecord) => {
     if (row.isNew) {
       setDraftRows((prev) => prev.filter((draft) => draft.id !== row.id))
+      if (selectedEngagementId === row.id) {
+        setSelectedEngagementId(null)
+      }
       return
     }
     if (!window.confirm(`Delete "${row.name}" and all related working papers?`)) return
@@ -473,6 +501,9 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     onError(null)
     try {
       await onDeleteEngagement(String(row.id))
+      if (selectedEngagementId === row.id) {
+        setSelectedEngagementId(null)
+      }
       onNotice('Engagement deleted.')
       await onReloadEngagements()
     } catch (e) {
@@ -480,7 +511,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     } finally {
       onSavingChange(false)
     }
-  }, [onDeleteEngagement, onError, onNotice, onReloadEngagements, onSavingChange])
+  }, [onDeleteEngagement, onError, onNotice, onReloadEngagements, onSavingChange, selectedEngagementId])
 
   const handleEdit = useCallback((row: EngagementRecord) => {
     const api = gridApiRef.current
@@ -490,12 +521,18 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     api.startEditingCell({ rowIndex: rowNode.rowIndex, colKey: 'name' })
   }, [])
 
+  const handleRowSelected = useCallback((event: RowSelectedEvent<EngagementRecord>) => {
+    if (!event.node.isSelected()) return
+    const row = event.data
+    if (!row) return
+    setSelectedEngagementId(String(row.id))
+  }, [])
+
   const gridContext = useMemo<EngagementGridContext>(() => ({
     onEdit: handleEdit,
     onDelete: (row) => { void handleDelete(row) },
-    activeMembers,
     saving
-  }), [activeMembers, handleDelete, handleEdit, saving])
+  }), [handleDelete, handleEdit, saving])
 
   const columnDefs = useMemo(() => ([
     {
@@ -541,43 +578,16 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       cellEditorParams: { values: statusOptions }
     },
     {
-      field: 'assigned_employees',
-      headerName: 'Assigned employees',
-      flex: 1.6,
-      minWidth: 220,
-      editable: true,
-      filter: 'agTextColumnFilter',
-      cellRenderer: AssignedEmployeesCellRenderer,
-      cellEditor: AssignedEmployeesCellEditor,
-      cellEditorPopup: true,
-      cellEditorParams: {
-        activeMembers: activeMembers
-      },
-      valueSetter: (params) => {
-        if (!params.data) return false
-        const assignments = normalizeEngagementStaffAssignments(params.newValue)
-        params.data.assigned_employees = assignments
-        params.data.assigned_employee_ids = assignments.map((entry) => entry.clerk_user_id)
-        return true
-      },
-      valueParser: (params) => normalizeEngagementStaffAssignments(params.newValue),
-      valueFormatter: (params) => formatStaffAssignmentLabels(
-        normalizeEngagementStaffAssignments(params.value ?? params.data?.assigned_employees).length > 0
-          ? normalizeEngagementStaffAssignments(params.value ?? params.data?.assigned_employees)
-          : staffAssignmentsFromEmployeeIds(params.data?.assigned_employee_ids),
-        memberLabelByUserId
-      ),
-      filterValueGetter: (params) => formatStaffAssignmentLabels(
-        resolveRowStaffing((params.data || {}) as EngagementRecord),
-        memberLabelByUserId
-      ),
-      comparator: (valueA, valueB) => formatStaffAssignmentLabels(
-        normalizeEngagementStaffAssignments(valueA),
-        memberLabelByUserId
-      ).localeCompare(formatStaffAssignmentLabels(
-        normalizeEngagementStaffAssignments(valueB),
-        memberLabelByUserId
-      ))
+      colId: 'staff_count',
+      headerName: 'Staff',
+      flex: 0.5,
+      minWidth: 72,
+      maxWidth: 90,
+      editable: false,
+      sortable: true,
+      filter: 'agNumberColumnFilter',
+      valueGetter: (params) => engagementStaffCount((params.data || {}) as EngagementRecord),
+      valueFormatter: (params) => String(params.value ?? 0)
     },
     {
       field: 'period_end',
@@ -641,7 +651,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       suppressHeaderMenuButton: true,
       cellRenderer: EngagementActionsCell
     }
-  ] as ColDef<EngagementRecord>[]), [activeMembers, clientIds, clientLabel, clientNameById, memberLabelByUserId])
+  ] as ColDef<EngagementRecord>[]), [clientIds, clientLabel, clientNameById])
 
   const gridDefaultColDef = useMemo<ColDef<EngagementRecord>>(
     () => ({
@@ -659,18 +669,28 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     context: gridContext,
     singleClickEdit: true,
     stopEditingWhenCellsLoseFocus: false,
+    rowSelection: { mode: 'singleRow' as const, checkboxes: false, enableClickSelection: true },
     onGridReady: (event: { api: GridApi<EngagementRecord> }) => {
       gridApiRef.current = event.api
+      syncSelectionToGrid(selectedEngagementId)
+    },
+    onRowSelected: (event: RowSelectedEvent<EngagementRecord>) => {
+      handleRowSelected(event)
     },
     onCellEditingStopped: (event: CellEditingStoppedEvent<EngagementRecord>) => {
       void onCellEditingStopped(event)
     },
     getRowId: (params: { data: EngagementRecord }) => String(params.data.id),
-    getRowClass: (params: RowClassParams<EngagementRecord>) => (params.data?.isNew ? 'engagement-draft-row' : '')
-  }), [gridContext, onCellEditingStopped])
+    getRowClass: (params: RowClassParams<EngagementRecord>) => {
+      const classes = []
+      if (params.data?.isNew) classes.push('engagement-draft-row')
+      if (params.data?.id === selectedEngagementId) classes.push('engagement-selected-row')
+      return classes.join(' ')
+    }
+  }), [gridContext, handleRowSelected, onCellEditingStopped, selectedEngagementId, syncSelectionToGrid])
 
   return (
-    <div className="space-y-3 min-w-0">
+    <div className="space-y-4 min-w-0">
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -695,7 +715,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
           {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
         </select>
         <p className="text-xs text-text-light w-full sm:w-auto">
-          Click a cell to edit, or use Edit in the actions column. Assigned employees: add staff, set role (Preparer, Reviewer, Manager, Member), then Apply. Dates use a standard date picker. Use column headers to sort; use the filter row under headers for column filters.
+          Select an engagement row, then assign employees in the grid below. Edit engagement fields inline; use Save assignments for staffing.
         </p>
       </div>
 
@@ -704,7 +724,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       ) : (
         <AgGridTable
           rowData={gridRows}
-          height={gridHeight}
+          height={engagementGridHeight}
           columnDefs={columnDefs}
           defaultColDef={gridDefaultColDef}
           gridOptions={gridOptions}
@@ -714,6 +734,20 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       )}
       {!loading && gridRows.length === 0 && (
         <p className="text-sm text-text-light">No engagements match the current filters.</p>
+      )}
+
+      {!loading && (
+        <EngagementStaffingPanel
+          engagementName={selectedEngagement ? (String(selectedEngagement.name || '').trim() || 'Untitled engagement') : null}
+          engagementIsDraft={Boolean(selectedEngagement?.isNew)}
+          engagementReady={selectedEngagement ? isEngagementReadyForStaffing(selectedEngagement) : false}
+          activeMembers={activeMembers}
+          memberLabelByUserId={memberLabelByUserId}
+          assignments={staffingAssignments}
+          onAssignmentsChange={setStaffingAssignments}
+          saving={saving}
+          onSave={handleSaveStaffing}
+        />
       )}
     </div>
   )

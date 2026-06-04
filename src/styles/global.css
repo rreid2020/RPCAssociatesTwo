@@ -121,4 +121,8 @@
     background-color: rgb(240 249 255);
   }
 
+  .ag-theme-quartz .ag-row.engagement-selected-row {
+    background-color: rgb(239 246 255);
+  }
+
 }

@@ -1638,17 +1638,17 @@ export function createPortalRouter (pool) {
         workspaceId: scope.workspace.id,
         organizationId: scope.organizationId
       })
-      const staffingPayload = Array.isArray(req.body?.assignments) && req.body.assignments.length > 0
-        ? { assignments: req.body.assignments }
-        : {
-          clerkUserIds: Array.isArray(req.body?.clerkUserIds)
-            ? req.body.clerkUserIds
-            : (req.body?.clerkUserId ? [req.body.clerkUserId] : [scope.actorUserId])
-        }
-      await replaceEngagementEmployeeAssignments(pool, scope.actorUserId, engagement.id, {
-        workspaceId: scope.workspace.id,
-        ...staffingPayload
-      })
+      if (Array.isArray(req.body?.assignments) && req.body.assignments.length > 0) {
+        await replaceEngagementEmployeeAssignments(pool, scope.actorUserId, engagement.id, {
+          workspaceId: scope.workspace.id,
+          assignments: req.body.assignments
+        })
+      } else if (Array.isArray(req.body?.clerkUserIds) && req.body.clerkUserIds.length > 0) {
+        await replaceEngagementEmployeeAssignments(pool, scope.actorUserId, engagement.id, {
+          workspaceId: scope.workspace.id,
+          clerkUserIds: req.body.clerkUserIds
+        })
+      }
       res.json({ engagement })
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create engagement' })

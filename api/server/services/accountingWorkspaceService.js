@@ -461,25 +461,9 @@ async function ensureWorkspaceEmployeeAssignment (pool, workspace, clerkUserId, 
   )
 }
 
-async function ensureEngagementAssignmentsForWorkspaceMember (pool, workspace, clerkUserId, assignedBy) {
-  if (!workspace.organization_id) return
-  const { rows: engagements } = await pool.query(
-    `SELECT id
-     FROM taxgpt.accounting_engagements
-     WHERE (workspace_id = $1::uuid)
-        OR (workspace_id IS NULL AND organization_id = $2::uuid)`,
-    [workspace.id, workspace.organization_id]
-  )
-  for (const engagement of engagements) {
-    await pool.query(
-      `INSERT INTO taxgpt.engagement_employee_assignments
-       (organization_id, workspace_id, engagement_id, clerk_user_id, assignment_role, status, assigned_by, created_at, updated_at)
-       VALUES ($1::uuid, $2::uuid, $3::uuid, $4, 'member', 'active', $5, now(), now())
-       ON CONFLICT (engagement_id, clerk_user_id)
-       DO UPDATE SET status = 'active', updated_at = now()`,
-      [workspace.organization_id, workspace.id, engagement.id, clerkUserId, assignedBy]
-    )
-  }
+async function ensureEngagementAssignmentsForWorkspaceMember (_pool, _workspace, _clerkUserId, _assignedBy) {
+  // Engagement staffing is explicit per engagement (grid Apply / PUT assignments).
+  // Do not auto-assign workspace members to every engagement on invite or membership sync.
 }
 
 async function ensureWorkingPaperAssignmentsForWorkspaceMember (pool, workspace, clerkUserId, assignedBy) {

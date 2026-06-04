@@ -267,6 +267,10 @@ export const accountingEngagements = taxgptSchema.table('accounting_engagements'
   createdBy: text('created_by').notNull(),
   assignedPreparerId: text('assigned_preparer_id'),
   assignedReviewerId: text('assigned_reviewer_id'),
+  executionPhase: varchar('execution_phase', { length: 32 }).notNull().default('planning'),
+  executionLockedAt: timestamp('execution_locked_at'),
+  executionTemplateId: uuid('execution_template_id'),
+  executionCompletionPct: numeric('execution_completion_pct', { precision: 5, scale: 2 }).notNull().default('0'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });

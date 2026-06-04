@@ -29,8 +29,13 @@ const ENGAGEMENT_TYPES = new Set([
   'month_end_close',
   'year_end_working_papers',
   'compilation_support',
+  'compilation',
   'review_support',
+  'review_engagement',
   'tax_support',
+  'tax_engagement',
+  'audit',
+  'other',
   'custom'
 ])
 
@@ -557,6 +562,15 @@ export async function createEngagement (pool, clerkUserId, actorId, payload) {
     ]
   )
   await initializeEngagementFromTemplate(pool, actorId, rows[0], templateId)
+  try {
+    const { applyTemplateToEngagement } = await import('./engagementExecution/templateCatalogService.js')
+    await applyTemplateToEngagement(pool, actorId, rows[0].id, {
+      workspaceId: payload.workspaceId || rows[0].workspace_id,
+      force: false
+    })
+  } catch {
+    // Execution tables may not be migrated yet; legacy engagement create must still succeed.
+  }
   await logAccountingAudit(pool, clerkUserId, actorId, 'engagement', rows[0].id, 'created', null, rows[0])
   return rows[0]
 }

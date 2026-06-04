@@ -6,6 +6,7 @@ import { EntitlementGuard, PermissionGuard } from '../platform/api/guards'
 
 const AccountingWorkspacePage = lazy(async () => await import('../pages/portal/accounting/AccountingWorkspacePage'))
 const EngagementLayout = lazy(async () => await import('../modules/accounting/layouts/EngagementLayout'))
+const EngagementExecutionRoute = lazy(async () => await import('../modules/engagement-execution/EngagementExecutionRoute'))
 
 function CompanyProfileOutlet () {
   return <Outlet />
@@ -148,6 +149,10 @@ export function getAccountingRoutes () {
         <Route
           index
           element={guardedElement(<AccountingWorkspacePage view="engagementDashboard" />, 'workingPapers', 'engagement.read')}
+        />
+        <Route
+          path="execution"
+          element={guardedElement(<EngagementExecutionRoute />, 'workingPapers', 'execution.read')}
         />
         <Route
           path="trial-balance"

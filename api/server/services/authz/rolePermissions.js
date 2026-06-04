@@ -30,15 +30,18 @@ export const PERMISSION_KEYS = [
   'review_notes.manage',
   'signoff.perform',
   'documents.manage',
-  'integrations.manage'
+  'integrations.manage',
+  'execution.read',
+  'execution.manage',
+  'templates.manage'
 ]
 
 const ROLE_PERMISSION_MAP = {
   super_admin: PERMISSION_KEYS,
   firm_admin: PERMISSION_KEYS,
-  manager: ['workspace.read', 'engagement.read', 'engagement.manage', 'working_papers.read', 'working_papers.manage', 'workingpapers.edit', 'review_notes.manage', 'signoff.perform', 'documents.read', 'documents.write', 'documents.manage', 'workflows.manage', 'workflows.approve', 'billing.read', 'ai.use', 'tax.review'],
-  reviewer: ['workspace.read', 'engagement.read', 'working_papers.read', 'review_notes.manage', 'signoff.perform', 'documents.read', 'documents.manage', 'workflows.approve', 'billing.read', 'tax.review'],
-  staff: ['workspace.read', 'engagement.read', 'working_papers.read', 'working_papers.manage', 'workingpapers.edit', 'documents.read', 'documents.write', 'documents.manage', 'ai.use'],
+  manager: ['workspace.read', 'engagement.read', 'engagement.manage', 'working_papers.read', 'working_papers.manage', 'workingpapers.edit', 'review_notes.manage', 'signoff.perform', 'documents.read', 'documents.write', 'documents.manage', 'workflows.manage', 'workflows.approve', 'billing.read', 'ai.use', 'tax.review', 'execution.read', 'execution.manage', 'templates.manage'],
+  reviewer: ['workspace.read', 'engagement.read', 'working_papers.read', 'review_notes.manage', 'signoff.perform', 'documents.read', 'documents.manage', 'workflows.approve', 'billing.read', 'tax.review', 'execution.read', 'execution.manage'],
+  staff: ['workspace.read', 'engagement.read', 'working_papers.read', 'working_papers.manage', 'workingpapers.edit', 'documents.read', 'documents.write', 'documents.manage', 'ai.use', 'execution.read', 'execution.manage'],
   client: ['workspace.read', 'engagement.read', 'working_papers.read', 'documents.read', 'billing.read'],
   external_read_only: ['workspace.read', 'engagement.read', 'working_papers.read', 'documents.read', 'billing.read']
 }

@@ -61,6 +61,22 @@ import {
 } from '../services/workingPapersExecutionService.js'
 import { exportEngagementWorkbook } from '../services/importExportService.js'
 import { getEngagementExecutionBundle } from '../services/engagementExecutionBundleService.js'
+import {
+  getEngagementExecutionDashboard,
+  getEngagementExecutionSnapshot
+} from '../services/engagementExecution/engagementExecutionService.js'
+import { transitionExecutionPhase, refreshExecutionMetrics } from '../services/engagementExecution/executionPhaseService.js'
+import { listEngagementChecklistBundle, updateEngagementChecklistItem } from '../services/engagementExecution/checklistService.js'
+import {
+  listEngagementProcedureBundle,
+  updateEngagementProcedure,
+  signoffEngagementProcedure
+} from '../services/engagementExecution/procedureService.js'
+import {
+  applyTemplateToEngagement,
+  ensureSystemTemplatesForWorkspace,
+  listTemplates
+} from '../services/engagementExecution/templateCatalogService.js'
 import { isDeadlockError, withDeadlockRetry } from '../utils/deadlockRetry.js'
 import {
   addWorkspaceMember,
@@ -1778,6 +1794,201 @@ export function createPortalRouter (pool) {
         return res.status(503).json({ error: 'Temporary database conflict. Please retry.' })
       }
       res.status(500).json({ error: e instanceof Error ? e.message : 'Could not load execution bundle' })
+    }
+  })
+
+  r.get('/v1/accounting/engagements/:engagementId/execution', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'execution.read', res))) return
+    try {
+      const execution = await getEngagementExecutionSnapshot(
+        pool,
+        scope.actorUserId,
+        req.params.engagementId,
+        scope.workspace.id
+      )
+      if (!execution) return res.status(404).json({ error: 'Engagement not found' })
+      res.json({ execution })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load execution' })
+    }
+  })
+
+  r.get('/v1/accounting/engagements/:engagementId/execution/dashboard', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'execution.read', res))) return
+    try {
+      const dashboard = await getEngagementExecutionDashboard(
+        pool,
+        scope.actorUserId,
+        req.params.engagementId,
+        scope.workspace.id
+      )
+      if (!dashboard) return res.status(404).json({ error: 'Engagement not found' })
+      res.json({ dashboard })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load execution dashboard' })
+    }
+  })
+
+  r.patch('/v1/accounting/engagements/:engagementId/execution/phase', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'execution.manage', res))) return
+    try {
+      const engagement = await transitionExecutionPhase(pool, scope.actorUserId, req.params.engagementId, {
+        workspaceId: scope.workspace.id,
+        executionPhase: req.body?.executionPhase,
+        reason: req.body?.reason
+      })
+      res.json({ engagement })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update execution phase' })
+    }
+  })
+
+  r.post('/v1/accounting/engagements/:engagementId/execution/refresh', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'execution.read', res))) return
+    try {
+      const engagement = await refreshExecutionMetrics(pool, scope.actorUserId, req.params.engagementId, {
+        workspaceId: scope.workspace.id,
+        autoApplySuggestedPhase: Boolean(req.body?.autoApplySuggestedPhase)
+      })
+      if (!engagement) return res.status(404).json({ error: 'Engagement not found' })
+      res.json({ engagement })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not refresh execution metrics' })
+    }
+  })
+
+  r.get('/v1/accounting/engagements/:engagementId/checklists', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'execution.read', res))) return
+    const bundle = await listEngagementChecklistBundle(pool, scope.actorUserId, req.params.engagementId, scope.workspace.id)
+    if (!bundle) return res.status(404).json({ error: 'Engagement not found' })
+    res.json(bundle)
+  })
+
+  r.patch('/v1/accounting/engagements/:engagementId/checklists/:itemId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'execution.manage', res))) return
+    try {
+      const item = await updateEngagementChecklistItem(pool, scope.actorUserId, req.params.engagementId, req.params.itemId, {
+        workspaceId: scope.workspace.id,
+        ...req.body
+      })
+      res.json({ item })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update checklist item' })
+    }
+  })
+
+  r.get('/v1/accounting/engagements/:engagementId/procedures', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'execution.read', res))) return
+    const bundle = await listEngagementProcedureBundle(pool, scope.actorUserId, req.params.engagementId, scope.workspace.id)
+    if (!bundle) return res.status(404).json({ error: 'Engagement not found' })
+    res.json(bundle)
+  })
+
+  r.patch('/v1/accounting/engagements/:engagementId/procedures/:procedureId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'execution.manage', res))) return
+    try {
+      const procedure = await updateEngagementProcedure(pool, scope.actorUserId, req.params.engagementId, req.params.procedureId, {
+        workspaceId: scope.workspace.id,
+        ...req.body
+      })
+      res.json({ procedure })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update procedure' })
+    }
+  })
+
+  r.post('/v1/accounting/engagements/:engagementId/procedures/:procedureId/signoff', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'signoff.perform', res))) return
+    try {
+      const result = await signoffEngagementProcedure(pool, scope.actorUserId, req.params.engagementId, req.params.procedureId, {
+        workspaceId: scope.workspace.id,
+        ...req.body
+      })
+      res.json(result)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not sign off procedure' })
+    }
+  })
+
+  r.post('/v1/accounting/engagements/:engagementId/templates/apply', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'execution.manage', res))) return
+    try {
+      const result = await applyTemplateToEngagement(pool, scope.actorUserId, req.params.engagementId, {
+        workspaceId: scope.workspace.id,
+        templateId: req.body?.templateId,
+        force: Boolean(req.body?.force)
+      })
+      res.json(result)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not apply template' })
+    }
+  })
+
+  r.get('/v1/accounting/templates', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'templates.manage', res))) return
+    try {
+      const templates = await listTemplates(pool, scope.actorUserId, scope.workspace.id)
+      res.json({ templates })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not list templates' })
+    }
+  })
+
+  r.post('/v1/accounting/templates/ensure-system', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'templates.manage', res))) return
+    try {
+      const templates = await ensureSystemTemplatesForWorkspace(pool, scope.actorUserId, scope.workspace.id)
+      res.json({ templates })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not ensure system templates' })
     }
   })
 

@@ -14,7 +14,10 @@ export const ROLE_PERMISSIONS: Record<PlatformRole, PermissionKey[]> = {
     'review_notes.manage',
     'signoff.perform',
     'documents.manage',
-    'integrations.manage'
+    'integrations.manage',
+    'execution.read',
+    'execution.manage',
+    'templates.manage'
   ],
   firm_admin: [
     'workspace.manage',
@@ -29,7 +32,10 @@ export const ROLE_PERMISSIONS: Record<PlatformRole, PermissionKey[]> = {
     'review_notes.manage',
     'signoff.perform',
     'documents.manage',
-    'integrations.manage'
+    'integrations.manage',
+    'execution.read',
+    'execution.manage',
+    'templates.manage'
   ],
   manager: [
     'engagement.read',
@@ -57,7 +63,9 @@ export const ROLE_PERMISSIONS: Record<PlatformRole, PermissionKey[]> = {
     'working_papers.read',
     'review_notes.manage',
     'signoff.perform',
-    'documents.manage'
+    'documents.manage',
+    'execution.read',
+    'execution.manage'
   ],
   staff: [
     'engagement.read',
@@ -67,7 +75,9 @@ export const ROLE_PERMISSIONS: Record<PlatformRole, PermissionKey[]> = {
     'working_papers.read',
     'working_papers.manage',
     'workingpapers.edit',
-    'documents.manage'
+    'documents.manage',
+    'execution.read',
+    'execution.manage'
   ],
   client: [
     'engagement.read',

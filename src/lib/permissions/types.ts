@@ -31,7 +31,10 @@ export const PERMISSIONS = [
   'review_notes.manage',
   'signoff.perform',
   'documents.manage',
-  'integrations.manage'
+  'integrations.manage',
+  'execution.read',
+  'execution.manage',
+  'templates.manage'
 ] as const
 
 export type PermissionKey = typeof PERMISSIONS[number]

@@ -10,6 +10,7 @@ const EngagementLayout: FC = () => {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
         <Link to={basePath} className="btn btn--secondary text-sm py-2 px-3">Dashboard</Link>
+        <Link to={`${basePath}/execution`} className="btn btn--secondary text-sm py-2 px-3">Execution</Link>
         <Link to={`${basePath}/trial-balance`} className="btn btn--secondary text-sm py-2 px-3">Trial Balance</Link>
         <Link to={`${basePath}/lead-sheets`} className="btn btn--secondary text-sm py-2 px-3">Lead Sheets</Link>
         <Link to={`${basePath}/documents`} className="btn btn--secondary text-sm py-2 px-3">Documents</Link>

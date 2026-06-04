@@ -97,6 +97,28 @@ function normalizeDeliverables (value) {
   return [...new Set(cleaned)]
 }
 
+function formatPgDateParts (date) {
+  const year = date.getUTCFullYear()
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(date.getUTCDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function normalizeEngagementDate (value) {
+  if (value === undefined) return undefined
+  if (value === null || value === '') return null
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null
+    return formatPgDateParts(value)
+  }
+  const trimmed = String(value).trim()
+  if (!trimmed) return null
+  if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) return trimmed.slice(0, 10)
+  const parsed = new Date(trimmed)
+  if (Number.isNaN(parsed.getTime())) return null
+  return formatPgDateParts(parsed)
+}
+
 function assertReviewFlowTransition (fromStatus, toStatus) {
   const from = String(fromStatus || 'not_started').trim().toLowerCase()
   const to = String(toStatus || 'not_started').trim().toLowerCase()
@@ -410,7 +432,22 @@ export async function listEngagements (pool, clerkUserId, query = {}) {
          FROM taxgpt.engagement_employee_assignments eea
          WHERE eea.engagement_id = e.id
            AND eea.status = 'active'
-       ) AS assigned_employee_ids
+       ) AS assigned_employee_ids,
+       (
+         SELECT coalesce(
+           json_agg(
+             json_build_object(
+               'clerk_user_id', eea.clerk_user_id,
+               'assignment_role', eea.assignment_role
+             )
+             ORDER BY eea.created_at
+           ),
+           '[]'::json
+         )
+         FROM taxgpt.engagement_employee_assignments eea
+         WHERE eea.engagement_id = e.id
+           AND eea.status = 'active'
+       ) AS assigned_employees
      FROM taxgpt.accounting_engagements e
      INNER JOIN taxgpt.accounting_clients c ON c.id = e.client_id
      WHERE ${where.join(' AND ')}
@@ -434,9 +471,33 @@ export async function listEngagements (pool, clerkUserId, query = {}) {
     return []
   }
 
-  return rows.map((row) => ({
+  const normalizeAssignedEmployees = (value, fallbackIds) => {
+    if (Array.isArray(value)) {
+      return value.map((entry) => ({
+        clerk_user_id: String(entry?.clerk_user_id || entry?.clerkUserId || '').trim(),
+        assignment_role: String(entry?.assignment_role || entry?.assignmentRole || 'member').trim().toLowerCase()
+      })).filter((entry) => entry.clerk_user_id)
+    }
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value)
+        return normalizeAssignedEmployees(parsed, fallbackIds)
+      } catch {
+        return []
+      }
+    }
+    return normalizeAssignedEmployeeIds(fallbackIds).map((clerk_user_id) => ({
+      clerk_user_id,
+      assignment_role: 'member'
+    }))
+  }
+
+  return rows.map((row) => {
+    const assignedEmployees = normalizeAssignedEmployees(row.assigned_employees, row.assigned_employee_ids)
+    return {
     ...row,
-    assigned_employee_ids: normalizeAssignedEmployeeIds(row.assigned_employee_ids),
+    assigned_employees: assignedEmployees,
+    assigned_employee_ids: assignedEmployees.map((entry) => entry.clerk_user_id),
     approval_ready: Number(row.open_review_note_count || 0) === 0 && Number(row.unreviewed_lead_sheet_count || 0) === 0,
     blocked_by_open_notes: Number(row.open_review_note_count || 0) > 0,
     blocked_by_unreviewed_lead_sheets: Number(row.unreviewed_lead_sheet_count || 0) > 0,
@@ -445,7 +506,8 @@ export async function listEngagements (pool, clerkUserId, query = {}) {
       row.open_review_note_count,
       row.unreviewed_lead_sheet_count
     )
-  }))
+  }
+  })
 }
 
 export async function createEngagement (pool, clerkUserId, actorId, payload) {
@@ -500,10 +562,16 @@ export async function createEngagement (pool, clerkUserId, actorId, payload) {
 }
 
 export async function updateEngagement (pool, clerkUserId, actorId, engagementId, payload) {
-  const { rows: beforeRows } = await pool.query(
-    'SELECT * FROM taxgpt.accounting_engagements WHERE id = $1::uuid AND clerk_user_id = $2',
-    [engagementId, clerkUserId]
-  )
+  const workspaceId = payload.workspaceId || null
+  const { rows: beforeRows } = workspaceId
+    ? await pool.query(
+      'SELECT * FROM taxgpt.accounting_engagements WHERE id = $1::uuid AND workspace_id = $2::uuid',
+      [engagementId, workspaceId]
+    )
+    : await pool.query(
+      'SELECT * FROM taxgpt.accounting_engagements WHERE id = $1::uuid AND clerk_user_id = $2',
+      [engagementId, clerkUserId]
+    )
   if (!beforeRows[0]) return null
   const before = beforeRows[0]
   const requestedStatus = payload.status || before.status
@@ -521,8 +589,26 @@ export async function updateEngagement (pool, clerkUserId, actorId, engagementId
   const assignedReviewerId = payload.assignedReviewerId ?? before.assigned_reviewer_id ?? null
   const clientId = payload.clientId || before.client_id
   if (!clientId) throw new Error('clientId is required')
-  await assertAssignableWorkspaceMember(pool, before.workspace_id || null, assignedPreparerId, 'assignedPreparerId')
-  await assertAssignableWorkspaceMember(pool, before.workspace_id || null, assignedReviewerId, 'assignedReviewerId')
+  if (Object.prototype.hasOwnProperty.call(payload, 'assignedPreparerId')) {
+    await assertAssignableWorkspaceMember(pool, before.workspace_id || null, assignedPreparerId, 'assignedPreparerId')
+  }
+  if (Object.prototype.hasOwnProperty.call(payload, 'assignedReviewerId')) {
+    await assertAssignableWorkspaceMember(pool, before.workspace_id || null, assignedReviewerId, 'assignedReviewerId')
+  }
+
+  const periodStart = Object.prototype.hasOwnProperty.call(payload, 'periodStart')
+    ? normalizeEngagementDate(payload.periodStart)
+    : normalizeEngagementDate(before.period_start)
+  const periodEnd = Object.prototype.hasOwnProperty.call(payload, 'periodEnd')
+    ? normalizeEngagementDate(payload.periodEnd)
+    : normalizeEngagementDate(before.period_end)
+  const dueDate = Object.prototype.hasOwnProperty.call(payload, 'dueDate')
+    ? normalizeEngagementDate(payload.dueDate)
+    : normalizeEngagementDate(before.due_date)
+
+  if (!periodStart || !periodEnd) {
+    throw new Error('Period start and period end are required')
+  }
 
   const { rows } = await pool.query(
     `UPDATE taxgpt.accounting_engagements
@@ -542,16 +628,18 @@ export async function updateEngagement (pool, clerkUserId, actorId, engagementId
         assigned_preparer_id = $14,
         assigned_reviewer_id = $15,
          updated_at = now()
-     WHERE id = $16::uuid AND clerk_user_id = $17
+     WHERE id = $16::uuid
+       AND ($17::uuid IS NULL OR workspace_id = $17::uuid)
+       AND ($18::text IS NULL OR clerk_user_id = $18)
      RETURNING *`,
     [
       clientId,
       payload.name || before.name,
       payload.engagementType || before.engagement_type,
       payload.fiscalYear || before.fiscal_year,
-      payload.periodStart || before.period_start,
-      payload.periodEnd || before.period_end,
-      payload.dueDate ?? before.due_date,
+      periodStart,
+      periodEnd,
+      dueDate,
       status,
       sourceType,
       reviewFlowStatus,
@@ -561,7 +649,8 @@ export async function updateEngagement (pool, clerkUserId, actorId, engagementId
       assignedPreparerId,
       assignedReviewerId,
       engagementId,
-      clerkUserId
+      workspaceId,
+      workspaceId ? null : clerkUserId
     ]
   )
   await logAccountingAudit(pool, clerkUserId, actorId, 'engagement', engagementId, 'updated', before, rows[0])

@@ -15,6 +15,11 @@ import {
 } from './authz/workspaceRbacService.js'
 import { ensurePortalSchema } from '../db/ensurePortalSchema.js'
 import {
+  normalizeEngagementAssignmentRole,
+  parseEngagementAssignmentsPayload,
+  resolveEngagementWorkflowLeadIds
+} from './engagementStaffAssignments.js'
+import {
   deleteWorkspaceRecord,
   fetchWorkspaceInvites,
   fetchWorkspaceMembers,
@@ -1611,8 +1616,9 @@ export async function assertWorkspaceAssignment (pool, workspace, clerkUserId, o
 }
 
 export async function assertEngagementAssignment (pool, workspace, engagementId, clerkUserId, options = {}) {
+  const assignmentRole = normalizeEngagementAssignmentRole(options.assignmentRole || 'member')
   const { rows: existing } = await pool.query(
-    `SELECT id
+    `SELECT id, assignment_role
      FROM taxgpt.engagement_employee_assignments
      WHERE engagement_id = $1::uuid
        AND clerk_user_id = $2
@@ -1620,7 +1626,20 @@ export async function assertEngagementAssignment (pool, workspace, engagementId,
      LIMIT 1`,
     [engagementId, clerkUserId]
   )
-  if (existing[0]) return
+  if (existing[0]) {
+    if (String(existing[0].assignment_role || '') !== assignmentRole) {
+      await pool.query(
+        `UPDATE taxgpt.engagement_employee_assignments
+         SET assignment_role = $1,
+             updated_at = now()
+         WHERE engagement_id = $2::uuid
+           AND clerk_user_id = $3
+           AND status = 'active'`,
+        [assignmentRole, engagementId, clerkUserId]
+      )
+    }
+    return
+  }
 
   const { withDeadlockRetry } = await import('../utils/deadlockRetry.js')
   await withDeadlockRetry(async () => {
@@ -1651,10 +1670,13 @@ export async function assertEngagementAssignment (pool, workspace, engagementId,
     await pool.query(
       `INSERT INTO taxgpt.engagement_employee_assignments
        (organization_id, workspace_id, engagement_id, clerk_user_id, assignment_role, status, assigned_by, created_at, updated_at)
-       VALUES ($1::uuid, $2::uuid, $3::uuid, $4, 'member', 'active', $5, now(), now())
+       VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, 'active', $6, now(), now())
        ON CONFLICT (engagement_id, clerk_user_id)
-       DO UPDATE SET status = 'active', updated_at = now()`,
-      [workspace.organization_id, workspace.id, engagementId, clerkUserId, options.assignedBy || clerkUserId]
+       DO UPDATE SET
+         status = 'active',
+         assignment_role = EXCLUDED.assignment_role,
+         updated_at = now()`,
+      [workspace.organization_id, workspace.id, engagementId, clerkUserId, assignmentRole, options.assignedBy || clerkUserId]
     )
     const { rows } = await pool.query(
       `SELECT id
@@ -1745,9 +1767,17 @@ export async function upsertEngagementEmployeeAssignment (pool, actorUserId, eng
   const clerkUserId = String(payload.clerkUserId || '').trim()
   if (!clerkUserId) throw new Error('clerkUserId is required')
   const workspace = await getWorkspaceContext(pool, actorUserId, payload.workspaceId || null)
+  const assignmentRole = normalizeEngagementAssignmentRole(payload.assignmentRole || 'member')
   await ensureWorkspaceEmployeeAssignment(pool, workspace, clerkUserId, actorUserId)
-  await assertEngagementAssignment(pool, workspace, engagementId, clerkUserId, { assignedBy: actorUserId })
-  return { engagementId, clerkUserId, status: 'active' }
+  await assertEngagementAssignment(pool, workspace, engagementId, clerkUserId, {
+    assignedBy: actorUserId,
+    assignmentRole
+  })
+  await syncEngagementWorkflowLeadIds(pool, engagementId, [{
+    clerkUserId,
+    assignmentRole
+  }])
+  return { engagementId, clerkUserId, assignmentRole, status: 'active' }
 }
 
 export async function listEngagementEmployeeAssignments (pool, actorUserId, engagementId, payload = {}) {
@@ -1803,6 +1833,18 @@ export async function listEngagementEmployeeAssignments (pool, actorUserId, enga
   return { engagementId, assignments: enriched }
 }
 
+async function syncEngagementWorkflowLeadIds (pool, engagementId, assignments) {
+  const { preparer, reviewer } = resolveEngagementWorkflowLeadIds(assignments)
+  await pool.query(
+    `UPDATE taxgpt.accounting_engagements
+     SET assigned_preparer_id = $1,
+         assigned_reviewer_id = $2,
+         updated_at = now()
+     WHERE id = $3::uuid`,
+    [preparer, reviewer, engagementId]
+  )
+}
+
 export async function replaceEngagementEmployeeAssignments (pool, actorUserId, engagementId, payload = {}) {
   const workspace = await getWorkspaceContext(pool, actorUserId, payload.workspaceId || null)
   await assertWorkspacePermissionWithCustomRoles(pool, {
@@ -1827,12 +1869,8 @@ export async function replaceEngagementEmployeeAssignments (pool, actorUserId, e
     throw new Error('Engagement not found in active workspace')
   }
 
-  const clerkUserIds = Array.from(new Set(
-    (Array.isArray(payload.clerkUserIds) ? payload.clerkUserIds : [])
-      .map((value) => String(value || '').trim())
-      .filter(Boolean)
-  ))
-  if (clerkUserIds.length === 0) {
+  const assignments = parseEngagementAssignmentsPayload(payload)
+  if (assignments.length === 0) {
     throw new Error('At least one employee must be assigned to the engagement')
   }
 
@@ -1845,17 +1883,36 @@ export async function replaceEngagementEmployeeAssignments (pool, actorUserId, e
     [engagementId]
   )
 
-  for (const clerkUserId of clerkUserIds) {
-    await ensureWorkspaceEmployeeAssignment(pool, workspace, clerkUserId, actorUserId)
-    await assertEngagementAssignment(pool, workspace, engagementId, clerkUserId, { assignedBy: actorUserId })
+  for (const assignment of assignments) {
+    await ensureWorkspaceEmployeeAssignment(pool, workspace, assignment.clerkUserId, actorUserId)
+    await pool.query(
+      `INSERT INTO taxgpt.engagement_employee_assignments
+       (organization_id, workspace_id, engagement_id, clerk_user_id, assignment_role, status, assigned_by, created_at, updated_at)
+       VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, 'active', $6, now(), now())
+       ON CONFLICT (engagement_id, clerk_user_id)
+       DO UPDATE SET
+         status = 'active',
+         assignment_role = EXCLUDED.assignment_role,
+         updated_at = now()`,
+      [
+        workspace.organization_id,
+        workspace.id,
+        engagementId,
+        assignment.clerkUserId,
+        assignment.assignmentRole,
+        actorUserId
+      ]
+    )
   }
+
+  await syncEngagementWorkflowLeadIds(pool, engagementId, assignments)
 
   const listed = await listEngagementEmployeeAssignments(pool, actorUserId, engagementId, {
     workspaceId: workspace.id
   })
   return {
     engagementId,
-    clerkUserIds,
+    clerkUserIds: assignments.map((entry) => entry.clerkUserId),
     assignments: listed.assignments
   }
 }

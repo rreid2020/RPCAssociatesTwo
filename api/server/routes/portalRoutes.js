@@ -1638,12 +1638,16 @@ export function createPortalRouter (pool) {
         workspaceId: scope.workspace.id,
         organizationId: scope.organizationId
       })
-      const clerkUserIds = Array.isArray(req.body?.clerkUserIds)
-        ? req.body.clerkUserIds
-        : (req.body?.clerkUserId ? [req.body.clerkUserId] : [scope.actorUserId])
+      const staffingPayload = Array.isArray(req.body?.assignments) && req.body.assignments.length > 0
+        ? { assignments: req.body.assignments }
+        : {
+          clerkUserIds: Array.isArray(req.body?.clerkUserIds)
+            ? req.body.clerkUserIds
+            : (req.body?.clerkUserId ? [req.body.clerkUserId] : [scope.actorUserId])
+        }
       await replaceEngagementEmployeeAssignments(pool, scope.actorUserId, engagement.id, {
         workspaceId: scope.workspace.id,
-        clerkUserIds
+        ...staffingPayload
       })
       res.json({ engagement })
     } catch (e) {
@@ -1657,7 +1661,10 @@ export function createPortalRouter (pool) {
     const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
     try {
-      const engagement = await updateEngagement(pool, scope.workspaceUserId, scope.actorUserId, req.params.engagementId, req.body || {})
+      const engagement = await updateEngagement(pool, scope.workspaceUserId, scope.actorUserId, req.params.engagementId, {
+        ...(req.body || {}),
+        workspaceId: scope.workspace.id
+      })
       if (!engagement) return res.status(404).json({ error: 'Engagement not found' })
       res.json({ engagement })
     } catch (e) {

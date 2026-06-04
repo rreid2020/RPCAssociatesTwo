@@ -1,5 +1,6 @@
 import { forwardRef, useImperativeHandle, useState } from 'react'
 import type { ICellEditorParams } from 'ag-grid-community'
+import { normalizeAssignedEmployeeIds } from '../utils/normalizeAssignedEmployeeIds'
 
 type WorkspaceMember = {
   clerk_user_id: string
@@ -11,16 +12,21 @@ type EditorContext = {
   activeMembers?: WorkspaceMember[]
 }
 
+type EditorParams = {
+  activeMembers?: WorkspaceMember[]
+}
+
 const AssignedEmployeesCellEditor = forwardRef((
-  props: ICellEditorParams<unknown, string[] | undefined, EditorContext>,
+  props: ICellEditorParams<unknown, string[] | undefined, EditorContext> & EditorParams,
   ref
 ) => {
-  const initial = Array.isArray(props.value) ? props.value : []
+  const initial = normalizeAssignedEmployeeIds(props.value)
   const [selected, setSelected] = useState<string[]>(initial)
-  const members = props.context?.activeMembers || []
+  const members = props.activeMembers || props.context?.activeMembers || []
 
   useImperativeHandle(ref, () => ({
-    getValue: () => selected
+    getValue: () => [...selected],
+    isPopup: () => true
   }))
 
   const toggleMember = (clerkUserId: string) => {
@@ -55,9 +61,19 @@ const AssignedEmployeesCellEditor = forwardRef((
           </label>
         ))
       )}
-      <p className="text-xs text-text-light mt-2 border-t border-border pt-2">
-        Select one or more employees, then click outside the cell to save.
-      </p>
+      <div className="flex items-center justify-between gap-2 mt-2 border-t border-border pt-2">
+        <p className="text-xs text-text-light">
+          {selected.length} selected
+        </p>
+        <button
+          type="button"
+          className="text-xs font-medium text-primary-dark hover:underline"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => props.api?.stopEditing()}
+        >
+          Apply
+        </button>
+      </div>
     </div>
   )
 })

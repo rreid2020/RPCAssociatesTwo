@@ -3,6 +3,10 @@ import { useSearchParams } from 'react-router-dom'
 import type { CellEditingStoppedEvent, ColDef, GridApi, ICellRendererParams, RowClassParams } from 'ag-grid-community'
 import AgGridTable from '../../working-papers/components/grid/AgGridTable'
 import AssignedEmployeesCellEditor from './AssignedEmployeesCellEditor'
+import AssignedEmployeesCellRenderer from './AssignedEmployeesCellRenderer'
+import EngagementDateCellEditor from './EngagementDateCellEditor'
+import { toEngagementDateInput } from '../utils/engagementDateInput'
+import { normalizeAssignedEmployeeIds } from '../utils/normalizeAssignedEmployeeIds'
 import PageLoadingSkeleton from '../../../shared/loading/PageLoadingSkeleton'
 import { portalFetch } from '../../../lib/portalApi'
 
@@ -51,14 +55,9 @@ function formatEmployeeLabels (
   employeeIds: string[] | undefined,
   memberLabelByUserId: Map<string, string>
 ): string {
-  const ids = Array.isArray(employeeIds) ? employeeIds : []
+  const ids = normalizeAssignedEmployeeIds(employeeIds)
   if (ids.length === 0) return '—'
   return ids.map((id) => memberLabelByUserId.get(id) || id).join(', ')
-}
-
-function toDateInput (value: unknown): string {
-  if (!value) return ''
-  return String(value).slice(0, 10)
 }
 
 function createDraftRow (): EngagementRecord {
@@ -234,6 +233,45 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     })
   }
 
+  const persistAssigneesOnly = useCallback(async (
+    row: EngagementRecord,
+    assignees: string[]
+  ) => {
+    if (!accountReady) {
+      onError('Your account is still loading. Try again in a moment.')
+      return false
+    }
+    if (row.isNew) {
+      setDraftRows((prev) => prev.map((draft) => (
+        draft.id === row.id ? { ...draft, assigned_employee_ids: assignees } : draft
+      )))
+      if (!String(row.name || '').trim() || !String(row.client_id || '').trim()) return true
+    }
+    if (assignees.length === 0) {
+      onError('Assign at least one employee to the engagement.')
+      return false
+    }
+
+    onSavingChange(true)
+    onError(null)
+    try {
+      if (!row.isNew) {
+        await saveEngagementAssignments(row.id, assignees)
+      }
+      row.assigned_employee_ids = assignees
+      if (!row.isNew) {
+        onNotice('Engagement staffing updated.')
+        await onReloadEngagements()
+      }
+      return true
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Could not update engagement staffing')
+      return false
+    } finally {
+      onSavingChange(false)
+    }
+  }, [accountReady, getToken, onError, onNotice, onReloadEngagements, onSavingChange])
+
   const persistRow = useCallback(async (row: EngagementRecord) => {
     if (!accountReady) {
       onError('Your account is still loading. Try again in a moment.')
@@ -254,10 +292,9 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     onError(null)
     try {
       if (row.isNew) {
-        const assignees = Array.isArray(row.assigned_employee_ids) && row.assigned_employee_ids.length > 0
-          ? row.assigned_employee_ids
-          : defaultAssigneeIds
-        if (assignees.length === 0) {
+        const assignees = normalizeAssignedEmployeeIds(row.assigned_employee_ids)
+        const resolvedAssignees = assignees.length > 0 ? assignees : defaultAssigneeIds
+        if (resolvedAssignees.length === 0) {
           onError('Assign at least one employee to the engagement.')
           return
         }
@@ -268,14 +305,14 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
             name: String(row.name).trim(),
             engagementType: row.engagement_type || 'year_end_working_papers',
             fiscalYear: Number(row.fiscal_year || new Date().getFullYear()),
-            periodStart: toDateInput(row.period_start) || `${new Date().getFullYear()}-01-01`,
-            periodEnd: toDateInput(row.period_end) || `${new Date().getFullYear()}-12-31`,
-            dueDate: row.due_date ? toDateInput(row.due_date) : null,
+            periodStart: toEngagementDateInput(row.period_start) || `${new Date().getFullYear()}-01-01`,
+            periodEnd: toEngagementDateInput(row.period_end) || `${new Date().getFullYear()}-12-31`,
+            dueDate: toEngagementDateInput(row.due_date),
             sourceType: row.source_type || 'csv',
             status: row.status || 'draft',
             reviewFlowStatus: row.review_flow_status || 'not_started',
             deliverables: [],
-            clerkUserIds: assignees
+            clerkUserIds: resolvedAssignees
           })
         })
         setDraftRows((prev) => prev.filter((draft) => draft.id !== row.id))
@@ -288,18 +325,21 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
             name: String(row.name).trim(),
             engagementType: row.engagement_type,
             fiscalYear: Number(row.fiscal_year || new Date().getFullYear()),
-            periodStart: toDateInput(row.period_start),
-            periodEnd: toDateInput(row.period_end),
-            dueDate: row.due_date ? toDateInput(row.due_date) : null,
+            periodStart: toEngagementDateInput(row.period_start),
+            periodEnd: toEngagementDateInput(row.period_end),
+            dueDate: toEngagementDateInput(row.due_date),
             sourceType: row.source_type || 'csv',
             status: row.status || 'draft',
             reviewFlowStatus: row.review_flow_status || 'not_started',
             deliverables: Array.isArray(row.deliverables) ? row.deliverables : []
           })
         })
-        if (Array.isArray(row.assigned_employee_ids) && row.assigned_employee_ids.length > 0) {
-          await saveEngagementAssignments(row.id, row.assigned_employee_ids)
+        const assignees = normalizeAssignedEmployeeIds(row.assigned_employee_ids)
+        if (assignees.length === 0) {
+          onError('Assign at least one employee to the engagement.')
+          return
         }
+        await saveEngagementAssignments(row.id, assignees)
         onNotice('Engagement updated.')
       }
       await onReloadEngagements()
@@ -323,21 +363,24 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     const row = event.data
     if (!row) return
 
-    if (event.colDef.field === 'client_id') {
+    const field = event.colDef.field
+
+    if (field === 'client_id') {
       row.client_name = clientNameById.get(String(row.client_id || '')) || row.client_name
     }
 
-    if (event.colDef.field === 'assigned_employee_ids') {
-      const assignees = Array.isArray(row.assigned_employee_ids) ? row.assigned_employee_ids : []
-      if (assignees.length === 0) {
-        onError('Assign at least one employee to the engagement.')
+    if (field === 'period_end' || field === 'due_date') {
+      row[field] = toEngagementDateInput(event.newValue ?? row[field]) as string | null
+    }
+
+    if (field === 'assigned_employee_ids') {
+      const assignees = normalizeAssignedEmployeeIds(event.newValue ?? row.assigned_employee_ids)
+      row.assigned_employee_ids = assignees
+      if (row.isNew && String(row.name || '').trim() && String(row.client_id || '').trim()) {
+        await persistRow({ ...row, assigned_employee_ids: assignees })
         return
       }
-      if (row.isNew) {
-        setDraftRows((prev) => prev.map((draft) => (draft.id === row.id ? { ...row } : draft)))
-        if (!String(row.name || '').trim() || !String(row.client_id || '').trim()) return
-      }
-      await persistRow(row)
+      await persistAssigneesOnly(row, assignees)
       return
     }
 
@@ -348,7 +391,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     }
 
     await persistRow(row)
-  }, [clientNameById, onError, persistRow])
+  }, [clientNameById, persistAssigneesOnly, persistRow])
 
   const handleDelete = useCallback(async (row: EngagementRecord) => {
     if (row.isNew) {
@@ -430,21 +473,24 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     {
       field: 'assigned_employee_ids',
       headerName: 'Assigned employees',
-      flex: 1.4,
-      minWidth: 180,
+      flex: 1.6,
+      minWidth: 220,
       editable: true,
       filter: 'agTextColumnFilter',
-      cellDataType: 'object',
+      cellRenderer: AssignedEmployeesCellRenderer,
       cellEditor: AssignedEmployeesCellEditor,
       cellEditorPopup: true,
-      valueParser: (params) => {
-        const value = params.newValue
-        if (Array.isArray(value)) return value.map((entry) => String(entry)).filter(Boolean)
-        if (value == null || value === '') return []
-        return [String(value)]
+      cellEditorParams: {
+        activeMembers: activeMembers
       },
+      valueSetter: (params) => {
+        if (!params.data) return false
+        params.data.assigned_employee_ids = normalizeAssignedEmployeeIds(params.newValue)
+        return true
+      },
+      valueParser: (params) => normalizeAssignedEmployeeIds(params.newValue),
       valueFormatter: (params) => formatEmployeeLabels(
-        Array.isArray(params.value) ? params.value : params.data?.assigned_employee_ids,
+        normalizeAssignedEmployeeIds(params.value ?? params.data?.assigned_employee_ids),
         memberLabelByUserId
       ),
       filterValueGetter: (params) => formatEmployeeLabels(
@@ -452,10 +498,10 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
         memberLabelByUserId
       ),
       comparator: (valueA, valueB) => formatEmployeeLabels(
-        Array.isArray(valueA) ? valueA : [],
+        normalizeAssignedEmployeeIds(valueA),
         memberLabelByUserId
       ).localeCompare(formatEmployeeLabels(
-        Array.isArray(valueB) ? valueB : [],
+        normalizeAssignedEmployeeIds(valueB),
         memberLabelByUserId
       ))
     },
@@ -466,9 +512,12 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       flex: 0.9,
       minWidth: 120,
       filter: 'agDateColumnFilter',
-      cellEditor: 'agDateCellEditor',
-      valueFormatter: (params) => (params.value ? new Date(params.value).toLocaleDateString() : '—'),
-      valueParser: (params) => toDateInput(params.newValue)
+      cellEditor: EngagementDateCellEditor,
+      valueFormatter: (params) => {
+        const iso = toEngagementDateInput(params.value)
+        return iso ? new Date(`${iso}T12:00:00`).toLocaleDateString() : '—'
+      },
+      valueParser: (params) => toEngagementDateInput(params.newValue)
     },
     {
       field: 'due_date',
@@ -477,9 +526,12 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       flex: 0.9,
       minWidth: 120,
       filter: 'agDateColumnFilter',
-      cellEditor: 'agDateCellEditor',
-      valueFormatter: (params) => (params.value ? new Date(params.value).toLocaleDateString() : '—'),
-      valueParser: (params) => toDateInput(params.newValue) || null
+      cellEditor: EngagementDateCellEditor,
+      valueFormatter: (params) => {
+        const iso = toEngagementDateInput(params.value)
+        return iso ? new Date(`${iso}T12:00:00`).toLocaleDateString() : '—'
+      },
+      valueParser: (params) => toEngagementDateInput(params.newValue)
     },
     {
       colId: 'actions',
@@ -495,7 +547,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       suppressHeaderMenuButton: true,
       cellRenderer: EngagementActionsCell
     }
-  ] as ColDef<EngagementRecord>[]), [clientIds, clientLabel, clientNameById, memberLabelByUserId])
+  ] as ColDef<EngagementRecord>[]), [activeMembers, clientIds, clientLabel, clientNameById, memberLabelByUserId])
 
   const gridDefaultColDef = useMemo<ColDef<EngagementRecord>>(
     () => ({
@@ -512,7 +564,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
   const gridOptions = useMemo(() => ({
     context: gridContext,
     singleClickEdit: true,
-    stopEditingWhenCellsLoseFocus: true,
+    stopEditingWhenCellsLoseFocus: false,
     onGridReady: (event: { api: GridApi<EngagementRecord> }) => {
       gridApiRef.current = event.api
     },
@@ -549,7 +601,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
           {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
         </select>
         <p className="text-xs text-text-light w-full sm:w-auto">
-          Click a cell to edit, or use Edit in the actions column. Use column headers to sort; use the filter row under headers for column filters.
+          Click a cell to edit, or use Edit in the actions column. Assigned employees: open the cell, check staff, then click Apply. Dates use a standard date picker. Use column headers to sort; use the filter row under headers for column filters.
         </p>
       </div>
 

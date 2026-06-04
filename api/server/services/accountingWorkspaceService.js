@@ -1813,15 +1813,17 @@ export async function replaceEngagementEmployeeAssignments (pool, actorUserId, e
   })
 
   const { rows: engagementRows } = await pool.query(
-    `SELECT id, workspace_id
+    `SELECT id, workspace_id, organization_id
      FROM taxgpt.accounting_engagements
      WHERE id = $1::uuid
-       AND clerk_user_id = $2
      LIMIT 1`,
-    [engagementId, workspace.owner_user_id]
+    [engagementId]
   )
   const engagement = engagementRows[0]
-  if (!engagement || String(engagement.workspace_id || '') !== String(workspace.id)) {
+  if (!engagement) {
+    throw new Error('Engagement not found')
+  }
+  if (String(engagement.workspace_id || '') !== String(workspace.id)) {
     throw new Error('Engagement not found in active workspace')
   }
 

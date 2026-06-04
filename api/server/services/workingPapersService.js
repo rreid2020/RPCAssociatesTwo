@@ -417,8 +417,26 @@ export async function listEngagements (pool, clerkUserId, query = {}) {
      ORDER BY e.period_end DESC, e.updated_at DESC`,
     values
   )
+  const normalizeAssignedEmployeeIds = (value) => {
+    if (Array.isArray(value)) {
+      return value.map((entry) => String(entry || '').trim()).filter(Boolean)
+    }
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      if (!trimmed) return []
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        const inner = trimmed.slice(1, -1).trim()
+        if (!inner) return []
+        return inner.split(',').map((part) => part.trim().replace(/^"|"$/g, '')).filter(Boolean)
+      }
+      return [trimmed]
+    }
+    return []
+  }
+
   return rows.map((row) => ({
     ...row,
+    assigned_employee_ids: normalizeAssignedEmployeeIds(row.assigned_employee_ids),
     approval_ready: Number(row.open_review_note_count || 0) === 0 && Number(row.unreviewed_lead_sheet_count || 0) === 0,
     blocked_by_open_notes: Number(row.open_review_note_count || 0) > 0,
     blocked_by_unreviewed_lead_sheets: Number(row.unreviewed_lead_sheet_count || 0) > 0,

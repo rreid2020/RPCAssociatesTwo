@@ -19,16 +19,14 @@ describe('engagement execution constants', () => {
     expect(() => normalizeExecutionPhase('invalid')).toThrow()
   })
 
-  it('allows staff planning to fieldwork transition', () => {
-    expect(canTransitionExecutionPhase('planning', 'fieldwork', 'staff')).toBe(true)
+  it('allows any valid execution phase change when phases differ', () => {
+    expect(canTransitionExecutionPhase('planning', 'fieldwork')).toBe(true)
+    expect(canTransitionExecutionPhase('planning', 'completed')).toBe(true)
+    expect(canTransitionExecutionPhase('partner_review', 'completed')).toBe(true)
   })
 
-  it('blocks staff partner_review to completed', () => {
-    expect(canTransitionExecutionPhase('partner_review', 'completed', 'staff')).toBe(false)
-  })
-
-  it('allows manager partner_review to completed', () => {
-    expect(canTransitionExecutionPhase('partner_review', 'completed', 'manager')).toBe(true)
+  it('rejects no-op execution phase transitions', () => {
+    expect(canTransitionExecutionPhase('planning', 'planning')).toBe(false)
   })
 
   it('normalizes checklist and procedure statuses', () => {

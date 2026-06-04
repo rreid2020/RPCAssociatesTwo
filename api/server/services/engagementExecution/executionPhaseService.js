@@ -7,7 +7,6 @@ import {
 import {
   assertEngagementExecutionAccess,
   getEngagementForExecution,
-  resolvePlatformRole,
   updateEngagementExecutionFields
 } from './engagementExecutionRepository.js'
 import { deriveExecutionCompletion, suggestExecutionPhase } from './executionPhaseDerivationService.js'
@@ -51,12 +50,10 @@ export async function transitionExecutionPhase (pool, actorUserId, engagementId,
 
   const toPhase = normalizeExecutionPhase(payload.executionPhase || payload.toPhase)
   const fromPhase = normalizeExecutionPhase(engagement.execution_phase)
-  const platformRole = resolvePlatformRole(workspace)
-
   if (toPhase === fromPhase) return engagement
 
-  if (!canTransitionExecutionPhase(fromPhase, toPhase, platformRole)) {
-    throw new Error(`Role ${platformRole} cannot transition execution phase from ${fromPhase} to ${toPhase}`)
+  if (!canTransitionExecutionPhase(fromPhase, toPhase)) {
+    throw new Error(`Invalid execution phase transition from ${fromPhase} to ${toPhase}`)
   }
 
   const lockedAt = toPhase === 'locked' ? new Date() : (fromPhase === 'locked' ? null : engagement.execution_locked_at)

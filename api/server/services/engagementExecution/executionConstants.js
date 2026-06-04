@@ -24,24 +24,6 @@ export const PROCEDURE_STATUSES = new Set([
   'approved'
 ])
 
-export const EXECUTION_PHASE_TRANSITIONS = {
-  planning: new Set(['fieldwork']),
-  fieldwork: new Set(['review']),
-  review: new Set(['partner_review']),
-  partner_review: new Set(['completed']),
-  completed: new Set(['locked']),
-  locked: new Set(['completed'])
-}
-
-export const PHASE_TRANSITION_ROLES = {
-  'planning->fieldwork': new Set(['staff', 'manager', 'firm_admin', 'super_admin']),
-  'fieldwork->review': new Set(['staff', 'manager', 'firm_admin', 'super_admin']),
-  'review->partner_review': new Set(['manager', 'reviewer', 'firm_admin', 'super_admin']),
-  'partner_review->completed': new Set(['manager', 'reviewer', 'firm_admin', 'super_admin']),
-  'completed->locked': new Set(['manager', 'firm_admin', 'super_admin']),
-  'locked->completed': new Set(['firm_admin', 'super_admin'])
-}
-
 const PHASE_ALIASES = {
   'partner review': 'partner_review'
 }
@@ -79,12 +61,9 @@ export function normalizeProcedureStatus (value) {
   return normalizeStatusToken(value, PROCEDURE_STATUSES, 'procedure status')
 }
 
-export function canTransitionExecutionPhase (fromPhase, toPhase, platformRole) {
+/** Any workspace member with execution.manage may set any valid phase (no per-step role matrix). */
+export function canTransitionExecutionPhase (fromPhase, toPhase) {
   const from = normalizeExecutionPhase(fromPhase)
   const to = normalizeExecutionPhase(toPhase)
-  const allowed = EXECUTION_PHASE_TRANSITIONS[from]
-  if (!allowed || !allowed.has(to)) return false
-  const roleKey = `${from}->${to}`
-  const roles = PHASE_TRANSITION_ROLES[roleKey]
-  return Boolean(roles?.has(platformRole))
+  return from !== to
 }

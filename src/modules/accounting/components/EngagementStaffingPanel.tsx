@@ -63,6 +63,15 @@ function toStaffingRows (
   }))
 }
 
+/** AG Grid needs header + row area; previous formula clipped the last row. */
+function staffingGridHeight (rowCount: number): number {
+  if (rowCount <= 0) return 0
+  const headerPx = 56
+  const rowPx = 48
+  const paddingPx = 28
+  return Math.min(420, Math.max(228, headerPx + rowCount * rowPx + paddingPx))
+}
+
 const EngagementStaffingPanel: FC<EngagementStaffingPanelProps> = ({
   engagementName,
   engagementIsDraft,
@@ -158,11 +167,13 @@ const EngagementStaffingPanel: FC<EngagementStaffingPanelProps> = ({
     () => ({
       sortable: true,
       filter: true,
-      floatingFilter: true,
+      floatingFilter: false,
       resizable: true
     }),
     []
   )
+
+  const staffingGridHeightPx = useMemo(() => staffingGridHeight(gridRows.length), [gridRows.length])
 
   const gridOptions = useMemo(() => ({
     context: gridContext,
@@ -245,14 +256,16 @@ const EngagementStaffingPanel: FC<EngagementStaffingPanelProps> = ({
           No employees assigned yet. Add at least one employee, then save assignments.
         </p>
       ) : (
-        <AgGridTable
-          rowData={gridRows}
-          height={Math.min(280, Math.max(160, gridRows.length * 44 + 80))}
-          columnDefs={columnDefs}
-          defaultColDef={gridDefaultColDef}
-          gridOptions={gridOptions}
-          fitColumnsToViewport
-        />
+        <div className="engagement-staffing-grid min-w-0 pb-1">
+          <AgGridTable
+            rowData={gridRows}
+            height={staffingGridHeightPx}
+            columnDefs={columnDefs}
+            defaultColDef={gridDefaultColDef}
+            gridOptions={gridOptions}
+            fitColumnsToViewport
+          />
+        </div>
       )}
     </section>
   )

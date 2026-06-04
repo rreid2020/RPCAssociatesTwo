@@ -260,7 +260,10 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
   }, [onError])
 
   useEffect(() => {
-    const updateHeight = () => setEngagementGridHeight(Math.max(360, Math.floor((window.innerHeight - 380) * 0.52)))
+    const updateHeight = () => {
+      const available = window.innerHeight - 560
+      setEngagementGridHeight(Math.min(420, Math.max(280, Math.floor(available * 0.38))))
+    }
     updateHeight()
     window.addEventListener('resize', updateHeight)
     return () => window.removeEventListener('resize', updateHeight)
@@ -690,7 +693,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
   }), [gridContext, handleRowSelected, onCellEditingStopped, selectedEngagementId, syncSelectionToGrid])
 
   return (
-    <div className="space-y-4 min-w-0">
+    <div className="space-y-4 min-w-0 pb-8">
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"

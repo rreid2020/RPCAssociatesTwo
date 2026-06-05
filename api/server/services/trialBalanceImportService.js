@@ -1,12 +1,16 @@
 import XLSX from 'xlsx'
 import { calculateVarianceMetrics, logAccountingAudit } from './workingPapersService.js'
 import {
+  buildFilePreview,
+  buildHeaderRowCandidates,
+  detectBestGridStructure,
   detectGridStructure,
   inferHeuristicMapping,
   mappingIsUsable,
   normalizeMappedRow,
   parseCsvToGrid,
-  resolveSmartMapping
+  resolveSmartMapping,
+  sanitizeMapping
 } from './trialBalanceSmartImportService.js'
 
 const MAX_PREVIEW_ROWS = 50
@@ -17,7 +21,7 @@ const COLUMN_ALIASES = {
     'account code', 'acct no', 'acct #', 'gl account', 'ledger account number', 'code'
   ],
   accountName: [
-    'account', 'account name', 'name', 'description', 'account description', 'acct name',
+    'account', 'accounts', 'account name', 'name', 'description', 'account description', 'acct name',
     'gl account name', 'ledger account', 'title', 'account title', 'line description'
   ],
   accountType: ['account type', 'type', 'category', 'class', 'account class', 'fs line'],
@@ -62,14 +66,25 @@ function parseXlsxToGrid (buffer) {
 function buildSuggestedMapping (columns) {
   const normalized = columns.map((col) => ({ original: col, normalized: normalizeHeader(col) }))
   const mapping = {}
+  const usedColumns = new Set()
+
   for (const [target, aliases] of Object.entries(COLUMN_ALIASES)) {
-    let match = normalized.find((col) => aliases.includes(col.normalized))
+    let match = normalized.find((col) => (
+      !usedColumns.has(col.original) && aliases.includes(col.normalized)
+    ))
     if (!match) {
-      match = normalized.find((col) => aliases.some((alias) => (
-        col.normalized.includes(alias) || alias.includes(col.normalized)
-      )))
+      match = normalized.find((col) => (
+        !usedColumns.has(col.original) && aliases.some((alias) => (
+          col.normalized === alias
+          || col.normalized.startsWith(`${alias} `)
+          || col.normalized.endsWith(` ${alias}`)
+        ))
+      ))
     }
-    if (match) mapping[target] = match.original
+    if (match) {
+      mapping[target] = match.original
+      usedColumns.add(match.original)
+    }
   }
   return mapping
 }
@@ -115,6 +130,8 @@ function validateRows (rows, mapping, materialityAmount = null, thresholdPercent
       accountName: accountName || accountNumber || 'Unnamed account',
       accountType: normalized.accountType || 'other',
       normalBalance: normalized.normalBalance,
+      debitAmount: normalized.debit,
+      creditAmount: normalized.credit,
       currentPeriodBalance: balances.currentBalance,
       priorPeriodBalance: balances.priorBalance,
       varianceAmount: metrics.varianceAmount,
@@ -136,7 +153,7 @@ function validateRows (rows, mapping, materialityAmount = null, thresholdPercent
   return { parsedRows, warnings }
 }
 
-export function parseTrialBalanceFile ({ fileName, base64Content }) {
+export function parseTrialBalanceFile ({ fileName, base64Content, headerRowIndex = null, columnHeaders = null }) {
   const safeName = sanitizeText(fileName).toLowerCase()
   if (!safeName.endsWith('.csv') && !safeName.endsWith('.xlsx')) {
     throw new Error('Unsupported file type. Only CSV and XLSX are allowed.')
@@ -145,7 +162,12 @@ export function parseTrialBalanceFile ({ fileName, base64Content }) {
   if (!buffer.length) throw new Error('No file data was provided')
 
   const grid = safeName.endsWith('.csv') ? parseCsvToGrid(buffer) : parseXlsxToGrid(buffer)
-  const structure = detectGridStructure(grid)
+  const structure = Number.isInteger(headerRowIndex)
+    ? detectGridStructure(grid, {
+      headerRowIndex,
+      columnHeaders: Array.isArray(columnHeaders) ? columnHeaders : undefined
+    })
+    : detectBestGridStructure(grid)
 
   return {
     fileType: safeName.endsWith('.csv') ? 'csv' : 'xlsx',
@@ -165,8 +187,97 @@ function mappingWarnings (inferredMapping) {
   return warnings
 }
 
+function mappingStatus (inferredMapping) {
+  const hasIdentity = Boolean(inferredMapping.accountName || inferredMapping.accountNumber)
+  const hasBalance = Boolean(inferredMapping.currentBalance || (inferredMapping.debit && inferredMapping.credit))
+  const missingFields = []
+  if (!hasIdentity) missingFields.push('accountName')
+  if (!hasBalance) missingFields.push('balance')
+  return {
+    hasIdentity,
+    hasBalance,
+    isComplete: hasIdentity && hasBalance,
+    missingFields
+  }
+}
+
+function buildPreviewPayload ({
+  effectiveColumns,
+  effectiveRows,
+  effectiveHeaderRowIndex,
+  grid,
+  detection,
+  inferredMapping,
+  mappingIssues,
+  materialityAmount,
+  thresholdPercent
+}) {
+  const status = mappingStatus(inferredMapping)
+  const filePreview = buildFilePreview(grid, 15)
+  const headerRowCandidates = buildHeaderRowCandidates(grid, 12)
+
+  if (mappingIssues.length) {
+    const partialRows = status.hasIdentity && status.hasBalance
+      ? validateRows(effectiveRows, inferredMapping, materialityAmount, thresholdPercent).parsedRows.slice(0, 10)
+      : []
+
+    return {
+      columns: effectiveColumns,
+      detectedMapping: inferredMapping,
+      needsMapping: true,
+      mappingSource: detection.mappingSource,
+      mappingConfidence: detection.mappingConfidence,
+      mappingNotes: detection.mappingNotes,
+      headerRowIndex: detection.headerRowIndex,
+      mappingStatus: status,
+      filePreview,
+      headerRowCandidates,
+      previewRows: partialRows,
+      summary: {
+        totalRows: effectiveRows.length,
+        previewRows: partialRows.length,
+        warningCount: mappingIssues.length
+      },
+      warnings: mappingIssues
+    }
+  }
+
+  const { parsedRows, warnings } = validateRows(effectiveRows, inferredMapping, materialityAmount, thresholdPercent)
+  return {
+    columns: effectiveColumns,
+    detectedMapping: inferredMapping,
+    needsMapping: false,
+    mappingSource: detection.mappingSource,
+    mappingConfidence: detection.mappingConfidence,
+    mappingNotes: detection.mappingNotes,
+    headerRowIndex: detection.headerRowIndex,
+    mappingStatus: status,
+    filePreview,
+    headerRowCandidates,
+    previewRows: parsedRows.slice(0, MAX_PREVIEW_ROWS),
+    summary: {
+      totalRows: parsedRows.length,
+      previewRows: Math.min(parsedRows.length, MAX_PREVIEW_ROWS),
+      warningCount: warnings.length
+    },
+    warnings
+  }
+}
+
 async function buildDetectedMapping ({ columns, rows, grid, mapping, useSmartImport = true, headerRowIndex = 0 }) {
   const manual = mapping && Object.keys(mapping).length ? mapping : null
+
+  if (manual && mappingIsUsable(manual)) {
+    const sanitizedManual = sanitizeMapping(manual, columns, rows)
+    return {
+      inferredMapping: sanitizedManual,
+      mappingSource: 'manual',
+      mappingConfidence: mappingIsUsable(sanitizedManual) ? 0.95 : null,
+      mappingNotes: null,
+      headerRowIndex
+    }
+  }
+
   const aliasMapping = buildSuggestedMapping(columns)
   const heuristic = inferHeuristicMapping(columns, rows)
 
@@ -175,12 +286,12 @@ async function buildDetectedMapping ({ columns, rows, grid, mapping, useSmartImp
     smart = await resolveSmartMapping({ grid, columns, rows, useAi: true })
   }
 
-  const inferredMapping = {
+  const inferredMapping = sanitizeMapping({
     ...aliasMapping,
     ...heuristic.mapping,
     ...(smart?.mapping || {}),
     ...(manual || {})
-  }
+  }, columns, rows)
 
   return {
     inferredMapping,
@@ -196,51 +307,48 @@ export async function previewTrialBalanceImport ({
   columns,
   grid = [],
   headerRowIndex = 0,
+  columnHeaders = null,
   mapping,
   materialityAmount,
   thresholdPercent,
   useSmartImport = true
 }) {
-  const detection = await buildDetectedMapping({ columns, rows, grid, mapping, useSmartImport, headerRowIndex })
+  let effectiveRows = rows
+  let effectiveColumns = columns
+  let effectiveHeaderRowIndex = headerRowIndex
+
+  if (grid.length && (Number.isInteger(headerRowIndex) || Array.isArray(columnHeaders))) {
+    const structure = detectGridStructure(grid, {
+      headerRowIndex: Number.isInteger(headerRowIndex) ? headerRowIndex : undefined,
+      columnHeaders: Array.isArray(columnHeaders) ? columnHeaders : undefined
+    })
+    effectiveRows = structure.rows
+    effectiveColumns = structure.columns
+    effectiveHeaderRowIndex = structure.headerRowIndex
+  }
+
+  const detection = await buildDetectedMapping({
+    columns: effectiveColumns,
+    rows: effectiveRows,
+    grid,
+    mapping,
+    useSmartImport,
+    headerRowIndex: effectiveHeaderRowIndex
+  })
   const inferredMapping = detection.inferredMapping
   const mappingIssues = mappingWarnings(inferredMapping)
 
-  if (mappingIssues.length) {
-    return {
-      columns,
-      detectedMapping: inferredMapping,
-      needsMapping: true,
-      mappingSource: detection.mappingSource,
-      mappingConfidence: detection.mappingConfidence,
-      mappingNotes: detection.mappingNotes,
-      headerRowIndex: detection.headerRowIndex,
-      previewRows: [],
-      summary: {
-        totalRows: rows.length,
-        previewRows: 0,
-        warningCount: mappingIssues.length
-      },
-      warnings: mappingIssues
-    }
-  }
-
-  const { parsedRows, warnings } = validateRows(rows, inferredMapping, materialityAmount, thresholdPercent)
-  return {
-    columns,
-    detectedMapping: inferredMapping,
-    needsMapping: false,
-    mappingSource: detection.mappingSource,
-    mappingConfidence: detection.mappingConfidence,
-    mappingNotes: detection.mappingNotes,
-    headerRowIndex: detection.headerRowIndex,
-    previewRows: parsedRows.slice(0, MAX_PREVIEW_ROWS),
-    summary: {
-      totalRows: parsedRows.length,
-      previewRows: Math.min(parsedRows.length, MAX_PREVIEW_ROWS),
-      warningCount: warnings.length
-    },
-    warnings
-  }
+  return buildPreviewPayload({
+    effectiveColumns,
+    effectiveRows,
+    effectiveHeaderRowIndex,
+    grid,
+    detection,
+    inferredMapping,
+    mappingIssues,
+    materialityAmount,
+    thresholdPercent
+  })
 }
 
 async function getEngagementForImport (pool, engagementId, workspaceId) {
@@ -261,15 +369,24 @@ export async function saveTrialBalanceImport (pool, clerkUserId, actorId, engage
   const engagement = await getEngagementForImport(pool, engagementId, payload.workspaceId)
   if (!engagement) return null
 
+  const headerRowIndex = Number.isInteger(payload.headerRowNumber)
+    ? Math.max(0, payload.headerRowNumber - 1)
+    : Number.isInteger(payload.headerRowIndex)
+      ? payload.headerRowIndex
+      : null
+
   const parsed = parseTrialBalanceFile({
     fileName: payload.fileName,
-    base64Content: payload.base64Content
+    base64Content: payload.base64Content,
+    headerRowIndex,
+    columnHeaders: Array.isArray(payload.columnHeaders) ? payload.columnHeaders : null
   })
   const preview = await previewTrialBalanceImport({
     rows: parsed.rows,
     columns: parsed.columns,
     grid: parsed.grid,
     headerRowIndex: parsed.headerRowIndex,
+    columnHeaders: Array.isArray(payload.columnHeaders) ? payload.columnHeaders : null,
     mapping: payload.mapping || null,
     materialityAmount: engagement.materiality_amount,
     thresholdPercent: payload.thresholdPercent || 20,

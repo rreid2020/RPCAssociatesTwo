@@ -2180,15 +2180,23 @@ export function createPortalRouter (pool) {
     try {
       const scope = await resolveEngagementScope(req, res, session)
       if (!scope) return
+      const headerRowIndex = Number.isInteger(Number(req.body?.headerRowNumber))
+        ? Math.max(0, Number(req.body.headerRowNumber) - 1)
+        : Number.isInteger(Number(req.body?.headerRowIndex))
+          ? Number(req.body.headerRowIndex)
+          : null
       const parsed = parseTrialBalanceFile({
         fileName: req.body?.fileName,
-        base64Content: req.body?.base64Content
+        base64Content: req.body?.base64Content,
+        headerRowIndex,
+        columnHeaders: Array.isArray(req.body?.columnHeaders) ? req.body.columnHeaders : null
       })
       const preview = await previewTrialBalanceImport({
         rows: parsed.rows,
         columns: parsed.columns,
         grid: parsed.grid,
         headerRowIndex: parsed.headerRowIndex,
+        columnHeaders: Array.isArray(req.body?.columnHeaders) ? req.body.columnHeaders : null,
         mapping: req.body?.mapping || null,
         materialityAmount: req.body?.materialityAmount || null,
         thresholdPercent: req.body?.thresholdPercent || 20,

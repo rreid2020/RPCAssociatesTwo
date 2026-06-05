@@ -19,6 +19,7 @@ import {
 } from './authz/workspaceRbacService.js'
 import { ensurePortalSchema } from '../db/ensurePortalSchema.js'
 import {
+  mapWorkspaceRoleToEngagementAssignmentRole,
   normalizeEngagementAssignmentRole,
   parseEngagementAssignmentsPayload,
   resolveEngagementWorkflowLeadIds
@@ -1605,8 +1606,38 @@ export async function assertWorkspaceAssignment (pool, workspace, clerkUserId, o
   })
 }
 
+async function fetchWorkspaceMemberRoleByUserId (pool, workspaceId) {
+  const { rows } = await pool.query(
+    `SELECT clerk_user_id, role
+     FROM taxgpt.accounting_workspace_members
+     WHERE workspace_id = $1::uuid
+       AND status = 'active'`,
+    [workspaceId]
+  )
+  const roleByUserId = {}
+  for (const row of rows) {
+    roleByUserId[String(row.clerk_user_id)] = String(row.role)
+  }
+  return roleByUserId
+}
+
 export async function grantEngagementAssignment (pool, workspace, engagementId, clerkUserId, options = {}) {
-  const assignmentRole = normalizeEngagementAssignmentRole(options.assignmentRole || 'member')
+  let assignmentRole = String(options.assignmentRole || 'member').trim().toLowerCase()
+  if (assignmentRole === 'member') {
+    const { rows: memberRows } = await pool.query(
+      `SELECT role
+       FROM taxgpt.accounting_workspace_members
+       WHERE workspace_id = $1::uuid
+         AND clerk_user_id = $2
+         AND status = 'active'
+       LIMIT 1`,
+      [workspace.id, clerkUserId]
+    )
+    if (memberRows[0]?.role) {
+      assignmentRole = mapWorkspaceRoleToEngagementAssignmentRole(memberRows[0].role)
+    }
+  }
+  assignmentRole = normalizeEngagementAssignmentRole(assignmentRole)
   const { rows: existing } = await pool.query(
     `SELECT id, assignment_role
      FROM taxgpt.engagement_employee_assignments
@@ -1865,7 +1896,8 @@ export async function replaceEngagementEmployeeAssignments (pool, actorUserId, e
   }
   await requireEngagementAssignment(pool, workspace, engagementId, actorUserId)
 
-  const assignments = parseEngagementAssignmentsPayload(payload)
+  const roleByUserId = await fetchWorkspaceMemberRoleByUserId(pool, workspace.id)
+  const assignments = parseEngagementAssignmentsPayload(payload, roleByUserId)
   if (assignments.length === 0) {
     throw new Error('At least one employee must be assigned to the engagement')
   }

@@ -26,6 +26,23 @@ export function normalizeEngagementAssignmentRole (role: unknown): EngagementAss
   return 'member'
 }
 
+export function mapWorkspaceRoleToEngagementAssignmentRole (workspaceRole: unknown): EngagementAssignmentRole {
+  const normalized = String(workspaceRole || '').trim().toLowerCase()
+  if (normalized === 'preparer') return 'preparer'
+  if (normalized === 'reviewer') return 'reviewer'
+  if (normalized === 'owner' || normalized === 'admin' || normalized === 'manager') return 'manager'
+  return 'member'
+}
+
+function resolveWorkspaceRoleForUser (
+  clerkUserId: string,
+  roleByUserId?: Map<string, string> | Record<string, string>
+): string | null {
+  if (!roleByUserId) return null
+  if (roleByUserId instanceof Map) return roleByUserId.get(clerkUserId) || null
+  return roleByUserId[clerkUserId] || null
+}
+
 export function normalizeEngagementStaffAssignments (value: unknown): EngagementStaffAssignment[] {
   if (!value) return []
   if (Array.isArray(value)) {
@@ -46,14 +63,35 @@ export function normalizeEngagementStaffAssignments (value: unknown): Engagement
 }
 
 /** Legacy rows may only expose assigned_employee_ids without roles. */
-export function staffAssignmentsFromEmployeeIds (ids: unknown): EngagementStaffAssignment[] {
+export function staffAssignmentsFromEmployeeIds (
+  ids: unknown,
+  roleByUserId?: Map<string, string> | Record<string, string>
+): EngagementStaffAssignment[] {
   const clerkUserIds = Array.isArray(ids)
     ? ids.map((entry) => String(entry || '').trim()).filter(Boolean)
     : []
   return clerkUserIds.map((clerk_user_id) => ({
     clerk_user_id,
-    assignment_role: 'member' as EngagementAssignmentRole
+    assignment_role: mapWorkspaceRoleToEngagementAssignmentRole(
+      resolveWorkspaceRoleForUser(clerk_user_id, roleByUserId)
+    )
   }))
+}
+
+export function inheritEngagementAssignmentRole (
+  assignment: EngagementStaffAssignment,
+  roleByUserId?: Map<string, string> | Record<string, string>
+): EngagementStaffAssignment {
+  const workspaceRole = resolveWorkspaceRoleForUser(assignment.clerk_user_id, roleByUserId)
+  if (!workspaceRole) return assignment
+  const inheritedRole = mapWorkspaceRoleToEngagementAssignmentRole(workspaceRole)
+  if (assignment.assignment_role !== 'member' || inheritedRole === 'member') {
+    return assignment
+  }
+  return {
+    ...assignment,
+    assignment_role: inheritedRole
+  }
 }
 
 export function dedupeStaffAssignments (

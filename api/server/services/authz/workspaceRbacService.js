@@ -11,6 +11,7 @@ import {
   mapWorkspaceRoleToPlatformRole
 } from './rolePermissions.js'
 import { ensurePortalSchema } from '../../db/ensurePortalSchema.js'
+import { mapWorkspaceRoleToEngagementAssignmentRole } from '../engagementStaffAssignments.js'
 
 const ROLE_NAME_RE = /^[a-z0-9_]{2,48}$/
 const WORKSPACE_MEMBER_ROLES = new Set(['owner', 'admin', 'manager', 'reviewer', 'preparer', 'read_only', 'client'])
@@ -482,6 +483,7 @@ export async function updateMemberRbacAssignments (pool, actorUserId, workspaceI
     throw new Error('Only the workspace owner can change the owner role assignment')
   }
 
+  const previousRole = String(targetRows[0].role || '')
   if (nextRole) {
     await pool.query(
       `UPDATE taxgpt.accounting_workspace_members
@@ -497,6 +499,21 @@ export async function updateMemberRbacAssignments (pool, actorUserId, workspaceI
          AND clerk_user_id = $2`,
       [workspace.organization_id, targetUserId, nextRole === 'owner' || nextRole === 'admin' ? 'admin' : 'member']
     )
+
+    const previousEngagementRole = mapWorkspaceRoleToEngagementAssignmentRole(previousRole)
+    const nextEngagementRole = mapWorkspaceRoleToEngagementAssignmentRole(nextRole)
+    if (previousEngagementRole !== nextEngagementRole) {
+      await pool.query(
+        `UPDATE taxgpt.engagement_employee_assignments
+         SET assignment_role = $4,
+             updated_at = now()
+         WHERE workspace_id = $1::uuid
+           AND clerk_user_id = $2
+           AND status = 'active'
+           AND assignment_role IN ($3, 'member')`,
+        [workspace.id, targetUserId, previousEngagementRole, nextEngagementRole]
+      )
+    }
   }
 
   if (Array.isArray(payload.customRoles)) {

@@ -7,6 +7,7 @@ import EngagementStaffingPanel from './EngagementStaffingPanel'
 import { toEngagementDateInput } from '../utils/engagementDateInput'
 import {
   dedupeStaffAssignments,
+  inheritEngagementAssignmentRole,
   normalizeEngagementStaffAssignments,
   staffAssignmentsFromEmployeeIds,
   toAssignmentApiPayload,
@@ -58,14 +59,19 @@ type EngagementGridContext = {
   saving: boolean
 }
 
-function resolveRowStaffing (row: EngagementRecord): EngagementStaffAssignment[] {
+function resolveRowStaffing (
+  row: EngagementRecord,
+  memberRoleByUserId: Map<string, string>
+): EngagementStaffAssignment[] {
   const assignments = normalizeEngagementStaffAssignments(row.assigned_employees)
-  if (assignments.length > 0) return assignments
-  return staffAssignmentsFromEmployeeIds(row.assigned_employee_ids)
+  if (assignments.length > 0) {
+    return assignments.map((assignment) => inheritEngagementAssignmentRole(assignment, memberRoleByUserId))
+  }
+  return staffAssignmentsFromEmployeeIds(row.assigned_employee_ids, memberRoleByUserId)
 }
 
-function engagementStaffCount (row: EngagementRecord): number {
-  return resolveRowStaffing(row).length
+function engagementStaffCount (row: EngagementRecord, memberRoleByUserId: Map<string, string>): number {
+  return resolveRowStaffing(row, memberRoleByUserId).length
 }
 
 function createDraftRow (): EngagementRecord {
@@ -195,6 +201,16 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     return map
   }, [activeMembers])
 
+  const memberRoleByUserId = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const member of activeMembers) {
+      const key = String(member.clerk_user_id || '')
+      if (!key || !member.role) continue
+      map.set(key, String(member.role))
+    }
+    return map
+  }, [activeMembers])
+
   const clientNameById = useMemo(() => {
     const map = new Map<string, string>()
     for (const client of clients) {
@@ -228,9 +244,13 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       ...(Array.isArray(filteredEngagements) ? filteredEngagements : []).map((engagement) => ({
         ...engagement,
         ...(() => {
-          const assigned_employees = normalizeEngagementStaffAssignments(engagement.assigned_employees).length > 0
-            ? normalizeEngagementStaffAssignments(engagement.assigned_employees)
-            : staffAssignmentsFromEmployeeIds(engagement.assigned_employee_ids)
+          const normalized = normalizeEngagementStaffAssignments(engagement.assigned_employees)
+          const base = normalized.length > 0
+            ? normalized
+            : staffAssignmentsFromEmployeeIds(engagement.assigned_employee_ids, memberRoleByUserId)
+          const assigned_employees = base.map((assignment) => (
+            inheritEngagementAssignmentRole(assignment, memberRoleByUserId)
+          ))
           return {
             assigned_employees,
             assigned_employee_ids: assigned_employees.map((entry) => entry.clerk_user_id)
@@ -240,7 +260,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
         due_date: toEngagementDateInput(engagement.due_date)
       }))
     ],
-    [draftRows, filteredEngagements]
+    [draftRows, filteredEngagements, memberRoleByUserId]
   )
 
   const selectedEngagement = useMemo(
@@ -263,8 +283,8 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       return
     }
     const row = gridRows.find((entry) => entry.id === selectedEngagementId)
-    setStaffingAssignments(row ? resolveRowStaffing(row) : [])
-  }, [gridRows, selectedEngagementId])
+    setStaffingAssignments(row ? resolveRowStaffing(row, memberRoleByUserId) : [])
+  }, [gridRows, memberRoleByUserId, selectedEngagementId])
 
   useEffect(() => {
     syncSelectionToGrid(selectedEngagementId)
@@ -368,7 +388,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     onError(null)
     try {
       if (row.isNew) {
-        const staffing = dedupeStaffAssignments(options?.staffing ?? resolveRowStaffing(row))
+        const staffing = dedupeStaffAssignments(options?.staffing ?? resolveRowStaffing(row, memberRoleByUserId))
         const body: Record<string, unknown> = {
           clientId: resolvedClientId,
           name: String(row.name).trim(),
@@ -431,6 +451,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     onError,
     onNotice,
     onReloadEngagements,
+    memberRoleByUserId,
     onSavingChange
   ])
 
@@ -677,7 +698,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       suppressHeaderMenuButton: true,
       cellRenderer: EngagementActionsCell
     }
-  ] as ColDef<EngagementRecord>[]), [clientIds, clientLabel, clientNameById])
+  ] as ColDef<EngagementRecord>[]), [clientIds, clientLabel, clientNameById, memberRoleByUserId])
 
   const gridDefaultColDef = useMemo<ColDef<EngagementRecord>>(
     () => ({

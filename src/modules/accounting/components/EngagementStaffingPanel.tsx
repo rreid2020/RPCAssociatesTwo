@@ -5,6 +5,7 @@ import {
   ENGAGEMENT_ASSIGNMENT_ROLES,
   dedupeStaffAssignments,
   formatEngagementAssignmentRole,
+  mapWorkspaceRoleToEngagementAssignmentRole,
   normalizeEngagementAssignmentRole,
   type EngagementStaffAssignment
 } from '../utils/engagementStaffAssignments'
@@ -13,6 +14,7 @@ type WorkspaceMember = {
   clerk_user_id: string
   display_name?: string
   email?: string
+  role?: string
 }
 
 export type StaffingGridRow = EngagementStaffAssignment & {
@@ -106,11 +108,15 @@ const EngagementStaffingPanel: FC<EngagementStaffingPanelProps> = ({
 
   const handleAddEmployee = useCallback((clerkUserId: string) => {
     if (!clerkUserId || assignedUserIds.has(clerkUserId)) return
+    const workspaceMember = activeMembers.find((member) => member.clerk_user_id === clerkUserId)
     onAssignmentsChange(dedupeStaffAssignments([
       ...assignments,
-      { clerk_user_id: clerkUserId, assignment_role: 'member' }
+      {
+        clerk_user_id: clerkUserId,
+        assignment_role: mapWorkspaceRoleToEngagementAssignmentRole(workspaceMember?.role)
+      }
     ]))
-  }, [assignedUserIds, assignments, onAssignmentsChange])
+  }, [activeMembers, assignedUserIds, assignments, onAssignmentsChange])
 
   const onCellEditingStopped = useCallback((event: CellEditingStoppedEvent<StaffingGridRow>) => {
     const row = event.data

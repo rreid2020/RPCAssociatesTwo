@@ -5,6 +5,10 @@ type TrialBalancePreview = {
   columns: string[]
   detectedMapping: Record<string, string>
   needsMapping?: boolean
+  mappingSource?: 'heuristic' | 'ai' | 'manual'
+  mappingConfidence?: number | null
+  mappingNotes?: string | null
+  headerRowIndex?: number
   previewRows: Array<{
     sourceRowNumber: number
     accountNumber: string | null
@@ -18,7 +22,7 @@ type TrialBalancePreview = {
 
 const MAPPING_FIELDS = [
   { key: 'accountNumber', label: 'Account number', required: false },
-  { key: 'accountName', label: 'Account name', required: true },
+  { key: 'accountName', label: 'Account name', required: false },
   { key: 'accountType', label: 'Account type', required: false },
   { key: 'currentBalance', label: 'Current balance', required: false },
   { key: 'priorBalance', label: 'Prior balance', required: false },
@@ -42,8 +46,9 @@ function fileToBase64 (file: File): Promise<string> {
 }
 
 function mappingIsComplete (mapping: Record<string, string>) {
-  if (!mapping.accountName) return false
-  return Boolean(mapping.currentBalance || (mapping.debit && mapping.credit))
+  const hasIdentity = Boolean(mapping.accountName || mapping.accountNumber)
+  const hasBalance = Boolean(mapping.currentBalance || (mapping.debit && mapping.credit))
+  return hasIdentity && hasBalance
 }
 
 type TrialBalanceImportPanelProps = {
@@ -82,7 +87,7 @@ const TrialBalanceImportPanel: FC<TrialBalanceImportPanelProps> = ({
       getToken,
       {
         method: 'POST',
-        body: JSON.stringify({ fileName, base64Content, mapping })
+        body: JSON.stringify({ fileName, base64Content, mapping, useSmartImport: true })
       }
     )
   }, [engagementId, getToken])
@@ -104,9 +109,10 @@ const TrialBalanceImportPanel: FC<TrialBalanceImportPanelProps> = ({
       setColumnMapping(result.detectedMapping || {})
       setPreview(result)
       if (result.needsMapping) {
-        onNotice('Map the required columns below, then preview again.')
+        onNotice('Smart import could not fully detect columns. Adjust mapping below, then preview again.')
       } else {
-        onNotice('Preview generated. Review warnings before import.')
+        const source = result.mappingSource === 'ai' ? 'AI smart import' : 'Smart import'
+        onNotice(`${source} mapped ${result.summary.totalRows} rows. Review before import.`)
       }
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Could not read trial balance file')
@@ -121,7 +127,7 @@ const TrialBalanceImportPanel: FC<TrialBalanceImportPanelProps> = ({
       return
     }
     if (!mappingIsComplete(columnMapping)) {
-      onError('Map account name and either current balance or debit and credit columns.')
+      onError('Map account name or number, plus current balance or debit and credit columns.')
       return
     }
     onSavingChange(true)
@@ -160,7 +166,8 @@ const TrialBalanceImportPanel: FC<TrialBalanceImportPanelProps> = ({
         body: JSON.stringify({
           fileName: importPayload.fileName,
           base64Content: importPayload.base64Content,
-          mapping: columnMapping
+          mapping: columnMapping,
+          useSmartImport: true
         })
       })
       onNotice('Trial balance imported')
@@ -195,7 +202,12 @@ const TrialBalanceImportPanel: FC<TrialBalanceImportPanelProps> = ({
 
   return (
     <div className="rounded-lg border border-border p-4 space-y-4">
-      <h3 className="font-semibold text-primary-dark">Import Trial Balance (CSV/XLSX)</h3>
+      <div>
+        <h3 className="font-semibold text-primary-dark">Import Trial Balance (CSV/XLSX)</h3>
+        <p className="text-xs text-text-light mt-1">
+          Smart import detects headers, maps columns automatically, and uses AI when needed for unfamiliar formats.
+        </p>
+      </div>
       <input
         type="file"
         accept=".csv,.xlsx"
@@ -206,7 +218,7 @@ const TrialBalanceImportPanel: FC<TrialBalanceImportPanelProps> = ({
         <div className="rounded-md border border-border bg-background p-3 space-y-3">
           <p className="text-sm font-medium text-text">Column mapping</p>
           <p className="text-xs text-text-light">
-            Required: account name, plus current balance or both debit and credit.
+            Required: account name or account number, plus current balance or both debit and credit.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {MAPPING_FIELDS.map((field) => (
@@ -267,6 +279,16 @@ const TrialBalanceImportPanel: FC<TrialBalanceImportPanelProps> = ({
             <>
               <p className="text-sm text-text">Rows: {preview.summary.totalRows}</p>
               <p className="text-sm text-text">Warnings: {preview.summary.warningCount}</p>
+              {preview.mappingSource && (
+                <p className="text-xs text-text-light">
+                  Mapping: {preview.mappingSource}
+                  {preview.mappingConfidence != null ? ` (${Math.round(preview.mappingConfidence * 100)}% confidence)` : ''}
+                  {preview.headerRowIndex != null ? ` · header row ${preview.headerRowIndex + 1}` : ''}
+                </p>
+              )}
+              {preview.mappingNotes && (
+                <p className="text-xs text-text-light">{preview.mappingNotes}</p>
+              )}
             </>
           )}
           {preview.warnings.slice(0, 8).map((warning, idx) => (

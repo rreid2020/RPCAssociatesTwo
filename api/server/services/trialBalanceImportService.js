@@ -1,5 +1,13 @@
 import XLSX from 'xlsx'
 import { calculateVarianceMetrics, logAccountingAudit } from './workingPapersService.js'
+import {
+  detectGridStructure,
+  inferHeuristicMapping,
+  mappingIsUsable,
+  normalizeMappedRow,
+  parseCsvToGrid,
+  resolveSmartMapping
+} from './trialBalanceSmartImportService.js'
 
 const MAX_PREVIEW_ROWS = 50
 
@@ -37,66 +45,18 @@ function sanitizeText (value) {
 function parseNumber (value) {
   if (value == null || value === '') return null
   if (typeof value === 'number') return Number.isFinite(value) ? value : null
-  const normalized = String(value).replace(/,/g, '').replace(/\$/g, '').trim()
+  const normalized = String(value).replace(/[,$\s]/g, '').replace(/^\((.*)\)$/, '-$1').trim()
   if (!normalized.length) return null
   const n = Number(normalized)
   return Number.isFinite(n) ? n : null
 }
 
-function parseCsvBuffer (buffer) {
-  const text = buffer.toString('utf8').replace(/^\uFEFF/, '')
-  const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0)
-  if (!lines.length) return { columns: [], rows: [] }
-  const splitRow = (line) => {
-    const out = []
-    let current = ''
-    let inQuotes = false
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i]
-      if (char === '"' && line[i + 1] === '"') {
-        current += '"'
-        i++
-      } else if (char === '"') {
-        inQuotes = !inQuotes
-      } else if (char === ',' && !inQuotes) {
-        out.push(current.trim())
-        current = ''
-      } else {
-        current += char
-      }
-    }
-    out.push(current.trim())
-    return out.map((v) => v.replace(/^"|"$/g, ''))
-  }
-  const headers = splitRow(lines[0]).map((h) => sanitizeText(h))
-  const rows = []
-  for (let i = 1; i < lines.length; i++) {
-    const rowValues = splitRow(lines[i])
-    const row = {}
-    for (let c = 0; c < headers.length; c++) {
-      row[headers[c] || `column_${c + 1}`] = rowValues[c] ?? ''
-    }
-    rows.push(row)
-  }
-  return { columns: headers, rows }
-}
-
-function parseXlsxBuffer (buffer) {
+function parseXlsxToGrid (buffer) {
   const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: false })
   const firstSheetName = workbook.SheetNames[0]
-  if (!firstSheetName) return { columns: [], rows: [] }
+  if (!firstSheetName) return []
   const sheet = workbook.Sheets[firstSheetName]
-  const raw = XLSX.utils.sheet_to_json(sheet, { defval: '' })
-  if (!raw.length) return { columns: [], rows: [] }
-  const columns = Object.keys(raw[0]).map((header) => sanitizeText(header))
-  const rows = raw.map((row) => {
-    const normalized = {}
-    for (const [key, value] of Object.entries(row)) {
-      normalized[sanitizeText(key)] = value
-    }
-    return normalized
-  })
-  return { columns, rows }
+  return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
 }
 
 function buildSuggestedMapping (columns) {
@@ -114,19 +74,14 @@ function buildSuggestedMapping (columns) {
   return mapping
 }
 
-function computeBalances (rawRow, mapping) {
-  const currentDirect = parseNumber(rawRow[mapping.currentBalance])
-  const priorDirect = parseNumber(rawRow[mapping.priorBalance])
-  const debit = parseNumber(rawRow[mapping.debit])
-  const credit = parseNumber(rawRow[mapping.credit])
-
-  let current = currentDirect
-  if (current == null && (debit != null || credit != null)) {
-    current = (debit || 0) - (credit || 0)
+function computeBalances (normalized) {
+  let current = normalized.currentBalance
+  if (current == null && (normalized.debit != null || normalized.credit != null)) {
+    current = (normalized.debit || 0) - (normalized.credit || 0)
   }
   return {
     currentBalance: current ?? 0,
-    priorBalance: priorDirect
+    priorBalance: normalized.priorBalance
   }
 }
 
@@ -137,26 +92,29 @@ function validateRows (rows, mapping, materialityAmount = null, thresholdPercent
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]
-    const accountNumber = sanitizeText(row[mapping.accountNumber])
-    const accountName = sanitizeText(row[mapping.accountName])
-    const accountType = sanitizeText(row[mapping.accountType]) || 'other'
-    const normalBalance = sanitizeText(row[mapping.normalBalance]) || null
-    const balances = computeBalances(row, mapping)
+    const normalized = normalizeMappedRow(row, mapping)
+    const balances = computeBalances(normalized)
+    const accountName = normalized.accountName
+    const accountNumber = normalized.accountNumber
     const metrics = calculateVarianceMetrics(balances.currentBalance, balances.priorBalance, materialityAmount, thresholdPercent)
 
-    if (!accountName) warnings.push({ type: 'missing_account_name', rowNumber: i + 2, message: 'Account name is missing' })
+    if (!accountName && !accountNumber) {
+      warnings.push({ type: 'missing_account_identity', rowNumber: i + 2, message: 'Row skipped: no account name or number' })
+      continue
+    }
+    if (!accountName) {
+      warnings.push({ type: 'missing_account_name', rowNumber: i + 2, message: 'Account name missing; imported using account number only' })
+    }
     if (accountNumber) {
       accountNumberCounts.set(accountNumber, (accountNumberCounts.get(accountNumber) || 0) + 1)
     }
-    if (balances.currentBalance == null) {
-      warnings.push({ type: 'invalid_balance', rowNumber: i + 2, message: 'Current balance is invalid' })
-    }
+
     parsedRows.push({
       sourceRowNumber: i + 2,
-      accountNumber: accountNumber || null,
-      accountName,
-      accountType,
-      normalBalance,
+      accountNumber,
+      accountName: accountName || accountNumber || 'Unnamed account',
+      accountType: normalized.accountType || 'other',
+      normalBalance: normalized.normalBalance,
       currentPeriodBalance: balances.currentBalance,
       priorPeriodBalance: balances.priorBalance,
       varianceAmount: metrics.varianceAmount,
@@ -185,34 +143,77 @@ export function parseTrialBalanceFile ({ fileName, base64Content }) {
   }
   const buffer = Buffer.from(String(base64Content || ''), 'base64')
   if (!buffer.length) throw new Error('No file data was provided')
-  if (safeName.endsWith('.csv')) {
-    return { fileType: 'csv', ...parseCsvBuffer(buffer) }
+
+  const grid = safeName.endsWith('.csv') ? parseCsvToGrid(buffer) : parseXlsxToGrid(buffer)
+  const structure = detectGridStructure(grid)
+
+  return {
+    fileType: safeName.endsWith('.csv') ? 'csv' : 'xlsx',
+    grid,
+    ...structure
   }
-  return { fileType: 'xlsx', ...parseXlsxBuffer(buffer) }
 }
 
 function mappingWarnings (inferredMapping) {
   const warnings = []
-  if (!inferredMapping.accountName) {
-    warnings.push({ type: 'missing_mapping', message: 'Map the Account name column before preview.' })
+  if (!inferredMapping.accountName && !inferredMapping.accountNumber) {
+    warnings.push({ type: 'missing_mapping', message: 'Map an account name or account number column.' })
   }
   if (!inferredMapping.currentBalance && !(inferredMapping.debit && inferredMapping.credit)) {
-    warnings.push({ type: 'missing_mapping', message: 'Map Current balance or both Debit and Credit columns.' })
+    warnings.push({ type: 'missing_mapping', message: 'Map current balance or both debit and credit columns.' })
   }
   return warnings
 }
 
-export function previewTrialBalanceImport ({ rows, columns, mapping, materialityAmount, thresholdPercent }) {
-  const inferredMapping = {
-    ...buildSuggestedMapping(columns),
-    ...(mapping || {})
+async function buildDetectedMapping ({ columns, rows, grid, mapping, useSmartImport = true, headerRowIndex = 0 }) {
+  const manual = mapping && Object.keys(mapping).length ? mapping : null
+  const aliasMapping = buildSuggestedMapping(columns)
+  const heuristic = inferHeuristicMapping(columns, rows)
+
+  let smart = null
+  if (useSmartImport) {
+    smart = await resolveSmartMapping({ grid, columns, rows, useAi: true })
   }
+
+  const inferredMapping = {
+    ...aliasMapping,
+    ...heuristic.mapping,
+    ...(smart?.mapping || {}),
+    ...(manual || {})
+  }
+
+  return {
+    inferredMapping,
+    mappingSource: manual ? 'manual' : (smart?.source || heuristic.source || 'heuristic'),
+    mappingConfidence: smart?.confidence ?? heuristic.confidence ?? null,
+    mappingNotes: smart?.notes || null,
+    headerRowIndex
+  }
+}
+
+export async function previewTrialBalanceImport ({
+  rows,
+  columns,
+  grid = [],
+  headerRowIndex = 0,
+  mapping,
+  materialityAmount,
+  thresholdPercent,
+  useSmartImport = true
+}) {
+  const detection = await buildDetectedMapping({ columns, rows, grid, mapping, useSmartImport, headerRowIndex })
+  const inferredMapping = detection.inferredMapping
   const mappingIssues = mappingWarnings(inferredMapping)
+
   if (mappingIssues.length) {
     return {
       columns,
       detectedMapping: inferredMapping,
       needsMapping: true,
+      mappingSource: detection.mappingSource,
+      mappingConfidence: detection.mappingConfidence,
+      mappingNotes: detection.mappingNotes,
+      headerRowIndex: detection.headerRowIndex,
       previewRows: [],
       summary: {
         totalRows: rows.length,
@@ -228,6 +229,10 @@ export function previewTrialBalanceImport ({ rows, columns, mapping, materiality
     columns,
     detectedMapping: inferredMapping,
     needsMapping: false,
+    mappingSource: detection.mappingSource,
+    mappingConfidence: detection.mappingConfidence,
+    mappingNotes: detection.mappingNotes,
+    headerRowIndex: detection.headerRowIndex,
     previewRows: parsedRows.slice(0, MAX_PREVIEW_ROWS),
     summary: {
       totalRows: parsedRows.length,
@@ -238,29 +243,48 @@ export function previewTrialBalanceImport ({ rows, columns, mapping, materiality
   }
 }
 
-export async function saveTrialBalanceImport (pool, clerkUserId, actorId, engagementId, payload) {
-  const { rows: engagementRows } = await pool.query(
-    'SELECT * FROM taxgpt.accounting_engagements WHERE id = $1::uuid AND clerk_user_id = $2',
-    [engagementId, clerkUserId]
+async function getEngagementForImport (pool, engagementId, workspaceId) {
+  const { rows } = await pool.query(
+    `SELECT * FROM taxgpt.accounting_engagements
+     WHERE id = $1::uuid
+       AND workspace_id = $2::uuid`,
+    [engagementId, workspaceId]
   )
-  if (!engagementRows[0]) return null
-  const engagement = engagementRows[0]
+  return rows[0] || null
+}
+
+export async function saveTrialBalanceImport (pool, clerkUserId, actorId, engagementId, payload) {
+  if (!payload?.workspaceId) {
+    throw new Error('Workspace context is required for trial balance import')
+  }
+
+  const engagement = await getEngagementForImport(pool, engagementId, payload.workspaceId)
+  if (!engagement) return null
 
   const parsed = parseTrialBalanceFile({
     fileName: payload.fileName,
     base64Content: payload.base64Content
   })
-  const preview = previewTrialBalanceImport({
+  const preview = await previewTrialBalanceImport({
     rows: parsed.rows,
     columns: parsed.columns,
+    grid: parsed.grid,
+    headerRowIndex: parsed.headerRowIndex,
     mapping: payload.mapping || null,
     materialityAmount: engagement.materiality_amount,
-    thresholdPercent: payload.thresholdPercent || 20
+    thresholdPercent: payload.thresholdPercent || 20,
+    useSmartImport: payload.useSmartImport !== false
   })
+
+  if (preview.needsMapping || !mappingIsUsable(preview.detectedMapping)) {
+    throw new Error('Trial balance import mapping is incomplete. Preview and map columns before importing.')
+  }
 
   const warningSummary = {
     count: preview.warnings.length,
-    warnings: preview.warnings.slice(0, 100)
+    warnings: preview.warnings.slice(0, 100),
+    mappingSource: preview.mappingSource,
+    mappingConfidence: preview.mappingConfidence
   }
   const { rows: batchRows } = await pool.query(
     `INSERT INTO taxgpt.trial_balance_import_batches
@@ -324,7 +348,8 @@ export async function saveTrialBalanceImport (pool, clerkUserId, actorId, engage
   await logAccountingAudit(pool, clerkUserId, actorId, 'trial_balance', trialBalance.id, 'imported', null, {
     importBatchId: importBatch.id,
     warningCount: detail.warnings.length,
-    accountCount: detail.parsedRows.length
+    accountCount: detail.parsedRows.length,
+    mappingSource: preview.mappingSource
   })
 
   return {
@@ -332,9 +357,9 @@ export async function saveTrialBalanceImport (pool, clerkUserId, actorId, engage
     trialBalance,
     summary: {
       warningCount: detail.warnings.length,
-      accountCount: detail.parsedRows.length
+      accountCount: detail.parsedRows.length,
+      mappingSource: preview.mappingSource
     },
     warnings: detail.warnings
   }
 }
-

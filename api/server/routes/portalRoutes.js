@@ -2184,12 +2184,15 @@ export function createPortalRouter (pool) {
         fileName: req.body?.fileName,
         base64Content: req.body?.base64Content
       })
-      const preview = previewTrialBalanceImport({
+      const preview = await previewTrialBalanceImport({
         rows: parsed.rows,
         columns: parsed.columns,
+        grid: parsed.grid,
+        headerRowIndex: parsed.headerRowIndex,
         mapping: req.body?.mapping || null,
         materialityAmount: req.body?.materialityAmount || null,
-        thresholdPercent: req.body?.thresholdPercent || 20
+        thresholdPercent: req.body?.thresholdPercent || 20,
+        useSmartImport: req.body?.useSmartImport !== false
       })
       res.json({
         fileType: parsed.fileType,
@@ -2206,7 +2209,10 @@ export function createPortalRouter (pool) {
     const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
     try {
-      const result = await saveTrialBalanceImport(pool, scope.workspaceUserId, scope.actorUserId, req.params.engagementId, req.body || {})
+      const result = await saveTrialBalanceImport(pool, scope.workspaceUserId, scope.actorUserId, req.params.engagementId, {
+        ...(req.body || {}),
+        workspaceId: scope.workspace.id
+      })
       if (!result) return res.status(404).json({ error: 'Engagement not found' })
       res.json(result)
     } catch (e) {

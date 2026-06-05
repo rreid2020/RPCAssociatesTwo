@@ -18,6 +18,7 @@ type AccountingPageView =
   | 'companyProfile'
   | 'companyProfileEntities'
   | 'companyProfileEmployees'
+  | 'companyProfileRoles'
   | 'joinWorkspaceInvite'
   | 'engagementList'
   | 'workingPapersWorkspace'
@@ -122,6 +123,10 @@ export function getAccountingRoutes () {
         <Route
           path="employees"
           element={guardedElement(<AccountingWorkspacePage view="companyProfileEmployees" />)}
+        />
+        <Route
+          path="roles-and-permissions"
+          element={guardedElement(<AccountingWorkspacePage view="companyProfileRoles" />, null, 'rbac.read')}
         />
       </Route>
       <Route

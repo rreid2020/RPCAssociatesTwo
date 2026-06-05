@@ -20,4 +20,10 @@ describe('workspace role mapping contracts', () => {
     expect(hasPermission('firm_admin', 'billing.manage')).toBe(true)
     expect(hasPermission('staff', 'billing.manage')).toBe(false)
   })
+
+  it('grants rbac management to firm admin and manager roles', () => {
+    expect(hasPermission('firm_admin', 'rbac.manage')).toBe(true)
+    expect(hasPermission('manager', 'rbac.manage')).toBe(true)
+    expect(hasPermission('staff', 'rbac.manage')).toBe(false)
+  })
 })

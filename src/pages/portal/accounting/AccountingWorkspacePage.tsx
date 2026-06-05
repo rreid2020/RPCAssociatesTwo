@@ -37,6 +37,7 @@ import { CompanyProfileTabs } from '../../../modules/accounting/layouts/CompanyP
 import PageLoadingSkeleton from '../../../shared/loading/PageLoadingSkeleton'
 
 const LazyEngagementOperationsPanel = lazy(() => import('../../../modules/accounting/components/EngagementOperationsPanel'))
+const LazyRolesAndPermissionsPanel = lazy(() => import('../../../modules/accounting/components/RolesAndPermissionsPanel'))
 const LazyWorkingPapersWorkspacePanel = lazy(() => import('../../../modules/working-papers/components/WorkingPapersWorkspacePanel'))
 const LazyTrialBalanceGridPanel = lazy(() => import('../../../modules/working-papers/components/TrialBalanceGridPanel'))
 const LazyTrialBalanceImportPanel = lazy(() => import('../../../modules/working-papers/components/TrialBalanceImportPanel'))
@@ -60,6 +61,7 @@ type AccountingView =
   | 'companyProfile'
   | 'companyProfileEntities'
   | 'companyProfileEmployees'
+  | 'companyProfileRoles'
   | 'engagementList'
   | 'workingPapersWorkspace'
   | 'newEngagement'
@@ -83,6 +85,7 @@ const titleByView: Record<AccountingView, string> = {
   companyProfile: 'Business/Firm Details',
   companyProfileEntities: 'Entity Profiles',
   companyProfileEmployees: 'Invite Employees',
+  companyProfileRoles: 'Roles & Permissions',
   engagementList: 'Engagements',
   workingPapersWorkspace: 'Working Papers',
   newEngagement: 'New Engagement',
@@ -103,6 +106,7 @@ const descriptionByView: Record<AccountingView, string> = {
   companyProfile: 'Set core business or firm information used across your organization.',
   companyProfileEntities: 'Create and maintain reporting entities or client records for engagements.',
   companyProfileEmployees: 'Invite employees and manage your organization roster before engagement assignments.',
+  companyProfileRoles: 'Review built-in roles, create custom roles, and manage employee access for your organization.',
   engagementList: 'Create, update, and delete engagements with entity or client assignment and employee staffing.',
   workingPapersWorkspace: 'Select an engagement and open trial balance, lead sheets, review, adjustments, and related working paper workflows.',
   newEngagement: 'Create a new accounting engagement.',
@@ -212,7 +216,10 @@ function isAccessDeniedMessage (message: string): boolean {
 }
 
 function isCompanyProfileView (view: AccountingView): boolean {
-  return view === 'companyProfile' || view === 'companyProfileEntities' || view === 'companyProfileEmployees'
+  return view === 'companyProfile'
+    || view === 'companyProfileEntities'
+    || view === 'companyProfileEmployees'
+    || view === 'companyProfileRoles'
 }
 
 function isListCentricView (view: AccountingView): boolean {
@@ -1383,6 +1390,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                 ? '/portal/accounting/company-profile/entities'
               : view === 'companyProfileEmployees'
                 ? '/portal/accounting/company-profile/employees'
+              : view === 'companyProfileRoles'
+                ? '/portal/accounting/company-profile/roles-and-permissions'
               : view === 'joinWorkspaceInvite'
                 ? '/portal/accounting/join'
               : view === 'workingPapersWorkspace'
@@ -1712,6 +1721,16 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           </div>
                         </div>
                       </div>
+                    )}
+
+                    {view === 'companyProfileRoles' && (
+                      <Suspense fallback={<AccountingPanelFallback />}>
+                        <LazyRolesAndPermissionsPanel
+                          getToken={getToken}
+                          onError={setError}
+                          onNotice={setNotice}
+                        />
+                      </Suspense>
                     )}
 
                     {view === 'companyProfileEmployees' && (

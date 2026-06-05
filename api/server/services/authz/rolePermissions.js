@@ -12,6 +12,8 @@ export const PERMISSION_KEYS = [
   'workspace.read',
   'workspace.manage',
   'workspace.invite',
+  'rbac.read',
+  'rbac.manage',
   'billing.read',
   'billing.manage',
   'subscription.change',
@@ -39,7 +41,7 @@ export const PERMISSION_KEYS = [
 const ROLE_PERMISSION_MAP = {
   super_admin: PERMISSION_KEYS,
   firm_admin: PERMISSION_KEYS,
-  manager: ['workspace.read', 'engagement.read', 'engagement.manage', 'working_papers.read', 'working_papers.manage', 'workingpapers.edit', 'review_notes.manage', 'signoff.perform', 'documents.read', 'documents.write', 'documents.manage', 'workflows.manage', 'workflows.approve', 'billing.read', 'ai.use', 'tax.review', 'execution.read', 'execution.manage', 'templates.manage'],
+  manager: ['workspace.read', 'rbac.read', 'rbac.manage', 'engagement.read', 'engagement.manage', 'working_papers.read', 'working_papers.manage', 'workingpapers.edit', 'review_notes.manage', 'signoff.perform', 'documents.read', 'documents.write', 'documents.manage', 'workflows.manage', 'workflows.approve', 'billing.read', 'ai.use', 'tax.review', 'execution.read', 'execution.manage', 'templates.manage'],
   reviewer: ['workspace.read', 'engagement.read', 'working_papers.read', 'review_notes.manage', 'signoff.perform', 'documents.read', 'documents.manage', 'workflows.approve', 'billing.read', 'tax.review', 'execution.read', 'execution.manage'],
   staff: ['workspace.read', 'engagement.read', 'working_papers.read', 'working_papers.manage', 'workingpapers.edit', 'documents.read', 'documents.write', 'documents.manage', 'ai.use', 'execution.read', 'execution.manage'],
   client: ['workspace.read', 'engagement.read', 'working_papers.read', 'documents.read', 'billing.read'],
@@ -78,5 +80,26 @@ export function hasPermission (role, permission) {
 
 export function listPermissionsForRole (role) {
   return [...(ROLE_PERMISSION_MAP[role] || [])]
+}
+
+const SYSTEM_WORKSPACE_ROLE_DEFINITIONS = [
+  { role: 'owner', label: 'Owner', platformRole: 'firm_admin' },
+  { role: 'admin', label: 'Admin', platformRole: 'firm_admin' },
+  { role: 'manager', label: 'Manager', platformRole: 'manager' },
+  { role: 'reviewer', label: 'Reviewer', platformRole: 'reviewer' },
+  { role: 'preparer', label: 'Preparer', platformRole: 'staff' },
+  { role: 'read_only', label: 'Read only', platformRole: 'external_read_only' },
+  { role: 'client', label: 'Client', platformRole: 'client' }
+]
+
+export function getPermissionCatalog () {
+  return PERMISSION_KEYS.map((key) => ({ key }))
+}
+
+export function getSystemWorkspaceRoleDefinitions () {
+  return SYSTEM_WORKSPACE_ROLE_DEFINITIONS.map((entry) => ({
+    ...entry,
+    permissions: listPermissionsForRole(entry.platformRole)
+  }))
 }
 

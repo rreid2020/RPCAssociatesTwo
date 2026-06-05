@@ -135,7 +135,10 @@ import {
   assertAnyWorkspacePermissionWithCustomRoles,
   assertWorkspacePermissionWithCustomRoles,
   assignWorkspaceMemberRole,
+  deleteWorkspaceCustomRole,
+  getOrganizationRbacSnapshot,
   listWorkspaceRoles,
+  updateMemberRbacAssignments,
   upsertWorkspaceCustomRole
 } from '../services/authz/workspaceRbacService.js'
 import {
@@ -1205,6 +1208,81 @@ export function createPortalRouter (pool) {
     }
   })
 
+  r.get('/v1/accounting/organization/rbac', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const workspace = await requireAccountWorkspace(session, 'rbac.read', res)
+    if (!workspace) return
+    try {
+      const snapshot = await getOrganizationRbacSnapshot(pool, workspace.id)
+      res.json(snapshot)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load organization RBAC settings' })
+    }
+  })
+
+  r.put('/v1/accounting/organization/rbac/roles/:roleName', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const workspace = await requireAccountWorkspace(session, 'rbac.manage', res)
+    if (!workspace) return
+    try {
+      const role = await upsertWorkspaceCustomRole(pool, workspace.id, session.userId, {
+        roleName: req.params.roleName,
+        sourceRole: req.body?.sourceRole,
+        displayName: req.body?.displayName,
+        permissions: req.body?.permissions || []
+      })
+      await pool.query(
+        `INSERT INTO taxgpt.accounting_audit_log
+         (organization_id, clerk_user_id, entity_type, entity_id, action, actor_id, after_value, created_at)
+         VALUES ($1::uuid, $2, 'workspace_role', $3, 'workspace.role_upserted', $2, $4::jsonb, now())`,
+        [workspace.organization_id, session.userId, role.roleName, JSON.stringify(role)]
+      )
+      res.json({ role })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not save custom role' })
+    }
+  })
+
+  r.delete('/v1/accounting/organization/rbac/roles/:roleName', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const workspace = await requireAccountWorkspace(session, 'rbac.manage', res)
+    if (!workspace) return
+    try {
+      const role = await deleteWorkspaceCustomRole(pool, workspace.id, req.params.roleName)
+      await pool.query(
+        `INSERT INTO taxgpt.accounting_audit_log
+         (organization_id, clerk_user_id, entity_type, entity_id, action, actor_id, after_value, created_at)
+         VALUES ($1::uuid, $2, 'workspace_role', $3, 'workspace.role_deleted', $2, $4::jsonb, now())`,
+        [workspace.organization_id, session.userId, role.roleName, JSON.stringify(role)]
+      )
+      res.json({ role })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not delete custom role' })
+    }
+  })
+
+  r.patch('/v1/accounting/organization/rbac/members/:memberUserId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const workspace = await requireAccountWorkspace(session, 'rbac.manage', res)
+    if (!workspace) return
+    try {
+      const member = await updateMemberRbacAssignments(
+        pool,
+        session.userId,
+        workspace.id,
+        req.params.memberUserId,
+        req.body || {}
+      )
+      res.json({ member })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update member access' })
+    }
+  })
+
   r.delete('/v1/accounting/organization/members/:memberUserId', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
@@ -1478,14 +1556,11 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/workspaces/:workspaceId/roles', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const authorized = await requireWorkspacePermission(session, req.params.workspaceId, 'rbac.read', res)
+    if (!authorized) return
     try {
-      const scope = await resolveAccountingScope(req, res, session)
-      if (!scope) return
-      if (!(scope.workspace.role === 'owner' || scope.workspace.role === 'admin')) {
-        return res.status(403).json({ error: 'Only owner/admin can view role configuration' })
-      }
       const roles = await listWorkspaceRoles(pool, req.params.workspaceId)
-      res.json({ workspace: scope.workspace, roles })
+      res.json({ workspace: authorized, roles })
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load workspace roles' })
     }
@@ -1494,12 +1569,9 @@ export function createPortalRouter (pool) {
   r.put('/v1/accounting/workspaces/:workspaceId/roles/:roleName', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const authorized = await requireWorkspacePermission(session, req.params.workspaceId, 'rbac.manage', res)
+    if (!authorized) return
     try {
-      const scope = await resolveAccountingScope(req, res, session)
-      if (!scope) return
-      if (!(scope.workspace.role === 'owner' || scope.workspace.role === 'admin')) {
-        return res.status(403).json({ error: 'Only owner/admin can manage role configuration' })
-      }
       const role = await upsertWorkspaceCustomRole(pool, req.params.workspaceId, session.userId, {
         roleName: req.params.roleName,
         sourceRole: req.body?.sourceRole,
@@ -1521,12 +1593,9 @@ export function createPortalRouter (pool) {
   r.post('/v1/accounting/workspaces/:workspaceId/members/:memberUserId/roles/:roleName', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
+    const authorized = await requireWorkspacePermission(session, req.params.workspaceId, 'rbac.manage', res)
+    if (!authorized) return
     try {
-      const scope = await resolveAccountingScope(req, res, session)
-      if (!scope) return
-      if (!(scope.workspace.role === 'owner' || scope.workspace.role === 'admin')) {
-        return res.status(403).json({ error: 'Only owner/admin can assign workspace roles' })
-      }
       const assignment = await assignWorkspaceMemberRole(pool, req.params.workspaceId, session.userId, req.params.memberUserId, req.params.roleName)
       await pool.query(
         `INSERT INTO taxgpt.accounting_audit_log

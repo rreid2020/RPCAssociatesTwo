@@ -7,6 +7,10 @@ describe('permission policy contracts', () => {
     expect(roleHasPermission('firm_admin', 'workspace.manage')).toBe(true)
   })
 
+  it('grants manager rbac management', () => {
+    expect(roleHasPermission('manager', 'rbac.manage')).toBe(true)
+  })
+
   it('denies client engagement management', () => {
     expect(roleHasPermission('client', 'engagement.manage')).toBe(false)
   })

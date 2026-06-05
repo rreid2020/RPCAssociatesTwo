@@ -2,10 +2,18 @@
  * Organization-scoped RBAC for company/firm employees.
  * Legacy workspace_* tables remain the permission definition store until migrated.
  */
-import { PERMISSION_KEYS, hasPermission, listPermissionsForRole, mapWorkspaceRoleToPlatformRole } from './rolePermissions.js'
+import {
+  PERMISSION_KEYS,
+  getPermissionCatalog,
+  getSystemWorkspaceRoleDefinitions,
+  hasPermission,
+  listPermissionsForRole,
+  mapWorkspaceRoleToPlatformRole
+} from './rolePermissions.js'
 import { ensurePortalSchema } from '../../db/ensurePortalSchema.js'
 
 const ROLE_NAME_RE = /^[a-z0-9_]{2,48}$/
+const WORKSPACE_MEMBER_ROLES = new Set(['owner', 'admin', 'manager', 'reviewer', 'preparer', 'read_only', 'client'])
 
 function normalizeRoleName (value) {
   const roleName = String(value || '').trim().toLowerCase()
@@ -202,7 +210,14 @@ export async function resolveEffectiveOrganizationMemberPermissions (pool, {
   const orgId = organizationId || await resolveOrganizationIdForWorkspace(pool, workspaceId)
   if (!orgId) throw new Error('Organization is required for employee permission resolution')
 
-  const cached = await fetchMemberRbacCache(pool, orgId, clerkUserId, memberRole)
+  let cached = await fetchMemberRbacCache(pool, orgId, clerkUserId, memberRole)
+  if (cached) {
+    const freshBasePermissions = listPermissionsForRole(mapWorkspaceRoleToPlatformRole(memberRole))
+    const missingBasePermission = freshBasePermissions.some((permission) => !cached.permissions.includes(permission))
+    if (missingBasePermission) {
+      cached = null
+    }
+  }
   if (cached) return cached
 
   const resolved = await computeEffectiveMemberPermissionsUncached(pool, workspaceId, memberRole, clerkUserId)
@@ -285,6 +300,58 @@ export async function upsertWorkspaceCustomRole (pool, workspaceId, actorUserId,
   return { roleName, sourceRole, displayName, permissions }
 }
 
+export async function deleteWorkspaceCustomRole (pool, workspaceId, roleName) {
+  await ensureWorkspaceRbacTables(pool)
+  const normalizedRoleName = normalizeRoleName(roleName)
+  const { rows } = await pool.query(
+    `SELECT is_system
+     FROM taxgpt.workspace_custom_roles
+     WHERE workspace_id = $1::uuid
+       AND role_name = $2
+     LIMIT 1`,
+    [workspaceId, normalizedRoleName]
+  )
+  if (!rows[0]) throw new Error('Custom role not found')
+  if (rows[0].is_system) throw new Error('System roles cannot be deleted')
+
+  await pool.query(
+    `DELETE FROM taxgpt.workspace_member_roles
+     WHERE workspace_id = $1::uuid
+       AND role_name = $2`,
+    [workspaceId, normalizedRoleName]
+  )
+  await pool.query(
+    `DELETE FROM taxgpt.workspace_role_permissions
+     WHERE workspace_id = $1::uuid
+       AND role_name = $2`,
+    [workspaceId, normalizedRoleName]
+  )
+  await pool.query(
+    `DELETE FROM taxgpt.workspace_custom_roles
+     WHERE workspace_id = $1::uuid
+       AND role_name = $2`,
+    [workspaceId, normalizedRoleName]
+  )
+  const organizationId = await resolveOrganizationIdForWorkspace(pool, workspaceId)
+  await invalidateOrganizationMemberRbacCache(pool, organizationId)
+  return { roleName: normalizedRoleName, deleted: true }
+}
+
+export async function unassignWorkspaceMemberRole (pool, workspaceId, targetUserId, roleName) {
+  await ensureWorkspaceRbacTables(pool)
+  const normalizedRoleName = normalizeRoleName(roleName)
+  await pool.query(
+    `DELETE FROM taxgpt.workspace_member_roles
+     WHERE workspace_id = $1::uuid
+       AND clerk_user_id = $2
+       AND role_name = $3`,
+    [workspaceId, targetUserId, normalizedRoleName]
+  )
+  const organizationId = await resolveOrganizationIdForWorkspace(pool, workspaceId)
+  await invalidateOrganizationMemberRbacCache(pool, organizationId, targetUserId)
+  return { workspaceId, clerkUserId: targetUserId, roleName: normalizedRoleName, unassigned: true }
+}
+
 export async function assignWorkspaceMemberRole (pool, workspaceId, actorUserId, targetUserId, roleName) {
   await ensureWorkspaceRbacTables(pool)
   const normalizedRoleName = normalizeRoleName(roleName)
@@ -331,6 +398,135 @@ export async function assertWorkspacePermissionWithCustomRoles (pool, {
     throw new Error(`Permission denied: ${permission}`)
   }
   return resolved
+}
+
+function assertWorkspaceMemberRole (role) {
+  const normalized = String(role || '').trim().toLowerCase()
+  if (!WORKSPACE_MEMBER_ROLES.has(normalized)) {
+    throw new Error('Invalid workspace member role')
+  }
+  return normalized
+}
+
+async function fetchWorkspaceRecord (pool, workspaceId) {
+  const { rows } = await pool.query(
+    `SELECT id, organization_id, role, owner_user_id
+     FROM taxgpt.accounting_workspaces
+     WHERE id = $1::uuid
+     LIMIT 1`,
+    [workspaceId]
+  )
+  if (!rows[0]) throw new Error('Workspace not found')
+  return rows[0]
+}
+
+export async function getOrganizationRbacSnapshot (pool, workspaceId) {
+  await ensureWorkspaceRbacTables(pool)
+  const workspace = await fetchWorkspaceRecord(pool, workspaceId)
+  const customRoles = await listWorkspaceRoles(pool, workspace.id)
+  const { rows: memberRows } = await pool.query(
+    `SELECT clerk_user_id, role, status
+     FROM taxgpt.accounting_workspace_members
+     WHERE workspace_id = $1::uuid
+     ORDER BY created_at ASC`,
+    [workspace.id]
+  )
+  const members = []
+  for (const row of memberRows) {
+    const clerkUserId = String(row.clerk_user_id || '')
+    const customRoleNames = await getWorkspaceMemberCustomRoles(pool, workspace.id, clerkUserId)
+    members.push({
+      clerk_user_id: clerkUserId,
+      role: String(row.role || ''),
+      status: String(row.status || ''),
+      custom_roles: customRoleNames
+    })
+  }
+  return {
+    workspace: {
+      id: workspace.id,
+      organization_id: workspace.organization_id,
+      role: workspace.role
+    },
+    catalog: {
+      permissions: getPermissionCatalog(),
+      systemRoles: getSystemWorkspaceRoleDefinitions()
+    },
+    customRoles,
+    members
+  }
+}
+
+export async function updateMemberRbacAssignments (pool, actorUserId, workspaceId, memberUserId, payload = {}) {
+  await ensureWorkspaceRbacTables(pool)
+  const workspace = await fetchWorkspaceRecord(pool, workspaceId)
+  const targetUserId = String(memberUserId || '').trim()
+  if (!targetUserId) throw new Error('Member user id is required')
+
+  const { rows: targetRows } = await pool.query(
+    `SELECT role
+     FROM taxgpt.accounting_workspace_members
+     WHERE workspace_id = $1::uuid
+       AND clerk_user_id = $2
+     LIMIT 1`,
+    [workspace.id, targetUserId]
+  )
+  if (!targetRows[0]) throw new Error('Workspace member not found')
+
+  const nextRole = payload.role != null ? assertWorkspaceMemberRole(payload.role) : null
+  if (nextRole === 'owner' && workspace.role !== 'owner') {
+    throw new Error('Only the workspace owner can assign the owner role')
+  }
+  if (String(targetRows[0].role) === 'owner' && workspace.role !== 'owner') {
+    throw new Error('Only the workspace owner can change the owner role assignment')
+  }
+
+  if (nextRole) {
+    await pool.query(
+      `UPDATE taxgpt.accounting_workspace_members
+       SET role = $3, updated_at = now()
+       WHERE workspace_id = $1::uuid
+         AND clerk_user_id = $2`,
+      [workspace.id, targetUserId, nextRole]
+    )
+    await pool.query(
+      `UPDATE taxgpt.accounting_organization_members
+       SET role = $3, updated_at = now()
+       WHERE organization_id = $1::uuid
+         AND clerk_user_id = $2`,
+      [workspace.organization_id, targetUserId, nextRole === 'owner' || nextRole === 'admin' ? 'admin' : 'member']
+    )
+  }
+
+  if (Array.isArray(payload.customRoles)) {
+    const normalizedCustomRoles = [...new Set(payload.customRoles.map((entry) => normalizeRoleName(entry)))]
+    await pool.query(
+      `DELETE FROM taxgpt.workspace_member_roles
+       WHERE workspace_id = $1::uuid
+         AND clerk_user_id = $2`,
+      [workspace.id, targetUserId]
+    )
+    for (const roleName of normalizedCustomRoles) {
+      await assignWorkspaceMemberRole(pool, workspace.id, actorUserId, targetUserId, roleName)
+    }
+  }
+
+  await invalidateOrganizationMemberRbacCache(pool, workspace.organization_id, targetUserId)
+  const customRoleNames = await getWorkspaceMemberCustomRoles(pool, workspace.id, targetUserId)
+  const { rows: updatedRows } = await pool.query(
+    `SELECT clerk_user_id, role, status
+     FROM taxgpt.accounting_workspace_members
+     WHERE workspace_id = $1::uuid
+       AND clerk_user_id = $2
+     LIMIT 1`,
+    [workspace.id, targetUserId]
+  )
+  return {
+    clerk_user_id: targetUserId,
+    role: String(updatedRows[0]?.role || nextRole || targetRows[0].role),
+    status: String(updatedRows[0]?.status || 'active'),
+    custom_roles: customRoleNames
+  }
 }
 
 export async function assertAnyWorkspacePermissionWithCustomRoles (pool, {

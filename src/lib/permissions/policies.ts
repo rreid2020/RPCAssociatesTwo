@@ -4,6 +4,8 @@ export const ROLE_PERMISSIONS: Record<PlatformRole, PermissionKey[]> = {
   super_admin: [
     'workspace.manage',
     'workspace.invite',
+    'rbac.read',
+    'rbac.manage',
     'billing.read',
     'billing.manage',
     'subscription.change',
@@ -38,6 +40,8 @@ export const ROLE_PERMISSIONS: Record<PlatformRole, PermissionKey[]> = {
     'templates.manage'
   ],
   manager: [
+    'rbac.read',
+    'rbac.manage',
     'engagement.read',
     'engagement.manage',
     'documents.read',

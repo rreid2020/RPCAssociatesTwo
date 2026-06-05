@@ -98,7 +98,6 @@ import {
 } from '../services/engagementExecution/templateCatalogService.js'
 import { isDeadlockError, withDeadlockRetry } from '../utils/deadlockRetry.js'
 import { databaseErrorStatus } from '../utils/dbErrors.js'
-import { ensurePortalSchema } from '../db/ensurePortalSchema.js'
 import {
   addWorkspaceMember,
   assertEngagementAssignment,
@@ -268,16 +267,6 @@ export async function ensureUserHomeFolder (pool, userId) {
 
 export function createPortalRouter (pool) {
   const r = Router()
-  r.use(async (req, res, next) => {
-    try {
-      await ensurePortalSchema(pool)
-      next()
-    } catch (error) {
-      res.status(databaseErrorStatus(error)).json({
-        error: error instanceof Error ? error.message : 'Database is not ready'
-      })
-    }
-  })
   const handleAssignmentError = (res, error, fallbackMessage) => {
     const code = error?.code || ''
     if (String(code).startsWith('ASSIGNMENT_DENIED')) {
@@ -1814,9 +1803,13 @@ export function createPortalRouter (pool) {
     try {
       const bundle = await withDeadlockRetry(() => getEngagementExecutionBundle(
         pool,
-        scope.workspaceUserId,
+        scope.actorUserId,
         req.params.engagementId,
-        { includeDashboard }
+        {
+          includeDashboard,
+          workspace: scope.workspace,
+          workspaceId: scope.workspace.id
+        }
       ))
       if (!bundle) return res.status(404).json({ error: 'Engagement not found' })
       res.json(bundle)
@@ -1824,7 +1817,7 @@ export function createPortalRouter (pool) {
       if (isDeadlockError(e)) {
         return res.status(503).json({ error: 'Temporary database conflict. Please retry.' })
       }
-      res.status(500).json({ error: e instanceof Error ? e.message : 'Could not load execution bundle' })
+      res.status(databaseErrorStatus(e)).json({ error: e instanceof Error ? e.message : 'Could not load execution bundle' })
     }
   })
 

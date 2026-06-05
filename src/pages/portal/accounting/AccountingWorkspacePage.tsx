@@ -555,11 +555,9 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
             loadWorkspaceMembers()
           ])
         } else if (view === 'settings') {
-          await Promise.all([
-            loadTasks(),
-            loadWorkspaceMembers(),
-            loadEngagementExecutionBundle({ includeDashboardFallback: true })
-          ])
+          await loadWorkspaceMembers()
+          await loadEngagementDashboard()
+          await loadTasks()
         } else if (view === 'integrations') {
           await loadIntegrations()
         }
@@ -589,6 +587,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     loadRepositoryFiles,
     loadReviewNotes,
     loadReviewSignoffs,
+    loadEngagementDashboard,
     loadEngagementExecutionBundle,
     loadTasks,
     loadTrialBalance,

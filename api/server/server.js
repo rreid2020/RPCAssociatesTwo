@@ -390,11 +390,13 @@ app.get('*', (req, res, next) => {
 
 async function startServer () {
   await initializeDatabase()
-  void ensurePortalSchema(pool)
-    .then(() => console.log('Portal schema bootstrap complete'))
-    .catch((error) => {
-      console.error('Portal schema bootstrap failed:', error)
-    })
+  try {
+    await ensurePortalSchema(pool)
+    console.log('Portal schema bootstrap complete')
+  } catch (error) {
+    console.error('Portal schema bootstrap failed:', error)
+    throw error
+  }
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
     console.log(`Serving API at /api`)

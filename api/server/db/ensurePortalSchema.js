@@ -1668,6 +1668,11 @@ const STATEMENTS = [
 const SCHEMA_MARKER_TABLE = 'workspace_dataset_import_templates'
 
 let portalSchemaEnsurePromise = null
+let portalSchemaReady = false
+
+export function isPortalSchemaReady () {
+  return portalSchemaReady
+}
 
 async function isPortalSchemaCurrent (pool) {
   const { rows } = await pool.query(
@@ -1697,16 +1702,19 @@ async function runPortalSchemaBootstrap (pool) {
 }
 
 export async function ensurePortalSchema (pool) {
+  if (portalSchemaReady) return
   if (!portalSchemaEnsurePromise) {
     portalSchemaEnsurePromise = (async () => {
       if (await isPortalSchemaCurrent(pool)) {
+        portalSchemaReady = true
         return
       }
       await runPortalSchemaBootstrap(pool)
+      portalSchemaReady = true
     })().catch((error) => {
       portalSchemaEnsurePromise = null
       throw error
     })
   }
-  return portalSchemaEnsurePromise
+  await portalSchemaEnsurePromise
 }

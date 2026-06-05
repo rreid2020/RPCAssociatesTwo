@@ -104,10 +104,10 @@ const EngagementActionsCell: FC<ICellRendererParams<EngagementRecord, unknown, E
     <div className="flex h-full items-center gap-2">
       {engagementPath && (
         <Link
-          to={`${engagementPath}/execution`}
+          to={engagementPath}
           className="text-xs font-medium text-primary-dark hover:underline"
         >
-          Execution
+          Dashboard
         </Link>
       )}
       <button
@@ -720,7 +720,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
           disabled={saving}
           onClick={addDraftRow}
         >
-          Add engagement row
+          Create New Engagement
         </button>
         <input
           className="border border-border rounded-md px-3 py-2 text-sm min-w-[12rem] flex-1 max-w-md"

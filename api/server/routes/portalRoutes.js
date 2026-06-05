@@ -45,6 +45,25 @@ import {
   upsertIntegrationConnection
 } from '../services/workingPapersService.js'
 import { parseTrialBalanceFile, previewTrialBalanceImport, saveTrialBalanceImport } from '../services/trialBalanceImportService.js'
+import {
+  archiveEngagementDataset,
+  createEngagementDataset,
+  createWorkspaceDatasetTemplate,
+  getEngagementDataset,
+  getEngagementDatasetRows,
+  importEngagementDatasetRows,
+  listEngagementDatasets,
+  listWorkspaceDatasetTemplates,
+  previewEngagementDatasetImport,
+  updateEngagementDataset
+} from '../services/engagementDatasetService.js'
+import {
+  archiveDatasetView,
+  createDatasetView,
+  executeDatasetView,
+  listViewsForDataset,
+  updateDatasetView
+} from '../services/datasetViewService.js'
 import { GoogleSheetsProvider, QuickBooksOnlineProvider, createAccountingProvider } from '../services/accountingProviders.js'
 import { AIReviewService } from '../services/aiReviewService.js'
 import {
@@ -2225,6 +2244,217 @@ export function createPortalRouter (pool) {
       res.json(result)
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not import trial balance' })
+    }
+  })
+
+  r.get('/v1/accounting/engagements/:engagementId/datasets', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.read', res))) return
+    const result = await listEngagementDatasets(pool, req.params.engagementId, scope.workspace.id)
+    if (!result) return res.status(404).json({ error: 'Engagement not found' })
+    res.json(result)
+  })
+
+  r.post('/v1/accounting/engagements/:engagementId/datasets', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.manage', res))) return
+    try {
+      const dataset = await createEngagementDataset(pool, scope.workspaceUserId, scope.actorUserId, req.params.engagementId, {
+        ...(req.body || {}),
+        workspaceId: scope.workspace.id
+      })
+      if (!dataset) return res.status(404).json({ error: 'Engagement not found' })
+      res.status(201).json({ dataset })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create dataset' })
+    }
+  })
+
+  r.get('/v1/accounting/engagements/:engagementId/datasets/:datasetId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.read', res))) return
+    const dataset = await getEngagementDataset(pool, req.params.datasetId, scope.workspace.id)
+    if (!dataset) return res.status(404).json({ error: 'Dataset not found' })
+    res.json({ dataset })
+  })
+
+  r.patch('/v1/accounting/engagements/:engagementId/datasets/:datasetId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.manage', res))) return
+    try {
+      const dataset = await updateEngagementDataset(pool, scope.workspaceUserId, scope.actorUserId, req.params.datasetId, {
+        ...(req.body || {}),
+        workspaceId: scope.workspace.id
+      })
+      if (!dataset) return res.status(404).json({ error: 'Dataset not found' })
+      res.json({ dataset })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update dataset' })
+    }
+  })
+
+  r.delete('/v1/accounting/engagements/:engagementId/datasets/:datasetId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.manage', res))) return
+    const dataset = await archiveEngagementDataset(pool, scope.workspaceUserId, scope.actorUserId, req.params.datasetId, scope.workspace.id)
+    if (!dataset) return res.status(404).json({ error: 'Dataset not found' })
+    res.json({ dataset })
+  })
+
+  r.post('/v1/accounting/engagements/:engagementId/datasets/preview', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    try {
+      const preview = await previewEngagementDatasetImport(pool, req.params.engagementId, {
+        ...(req.body || {}),
+        workspaceId: scope.workspace.id
+      })
+      if (!preview) return res.status(404).json({ error: 'Engagement not found' })
+      res.json(preview)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not preview dataset import' })
+    }
+  })
+
+  r.post('/v1/accounting/engagements/:engagementId/datasets/:datasetId/import', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.manage', res))) return
+    try {
+      const result = await importEngagementDatasetRows(pool, scope.workspaceUserId, scope.actorUserId, req.params.datasetId, {
+        ...(req.body || {}),
+        workspaceId: scope.workspace.id
+      })
+      if (!result) return res.status(404).json({ error: 'Dataset not found' })
+      res.json(result)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not import dataset' })
+    }
+  })
+
+  r.get('/v1/accounting/engagements/:engagementId/datasets/:datasetId/rows', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.read', res))) return
+    const result = await getEngagementDatasetRows(pool, req.params.datasetId, scope.workspace.id, req.query || {})
+    if (!result) return res.status(404).json({ error: 'Dataset not found' })
+    res.json(result)
+  })
+
+  r.get('/v1/accounting/engagements/:engagementId/datasets/:datasetId/views', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.read', res))) return
+    const result = await listViewsForDataset(pool, req.params.datasetId, scope.workspace.id)
+    if (!result) return res.status(404).json({ error: 'Dataset not found' })
+    res.json(result)
+  })
+
+  r.post('/v1/accounting/engagements/:engagementId/datasets/:datasetId/views', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.manage', res))) return
+    try {
+      const view = await createDatasetView(pool, scope.workspaceUserId, scope.actorUserId, req.params.datasetId, {
+        ...(req.body || {}),
+        workspaceId: scope.workspace.id
+      })
+      if (!view) return res.status(404).json({ error: 'Dataset not found' })
+      res.status(201).json({ view })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create view' })
+    }
+  })
+
+  r.patch('/v1/accounting/engagements/:engagementId/datasets/:datasetId/views/:viewId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.manage', res))) return
+    try {
+      const view = await updateDatasetView(pool, scope.workspaceUserId, scope.actorUserId, req.params.viewId, {
+        ...(req.body || {}),
+        workspaceId: scope.workspace.id
+      })
+      if (!view) return res.status(404).json({ error: 'View not found' })
+      res.json({ view })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update view' })
+    }
+  })
+
+  r.delete('/v1/accounting/engagements/:engagementId/datasets/:datasetId/views/:viewId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.manage', res))) return
+    const view = await archiveDatasetView(pool, scope.workspaceUserId, scope.actorUserId, req.params.viewId, scope.workspace.id)
+    if (!view) return res.status(404).json({ error: 'View not found' })
+    res.json({ view })
+  })
+
+  r.post('/v1/accounting/engagements/:engagementId/datasets/:datasetId/views/:viewId/execute', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveEngagementScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.read', res))) return
+    const result = await executeDatasetView(pool, req.params.viewId, scope.workspace.id)
+    if (!result) return res.status(404).json({ error: 'View not found' })
+    res.json(result)
+  })
+
+  r.get('/v1/accounting/workspace/dataset-import-templates', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.read', res))) return
+    const templates = await listWorkspaceDatasetTemplates(pool, scope.workspace.id)
+    res.json({ templates })
+  })
+
+  r.post('/v1/accounting/workspace/dataset-import-templates', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    if (!(await requireScopePermission(session, scope, 'working_papers.manage', res))) return
+    try {
+      const template = await createWorkspaceDatasetTemplate(pool, scope.workspaceUserId, scope.actorUserId, {
+        ...(req.body || {}),
+        workspaceId: scope.workspace.id
+      })
+      res.status(201).json({ template })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create template' })
     }
   })
 

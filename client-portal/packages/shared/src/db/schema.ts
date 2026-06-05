@@ -858,6 +858,82 @@ export const engagementEmployeeAssignments = taxgptSchema.table('engagement_empl
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
+export const engagementDatasets = taxgptSchema.table('engagement_datasets', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  workspaceId: uuid('workspace_id').notNull().references(() => accountingWorkspaces.id, { onDelete: 'cascade' }),
+  engagementId: uuid('engagement_id').notNull().references(() => accountingEngagements.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  description: text('description'),
+  datasetType: varchar('dataset_type', { length: 32 }).notNull().default('custom'),
+  status: varchar('status', { length: 24 }).notNull().default('draft'),
+  headerRowIndex: integer('header_row_index').notNull().default(0),
+  columnSchema: jsonb('column_schema').$type<Array<Record<string, unknown>>>().notNull().default([]),
+  rowCount: integer('row_count').notNull().default(0),
+  sourceFileName: text('source_file_name'),
+  latestImportBatchId: uuid('latest_import_batch_id'),
+  createdBy: text('created_by').notNull(),
+  updatedBy: text('updated_by'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at'),
+});
+
+export const engagementDatasetImportBatches = taxgptSchema.table('engagement_dataset_import_batches', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  datasetId: uuid('dataset_id').notNull().references(() => engagementDatasets.id, { onDelete: 'cascade' }),
+  workspaceId: uuid('workspace_id').notNull().references(() => accountingWorkspaces.id, { onDelete: 'cascade' }),
+  engagementId: uuid('engagement_id').notNull().references(() => accountingEngagements.id, { onDelete: 'cascade' }),
+  fileName: text('file_name').notNull(),
+  fileType: varchar('file_type', { length: 16 }).notNull(),
+  headerRowIndex: integer('header_row_index').notNull().default(0),
+  columnSchema: jsonb('column_schema').$type<Array<Record<string, unknown>>>().notNull().default([]),
+  columnMapping: jsonb('column_mapping').$type<Record<string, string>>().notNull().default({}),
+  warningSummary: jsonb('warning_summary').$type<Record<string, unknown>>().notNull().default({}),
+  totalRows: integer('total_rows').notNull().default(0),
+  importedRows: integer('imported_rows').notNull().default(0),
+  createdBy: text('created_by').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const engagementDatasetRows = taxgptSchema.table('engagement_dataset_rows', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  datasetId: uuid('dataset_id').notNull().references(() => engagementDatasets.id, { onDelete: 'cascade' }),
+  workspaceId: uuid('workspace_id').notNull().references(() => accountingWorkspaces.id, { onDelete: 'cascade' }),
+  sourceRowNumber: integer('source_row_number').notNull(),
+  rowData: jsonb('row_data').$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const engagementDatasetViews = taxgptSchema.table('engagement_dataset_views', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  datasetId: uuid('dataset_id').notNull().references(() => engagementDatasets.id, { onDelete: 'cascade' }),
+  workspaceId: uuid('workspace_id').notNull().references(() => accountingWorkspaces.id, { onDelete: 'cascade' }),
+  engagementId: uuid('engagement_id').notNull().references(() => accountingEngagements.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  description: text('description'),
+  config: jsonb('config').$type<Record<string, unknown>>().notNull().default({}),
+  createdBy: text('created_by').notNull(),
+  updatedBy: text('updated_by'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at'),
+});
+
+export const workspaceDatasetImportTemplates = taxgptSchema.table('workspace_dataset_import_templates', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  workspaceId: uuid('workspace_id').notNull().references(() => accountingWorkspaces.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  datasetType: varchar('dataset_type', { length: 32 }).notNull().default('custom'),
+  headerRowIndex: integer('header_row_index'),
+  columnSchema: jsonb('column_schema').$type<Array<Record<string, unknown>>>().notNull().default([]),
+  mappingHints: jsonb('mapping_hints').$type<Record<string, unknown>>().notNull().default({}),
+  createdBy: text('created_by').notNull(),
+  updatedBy: text('updated_by'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at'),
+});
+
 export const workingPaperEmployeeAssignments = taxgptSchema.table('working_paper_employee_assignments', {
   id: uuid('id').primaryKey().defaultRandom(),
   organizationId: uuid('organization_id').notNull().references(() => accountingOrganizations.id, { onDelete: 'cascade' }),

@@ -14,6 +14,7 @@ import {
 } from '../utils/engagementStaffAssignments'
 import PageLoadingSkeleton from '../../../shared/loading/PageLoadingSkeleton'
 import { portalFetch } from '../../../lib/portalApi'
+import { useAccountContext } from '../../../platform/account/AccountContextProvider'
 
 const engagementTypeOptions = [
   'year_end_working_papers',
@@ -53,6 +54,7 @@ type WorkspaceMember = { clerk_user_id: string; display_name?: string; email?: s
 type EngagementGridContext = {
   onEdit: (row: EngagementRecord) => void
   onDelete: (row: EngagementRecord) => void
+  canDeleteEngagements: boolean
   saving: boolean
 }
 
@@ -118,14 +120,16 @@ const EngagementActionsCell: FC<ICellRendererParams<EngagementRecord, unknown, E
       >
         Edit
       </button>
-      <button
-        type="button"
-        className="text-xs font-medium text-red-700 hover:underline disabled:opacity-50"
-        disabled={context.saving}
-        onClick={() => context.onDelete(row)}
-      >
-        {row.isNew ? 'Cancel' : 'Delete'}
-      </button>
+      {(context.canDeleteEngagements || row.isNew) && (
+        <button
+          type="button"
+          className="text-xs font-medium text-red-700 hover:underline disabled:opacity-50"
+          disabled={context.saving}
+          onClick={() => context.onDelete(row)}
+        >
+          {row.isNew ? 'Cancel' : 'Delete'}
+        </button>
+      )}
     </div>
   )
 }
@@ -163,6 +167,8 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
   onNotice,
   onSavingChange
 }) => {
+  const { account } = useAccountContext()
+  const canManageAllEngagements = account?.role === 'owner' || account?.role === 'admin'
   const [searchParams, setSearchParams] = useSearchParams()
   const gridApiRef = useRef<GridApi<EngagementRecord> | null>(null)
   const [draftRows, setDraftRows] = useState<EngagementRecord[]>([])
@@ -550,8 +556,9 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
   const gridContext = useMemo<EngagementGridContext>(() => ({
     onEdit: handleEdit,
     onDelete: (row) => { void handleDelete(row) },
+    canDeleteEngagements: canManageAllEngagements,
     saving
-  }), [handleDelete, handleEdit, saving])
+  }), [canManageAllEngagements, handleDelete, handleEdit, saving])
 
   const columnDefs = useMemo(() => ([
     {
@@ -714,14 +721,16 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
   return (
     <div className="space-y-4 min-w-0 pb-8">
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          className="btn btn--primary text-sm py-2 px-4"
-          disabled={saving}
-          onClick={addDraftRow}
-        >
-          Create New Engagement
-        </button>
+        {canManageAllEngagements && (
+          <button
+            type="button"
+            className="btn btn--primary text-sm py-2 px-4"
+            disabled={saving}
+            onClick={addDraftRow}
+          >
+            Create New Engagement
+          </button>
+        )}
         <input
           className="border border-border rounded-md px-3 py-2 text-sm min-w-[12rem] flex-1 max-w-md"
           placeholder={`Search engagement or ${clientLabel.toLowerCase()}`}

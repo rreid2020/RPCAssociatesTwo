@@ -3,6 +3,7 @@ import { resolveEntityProfilesNavLabel } from '../workspace/companyProfileLabels
 export type NavigationContext = {
   workspaceType: 'business' | 'firm' | null
   profileBusinessType: string | null
+  workspaceRole: string | null
   onboardingComplete: boolean
   features: {
     workingPapers: boolean
@@ -17,6 +18,7 @@ export type NavigationItem = {
   iconKey: string
   requiredFeature?: 'workingPapers' | 'integrations'
   requiredPermission?: string
+  requiredWorkspaceRoles?: string[]
 }
 
 export type NavigationSection = {
@@ -87,7 +89,7 @@ const SECTIONS: NavigationSection[] = [
       { to: '/portal/accounting/working-papers/engagements', label: 'Engagements', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
       { to: '/portal/accounting/working-papers/workspace', label: 'Working Papers', iconKey: 'document', requiredFeature: 'workingPapers', requiredPermission: 'working_papers.read' },
       { to: '/portal/accounting/working-papers/engagements?approvalReady=true', label: 'Approval Ready', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
-      { to: '/portal/accounting/working-papers/engagements/new', label: 'Create Engagement', iconKey: 'plus', requiredFeature: 'workingPapers', requiredPermission: 'engagement.manage' },
+      { to: '/portal/accounting/working-papers/engagements/new', label: 'Create Engagement', iconKey: 'plus', requiredFeature: 'workingPapers', requiredPermission: 'engagement.manage', requiredWorkspaceRoles: ['owner', 'admin'] },
       { to: '/portal/accounting/integrations', label: 'Integrations', iconKey: 'terminal', requiredFeature: 'integrations', requiredPermission: 'integrations.manage' }
     ]
   },
@@ -107,6 +109,10 @@ function isItemVisible (item: NavigationItem, context: NavigationContext) {
   if (!context.onboardingComplete && item.to.startsWith('/portal/accounting/working-papers')) return false
   if (item.requiredFeature && !context.features[item.requiredFeature]) return false
   if (item.requiredPermission && !context.permissions.includes(item.requiredPermission)) return false
+  if (item.requiredWorkspaceRoles?.length) {
+    const role = String(context.workspaceRole || '').trim().toLowerCase()
+    if (!item.requiredWorkspaceRoles.includes(role)) return false
+  }
   return true
 }
 

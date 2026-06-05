@@ -62,11 +62,12 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children, wideContent =
     buildNavigationSections({
       workspaceType,
       profileBusinessType: account?.profileBusinessType || null,
+      workspaceRole: account?.role || null,
       onboardingComplete,
       features: { workingPapers, integrations },
       permissions
     })
-  ), [account?.profileBusinessType, integrations, onboardingComplete, permissions, workspaceType, workingPapers])
+  ), [account?.profileBusinessType, account?.role, integrations, onboardingComplete, permissions, workspaceType, workingPapers])
 
   const iconForKey = (iconKey: string, active: boolean) => {
     const iconClass = active ? 'text-white' : 'text-text-light'

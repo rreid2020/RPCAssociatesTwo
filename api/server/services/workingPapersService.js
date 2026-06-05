@@ -414,8 +414,29 @@ export async function getClientDetails (pool, clerkUserId, clientId) {
 }
 
 export async function listEngagements (pool, clerkUserId, query = {}) {
-  const where = ['e.clerk_user_id = $1']
-  const values = [clerkUserId]
+  const where = []
+  const values = []
+  const workspaceRole = String(query.workspaceRole || '').trim().toLowerCase()
+  const actorUserId = String(query.actorUserId || clerkUserId || '').trim()
+  const unrestrictedAccess = workspaceRole === 'owner' || workspaceRole === 'admin'
+
+  if (query.workspaceId) {
+    values.push(query.workspaceId)
+    where.push(`e.workspace_id = $${values.length}::uuid`)
+    if (!unrestrictedAccess && actorUserId) {
+      values.push(actorUserId)
+      where.push(`EXISTS (
+        SELECT 1
+        FROM taxgpt.engagement_employee_assignments eea
+        WHERE eea.engagement_id = e.id
+          AND eea.clerk_user_id = $${values.length}
+          AND eea.status = 'active'
+      )`)
+    }
+  } else {
+    values.push(clerkUserId)
+    where.push(`e.clerk_user_id = $${values.length}`)
+  }
 
   if (query.status) {
     values.push(query.status)
@@ -436,10 +457,6 @@ export async function listEngagements (pool, clerkUserId, query = {}) {
   if (query.search) {
     values.push(`%${String(query.search).trim().toLowerCase()}%`)
     where.push(`(lower(e.name) LIKE $${values.length} OR lower(c.name) LIKE $${values.length})`)
-  }
-  if (query.workspaceId) {
-    values.push(query.workspaceId)
-    where.push(`e.workspace_id = $${values.length}::uuid`)
   }
   if (query.approvalReady === true) {
     where.push(`NOT EXISTS (

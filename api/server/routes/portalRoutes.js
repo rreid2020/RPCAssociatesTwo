@@ -1515,7 +1515,7 @@ export function createPortalRouter (pool) {
   r.get('/v1/accounting/engagements/:engagementId/assignments', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
+    const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
     try {
       const result = await listEngagementEmployeeAssignments(pool, session.userId, req.params.engagementId, {
@@ -1530,7 +1530,7 @@ export function createPortalRouter (pool) {
   r.put('/v1/accounting/engagements/:engagementId/assignments', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
+    const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
     try {
       const assignment = await upsertEngagementEmployeeAssignment(pool, session.userId, req.params.engagementId, {
@@ -1716,14 +1716,16 @@ export function createPortalRouter (pool) {
     if (!scope) return
     if (!(await hasEntitlement(res, scope.workspace.id, 'workingPapers'))) return
     try {
-      const engagements = await listEngagements(pool, scope.workspaceUserId, {
+      const engagements = await listEngagements(pool, scope.actorUserId, {
         status: req.query.status || null,
         clientId: req.query.clientId || null,
         engagementType: req.query.engagementType || null,
         reviewFlowStatus: req.query.reviewFlowStatus || null,
         approvalReady: req.query.approvalReady === 'true' ? true : (req.query.approvalReady === 'false' ? false : null),
         search: req.query.search || null,
-        workspaceId: scope.workspace.id
+        workspaceId: scope.workspace.id,
+        workspaceRole: scope.workspace.role,
+        actorUserId: scope.actorUserId
       })
       res.json({ engagements })
     } catch (e) {
@@ -1737,6 +1739,9 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
+    if (!(scope.workspace.role === 'owner' || scope.workspace.role === 'admin')) {
+      return res.status(403).json({ error: 'Only organization owners and admins can create engagements' })
+    }
     if (!(await hasEntitlement(res, scope.workspace.id, 'workingPapers'))) return
     try {
       const engagement = await createEngagement(pool, scope.workspaceUserId, scope.actorUserId, {
@@ -1816,6 +1821,9 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
+    if (!(scope.workspace.role === 'owner' || scope.workspace.role === 'admin')) {
+      return res.status(403).json({ error: 'Only organization owners and admins can delete engagements' })
+    }
     try {
       const ok = await deleteEngagement(pool, scope.workspaceUserId, scope.actorUserId, req.params.engagementId)
       if (!ok) return res.status(404).json({ error: 'Engagement not found' })

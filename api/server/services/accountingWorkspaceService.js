@@ -8,6 +8,10 @@ import {
   resolveClerkUserIdByEmail
 } from './clerkAdminService.js'
 import {
+  hasUnrestrictedEngagementAccess,
+  requireEngagementAssignment
+} from './authz/engagementAccessPolicy.js'
+import {
   assertWorkspacePermissionWithCustomRoles,
   ensureWorkspaceRbacTables,
   invalidateOrganizationMemberRbacCache,
@@ -83,8 +87,10 @@ function normalizeBusinessProfileType (value) {
 }
 
 function canManageWorkspace (workspace) {
-  return workspace.role === 'owner' || workspace.role === 'admin'
+  return hasUnrestrictedEngagementAccess(workspace.role)
 }
+
+export { hasUnrestrictedEngagementAccess }
 
 function slugifyWorkspaceName (name) {
   return String(name || '')
@@ -1599,7 +1605,7 @@ export async function assertWorkspaceAssignment (pool, workspace, clerkUserId, o
   })
 }
 
-export async function assertEngagementAssignment (pool, workspace, engagementId, clerkUserId, options = {}) {
+export async function grantEngagementAssignment (pool, workspace, engagementId, clerkUserId, options = {}) {
   const assignmentRole = normalizeEngagementAssignmentRole(options.assignmentRole || 'member')
   const { rows: existing } = await pool.query(
     `SELECT id, assignment_role
@@ -1679,6 +1685,14 @@ export async function assertEngagementAssignment (pool, workspace, engagementId,
   })
 }
 
+export async function assertEngagementAssignment (pool, workspace, engagementId, clerkUserId, options = {}) {
+  if (options.grantIfMissing) {
+    await grantEngagementAssignment(pool, workspace, engagementId, clerkUserId, options)
+    return
+  }
+  await requireEngagementAssignment(pool, workspace, engagementId, clerkUserId)
+}
+
 export async function assertWorkingPaperAssignment (pool, workspace, leadSheetId, clerkUserId, options = {}) {
   const { rows: leadRows } = await pool.query(
     `SELECT ls.id, ls.engagement_id
@@ -1693,15 +1707,7 @@ export async function assertWorkingPaperAssignment (pool, workspace, leadSheetId
     error.code = 'WORKING_PAPER_NOT_FOUND'
     throw error
   }
-  await assertEngagementAssignment(pool, workspace, leadSheet.engagement_id, clerkUserId, options)
-  await pool.query(
-    `INSERT INTO taxgpt.working_paper_employee_assignments
-     (organization_id, workspace_id, engagement_id, lead_sheet_id, clerk_user_id, assignment_role, status, assigned_by, created_at, updated_at)
-     VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, 'member', 'active', $6, now(), now())
-     ON CONFLICT (lead_sheet_id, clerk_user_id)
-     DO UPDATE SET status = 'active', updated_at = now()`,
-    [workspace.organization_id, workspace.id, leadSheet.engagement_id, leadSheet.id, clerkUserId, options.assignedBy || clerkUserId]
-  )
+  await requireEngagementAssignment(pool, workspace, leadSheet.engagement_id, clerkUserId)
 }
 
 export async function getOrganizationAdminSnapshot (pool, actorUserId, workspaceId) {
@@ -1756,7 +1762,8 @@ export async function upsertEngagementEmployeeAssignment (pool, actorUserId, eng
   const workspace = await getWorkspaceContext(pool, actorUserId, payload.workspaceId || null)
   const assignmentRole = normalizeEngagementAssignmentRole(payload.assignmentRole || 'member')
   await ensureWorkspaceEmployeeAssignment(pool, workspace, clerkUserId, actorUserId)
-  await assertEngagementAssignment(pool, workspace, engagementId, clerkUserId, {
+  await requireEngagementAssignment(pool, workspace, engagementId, actorUserId)
+  await grantEngagementAssignment(pool, workspace, engagementId, clerkUserId, {
     assignedBy: actorUserId,
     assignmentRole
   })
@@ -1787,6 +1794,7 @@ export async function listEngagementEmployeeAssignments (pool, actorUserId, enga
     clerkUserId: actorUserId,
     permission: 'engagement.read'
   })
+  await requireEngagementAssignment(pool, workspace, engagementId, actorUserId)
 
   const { rows } = await pool.query(
     `SELECT engagement_id, clerk_user_id, assignment_role, status, assigned_by, created_at, updated_at
@@ -1855,6 +1863,7 @@ export async function replaceEngagementEmployeeAssignments (pool, actorUserId, e
   if (String(engagement.workspace_id || '') !== String(workspace.id)) {
     throw new Error('Engagement not found in active workspace')
   }
+  await requireEngagementAssignment(pool, workspace, engagementId, actorUserId)
 
   const assignments = parseEngagementAssignmentsPayload(payload)
   if (assignments.length === 0) {

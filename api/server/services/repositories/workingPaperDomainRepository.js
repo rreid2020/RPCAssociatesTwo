@@ -6,16 +6,19 @@ export async function fetchEngagementForAccess(pool, engagementId, clerkUserId) 
   const { rows } = await pool.query(
     `SELECT e.*
      FROM taxgpt.accounting_engagements e
-     LEFT JOIN taxgpt.accounting_workspace_members wm
-       ON wm.workspace_id = e.workspace_id
-      AND wm.clerk_user_id = $2
-      AND wm.status = 'active'
+     LEFT JOIN taxgpt.accounting_workspace_members wm_actor
+       ON wm_actor.workspace_id = e.workspace_id
+      AND wm_actor.clerk_user_id = $2
+      AND wm_actor.status = 'active'
      LEFT JOIN taxgpt.engagement_employee_assignments eea
        ON eea.engagement_id = e.id
       AND eea.clerk_user_id = $2
       AND eea.status = 'active'
      WHERE e.id = $1::uuid
-       AND (e.clerk_user_id = $2 OR wm.id IS NOT NULL OR eea.id IS NOT NULL)
+       AND (
+         wm_actor.role IN ('owner', 'admin')
+         OR eea.id IS NOT NULL
+       )
      LIMIT 1`,
     [engagementId, clerkUserId]
   )
@@ -27,16 +30,19 @@ export async function fetchLeadSheetForAccess(pool, leadSheetId, clerkUserId) {
     `SELECT ls.*, e.organization_id, e.workspace_id
      FROM taxgpt.lead_sheets ls
      INNER JOIN taxgpt.accounting_engagements e ON e.id = ls.engagement_id
-     LEFT JOIN taxgpt.accounting_workspace_members wm
-       ON wm.workspace_id = e.workspace_id
-      AND wm.clerk_user_id = $2
-      AND wm.status = 'active'
-     LEFT JOIN taxgpt.working_paper_employee_assignments wpea
-       ON wpea.lead_sheet_id = ls.id
-      AND wpea.clerk_user_id = $2
-      AND wpea.status = 'active'
+     LEFT JOIN taxgpt.accounting_workspace_members wm_actor
+       ON wm_actor.workspace_id = e.workspace_id
+      AND wm_actor.clerk_user_id = $2
+      AND wm_actor.status = 'active'
+     LEFT JOIN taxgpt.engagement_employee_assignments eea
+       ON eea.engagement_id = e.id
+      AND eea.clerk_user_id = $2
+      AND eea.status = 'active'
      WHERE ls.id = $1::uuid
-       AND (e.clerk_user_id = $2 OR wm.id IS NOT NULL OR wpea.id IS NOT NULL)
+       AND (
+         wm_actor.role IN ('owner', 'admin')
+         OR eea.id IS NOT NULL
+       )
      LIMIT 1`,
     [leadSheetId, clerkUserId]
   )

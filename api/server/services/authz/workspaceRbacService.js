@@ -410,7 +410,7 @@ function assertWorkspaceMemberRole (role) {
 
 async function fetchWorkspaceRecord (pool, workspaceId) {
   const { rows } = await pool.query(
-    `SELECT id, organization_id, role, owner_user_id
+    `SELECT id, organization_id, owner_user_id
      FROM taxgpt.accounting_workspaces
      WHERE id = $1::uuid
      LIMIT 1`,
@@ -420,7 +420,7 @@ async function fetchWorkspaceRecord (pool, workspaceId) {
   return rows[0]
 }
 
-export async function getOrganizationRbacSnapshot (pool, workspaceId) {
+export async function getOrganizationRbacSnapshot (pool, workspaceId, actorRole = null) {
   await ensureWorkspaceRbacTables(pool)
   const workspace = await fetchWorkspaceRecord(pool, workspaceId)
   const customRoles = await listWorkspaceRoles(pool, workspace.id)
@@ -446,7 +446,7 @@ export async function getOrganizationRbacSnapshot (pool, workspaceId) {
     workspace: {
       id: workspace.id,
       organization_id: workspace.organization_id,
-      role: workspace.role
+      role: actorRole
     },
     catalog: {
       permissions: getPermissionCatalog(),
@@ -457,9 +457,10 @@ export async function getOrganizationRbacSnapshot (pool, workspaceId) {
   }
 }
 
-export async function updateMemberRbacAssignments (pool, actorUserId, workspaceId, memberUserId, payload = {}) {
+export async function updateMemberRbacAssignments (pool, actorUserId, workspaceId, memberUserId, payload = {}, actorRole = null) {
   await ensureWorkspaceRbacTables(pool)
   const workspace = await fetchWorkspaceRecord(pool, workspaceId)
+  const normalizedActorRole = String(actorRole || '').trim().toLowerCase()
   const targetUserId = String(memberUserId || '').trim()
   if (!targetUserId) throw new Error('Member user id is required')
 
@@ -474,10 +475,10 @@ export async function updateMemberRbacAssignments (pool, actorUserId, workspaceI
   if (!targetRows[0]) throw new Error('Workspace member not found')
 
   const nextRole = payload.role != null ? assertWorkspaceMemberRole(payload.role) : null
-  if (nextRole === 'owner' && workspace.role !== 'owner') {
+  if (nextRole === 'owner' && normalizedActorRole !== 'owner') {
     throw new Error('Only the workspace owner can assign the owner role')
   }
-  if (String(targetRows[0].role) === 'owner' && workspace.role !== 'owner') {
+  if (String(targetRows[0].role) === 'owner' && normalizedActorRole !== 'owner') {
     throw new Error('Only the workspace owner can change the owner role assignment')
   }
 

@@ -1214,7 +1214,7 @@ export function createPortalRouter (pool) {
     const workspace = await requireAccountWorkspace(session, 'rbac.read', res)
     if (!workspace) return
     try {
-      const snapshot = await getOrganizationRbacSnapshot(pool, workspace.id)
+      const snapshot = await getOrganizationRbacSnapshot(pool, workspace.id, workspace.role)
       res.json(snapshot)
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load organization RBAC settings' })
@@ -1275,7 +1275,8 @@ export function createPortalRouter (pool) {
         session.userId,
         workspace.id,
         req.params.memberUserId,
-        req.body || {}
+        req.body || {},
+        workspace.role
       )
       res.json({ member })
     } catch (e) {

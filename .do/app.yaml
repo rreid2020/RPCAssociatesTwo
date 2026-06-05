@@ -56,6 +56,16 @@ services:
       - key: PORT
         value: "3000"
         scope: RUN_TIME
+      # Use pooled DATABASE_URL in App Platform UI. Tune per replica count at scale.
+      - key: DATABASE_POOL_MAX
+        value: "12"
+        scope: RUN_TIME
+      - key: DATABASE_POOL_MIN
+        value: "2"
+        scope: RUN_TIME
+      - key: API_INSTANCE_COUNT
+        value: "1"
+        scope: RUN_TIME
       # Database Configuration (PostgreSQL - Digital Ocean Managed Database)
       - key: DB_HOST
         value: db-postgresql-tor1-60715-do-user-20752759-0.e.db.ondigitalocean.com

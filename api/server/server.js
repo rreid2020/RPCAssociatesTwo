@@ -6,7 +6,7 @@ import path from 'path'
 import crypto from 'crypto'
 import { existsSync } from 'fs'
 import { fileURLToPath } from 'url'
-import { createPool, getDatabaseConnectionSummary } from './db/pool.js'
+import { createPool, getDatabaseConnectionSummary, getDatabasePoolSummary } from './db/pool.js'
 import { sendEmail } from './utils/email.js'
 import { createLeadsTable, createContactsTable } from './db/migrations.js'
 import { ensurePortalSchema } from './db/ensurePortalSchema.js'
@@ -285,6 +285,16 @@ async function initializeDatabase() {
     // Test connection first
     const testResult = await pool.query('SELECT NOW()')
     console.log('Database connection successful:', testResult.rows[0])
+    const poolSummary = getDatabasePoolSummary()
+    console.log('Database pool config:', {
+      mode: poolSummary.mode,
+      maxPerInstance: poolSummary.max,
+      minPerInstance: poolSummary.min,
+      apiInstanceCount: poolSummary.instanceCount,
+      estimatedOpenConnections: poolSummary.estimatedOpenConnections,
+      usesPooler: poolSummary.usesPooler
+    })
+    console.log('Database pool guidance:', poolSummary.guidance)
     
     await createLeadsTable(pool)
     await createContactsTable(pool)

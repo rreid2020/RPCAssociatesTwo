@@ -181,6 +181,9 @@ const EngagementStaffingPanel: FC<EngagementStaffingPanelProps> = ({
     onGridReady: (event: { api: GridApi<StaffingGridRow> }) => {
       gridApiRef.current = event.api
     },
+    onGridPreDestroyed: () => {
+      gridApiRef.current = null
+    },
     onCellEditingStopped: (event: CellEditingStoppedEvent<StaffingGridRow>) => {
       onCellEditingStopped(event)
     },

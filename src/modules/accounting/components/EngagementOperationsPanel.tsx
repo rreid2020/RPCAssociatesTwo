@@ -1,7 +1,7 @@
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import type { CellEditingStoppedEvent, ColDef, GridApi, ICellRendererParams, RowClassParams, RowSelectedEvent } from 'ag-grid-community'
-import AgGridTable from '../../working-papers/components/grid/AgGridTable'
+import AgGridTable, { isActiveGridApi } from '../../working-papers/components/grid/AgGridTable'
 import EngagementDateCellEditor from './EngagementDateCellEditor'
 import EngagementStaffingPanel from './EngagementStaffingPanel'
 import { toEngagementDateInput } from '../utils/engagementDateInput'
@@ -244,7 +244,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
 
   const syncSelectionToGrid = useCallback((engagementId: string | null) => {
     const api = gridApiRef.current
-    if (!api) return
+    if (!isActiveGridApi(api)) return
     api.forEachNode((node) => {
       const shouldSelect = engagementId != null && String(node.data?.id) === engagementId
       node.setSelected(Boolean(shouldSelect))
@@ -263,6 +263,10 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
   useEffect(() => {
     syncSelectionToGrid(selectedEngagementId)
   }, [gridRows, selectedEngagementId, syncSelectionToGrid])
+
+  useEffect(() => () => {
+    gridApiRef.current = null
+  }, [])
 
   const addDraftRow = useCallback(() => {
     const draft = createDraftRow()
@@ -530,7 +534,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
 
   const handleEdit = useCallback((row: EngagementRecord) => {
     const api = gridApiRef.current
-    if (!api) return
+    if (!isActiveGridApi(api)) return
     const rowNode = api.getRowNode(String(row.id))
     if (!rowNode || rowNode.rowIndex == null) return
     api.startEditingCell({ rowIndex: rowNode.rowIndex, colKey: 'name' })
@@ -688,6 +692,9 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
     onGridReady: (event: { api: GridApi<EngagementRecord> }) => {
       gridApiRef.current = event.api
       syncSelectionToGrid(selectedEngagementId)
+    },
+    onGridPreDestroyed: () => {
+      gridApiRef.current = null
     },
     onRowSelected: (event: RowSelectedEvent<EngagementRecord>) => {
       handleRowSelected(event)

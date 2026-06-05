@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { AgGridReact } from 'ag-grid-react'
-import { AllCommunityModule, ModuleRegistry, type ColDef, type GridApi, type GridOptions, type GridReadyEvent } from 'ag-grid-community'
+import { AllCommunityModule, ModuleRegistry, type ColDef, type GridApi, type GridOptions, type GridPreDestroyedEvent, type GridReadyEvent } from 'ag-grid-community'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-quartz.css'
 import 'ag-grid-community/styles/agGridQuartzFont.css'
@@ -9,6 +9,11 @@ let agGridModulesRegistered = false
 if (!agGridModulesRegistered) {
   ModuleRegistry.registerModules([AllCommunityModule])
   agGridModulesRegistered = true
+}
+
+export function isActiveGridApi (api: GridApi | null | undefined): api is GridApi {
+  if (!api) return false
+  return !(typeof api.isDestroyed === 'function' && api.isDestroyed())
 }
 
 type AgGridTableProps = {
@@ -47,8 +52,9 @@ const AgGridTable = ({
   )
 
   const fitColumns = useCallback(() => {
-    if (!fitColumnsToViewport || !gridApiRef.current) return
-    gridApiRef.current.sizeColumnsToFit({ defaultMinWidth: 90 })
+    const api = gridApiRef.current
+    if (!fitColumnsToViewport || !isActiveGridApi(api)) return
+    api.sizeColumnsToFit({ defaultMinWidth: 90 })
   }, [fitColumnsToViewport])
 
   const onGridReady = useCallback((event: GridReadyEvent) => {
@@ -56,6 +62,11 @@ const AgGridTable = ({
     fitColumns()
     gridOptions?.onGridReady?.(event)
   }, [fitColumns, gridOptions])
+
+  const onGridPreDestroyed = useCallback((event: GridPreDestroyedEvent) => {
+    gridApiRef.current = null
+    gridOptions?.onGridPreDestroyed?.(event)
+  }, [gridOptions])
 
   useEffect(() => {
     if (!fitColumnsToViewport) return
@@ -71,8 +82,9 @@ const AgGridTable = ({
   const mergedGridOptions = useMemo<GridOptions<any>>(() => ({
     ...gridOptions,
     onGridReady,
+    onGridPreDestroyed,
     suppressHorizontalScroll: fitColumnsToViewport
-  }), [fitColumnsToViewport, gridOptions, onGridReady])
+  }), [fitColumnsToViewport, gridOptions, onGridPreDestroyed, onGridReady])
 
   return (
     <div className="ag-theme-quartz w-full min-w-0 overflow-hidden" style={{ height }}>

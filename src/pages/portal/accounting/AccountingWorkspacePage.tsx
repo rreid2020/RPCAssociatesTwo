@@ -39,6 +39,7 @@ import PageLoadingSkeleton from '../../../shared/loading/PageLoadingSkeleton'
 const LazyEngagementOperationsPanel = lazy(() => import('../../../modules/accounting/components/EngagementOperationsPanel'))
 const LazyWorkingPapersWorkspacePanel = lazy(() => import('../../../modules/working-papers/components/WorkingPapersWorkspacePanel'))
 const LazyTrialBalanceGridPanel = lazy(() => import('../../../modules/working-papers/components/TrialBalanceGridPanel'))
+const LazyTrialBalanceImportPanel = lazy(() => import('../../../modules/working-papers/components/TrialBalanceImportPanel'))
 const LazyAgGridTable = lazy(() => import('../../../modules/working-papers/components/grid/AgGridTable'))
 const LazyWorkingPaperTreePanel = lazy(() => import('../../../modules/working-papers/components/WorkingPaperTreePanel'))
 const LazyWorkflowQueuePanel = lazy(() => import('../../../modules/working-papers/components/WorkflowQueuePanel'))
@@ -191,39 +192,6 @@ const reviewFlowTransitions: Record<string, string[]> = {
   approved: ['review_notes_open']
 }
 
-type TrialBalancePreview = {
-  columns: string[]
-  detectedMapping: Record<string, string>
-  previewRows: Array<{
-    sourceRowNumber: number
-    accountNumber: string | null
-    accountName: string
-    accountType: string
-    currentPeriodBalance: number
-    priorPeriodBalance: number | null
-    varianceAmount: number
-    variancePercent: number | null
-    varianceLabel: string | null
-    isMaterial: boolean
-    isUnusual: boolean
-  }>
-  summary: { totalRows: number; previewRows: number; warningCount: number }
-  warnings: Array<{ type: string; message: string }>
-}
-
-function fileToBase64 (file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = String(reader.result || '')
-      const [, base64 = ''] = result.split(',')
-      resolve(base64)
-    }
-    reader.onerror = () => reject(new Error('Could not read file'))
-    reader.readAsDataURL(file)
-  })
-}
-
 function parseDeliverablesText (value: string): string[] {
   return Array.from(
     new Set(
@@ -249,6 +217,17 @@ function isCompanyProfileView (view: AccountingView): boolean {
 
 function isListCentricView (view: AccountingView): boolean {
   return view === 'engagementList' || view === 'newEngagement' || view === 'workingPapersWorkspace'
+}
+
+function isEngagementSubview (view: AccountingView): boolean {
+  return view === 'engagementDashboard'
+    || view === 'trialBalance'
+    || view === 'leadSheets'
+    || view === 'leadSheetDetail'
+    || view === 'documents'
+    || view === 'review'
+    || view === 'adjustments'
+    || view === 'settings'
 }
 
 const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => {
@@ -335,11 +314,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   })
   const [trialBalanceAccounts, setTrialBalanceAccounts] = useState<any[]>([])
   const [engagementSnapshots, setEngagementSnapshots] = useState<any[]>([])
-  const [trialBalancePreview, setTrialBalancePreview] = useState<TrialBalancePreview | null>(null)
-  const [importFile, setImportFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const resetWorkingPapersSelection = useWorkingPapersUiStore((state) => state.resetSelection)
-  const [importPayload, setImportPayload] = useState<{ fileName: string; base64Content: string } | null>(null)
 
   const loadClients = useCallback(async () => {
     const { clients } = await fetchAccountingClientsDomain(getToken)
@@ -1064,72 +1040,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       setNotice('Tickmark added')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not add tickmark')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const onPreviewImport = async () => {
-    if (!engagementId) {
-      setError('Select an engagement before previewing trial balance import.')
-      return
-    }
-    if (!importFile) {
-      setError('Choose a file first to preview trial balance import.')
-      return
-    }
-    setSaving(true)
-    setError(null)
-    try {
-      const base64Content = await fileToBase64(importFile)
-      setImportPayload({ fileName: importFile.name, base64Content })
-      const preview = await portalFetch<TrialBalancePreview>(
-        `/v1/accounting/engagements/${engagementId}/trial-balance/preview`,
-        getToken,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            fileName: importFile.name,
-            base64Content
-          })
-        }
-      )
-      setTrialBalancePreview(preview)
-      setNotice('Preview generated. Review warnings before import.')
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not preview import')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const onImportTrialBalance = async () => {
-    if (!engagementId) {
-      setError('Select an engagement before importing trial balance.')
-      return
-    }
-    if (!importPayload) {
-      setError('Generate an import preview first, then import the trial balance.')
-      return
-    }
-    setSaving(true)
-    setError(null)
-    try {
-      await portalFetch(`/v1/accounting/engagements/${engagementId}/trial-balance/import`, getToken, {
-        method: 'POST',
-        body: JSON.stringify({
-          fileName: importPayload.fileName,
-          base64Content: importPayload.base64Content
-        })
-      })
-      setNotice('Trial balance imported')
-      setTrialBalancePreview(null)
-      setImportPayload(null)
-      setImportFile(null)
-      await loadTrialBalance()
-      await loadEngagementDashboard()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not import trial balance')
     } finally {
       setSaving(false)
     }
@@ -2036,33 +1946,22 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             <p className="font-semibold text-primary-dark">{trialBalanceTotals.varianceTotal.toFixed(2)}</p>
                           </div>
                         </div>
-                        <div className="rounded-lg border border-border p-4 space-y-3">
-                          <h3 className="font-semibold text-primary-dark">Import Trial Balance (CSV/XLSX)</h3>
-                          <input
-                            type="file"
-                            accept=".csv,.xlsx"
-                            onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-                          />
-                          <div className="flex gap-2">
-                            <button type="button" className="btn btn--primary text-sm py-2 px-4" disabled={!importFile || saving} onClick={() => { void onPreviewImport() }}>
-                              Preview Import
-                            </button>
-                            <button type="button" className="btn btn--primary text-sm py-2 px-4" disabled={!trialBalancePreview || saving} onClick={() => { void onImportTrialBalance() }}>
-                              Import Trial Balance
-                            </button>
-                            <button type="button" className="btn btn--primary text-sm py-2 px-4" disabled={saving} onClick={() => { void onGenerateLeadSheets() }}>
-                              Generate Lead Sheets
-                            </button>
-                          </div>
-                        </div>
-                        {trialBalancePreview && (
-                          <div className="rounded-lg border border-border p-4 space-y-2">
-                            <p className="text-sm text-text">Rows: {trialBalancePreview.summary.totalRows}</p>
-                            <p className="text-sm text-text">Warnings: {trialBalancePreview.summary.warningCount}</p>
-                            {trialBalancePreview.warnings.slice(0, 8).map((warning, idx) => (
-                              <p key={`${warning.type}-${idx}`} className="text-xs text-text-light">{warning.message}</p>
-                            ))}
-                          </div>
+                        {engagementId && (
+                          <Suspense fallback={<AccountingPanelFallback />}>
+                            <LazyTrialBalanceImportPanel
+                              engagementId={engagementId}
+                              getToken={getToken}
+                              saving={saving}
+                              onSavingChange={setSaving}
+                              onError={setError}
+                              onNotice={setNotice}
+                              onImported={async () => {
+                                await loadTrialBalance()
+                                await loadEngagementDashboard()
+                              }}
+                              onGenerateLeadSheets={onGenerateLeadSheets}
+                            />
+                          </Suspense>
                         )}
                         {trialBalanceAccounts.length === 0 ? (
                           <p className="text-sm text-text-light">No trial balance accounts imported yet.</p>
@@ -2496,7 +2395,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                 )}
               </div>
 
-              {!isCompanyProfileView(view) && view !== 'workingPapersWorkspace' && view !== 'engagementList' && (
+              {!isCompanyProfileView(view) && view !== 'workingPapersWorkspace' && view !== 'engagementList' && !isEngagementSubview(view) && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                   {quickLinks.map((item) => (
                     <Link

@@ -4,14 +4,26 @@ import { calculateVarianceMetrics, logAccountingAudit } from './workingPapersSer
 const MAX_PREVIEW_ROWS = 50
 
 const COLUMN_ALIASES = {
-  accountNumber: ['account number', 'acct number', 'account no', 'account #', 'gl code'],
-  accountName: ['account', 'account name', 'name', 'description'],
-  accountType: ['account type', 'type', 'category'],
-  currentBalance: ['current balance', 'current period', 'current', 'net balance', 'ending balance', 'balance'],
-  priorBalance: ['prior balance', 'prior period', 'prior', 'previous balance', 'comparative balance'],
-  debit: ['debit', 'debits'],
-  credit: ['credit', 'credits'],
-  normalBalance: ['normal balance', 'normal']
+  accountNumber: [
+    'account number', 'acct number', 'account no', 'account #', 'gl code', 'gl account number',
+    'account code', 'acct no', 'acct #', 'gl account', 'ledger account number', 'code'
+  ],
+  accountName: [
+    'account', 'account name', 'name', 'description', 'account description', 'acct name',
+    'gl account name', 'ledger account', 'title', 'account title', 'line description'
+  ],
+  accountType: ['account type', 'type', 'category', 'class', 'account class', 'fs line'],
+  currentBalance: [
+    'current balance', 'current period', 'current', 'net balance', 'ending balance', 'balance',
+    'amount', 'current amount', 'ending', 'closing balance', 'net', 'balance current', 'cy balance'
+  ],
+  priorBalance: [
+    'prior balance', 'prior period', 'prior', 'previous balance', 'comparative balance',
+    'py balance', 'prior amount', 'opening comparative', 'last year', 'ly balance'
+  ],
+  debit: ['debit', 'debits', 'dr', 'debit amount'],
+  credit: ['credit', 'credits', 'cr', 'credit amount'],
+  normalBalance: ['normal balance', 'normal', 'balance type']
 }
 
 function normalizeHeader (value) {
@@ -91,7 +103,12 @@ function buildSuggestedMapping (columns) {
   const normalized = columns.map((col) => ({ original: col, normalized: normalizeHeader(col) }))
   const mapping = {}
   for (const [target, aliases] of Object.entries(COLUMN_ALIASES)) {
-    const match = normalized.find((col) => aliases.includes(col.normalized))
+    let match = normalized.find((col) => aliases.includes(col.normalized))
+    if (!match) {
+      match = normalized.find((col) => aliases.some((alias) => (
+        col.normalized.includes(alias) || alias.includes(col.normalized)
+      )))
+    }
     if (match) mapping[target] = match.original
   }
   return mapping
@@ -174,22 +191,43 @@ export function parseTrialBalanceFile ({ fileName, base64Content }) {
   return { fileType: 'xlsx', ...parseXlsxBuffer(buffer) }
 }
 
+function mappingWarnings (inferredMapping) {
+  const warnings = []
+  if (!inferredMapping.accountName) {
+    warnings.push({ type: 'missing_mapping', message: 'Map the Account name column before preview.' })
+  }
+  if (!inferredMapping.currentBalance && !(inferredMapping.debit && inferredMapping.credit)) {
+    warnings.push({ type: 'missing_mapping', message: 'Map Current balance or both Debit and Credit columns.' })
+  }
+  return warnings
+}
+
 export function previewTrialBalanceImport ({ rows, columns, mapping, materialityAmount, thresholdPercent }) {
   const inferredMapping = {
     ...buildSuggestedMapping(columns),
     ...(mapping || {})
   }
-  if (!inferredMapping.accountName) {
-    throw new Error('Could not detect Account Name column. Please map it manually.')
-  }
-  if (!inferredMapping.currentBalance && !(inferredMapping.debit && inferredMapping.credit)) {
-    throw new Error('Provide Current Balance or both Debit and Credit columns.')
+  const mappingIssues = mappingWarnings(inferredMapping)
+  if (mappingIssues.length) {
+    return {
+      columns,
+      detectedMapping: inferredMapping,
+      needsMapping: true,
+      previewRows: [],
+      summary: {
+        totalRows: rows.length,
+        previewRows: 0,
+        warningCount: mappingIssues.length
+      },
+      warnings: mappingIssues
+    }
   }
 
   const { parsedRows, warnings } = validateRows(rows, inferredMapping, materialityAmount, thresholdPercent)
   return {
     columns,
     detectedMapping: inferredMapping,
+    needsMapping: false,
     previewRows: parsedRows.slice(0, MAX_PREVIEW_ROWS),
     summary: {
       totalRows: parsedRows.length,

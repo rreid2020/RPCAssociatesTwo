@@ -1664,7 +1664,19 @@ const STATEMENTS = [
   'CREATE INDEX IF NOT EXISTS workspace_dataset_import_templates_workspace_idx ON taxgpt.workspace_dataset_import_templates(workspace_id) WHERE deleted_at IS NULL'
 ]
 
-export async function ensurePortalSchema (pool) {
+// Update when adding new tables in ensurePortalSchema so bootstrap re-runs once per release.
+const SCHEMA_MARKER_TABLE = 'workspace_dataset_import_templates'
+
+let portalSchemaEnsurePromise = null
+
+async function isPortalSchemaCurrent (pool) {
+  const { rows } = await pool.query(
+    `SELECT to_regclass('taxgpt.${SCHEMA_MARKER_TABLE}') IS NOT NULL AS ok`
+  )
+  return Boolean(rows[0]?.ok)
+}
+
+async function runPortalSchemaBootstrap (pool) {
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
@@ -1693,4 +1705,19 @@ export async function ensurePortalSchema (pool) {
     throw new Error('ensurePortalSchema: taxgpt.portal_folders was not created')
   }
   console.log('Portal schema tables ensured (taxgpt.*, verified portal_client_files, portal_folders)')
+}
+
+export async function ensurePortalSchema (pool) {
+  if (!portalSchemaEnsurePromise) {
+    portalSchemaEnsurePromise = (async () => {
+      if (await isPortalSchemaCurrent(pool)) {
+        return
+      }
+      await runPortalSchemaBootstrap(pool)
+    })().catch((error) => {
+      portalSchemaEnsurePromise = null
+      throw error
+    })
+  }
+  return portalSchemaEnsurePromise
 }

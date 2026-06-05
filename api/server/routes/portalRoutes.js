@@ -97,6 +97,7 @@ import {
   listTemplates
 } from '../services/engagementExecution/templateCatalogService.js'
 import { isDeadlockError, withDeadlockRetry } from '../utils/deadlockRetry.js'
+import { databaseErrorStatus } from '../utils/dbErrors.js'
 import {
   addWorkspaceMember,
   assertEngagementAssignment,
@@ -1832,7 +1833,7 @@ export function createPortalRouter (pool) {
       if (!execution) return res.status(404).json({ error: 'Engagement not found' })
       res.json({ execution })
     } catch (e) {
-      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load execution' })
+      res.status(databaseErrorStatus(e)).json({ error: e instanceof Error ? e.message : 'Could not load execution' })
     }
   })
 
@@ -1852,7 +1853,7 @@ export function createPortalRouter (pool) {
       if (!dashboard) return res.status(404).json({ error: 'Engagement not found' })
       res.json({ dashboard })
     } catch (e) {
-      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not load execution dashboard' })
+      res.status(databaseErrorStatus(e)).json({ error: e instanceof Error ? e.message : 'Could not load execution dashboard' })
     }
   })
 

@@ -389,12 +389,19 @@ app.get('*', (req, res, next) => {
   }
 })
 
-// Start server
-app.listen(PORT, async () => {
-  console.log(`Server running on port ${PORT}`)
-  console.log(`Serving API at /api`)
-  console.log(`Serving frontend from ${distPath}`)
+// Start server only after schema bootstrap so requests do not race DDL migrations.
+async function startServer () {
   await initializeDatabase()
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`)
+    console.log(`Serving API at /api`)
+    console.log(`Serving frontend from ${distPath}`)
+  })
+}
+
+startServer().catch((error) => {
+  console.error('Failed to start server:', error)
+  process.exit(1)
 })
 
 export default app

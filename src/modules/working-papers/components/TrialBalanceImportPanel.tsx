@@ -423,7 +423,7 @@ const TrialBalanceImportPanel: FC<TrialBalanceImportPanelProps> = ({
                 <label key={field.key} className="text-sm space-y-1">
                   <span className={`text-text-light ${isMissing ? 'text-amber-800' : ''}`}>
                     {field.label}
-                    {isRequired && field.group !== 'optional' ? ' *' : ''}
+                    {isRequired ? ' *' : ''}
                   </span>
                   <select
                     className={`w-full border rounded-md px-2 py-1.5 ${isMissing ? 'border-amber-400' : 'border-border'}`}

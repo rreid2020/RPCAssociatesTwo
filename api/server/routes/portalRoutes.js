@@ -2528,9 +2528,14 @@ export function createPortalRouter (pool) {
     if (!session) return
     const scope = await resolveEngagementScope(req, res, session)
     if (!scope) return
-    const leadSheets = await generateLeadSheets(pool, scope.workspaceUserId, scope.actorUserId, req.params.engagementId)
-    if (!leadSheets) return res.status(404).json({ error: 'Engagement not found' })
-    res.json({ leadSheets })
+    if (!(await requireScopePermission(session, scope, 'working_papers.manage', res))) return
+    try {
+      const result = await generateLeadSheets(pool, scope.actorUserId, scope.actorUserId, req.params.engagementId)
+      if (!result) return res.status(404).json({ error: 'Engagement not found' })
+      res.json(result)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not generate lead sheets' })
+    }
   })
 
   r.get('/v1/accounting/engagements/:engagementId/lead-sheets', async (req, res) => {

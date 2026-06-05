@@ -148,8 +148,16 @@ const WorkingPapersWorkspacePanel: FC<WorkingPapersWorkspacePanelProps> = ({
     setSaving(true)
     onError(null)
     try {
-      await portalFetch(`/v1/accounting/engagements/${activeEngagementId}/lead-sheets/generate`, getToken, { method: 'POST' })
-      onNotice('Lead sheets generated.')
+      const result = await portalFetch<{
+        summary?: { leadSheetCount?: number; accountCount?: number }
+      }>(`/v1/accounting/engagements/${activeEngagementId}/lead-sheets/generate`, getToken, { method: 'POST' })
+      const leadSheetCount = result.summary?.leadSheetCount ?? 0
+      const accountCount = result.summary?.accountCount ?? 0
+      onNotice(
+        leadSheetCount > 0
+          ? `Generated ${leadSheetCount} lead sheet${leadSheetCount === 1 ? '' : 's'} from ${accountCount} account${accountCount === 1 ? '' : 's'}.`
+          : 'No lead sheets were generated.'
+      )
       await loadEngagementDetail(activeEngagementId)
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Could not generate lead sheets')

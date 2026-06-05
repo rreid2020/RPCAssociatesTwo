@@ -940,8 +940,17 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setSaving(true)
     setError(null)
     try {
-      await portalFetch(`/v1/accounting/engagements/${engagementId}/lead-sheets/generate`, getToken, { method: 'POST' })
-      setNotice('Lead sheets generated')
+      const result = await portalFetch<{
+        leadSheets?: unknown[]
+        summary?: { leadSheetCount?: number; accountCount?: number; skippedSummaryRows?: number }
+      }>(`/v1/accounting/engagements/${engagementId}/lead-sheets/generate`, getToken, { method: 'POST' })
+      const leadSheetCount = result.summary?.leadSheetCount ?? result.leadSheets?.length ?? 0
+      const accountCount = result.summary?.accountCount ?? 0
+      setNotice(
+        leadSheetCount > 0
+          ? `Generated ${leadSheetCount} lead sheet${leadSheetCount === 1 ? '' : 's'} from ${accountCount} account${accountCount === 1 ? '' : 's'}. Open the Lead Sheets tab to review.`
+          : 'No lead sheets were generated.'
+      )
       await loadLeadSheets()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not generate lead sheets')

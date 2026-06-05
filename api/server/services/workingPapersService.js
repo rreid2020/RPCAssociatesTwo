@@ -66,6 +66,8 @@ const PROVIDER_TO_SOURCE = {
   manual: 'manual'
 }
 
+const LEAD_SHEET_SECTION_CODES = new Set(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'Z'])
+
 const LEAD_SHEET_SECTIONS = [
   { code: 'A', name: 'Cash', area: 'cash' },
   { code: 'B', name: 'Accounts Receivable', area: 'accounts_receivable' },
@@ -82,6 +84,65 @@ const LEAD_SHEET_SECTIONS = [
   { code: 'M', name: 'Taxes', area: 'taxes' },
   { code: 'Z', name: 'Other', area: 'other' }
 ]
+
+const LEAD_SHEET_NAME_PATTERNS = [
+  [/\b(cash|bank|petty)\b/i, 'A'],
+  [/\b(receivable|a\/r|ar)\b/i, 'B'],
+  [/\b(inventory|stock)\b/i, 'C'],
+  [/\b(prepaid)\b/i, 'D'],
+  [/\b(fixed asset|equipment|property|building|depreciation|furniture|vehicle)\b/i, 'E'],
+  [/\b(payable|a\/p|ap)\b/i, 'F'],
+  [/\b(accr|wage payable|payroll payable)\b/i, 'G'],
+  [/\b(loan|debt|note payable|mortgage|line of credit)\b/i, 'H'],
+  [/\b(equity|retained|capital|shareholder|common stock|draw)\b/i, 'I'],
+  [/\b(revenue|sales|income)\b/i, 'J'],
+  [/\b(cost of|cos|cogs)\b/i, 'K'],
+  [/\b(expense|rent|utilities|salary|insurance|professional fees)\b/i, 'L'],
+  [/\b(tax)\b/i, 'M']
+]
+
+export function isSummaryTrialBalanceRow (account = {}) {
+  const name = String(account.account_name || '').trim().toLowerCase()
+  if (!name) return false
+  return /^total\b/.test(name) || name.startsWith('net ') || name === 'grand total' || name === 'subtotal'
+}
+
+export function normalizeLeadSheetSectionCode (value) {
+  const normalized = String(value || 'Z').trim().toUpperCase()
+  return LEAD_SHEET_SECTION_CODES.has(normalized) ? normalized : 'Z'
+}
+
+export function inferLeadSheetSectionFromAccount (account = {}) {
+  const accountType = String(account.account_type || '').trim().toLowerCase()
+  if (accountType.includes('cash') || accountType.includes('bank')) return 'A'
+  if (accountType.includes('receivable')) return 'B'
+  if (accountType.includes('inventory')) return 'C'
+  if (accountType.includes('prepaid')) return 'D'
+  if (accountType.includes('fixed') || accountType.includes('asset')) return 'E'
+  if (accountType.includes('payable')) return 'F'
+  if (accountType.includes('accru')) return 'G'
+  if (accountType.includes('debt') || accountType.includes('loan')) return 'H'
+  if (accountType.includes('equity')) return 'I'
+  if (accountType.includes('revenue') || accountType.includes('income')) return 'J'
+  if (accountType.includes('cost')) return 'K'
+  if (accountType.includes('expense')) return 'L'
+  if (accountType.includes('tax')) return 'M'
+
+  const accountName = String(account.account_name || '')
+  for (const [pattern, code] of LEAD_SHEET_NAME_PATTERNS) {
+    if (pattern.test(accountName)) return code
+  }
+  return 'Z'
+}
+
+export function resolveLeadSheetSectionForAccount (account, groupsById) {
+  const mappedGroup = account.mapped_group_id ? groupsById.get(account.mapped_group_id) : null
+  return normalizeLeadSheetSectionCode(
+    account.lead_sheet_section
+      || mappedGroup?.default_lead_sheet_section
+      || inferLeadSheetSectionFromAccount(account)
+  )
+}
 
 function assertAllowed (value, allowed, field) {
   if (!allowed.has(value)) throw new Error(`Invalid ${field}`)
@@ -965,30 +1026,26 @@ export async function calculateTrialBalanceVariances (pool, clerkUserId, actorId
 }
 
 export async function generateLeadSheets (pool, clerkUserId, actorId, engagementId) {
-  const { rows: engagementRows } = await pool.query(
-    'SELECT id FROM taxgpt.accounting_engagements WHERE id = $1::uuid AND clerk_user_id = $2',
-    [engagementId, clerkUserId]
-  )
-  if (!engagementRows[0]) return null
+  const engagement = await fetchEngagementForAccess(pool, engagementId, clerkUserId)
+  if (!engagement) return null
+
+  await ensureStandardMappingGroups(pool, clerkUserId)
 
   const { rows: groups } = await pool.query(
     'SELECT * FROM taxgpt.account_mapping_groups WHERE clerk_user_id = $1 ORDER BY sort_order ASC',
     [clerkUserId]
   )
-  const groupsById = new Map(groups.map((g) => [g.id, g]))
+  const groupsById = new Map(groups.map((group) => [group.id, group]))
 
-  const { rows: accounts } = await pool.query(
-    `SELECT tba.*
-     FROM taxgpt.trial_balance_accounts tba
-     INNER JOIN taxgpt.trial_balances tb ON tb.id = tba.trial_balance_id
-     WHERE tb.engagement_id = $1::uuid`,
-    [engagementId]
-  )
+  const accounts = await listTrialBalanceAccountsForEngagement(pool, engagementId)
+  const workingAccounts = accounts.filter((account) => !isSummaryTrialBalanceRow(account))
+  if (!workingAccounts.length) {
+    throw new Error('Import trial balance accounts before generating lead sheets.')
+  }
 
   const grouped = new Map()
-  for (const account of accounts) {
-    const group = account.mapped_group_id ? groupsById.get(account.mapped_group_id) : null
-    const sectionCode = group?.default_lead_sheet_section || 'Z'
+  for (const account of workingAccounts) {
+    const sectionCode = resolveLeadSheetSectionForAccount(account, groupsById)
     if (!grouped.has(sectionCode)) grouped.set(sectionCode, [])
     grouped.get(sectionCode).push(account)
   }
@@ -1010,23 +1067,24 @@ export async function generateLeadSheets (pool, clerkUserId, actorId, engagement
     await pool.query('DELETE FROM taxgpt.lead_sheet_accounts WHERE lead_sheet_id = $1::uuid', [leadSheet.id])
     await pool.query('DELETE FROM taxgpt.working_paper_rows WHERE lead_sheet_id = $1::uuid', [leadSheet.id])
     for (let i = 0; i < rowsForSection.length; i++) {
+      const account = rowsForSection[i]
       await pool.query(
         `INSERT INTO taxgpt.lead_sheet_accounts
          (lead_sheet_id, trial_balance_account_id, sort_order, created_at, updated_at)
          VALUES ($1::uuid, $2::uuid, $3, now(), now())`,
-        [leadSheet.id, rowsForSection[i].id, i]
+        [leadSheet.id, account.id, i]
       )
       await pool.query(
         `INSERT INTO taxgpt.working_paper_rows
          (organization_id, workspace_id, engagement_id, lead_sheet_id, trial_balance_account_id, row_label, sort_order, created_at, updated_at)
          VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid, $6, $7, now(), now())`,
         [
-          rowsForSection[i].organization_id || null,
-          rowsForSection[i].workspace_id || null,
+          engagement.organization_id || null,
+          engagement.workspace_id || null,
           engagementId,
           leadSheet.id,
-          rowsForSection[i].id,
-          rowsForSection[i].account_name || rowsForSection[i].account_number || 'Working paper row',
+          account.id,
+          account.account_name || account.account_number || 'Working paper row',
           i
         ]
       )
@@ -1034,8 +1092,22 @@ export async function generateLeadSheets (pool, clerkUserId, actorId, engagement
     createdOrUpdated.push(leadSheet)
   }
 
-  await logAccountingAudit(pool, clerkUserId, actorId, 'engagement', engagementId, 'lead_sheets_generated', null, { count: createdOrUpdated.length })
-  return createdOrUpdated
+  if (!createdOrUpdated.length) {
+    throw new Error('No lead sheets could be generated from the imported trial balance accounts.')
+  }
+
+  await logAccountingAudit(pool, clerkUserId, actorId, 'engagement', engagementId, 'lead_sheets_generated', null, {
+    count: createdOrUpdated.length,
+    accountCount: workingAccounts.length
+  })
+  return {
+    leadSheets: createdOrUpdated,
+    summary: {
+      leadSheetCount: createdOrUpdated.length,
+      accountCount: workingAccounts.length,
+      skippedSummaryRows: accounts.length - workingAccounts.length
+    }
+  }
 }
 
 export async function listLeadSheets (pool, clerkUserId, engagementId) {

@@ -288,7 +288,6 @@ async function initializeDatabase() {
     
     await createLeadsTable(pool)
     await createContactsTable(pool)
-    await ensurePortalSchema(pool)
     console.log('Database tables initialized successfully')
   } catch (error) {
     console.error('Error initializing database:', error)
@@ -389,9 +388,13 @@ app.get('*', (req, res, next) => {
   }
 })
 
-// Start server only after schema bootstrap so requests do not race DDL migrations.
 async function startServer () {
   await initializeDatabase()
+  void ensurePortalSchema(pool)
+    .then(() => console.log('Portal schema bootstrap complete'))
+    .catch((error) => {
+      console.error('Portal schema bootstrap failed:', error)
+    })
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
     console.log(`Serving API at /api`)

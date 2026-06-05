@@ -98,6 +98,7 @@ import {
 } from '../services/engagementExecution/templateCatalogService.js'
 import { isDeadlockError, withDeadlockRetry } from '../utils/deadlockRetry.js'
 import { databaseErrorStatus } from '../utils/dbErrors.js'
+import { ensurePortalSchema } from '../db/ensurePortalSchema.js'
 import {
   addWorkspaceMember,
   assertEngagementAssignment,
@@ -267,6 +268,16 @@ export async function ensureUserHomeFolder (pool, userId) {
 
 export function createPortalRouter (pool) {
   const r = Router()
+  r.use(async (req, res, next) => {
+    try {
+      await ensurePortalSchema(pool)
+      next()
+    } catch (error) {
+      res.status(databaseErrorStatus(error)).json({
+        error: error instanceof Error ? error.message : 'Database is not ready'
+      })
+    }
+  })
   const handleAssignmentError = (res, error, fallbackMessage) => {
     const code = error?.code || ''
     if (String(code).startsWith('ASSIGNMENT_DENIED')) {
@@ -1828,7 +1839,8 @@ export function createPortalRouter (pool) {
         pool,
         scope.actorUserId,
         req.params.engagementId,
-        scope.workspace.id
+        scope.workspace.id,
+        { workspace: scope.workspace }
       )
       if (!execution) return res.status(404).json({ error: 'Engagement not found' })
       res.json({ execution })

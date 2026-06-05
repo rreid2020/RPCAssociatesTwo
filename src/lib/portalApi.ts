@@ -59,11 +59,20 @@ export async function portalFetch<T> (
     const text = await res.text()
     if (!res.ok) {
       let err = res.statusText
+      if (res.status === 504) {
+        err = 'The server took too long to respond. Please retry in a moment.'
+      } else if (res.status === 503) {
+        err = 'The server is temporarily unavailable. Please retry in a moment.'
+      }
       try {
         const j = parseJsonBody<{ error?: string }>(text, false)
         if (j.error) err = j.error
       } catch (e) {
-        if (e instanceof Error && e.message === htmlInsteadOfJsonHint) err = e.message
+        if (e instanceof Error && e.message === htmlInsteadOfJsonHint) {
+          err = res.status === 504 || res.status === 503
+            ? err
+            : e.message
+        }
       }
       throw new Error(err)
     }
@@ -78,7 +87,9 @@ export async function portalFetch<T> (
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     const shouldRetryTransient = isDeadlockMessage(message) ||
-      message.toLowerCase().includes('temporary database conflict')
+      message.toLowerCase().includes('temporary database conflict') ||
+      message.toLowerCase().includes('took too long to respond') ||
+      message.toLowerCase().includes('temporarily unavailable')
     if (shouldRetryTransient) {
       await new Promise((resolve) => setTimeout(resolve, 120))
       return await request()

@@ -9,7 +9,10 @@ import {
   listEngagementProcedures,
   listEngagementSections
 } from './engagementExecutionRepository.js'
-import { suggestExecutionPhase, deriveExecutionCompletion } from './executionPhaseDerivationService.js'
+import {
+  suggestExecutionPhaseFromContext,
+  deriveExecutionCompletionFromStats
+} from './executionPhaseDerivationService.js'
 import { listEngagementChecklistBundle } from './checklistService.js'
 import { listEngagementProcedureBundle } from './procedureService.js'
 
@@ -29,8 +32,8 @@ export async function getEngagementExecutionSnapshot (pool, actorUserId, engagem
     countOpenReviewNotes(pool, engagementId)
   ])
 
-  const completionPct = await deriveExecutionCompletion(pool, engagementId)
-  const suggestedPhase = await suggestExecutionPhase(pool, engagement)
+  const completionPct = deriveExecutionCompletionFromStats(stats)
+  const suggestedPhase = suggestExecutionPhaseFromContext(engagement, stats, openReviewNotes)
 
   return {
     engagement: {

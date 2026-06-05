@@ -1677,20 +1677,9 @@ async function isPortalSchemaCurrent (pool) {
 }
 
 async function runPortalSchemaBootstrap (pool) {
-  const client = await pool.connect()
-  try {
-    await client.query('BEGIN')
-    for (const sql of STATEMENTS) {
-      await client.query(sql)
-    }
-    await client.query('COMMIT')
-  } catch (e) {
-    try {
-      await client.query('ROLLBACK')
-    } catch { /* ignore */ }
-    throw e
-  } finally {
-    client.release()
+  // Run DDL statements individually (no wrapping transaction) to avoid long-lived locks.
+  for (const sql of STATEMENTS) {
+    await pool.query(sql)
   }
   const filesOk = await pool.query(
     `SELECT to_regclass('taxgpt.portal_client_files') IS NOT NULL AS ok`

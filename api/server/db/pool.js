@@ -33,7 +33,7 @@ function getConnectionConfig () {
           sslmode: 'require'
         }
       : false,
-    max: Math.max(1, Math.min(50, Number(process.env.DATABASE_POOL_MAX) || 8)),
+    max: Math.max(1, Math.min(50, Number(process.env.DATABASE_POOL_MAX) || 10)),
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 30000,
     keepAlive: true,

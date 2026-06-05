@@ -3,8 +3,7 @@ import {
   countOpenReviewNotes
 } from './engagementExecutionRepository.js'
 
-export async function deriveExecutionCompletion (pool, engagementId) {
-  const stats = await countExecutionStats(pool, engagementId)
+export function deriveExecutionCompletionFromStats (stats = {}) {
   const checklistTotal = Number(stats.checklist_total || 0)
   const checklistDone = Number(stats.checklist_done || 0)
   const procedureTotal = Number(stats.procedure_total || 0)
@@ -15,14 +14,18 @@ export async function deriveExecutionCompletion (pool, engagementId) {
   return Math.round((doneUnits / totalUnits) * 10000) / 100
 }
 
-export async function suggestExecutionPhase (pool, engagement) {
+export async function deriveExecutionCompletion (pool, engagementId) {
+  const stats = await countExecutionStats(pool, engagementId)
+  return deriveExecutionCompletionFromStats(stats)
+}
+
+export function suggestExecutionPhaseFromContext (engagement, stats = {}, openReviewNotes = 0) {
   if (!engagement) return 'planning'
   if (engagement.execution_locked_at) return 'locked'
   const current = String(engagement.execution_phase || 'planning').toLowerCase()
   if (current === 'locked' || current === 'completed') return current
 
-  const stats = await countExecutionStats(pool, engagement.id)
-  const openNotes = await countOpenReviewNotes(pool, engagement.id)
+  const openNotes = Number(openReviewNotes || 0)
   const procedureTotal = Number(stats.procedure_total || 0)
   const procedureInProgress = Number(stats.procedure_in_progress || 0)
   const procedureApproved = Number(stats.procedure_approved || 0)
@@ -38,4 +41,10 @@ export async function suggestExecutionPhase (pool, engagement) {
     return 'partner_review'
   }
   return current
+}
+
+export async function suggestExecutionPhase (pool, engagement) {
+  const stats = await countExecutionStats(pool, engagement.id)
+  const openNotes = await countOpenReviewNotes(pool, engagement.id)
+  return suggestExecutionPhaseFromContext(engagement, stats, openNotes)
 }

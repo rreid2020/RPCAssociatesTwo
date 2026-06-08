@@ -1863,22 +1863,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               Only organization owners and admins can invite or manage employees.
                             </p>
                           )}
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              className={`btn text-sm py-2 px-4 ${employeeProvisionMode === 'invite' ? 'btn--primary' : 'btn--secondary'}`}
-                              onClick={() => { setEmployeeProvisionMode('invite') }}
-                            >
-                              Email invite
-                            </button>
-                            <button
-                              type="button"
-                              className={`btn text-sm py-2 px-4 ${employeeProvisionMode === 'manual' ? 'btn--primary' : 'btn--secondary'}`}
-                              onClick={() => { setEmployeeProvisionMode('manual') }}
-                            >
-                              Create account
-                            </button>
-                          </div>
                           <div className="flex flex-wrap items-center gap-2">
                             <input
                               className="border border-border rounded-md px-3 py-2 text-sm min-w-52"
@@ -1931,6 +1915,23 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             >
                               {employeeProvisionMode === 'manual' ? 'Create and activate' : 'Send invite'}
                             </button>
+                            {employeeProvisionMode === 'invite' ? (
+                              <button
+                                type="button"
+                                className="text-sm text-primary underline-offset-2 hover:underline"
+                                onClick={() => { setEmployeeProvisionMode('manual') }}
+                              >
+                                Create account manually
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="text-sm text-primary underline-offset-2 hover:underline"
+                                onClick={() => { setEmployeeProvisionMode('invite') }}
+                              >
+                                Invite by email instead
+                              </button>
+                            )}
                           </div>
                           {employeeProvisionMode === 'manual' && (
                             <p className="text-xs text-text-light">

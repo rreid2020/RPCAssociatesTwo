@@ -39,7 +39,6 @@ import { usePermission } from '../../../platform/permissions/usePermission'
 
 const LazyEngagementOperationsPanel = lazy(() => import('../../../modules/accounting/components/EngagementOperationsPanel'))
 const LazyRolesAndPermissionsPanel = lazy(() => import('../../../modules/accounting/components/RolesAndPermissionsPanel'))
-const LazyWorkingPapersWorkspacePanel = lazy(() => import('../../../modules/working-papers/components/WorkingPapersWorkspacePanel'))
 const LazyTrialBalanceGridPanel = lazy(() => import('../../../modules/working-papers/components/TrialBalanceGridPanel'))
 const LazyTrialBalanceImportPanel = lazy(() => import('../../../modules/working-papers/components/TrialBalanceImportPanel'))
 const LazyAgGridTable = lazy(() => import('../../../modules/working-papers/components/grid/AgGridTable'))
@@ -64,7 +63,6 @@ type AccountingView =
   | 'companyProfileEmployees'
   | 'companyProfileRoles'
   | 'engagementList'
-  | 'workingPapersWorkspace'
   | 'newEngagement'
   | 'engagementDashboard'
   | 'trialBalance'
@@ -88,7 +86,6 @@ const titleByView: Record<AccountingView, string> = {
   companyProfileEmployees: 'Invite Employees',
   companyProfileRoles: 'Roles & Permissions',
   engagementList: 'Engagements',
-  workingPapersWorkspace: 'Working Papers',
   newEngagement: 'New Engagement',
   engagementDashboard: 'Engagement Dashboard',
   trialBalance: 'Trial Balance',
@@ -109,7 +106,6 @@ const descriptionByView: Record<AccountingView, string> = {
   companyProfileEmployees: 'Invite employees and manage your organization roster before engagement assignments.',
   companyProfileRoles: 'Review built-in roles, create custom roles, and manage employee access for your organization.',
   engagementList: 'Create, update, and delete engagements with entity or client assignment and employee staffing.',
-  workingPapersWorkspace: 'Select an engagement and open trial balance, lead sheets, review, adjustments, and related working paper workflows.',
   newEngagement: 'Create a new accounting engagement.',
   engagementDashboard: 'View completion status, notes, tasks, and signoff readiness.',
   trialBalance: 'Import and map trial balance data.',
@@ -133,7 +129,6 @@ function formatEmployeeRoleLabel (member: { workspace_role?: string | null; role
 const quickLinks = [
   { to: '/portal/accounting/company-profile', label: 'Business/Firm Profile' },
   { to: '/portal/accounting/working-papers/engagements', label: 'Engagements' },
-  { to: '/portal/accounting/working-papers/workspace', label: 'Working Papers' },
   { to: '/portal/accounting/working-papers/engagements/new', label: 'Create Engagement' },
   { to: '/portal/accounting/integrations', label: 'Integrations' },
 ]
@@ -224,7 +219,7 @@ function isCompanyProfileView (view: AccountingView): boolean {
 }
 
 function isListCentricView (view: AccountingView): boolean {
-  return view === 'engagementList' || view === 'newEngagement' || view === 'workingPapersWorkspace'
+  return view === 'engagementList' || view === 'newEngagement'
 }
 
 function isEngagementSubview (view: AccountingView): boolean {
@@ -692,7 +687,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const canViewRbac = usePermission('rbac.read')
   const canAccessCompanyProfile = canManageWorkspace || canInviteEmployees || canViewRbac
   const canAccessEngagements = usePermission('engagement.read')
-  const canAccessWorkingPapers = usePermission('working_papers.read')
   const canAccessIntegrations = usePermission('integrations.manage')
   const clientLabel = resolveClientRecordLabel(profileBusinessType, activeWorkspace?.workspace_type)
   const clientLabelPlural = resolveClientRecordLabelPlural(profileBusinessType, activeWorkspace?.workspace_type)
@@ -1517,8 +1511,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                 ? '/portal/accounting/company-profile/roles-and-permissions'
               : view === 'joinWorkspaceInvite'
                 ? '/portal/accounting/join'
-              : view === 'workingPapersWorkspace'
-                ? '/portal/accounting/working-papers/workspace'
             : view === 'integrations'
               ? '/portal/accounting/integrations'
               : '/portal/accounting/working-papers/engagements'
@@ -1586,15 +1578,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             <p className="text-sm text-text-light mb-3">Plan and monitor client work, then assign engagement roles per engagement.</p>
                             <Link className="btn btn--primary text-sm py-2 px-4 inline-block" to="/portal/accounting/working-papers/engagements">
                               Open Engagements
-                            </Link>
-                          </div>
-                        )}
-                        {canAccessWorkingPapers && (
-                          <div className="rounded-lg border border-border p-4">
-                            <h3 className="font-semibold text-primary-dark mb-1">Working Papers</h3>
-                            <p className="text-sm text-text-light mb-3">Engagements, trial balances, lead sheets, review notes, signoffs.</p>
-                            <Link className="btn btn--primary text-sm py-2 px-4 inline-block" to="/portal/accounting/working-papers/workspace">
-                              Open Working Papers
                             </Link>
                           </div>
                         )}
@@ -2066,19 +2049,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         onError={setError}
                         onNotice={setNotice}
                         onSavingChange={setSaving}
-                      />
-                      </Suspense>
-                    )}
-
-                    {view === 'workingPapersWorkspace' && (
-                      <Suspense fallback={<AccountingPanelFallback />}>
-                      <LazyWorkingPapersWorkspacePanel
-                        getToken={getToken}
-                        clientLabel={clientLabel}
-                        engagements={engagements}
-                        listLoading={listLoading}
-                        onError={setError}
-                        onNotice={setNotice}
                       />
                       </Suspense>
                     )}
@@ -2648,7 +2618,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                 )}
               </div>
 
-              {!isCompanyProfileView(view) && view !== 'workingPapersWorkspace' && view !== 'engagementList' && !isEngagementSubview(view) && (
+              {!isCompanyProfileView(view) && view !== 'engagementList' && !isEngagementSubview(view) && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                   {quickLinks.map((item) => (
                     <Link

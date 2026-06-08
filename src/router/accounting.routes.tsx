@@ -21,7 +21,6 @@ type AccountingPageView =
   | 'companyProfileRoles'
   | 'joinWorkspaceInvite'
   | 'engagementList'
-  | 'workingPapersWorkspace'
   | 'newEngagement'
   | 'engagementDashboard'
   | 'trialBalance'
@@ -139,7 +138,14 @@ export function getAccountingRoutes () {
       />
       {accountingViewRoute('/portal/accounting/join', 'joinWorkspaceInvite')}
       {accountingViewRoute('/portal/accounting/working-papers/engagements', 'engagementList', 'workingPapers', 'engagement.read')}
-      {accountingViewRoute('/portal/accounting/working-papers/workspace', 'workingPapersWorkspace', 'workingPapers', 'working_papers.read')}
+      <Route
+        path="/portal/accounting/working-papers/workspace"
+        element={
+          <ProtectedRoute>
+            <Navigate to="/portal/accounting/working-papers/engagements" replace />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/portal/accounting/working-papers/engagements/new"
         element={

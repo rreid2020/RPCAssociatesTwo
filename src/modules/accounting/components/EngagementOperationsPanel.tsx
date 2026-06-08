@@ -633,7 +633,7 @@ const EngagementOperationsPanel: FC<EngagementOperationsPanelProps> = ({
       editable: false,
       sortable: true,
       filter: 'agNumberColumnFilter',
-      valueGetter: (params) => engagementStaffCount((params.data || {}) as EngagementRecord),
+      valueGetter: (params) => engagementStaffCount((params.data || {}) as EngagementRecord, memberRoleByUserId),
       valueFormatter: (params) => String(params.value ?? 0)
     },
     {

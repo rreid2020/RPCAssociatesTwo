@@ -1,4 +1,7 @@
+import { randomBytes } from 'crypto'
 import { createClerkClient } from '@clerk/backend'
+
+export const MUST_CHANGE_PASSWORD_METADATA_KEY = 'must_change_password'
 
 let cachedClient = null
 
@@ -99,4 +102,72 @@ export async function getClerkOrganizationMembership ({ organizationId, userId }
   })
   const items = membershipList?.data || membershipList || []
   return items[0] || null
+}
+
+export function generateTemporaryPassword () {
+  return `Ax-${randomBytes(12).toString('base64url')}!`
+}
+
+function buildMustChangePasswordMetadata (mustChangePassword, existingMetadata = {}) {
+  const metadata = { ...existingMetadata }
+  if (mustChangePassword) {
+    metadata[MUST_CHANGE_PASSWORD_METADATA_KEY] = true
+  } else {
+    delete metadata[MUST_CHANGE_PASSWORD_METADATA_KEY]
+  }
+  return metadata
+}
+
+export async function createClerkUserWithPassword ({
+  emailAddress,
+  password,
+  firstName = null,
+  lastName = null,
+  mustChangePassword = true
+}) {
+  const client = getClerkBackendClient()
+  return await client.users.createUser({
+    emailAddress: [emailAddress],
+    password,
+    firstName: firstName || undefined,
+    lastName: lastName || undefined,
+    skipPasswordChecks: true,
+    publicMetadata: buildMustChangePasswordMetadata(mustChangePassword)
+  })
+}
+
+export async function updateClerkUserPassword (userId, password, { mustChangePassword = true } = {}) {
+  const client = getClerkBackendClient()
+  const user = await client.users.getUser(userId)
+  return await client.users.updateUser(userId, {
+    password,
+    skipPasswordChecks: true,
+    publicMetadata: buildMustChangePasswordMetadata(mustChangePassword, user.publicMetadata || {})
+  })
+}
+
+export async function ensureClerkOrganizationMembership ({
+  organizationId,
+  userId,
+  role = 'org:member'
+}) {
+  const existing = await getClerkOrganizationMembership({ organizationId, userId })
+  if (existing) return existing
+  const client = getClerkBackendClient()
+  if (!client.organizations?.createOrganizationMembership) {
+    throw new Error('Clerk organization membership API is not available in this server runtime')
+  }
+  return await client.organizations.createOrganizationMembership({
+    organizationId,
+    userId,
+    role
+  })
+}
+
+export async function clearMustChangePasswordFlag (userId) {
+  const client = getClerkBackendClient()
+  const user = await client.users.getUser(userId)
+  return await client.users.updateUser(userId, {
+    publicMetadata: buildMustChangePasswordMetadata(false, user.publicMetadata || {})
+  })
 }

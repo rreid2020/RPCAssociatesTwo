@@ -1,11 +1,16 @@
 import { randomBytes } from 'crypto'
 import {
+  clearMustChangePasswordFlag,
   createClerkEmailInvite,
+  createClerkUserWithPassword,
+  ensureClerkOrganizationMembership,
   formatClerkError,
+  generateTemporaryPassword,
   getClerkBackendClient,
   createClerkOrganization,
   createClerkOrganizationInvitation,
-  resolveClerkUserIdByEmail
+  resolveClerkUserIdByEmail,
+  updateClerkUserPassword
 } from './clerkAdminService.js'
 import {
   hasUnrestrictedEngagementAccess,
@@ -1171,6 +1176,179 @@ export async function createOrganizationEmployeeInvite (pool, actorUserId, works
   }
 }
 
+function assertProvisionableOrganizationRole (role) {
+  const normalized = assertWorkspaceMemberRole(role)
+  if (normalized === 'owner') {
+    throw new Error('Organization owners cannot be provisioned through employee account creation')
+  }
+  return normalized
+}
+
+function assertTemporaryPassword (password) {
+  const normalized = String(password || '').trim()
+  if (normalized.length < 12) {
+    throw new Error('Temporary password must be at least 12 characters')
+  }
+  return normalized
+}
+
+function mapOrganizationRoleToClerkOrgRole (memberRole) {
+  return memberRole === 'admin' ? 'org:admin' : 'org:member'
+}
+
+export async function createOrganizationEmployeeAccount (pool, actorUserId, workspaceId, payload = {}) {
+  const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
+  await assertWorkspacePermissionWithCustomRoles(pool, {
+    workspaceId: workspace.id,
+    workspaceRole: workspace.role,
+    clerkUserId: actorUserId,
+    permission: 'workspace.invite'
+  })
+  const entitlements = await getWorkspaceEntitlementSnapshot(pool, workspace.id)
+  if (!entitlements.can_invite_users) {
+    throw new Error('Current workspace plan does not allow inviting users')
+  }
+  const activeUsers = await getWorkspaceActiveUserCount(pool, workspace.id)
+  if (activeUsers >= Number(entitlements.max_users || 0)) {
+    throw new Error('Workspace user limit reached for current plan')
+  }
+
+  const inviteEmail = normalizeInviteEmail(payload?.email)
+  const memberRole = assertProvisionableOrganizationRole(payload?.role || 'employee')
+  const firstName = String(payload?.firstName || '').trim() || null
+  const lastName = String(payload?.lastName || '').trim() || null
+  const temporaryPassword = payload?.temporaryPassword
+    ? assertTemporaryPassword(payload.temporaryPassword)
+    : generateTemporaryPassword()
+  const linkedWorkspace = await safeEnsureWorkspaceClerkOrganization(pool, workspace, actorUserId)
+  const workspaceRole = mapOrganizationInviteRoleToWorkspaceRole(memberRole)
+  const placeholderId = `invite:${inviteEmail}`
+  let clerkUserId = await resolveClerkUserIdByEmail(inviteEmail)
+
+  const placeholderMember = await fetchOrganizationMemberRecord(pool, linkedWorkspace.organization_id, placeholderId)
+  const existingUserMember = clerkUserId
+    ? await fetchOrganizationMemberRecord(pool, linkedWorkspace.organization_id, clerkUserId)
+    : null
+
+  if (existingUserMember?.status === 'active') {
+    throw new Error('This employee is already active. Deactivate them first or use role update instead of creating a new account.')
+  }
+
+  if (!clerkUserId) {
+    const createdUser = await createClerkUserWithPassword({
+      emailAddress: inviteEmail,
+      password: temporaryPassword,
+      firstName,
+      lastName,
+      mustChangePassword: true
+    })
+    clerkUserId = createdUser.id
+  } else {
+    await updateClerkUserPassword(clerkUserId, temporaryPassword, { mustChangePassword: true })
+    const client = getClerkBackendClient()
+    await client.users.updateUser(clerkUserId, {
+      firstName: firstName || undefined,
+      lastName: lastName || undefined
+    })
+  }
+
+  if (placeholderMember) {
+    await deleteOrganizationMemberByUserId(pool, linkedWorkspace.organization_id, placeholderId)
+  }
+
+  const membership = await finalizeOrganizationEmployeeMembership(pool, {
+    organizationId: linkedWorkspace.organization_id,
+    workspaceId: linkedWorkspace.id,
+    clerkUserId,
+    inviteEmail,
+    workspaceRole,
+    invitedBy: actorUserId
+  })
+  await revokePendingWorkspaceInvitesForEmail(pool, linkedWorkspace.id, inviteEmail)
+
+  if (linkedWorkspace.clerk_org_id) {
+    await ensureClerkOrganizationMembership({
+      organizationId: linkedWorkspace.clerk_org_id,
+      userId: clerkUserId,
+      role: mapOrganizationRoleToClerkOrgRole(memberRole)
+    })
+  }
+
+  await invalidateOrganizationMemberRbacCache(pool, linkedWorkspace.organization_id, clerkUserId)
+  await writeWorkspaceAuditEvent(pool, linkedWorkspace.id, actorUserId, 'organization.employee_account_created', 'organization_member', clerkUserId, null, {
+    email: inviteEmail,
+    role: memberRole,
+    reactivated: Boolean(existingUserMember || placeholderMember)
+  })
+
+  return {
+    organizationId: linkedWorkspace.organization_id,
+    workspaceId: linkedWorkspace.id,
+    clerkUserId,
+    email: inviteEmail,
+    role: memberRole,
+    workspaceRole,
+    status: membership?.status || 'active',
+    firstName,
+    lastName,
+    temporaryPassword,
+    mustChangePassword: true,
+    reactivated: Boolean(existingUserMember || placeholderMember)
+  }
+}
+
+export async function completePasswordChangeForUser (clerkUserId) {
+  if (!clerkUserId) throw new Error('Authenticated user is required')
+  await clearMustChangePasswordFlag(clerkUserId)
+  return { mustChangePassword: false }
+}
+
+export async function resetOrganizationEmployeePassword (pool, actorUserId, workspaceId, memberUserId, payload = {}) {
+  const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
+  await assertWorkspacePermissionWithCustomRoles(pool, {
+    workspaceId: workspace.id,
+    workspaceRole: workspace.role,
+    clerkUserId: actorUserId,
+    permission: 'workspace.invite'
+  })
+  const normalizedMemberUserId = String(memberUserId || '').trim()
+  if (!normalizedMemberUserId) throw new Error('Member user id is required')
+  if (normalizedMemberUserId.startsWith('invite:')) {
+    throw new Error('This employee has not joined the portal yet. Create an account or wait for invite acceptance.')
+  }
+  if (normalizedMemberUserId === String(actorUserId)) {
+    throw new Error('You cannot reset your own password from the employee roster')
+  }
+  if (String(workspace.owner_user_id || '') === normalizedMemberUserId) {
+    throw new Error('The workspace owner password cannot be reset from the employee roster')
+  }
+
+  const orgMember = await fetchOrganizationMemberRecord(pool, workspace.organization_id, normalizedMemberUserId)
+  if (!orgMember) throw new Error('Organization member not found')
+
+  const temporaryPassword = payload?.temporaryPassword
+    ? assertTemporaryPassword(payload.temporaryPassword)
+    : generateTemporaryPassword()
+
+  await updateClerkUserPassword(normalizedMemberUserId, temporaryPassword, { mustChangePassword: true })
+
+  const client = getClerkBackendClient()
+  const user = await client.users.getUser(normalizedMemberUserId)
+  const email = extractPrimaryEmailFromClerkUser(user) || normalizedMemberUserId
+
+  await invalidateOrganizationMemberRbacCache(pool, workspace.organization_id, normalizedMemberUserId)
+  await writeWorkspaceAuditEvent(pool, workspace.id, actorUserId, 'organization.employee_password_reset', 'organization_member', normalizedMemberUserId, null, {
+    email
+  })
+
+  return {
+    clerkUserId: normalizedMemberUserId,
+    email,
+    temporaryPassword,
+    mustChangePassword: true
+  }
+}
+
 export async function updateOrganizationMember (pool, actorUserId, workspaceId, memberUserId, payload = {}) {
   const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
   if (!canManageWorkspace(workspace)) {
@@ -1320,7 +1498,15 @@ export async function acceptPendingWorkspaceInvites (pool, actorUserId, actorEma
          WHERE id = $2::uuid`,
         [actorUserId, invite.id]
       )
-      const workspace = await getWorkspaceContext(pool, actorUserId, invite.workspace_id)
+      const { rows: workspaceRows } = await client.query(
+        `SELECT *
+         FROM taxgpt.accounting_workspaces
+         WHERE id = $1::uuid
+         LIMIT 1`,
+        [invite.workspace_id]
+      )
+      const workspace = workspaceRows[0]
+      if (!workspace) throw new Error('Workspace not found')
       await ensureOrganizationMember(
         client,
         workspace.organization_id,
@@ -1378,8 +1564,7 @@ export async function acceptPendingOrganizationEmployeeInvites (pool, actorUserI
       `SELECT id, name
        FROM taxgpt.accounting_workspaces
        WHERE organization_id = $1::uuid
-         AND is_personal = false
-       ORDER BY created_at ASC`,
+       ORDER BY is_personal ASC, created_at ASC`,
       [pending.organization_id]
     )
     for (const workspace of workspaces) {
@@ -1412,7 +1597,6 @@ export async function acceptPendingOrganizationEmployeeInvites (pool, actorUserI
       `SELECT w.id, w.name
        FROM taxgpt.accounting_workspaces w
        WHERE w.organization_id = $1::uuid
-         AND w.is_personal = false
          AND NOT EXISTS (
            SELECT 1
            FROM taxgpt.accounting_workspace_members wm
@@ -1420,7 +1604,7 @@ export async function acceptPendingOrganizationEmployeeInvites (pool, actorUserI
              AND wm.clerk_user_id = $2
              AND wm.status = 'active'
          )
-       ORDER BY w.created_at ASC`,
+       ORDER BY w.is_personal ASC, w.created_at ASC`,
       [membership.organization_id, actorUserId]
     )
     for (const workspace of workspaces) {

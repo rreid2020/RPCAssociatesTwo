@@ -303,6 +303,14 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [workspaceProfile, setWorkspaceProfile] = useState<any | null>(null)
   const [newInviteEmail, setNewInviteEmail] = useState('')
   const [newInviteRole, setNewInviteRole] = useState('employee')
+  const [employeeProvisionMode, setEmployeeProvisionMode] = useState<'invite' | 'manual'>('invite')
+  const [newEmployeeFirstName, setNewEmployeeFirstName] = useState('')
+  const [newEmployeeLastName, setNewEmployeeLastName] = useState('')
+  const [newEmployeePassword, setNewEmployeePassword] = useState('')
+  const [provisionedEmployeeCredentials, setProvisionedEmployeeCredentials] = useState<{
+    email: string
+    temporaryPassword: string
+  } | null>(null)
   const [companyProfileForm, setCompanyProfileForm] = useState({
     businessType: 'corporation',
     companyLegalName: '',
@@ -1168,6 +1176,64 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     }
   }
 
+  const onCreateEmployeeAccount = async () => {
+    if (!account) {
+      setError('Account is still loading. Try again in a moment.')
+      return
+    }
+    const employeeEmail = newInviteEmail.trim().toLowerCase()
+    if (!employeeEmail) {
+      setError('Employee email is required to create an account.')
+      return
+    }
+    if (newEmployeePassword.trim() && newEmployeePassword.trim().length < 12) {
+      setError('Temporary password must be at least 12 characters when provided.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      const response = await portalFetch<{
+        employee: {
+          email: string
+          temporaryPassword: string
+          reactivated?: boolean
+        }
+      }>(
+        '/v1/accounting/organization/employees',
+        getToken,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            email: employeeEmail,
+            role: newInviteRole,
+            firstName: newEmployeeFirstName.trim() || null,
+            lastName: newEmployeeLastName.trim() || null,
+            temporaryPassword: newEmployeePassword.trim() || null
+          })
+        }
+      )
+      setProvisionedEmployeeCredentials({
+        email: response.employee.email,
+        temporaryPassword: response.employee.temporaryPassword
+      })
+      setNewInviteEmail('')
+      setNewEmployeeFirstName('')
+      setNewEmployeeLastName('')
+      setNewEmployeePassword('')
+      await loadOrganizationSnapshot()
+      setNotice(
+        response.employee.reactivated
+          ? 'Employee account was reactivated with a new temporary password.'
+          : 'Employee account created and activated. Share the temporary password securely.'
+      )
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not create employee account')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const onCreateWorkspaceInvite = async () => {
     if (!account) {
       setError('Account is still loading. Try again in a moment.')
@@ -1261,6 +1327,35 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       setNotice('Employee updated.')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not update employee')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onResetEmployeePassword = async (memberUserId: string, memberEmail: string) => {
+    if (!account) return
+    if (String(memberUserId).startsWith('invite:')) {
+      setError('This employee has not joined the portal yet. Create an account instead.')
+      return
+    }
+    if (!window.confirm('Issue a new temporary password for this employee? They must change it at next sign-in.')) return
+    setSaving(true)
+    setError(null)
+    try {
+      const response = await portalFetch<{
+        employee: { email: string; temporaryPassword: string }
+      }>(
+        `/v1/accounting/organization/members/${encodeURIComponent(memberUserId)}/reset-password`,
+        getToken,
+        { method: 'POST', body: JSON.stringify({}) }
+      )
+      setProvisionedEmployeeCredentials({
+        email: response.employee.email || memberEmail,
+        temporaryPassword: response.employee.temporaryPassword
+      })
+      setNotice('Temporary password reset. Share it securely with the employee.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not reset employee password')
     } finally {
       setSaving(false)
     }
@@ -1759,23 +1854,60 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                     {view === 'companyProfileEmployees' && (
                       <div className="space-y-4">
                         <div className="rounded-lg border border-border p-5 sm:p-6 space-y-4 bg-white">
-                          <h4 className="font-semibold text-primary-dark">Employee invite</h4>
+                          <h4 className="font-semibold text-primary-dark">Add employee</h4>
                           <p className="text-sm text-text-light">
-                            Invite employees to your organization and manage roster status before engagement assignments.
-                            Employee name and email are taken from their sign-in account after they accept the invite.
+                            Invite by email or manually create an active portal account with a temporary password the employee must change at first sign-in.
                           </p>
                           {!canManageWorkspaceMembers && (
                             <p className="text-xs text-text-light">
                               Only organization owners and admins can invite or manage employees.
                             </p>
                           )}
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              className={`btn text-sm py-2 px-4 ${employeeProvisionMode === 'invite' ? 'btn--primary' : 'btn--secondary'}`}
+                              onClick={() => { setEmployeeProvisionMode('invite') }}
+                            >
+                              Email invite
+                            </button>
+                            <button
+                              type="button"
+                              className={`btn text-sm py-2 px-4 ${employeeProvisionMode === 'manual' ? 'btn--primary' : 'btn--secondary'}`}
+                              onClick={() => { setEmployeeProvisionMode('manual') }}
+                            >
+                              Create account
+                            </button>
+                          </div>
                           <div className="flex flex-wrap items-center gap-2">
                             <input
-                              className="border border-border rounded-md px-3 py-2 text-sm min-w-64"
+                              className="border border-border rounded-md px-3 py-2 text-sm min-w-52"
                               placeholder="Employee email"
                               value={newInviteEmail}
                               onChange={(e) => setNewInviteEmail(e.target.value)}
                             />
+                            {employeeProvisionMode === 'manual' && (
+                              <>
+                                <input
+                                  className="border border-border rounded-md px-3 py-2 text-sm min-w-40"
+                                  placeholder="First name (optional)"
+                                  value={newEmployeeFirstName}
+                                  onChange={(e) => setNewEmployeeFirstName(e.target.value)}
+                                />
+                                <input
+                                  className="border border-border rounded-md px-3 py-2 text-sm min-w-40"
+                                  placeholder="Last name (optional)"
+                                  value={newEmployeeLastName}
+                                  onChange={(e) => setNewEmployeeLastName(e.target.value)}
+                                />
+                                <input
+                                  className="border border-border rounded-md px-3 py-2 text-sm min-w-56"
+                                  placeholder="Temporary password (optional, 12+ chars)"
+                                  value={newEmployeePassword}
+                                  onChange={(e) => setNewEmployeePassword(e.target.value)}
+                                />
+                              </>
+                            )}
                             <select
                               className="border border-border rounded-md px-3 py-2 text-sm"
                               value={newInviteRole}
@@ -1789,11 +1921,37 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               type="button"
                               className="btn btn--primary text-sm py-2 px-4"
                               disabled={saving || !canManageWorkspaceMembers}
-                              onClick={() => { void onCreateWorkspaceInvite() }}
+                              onClick={() => {
+                                if (employeeProvisionMode === 'manual') {
+                                  void onCreateEmployeeAccount()
+                                } else {
+                                  void onCreateWorkspaceInvite()
+                                }
+                              }}
                             >
-                              Send Invite
+                              {employeeProvisionMode === 'manual' ? 'Create and activate' : 'Send invite'}
                             </button>
                           </div>
+                          {employeeProvisionMode === 'manual' && (
+                            <p className="text-xs text-text-light">
+                              If you leave the temporary password blank, the platform generates one and shows it once after creation.
+                            </p>
+                          )}
+                          {provisionedEmployeeCredentials && (
+                            <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 space-y-2">
+                              <p className="font-semibold">Temporary credentials (shown once)</p>
+                              <p>Email: <span className="font-mono">{provisionedEmployeeCredentials.email}</span></p>
+                              <p>Temporary password: <span className="font-mono break-all">{provisionedEmployeeCredentials.temporaryPassword}</span></p>
+                              <p className="text-xs">The employee must change this password at their next sign-in.</p>
+                              <button
+                                type="button"
+                                className="btn btn--secondary text-xs py-1 px-3"
+                                onClick={() => { setProvisionedEmployeeCredentials(null) }}
+                              >
+                                Dismiss
+                              </button>
+                            </div>
+                          )}
                           <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                               <thead>
@@ -1817,7 +1975,17 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                     <td className="py-2">{formatEmployeeRoleLabel(member)}</td>
                                     <td className="py-2">{member.status}</td>
                                     <td className="py-2">
-                                      <div className="flex gap-2">
+                                      <div className="flex flex-wrap gap-2">
+                                        {!String(member.clerk_user_id).startsWith('invite:') && (
+                                          <button
+                                            type="button"
+                                            className="text-xs text-primary-dark underline"
+                                            disabled={saving || !canManageWorkspaceMembers}
+                                            onClick={() => { void onResetEmployeePassword(member.clerk_user_id, member.email || '') }}
+                                          >
+                                            Reset password
+                                          </button>
+                                        )}
                                         <button
                                           type="button"
                                           className="text-xs text-primary-dark underline"

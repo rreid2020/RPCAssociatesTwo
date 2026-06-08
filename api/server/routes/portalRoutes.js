@@ -105,7 +105,10 @@ import {
   assertWorkspaceAssignment,
   acceptWorkspaceInvite,
   acceptPendingWorkspaceInvites,
+  completePasswordChangeForUser,
+  createOrganizationEmployeeAccount,
   createOrganizationEmployeeInvite,
+  resetOrganizationEmployeePassword,
   createWorkspaceInvite,
   createWorkspace,
   deleteOrganizationMember,
@@ -1187,6 +1190,49 @@ export function createPortalRouter (pool) {
       res.json({ invite })
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create employee invite' })
+    }
+  })
+
+  r.post('/v1/accounting/organization/employees', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const workspace = await requireAccountWorkspace(session, 'workspace.invite', res)
+    if (!workspace) return
+    try {
+      const employee = await createOrganizationEmployeeAccount(pool, session.userId, workspace.id, req.body || {})
+      res.json({ employee })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not create employee account' })
+    }
+  })
+
+  r.post('/v1/accounting/auth/complete-password-change', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const result = await completePasswordChangeForUser(session.userId)
+      res.json(result)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not complete password change' })
+    }
+  })
+
+  r.post('/v1/accounting/organization/members/:memberUserId/reset-password', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const workspace = await requireAccountWorkspace(session, 'workspace.invite', res)
+    if (!workspace) return
+    try {
+      const result = await resetOrganizationEmployeePassword(
+        pool,
+        session.userId,
+        workspace.id,
+        req.params.memberUserId,
+        req.body || {}
+      )
+      res.json({ employee: result })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not reset employee password' })
     }
   })
 

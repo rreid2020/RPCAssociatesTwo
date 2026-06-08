@@ -11,10 +11,19 @@ import {
   mapWorkspaceRoleToPlatformRole
 } from './rolePermissions.js'
 import { ensurePortalSchema } from '../../db/ensurePortalSchema.js'
-import { mapWorkspaceRoleToEngagementAssignmentRole } from '../engagementStaffAssignments.js'
+import { getClerkBackendClient } from '../clerkAdminService.js'
+import {
+  deactivateOrganizationMemberHierarchy,
+  deleteOrganizationMemberByUserId
+} from '../repositories/organizationRepository.js'
+import { revokePendingWorkspaceInvitesForEmail } from '../repositories/workspaceRepository.js'
+import {
+  assertWorkspaceMemberRole,
+  ensureRoleCatalogMigrations,
+  normalizeWorkspaceMemberRole
+} from './workspaceRoleCatalog.js'
 
 const ROLE_NAME_RE = /^[a-z0-9_]{2,48}$/
-const WORKSPACE_MEMBER_ROLES = new Set(['owner', 'admin', 'manager', 'reviewer', 'preparer', 'read_only', 'client'])
 
 function normalizeRoleName (value) {
   const roleName = String(value || '').trim().toLowerCase()
@@ -25,7 +34,7 @@ function normalizeRoleName (value) {
 }
 
 function normalizeMemberRole (value) {
-  return String(value || '').trim().toLowerCase()
+  return normalizeWorkspaceMemberRole(value)
 }
 
 async function resolveOrganizationIdForWorkspace (pool, workspaceId) {
@@ -80,6 +89,7 @@ export async function ensureWorkspaceRbacTables (pool) {
       if (!rows[0]?.ok) {
         await ensurePortalSchema(pool)
       }
+      await ensureRoleCatalogMigrations(pool)
     })().catch((error) => {
       workspaceRbacTablesEnsurePromise = null
       throw error
@@ -401,14 +411,6 @@ export async function assertWorkspacePermissionWithCustomRoles (pool, {
   return resolved
 }
 
-function assertWorkspaceMemberRole (role) {
-  const normalized = String(role || '').trim().toLowerCase()
-  if (!WORKSPACE_MEMBER_ROLES.has(normalized)) {
-    throw new Error('Invalid workspace member role')
-  }
-  return normalized
-}
-
 async function fetchWorkspaceRecord (pool, workspaceId) {
   const { rows } = await pool.query(
     `SELECT id, organization_id, owner_user_id
@@ -438,7 +440,7 @@ export async function getOrganizationRbacSnapshot (pool, workspaceId, actorRole 
     const customRoleNames = await getWorkspaceMemberCustomRoles(pool, workspace.id, clerkUserId)
     members.push({
       clerk_user_id: clerkUserId,
-      role: String(row.role || ''),
+      role: normalizeWorkspaceMemberRole(row.role),
       status: String(row.status || ''),
       custom_roles: customRoleNames
     })
@@ -483,7 +485,6 @@ export async function updateMemberRbacAssignments (pool, actorUserId, workspaceI
     throw new Error('Only the workspace owner can change the owner role assignment')
   }
 
-  const previousRole = String(targetRows[0].role || '')
   if (nextRole) {
     await pool.query(
       `UPDATE taxgpt.accounting_workspace_members
@@ -499,21 +500,6 @@ export async function updateMemberRbacAssignments (pool, actorUserId, workspaceI
          AND clerk_user_id = $2`,
       [workspace.organization_id, targetUserId, nextRole === 'owner' || nextRole === 'admin' ? 'admin' : 'member']
     )
-
-    const previousEngagementRole = mapWorkspaceRoleToEngagementAssignmentRole(previousRole)
-    const nextEngagementRole = mapWorkspaceRoleToEngagementAssignmentRole(nextRole)
-    if (previousEngagementRole !== nextEngagementRole) {
-      await pool.query(
-        `UPDATE taxgpt.engagement_employee_assignments
-         SET assignment_role = $4,
-             updated_at = now()
-         WHERE workspace_id = $1::uuid
-           AND clerk_user_id = $2
-           AND status = 'active'
-           AND assignment_role IN ($3, 'member')`,
-        [workspace.id, targetUserId, previousEngagementRole, nextEngagementRole]
-      )
-    }
   }
 
   if (Array.isArray(payload.customRoles)) {
@@ -529,6 +515,33 @@ export async function updateMemberRbacAssignments (pool, actorUserId, workspaceI
     }
   }
 
+  if (payload.status != null) {
+    const nextStatus = String(payload.status).trim().toLowerCase()
+    if (!['active', 'inactive'].includes(nextStatus)) {
+      throw new Error('Invalid member status')
+    }
+    if (String(targetRows[0].role) === 'owner' && nextStatus !== 'active') {
+      throw new Error('The workspace owner cannot be deactivated')
+    }
+    await pool.query(
+      `UPDATE taxgpt.accounting_workspace_members
+       SET status = $3, updated_at = now()
+       WHERE workspace_id = $1::uuid
+         AND clerk_user_id = $2`,
+      [workspace.id, targetUserId, nextStatus]
+    )
+    await pool.query(
+      `UPDATE taxgpt.accounting_organization_members
+       SET status = $3, updated_at = now()
+       WHERE organization_id = $1::uuid
+         AND clerk_user_id = $2`,
+      [workspace.organization_id, targetUserId, nextStatus]
+    )
+    if (nextStatus === 'inactive') {
+      await deactivateOrganizationMemberHierarchy(pool, workspace.organization_id, targetUserId)
+    }
+  }
+
   await invalidateOrganizationMemberRbacCache(pool, workspace.organization_id, targetUserId)
   const customRoleNames = await getWorkspaceMemberCustomRoles(pool, workspace.id, targetUserId)
   const { rows: updatedRows } = await pool.query(
@@ -541,10 +554,68 @@ export async function updateMemberRbacAssignments (pool, actorUserId, workspaceI
   )
   return {
     clerk_user_id: targetUserId,
-    role: String(updatedRows[0]?.role || nextRole || targetRows[0].role),
+    role: normalizeWorkspaceMemberRole(updatedRows[0]?.role || nextRole || targetRows[0].role),
     status: String(updatedRows[0]?.status || 'active'),
     custom_roles: customRoleNames
   }
+}
+
+function extractPrimaryEmailFromClerkUser (user = {}) {
+  const emails = Array.isArray(user.emailAddresses) ? user.emailAddresses : []
+  const primary = emails.find((entry) => entry?.id === user.primaryEmailAddressId) || emails[0]
+  return String(primary?.emailAddress || '').trim().toLowerCase() || null
+}
+
+export async function removeMemberRbacAccess (pool, actorUserId, workspaceId, memberUserId) {
+  await ensureWorkspaceRbacTables(pool)
+  const workspace = await fetchWorkspaceRecord(pool, workspaceId)
+  const targetUserId = String(memberUserId || '').trim()
+  if (!targetUserId) throw new Error('Member user id is required')
+  if (targetUserId === String(actorUserId)) {
+    throw new Error('You cannot remove yourself from the organization roster')
+  }
+  if (String(workspace.owner_user_id || '') === targetUserId) {
+    throw new Error('The workspace owner cannot be removed from the organization roster')
+  }
+
+  const isPendingInvitePlaceholder = targetUserId.startsWith('invite:')
+  const emailsToCleanup = new Set()
+  if (isPendingInvitePlaceholder) {
+    emailsToCleanup.add(targetUserId.slice('invite:'.length))
+  } else {
+    await deactivateOrganizationMemberHierarchy(pool, workspace.organization_id, targetUserId)
+    try {
+      const client = getClerkBackendClient()
+      const user = await client.users.getUser(targetUserId)
+      const primaryEmail = extractPrimaryEmailFromClerkUser(user)
+      if (primaryEmail) emailsToCleanup.add(primaryEmail)
+    } catch {
+      // Best effort invite cleanup only.
+    }
+    await pool.query(
+      `DELETE FROM taxgpt.workspace_member_roles
+       WHERE workspace_id = $1::uuid
+         AND clerk_user_id = $2`,
+      [workspace.id, targetUserId]
+    )
+    await pool.query(
+      `DELETE FROM taxgpt.accounting_workspace_members
+       WHERE workspace_id = $1::uuid
+         AND clerk_user_id = $2`,
+      [workspace.id, targetUserId]
+    )
+  }
+
+  const removed = await deleteOrganizationMemberByUserId(pool, workspace.organization_id, targetUserId)
+  if (!removed) throw new Error('Workspace member not found')
+
+  for (const email of emailsToCleanup) {
+    await deleteOrganizationMemberByUserId(pool, workspace.organization_id, `invite:${email}`)
+    await revokePendingWorkspaceInvitesForEmail(pool, workspace.id, email)
+  }
+
+  await invalidateOrganizationMemberRbacCache(pool, workspace.organization_id, targetUserId)
+  return { clerk_user_id: targetUserId, removed: true }
 }
 
 export async function assertAnyWorkspacePermissionWithCustomRoles (pool, {

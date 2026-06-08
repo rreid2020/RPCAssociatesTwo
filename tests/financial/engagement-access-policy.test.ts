@@ -8,6 +8,6 @@ describe('engagement access policy', () => {
     expect(hasUnrestrictedEngagementAccess('owner')).toBe(true)
     expect(hasUnrestrictedEngagementAccess('admin')).toBe(true)
     expect(hasUnrestrictedEngagementAccess('manager')).toBe(false)
-    expect(hasUnrestrictedEngagementAccess('preparer')).toBe(false)
+    expect(hasUnrestrictedEngagementAccess('employee')).toBe(false)
   })
 })

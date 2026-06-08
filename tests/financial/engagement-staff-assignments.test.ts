@@ -1,62 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import {
-  inheritEngagementAssignmentRole,
-  mapWorkspaceRoleToEngagementAssignmentRole,
+  normalizeEngagementAssignmentRole,
   staffAssignmentsFromEmployeeIds
 } from '../../src/modules/accounting/utils/engagementStaffAssignments'
 
-describe('engagement staff assignment role inheritance', () => {
-  it('maps workspace RBAC roles to engagement assignment roles', () => {
-    expect(mapWorkspaceRoleToEngagementAssignmentRole('preparer')).toBe('preparer')
-    expect(mapWorkspaceRoleToEngagementAssignmentRole('reviewer')).toBe('reviewer')
-    expect(mapWorkspaceRoleToEngagementAssignmentRole('manager')).toBe('manager')
-    expect(mapWorkspaceRoleToEngagementAssignmentRole('owner')).toBe('manager')
-    expect(mapWorkspaceRoleToEngagementAssignmentRole('admin')).toBe('manager')
-    expect(mapWorkspaceRoleToEngagementAssignmentRole('read_only')).toBe('member')
-    expect(mapWorkspaceRoleToEngagementAssignmentRole('client')).toBe('member')
-  })
-
-  it('inherits workspace roles when building assignments from employee ids', () => {
-    const roleByUserId = {
-      'user-preparer': 'preparer',
-      'user-owner': 'owner'
-    }
-    expect(staffAssignmentsFromEmployeeIds(['user-preparer', 'user-owner'], roleByUserId)).toEqual([
-      { clerk_user_id: 'user-preparer', assignment_role: 'preparer' },
-      { clerk_user_id: 'user-owner', assignment_role: 'manager' }
+describe('engagement staff assignments', () => {
+  it('defaults legacy employee ids to partner engagement roles', () => {
+    expect(staffAssignmentsFromEmployeeIds(['user-a', 'user-b'])).toEqual([
+      { clerk_user_id: 'user-a', assignment_role: 'partner' },
+      { clerk_user_id: 'user-b', assignment_role: 'partner' }
     ])
   })
 
-  it('upgrades generic member assignments from workspace RBAC', () => {
-    const roleByUserId = { 'user-preparer': 'preparer' }
-    expect(inheritEngagementAssignmentRole({
-      clerk_user_id: 'user-preparer',
-      assignment_role: 'member'
-    }, roleByUserId)).toEqual({
-      clerk_user_id: 'user-preparer',
-      assignment_role: 'preparer'
-    })
-  })
-
-  it('preserves explicit engagement role overrides', () => {
-    const roleByUserId = { 'user-preparer': 'preparer' }
-    expect(inheritEngagementAssignmentRole({
-      clerk_user_id: 'user-preparer',
-      assignment_role: 'reviewer'
-    }, roleByUserId)).toEqual({
-      clerk_user_id: 'user-preparer',
-      assignment_role: 'reviewer'
-    })
-  })
-
-  it('leaves member assignments unchanged when workspace role also maps to member', () => {
-    const roleByUserId = { 'user-client': 'client' }
-    expect(inheritEngagementAssignmentRole({
-      clerk_user_id: 'user-client',
-      assignment_role: 'member'
-    }, roleByUserId)).toEqual({
-      clerk_user_id: 'user-client',
-      assignment_role: 'member'
-    })
+  it('supports engagement roles preparer, reviewer, manager, and partner', () => {
+    expect(normalizeEngagementAssignmentRole('preparer')).toBe('preparer')
+    expect(normalizeEngagementAssignmentRole('reviewer')).toBe('reviewer')
+    expect(normalizeEngagementAssignmentRole('manager')).toBe('manager')
+    expect(normalizeEngagementAssignmentRole('partner')).toBe('partner')
+    expect(normalizeEngagementAssignmentRole('member')).toBe('partner')
+    expect(normalizeEngagementAssignmentRole('unknown')).toBe('partner')
   })
 })

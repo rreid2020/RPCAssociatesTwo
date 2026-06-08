@@ -573,7 +573,7 @@ const Subscription: FC = () => {
                               )
                             }}
                           >
-                            {['admin', 'manager', 'reviewer', 'preparer', 'read_only', 'client'].map((role) => (
+                            {['admin', 'manager', 'employee'].map((role) => (
                               <option key={role} value={role}>{role}</option>
                             ))}
                           </select>

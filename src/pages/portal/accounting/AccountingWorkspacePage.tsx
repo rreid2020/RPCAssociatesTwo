@@ -35,6 +35,7 @@ import { downloadBase64File, exportEngagementWorkbookDomain } from '../../../dom
 import { createEngagementSnapshotDomain, fetchEngagementSnapshotsDomain } from '../../../domains/snapshots'
 import { CompanyProfileTabs } from '../../../modules/accounting/layouts/CompanyProfileLayout'
 import PageLoadingSkeleton from '../../../shared/loading/PageLoadingSkeleton'
+import { usePermission } from '../../../platform/permissions/usePermission'
 
 const LazyEngagementOperationsPanel = lazy(() => import('../../../modules/accounting/components/EngagementOperationsPanel'))
 const LazyRolesAndPermissionsPanel = lazy(() => import('../../../modules/accounting/components/RolesAndPermissionsPanel'))
@@ -301,7 +302,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [organizationSnapshot, setOrganizationSnapshot] = useState<any | null>(null)
   const [workspaceProfile, setWorkspaceProfile] = useState<any | null>(null)
   const [newInviteEmail, setNewInviteEmail] = useState('')
-  const [newInviteRole, setNewInviteRole] = useState('preparer')
+  const [newInviteRole, setNewInviteRole] = useState('employee')
   const [companyProfileForm, setCompanyProfileForm] = useState({
     businessType: 'corporation',
     companyLegalName: '',
@@ -678,6 +679,13 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const profileBusinessType = companyProfileForm.businessType || workspaceProfile?.business_type || activeWorkspace?.profile_business_type || null
   const isAccountingFirm = isAccountingFirmOrganization(profileBusinessType, activeWorkspace?.workspace_type)
   const canManageWorkspaceMembers = activeWorkspace?.role === 'owner' || activeWorkspace?.role === 'admin'
+  const canManageWorkspace = usePermission('workspace.manage')
+  const canInviteEmployees = usePermission('workspace.invite')
+  const canViewRbac = usePermission('rbac.read')
+  const canAccessCompanyProfile = canManageWorkspace || canInviteEmployees || canViewRbac
+  const canAccessEngagements = usePermission('engagement.read')
+  const canAccessWorkingPapers = usePermission('working_papers.read')
+  const canAccessIntegrations = usePermission('integrations.manage')
   const clientLabel = resolveClientRecordLabel(profileBusinessType, activeWorkspace?.workspace_type)
   const clientLabelPlural = resolveClientRecordLabelPlural(profileBusinessType, activeWorkspace?.workspace_type)
   const entityProfileLabel = resolveEntityProfileSingularLabel(profileBusinessType, activeWorkspace?.workspace_type)
@@ -1441,34 +1449,49 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                     )}
                     {view === 'landing' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="rounded-lg border border-border p-4">
-                          <h3 className="font-semibold text-primary-dark mb-1">Business/Firm Profile</h3>
-                          <p className="text-sm text-text-light mb-3">Set up company details and invite employees before assignment workflows.</p>
-                          <Link className="btn btn--primary text-sm py-2 px-4 inline-block" to="/portal/accounting/company-profile">
-                            Open Business/Firm Profile
-                          </Link>
-                        </div>
-                        <div className="rounded-lg border border-border p-4">
-                          <h3 className="font-semibold text-primary-dark mb-1">Engagements</h3>
-                          <p className="text-sm text-text-light mb-3">Plan and monitor client work before opening detailed working papers.</p>
-                          <Link className="btn btn--primary text-sm py-2 px-4 inline-block" to="/portal/accounting/working-papers/engagements">
-                            Open Engagements
-                          </Link>
-                        </div>
-                        <div className="rounded-lg border border-border p-4">
-                          <h3 className="font-semibold text-primary-dark mb-1">Working Papers</h3>
-                          <p className="text-sm text-text-light mb-3">Engagements, trial balances, lead sheets, review notes, signoffs.</p>
-                          <Link className="btn btn--primary text-sm py-2 px-4 inline-block" to="/portal/accounting/working-papers/workspace">
-                            Open Working Papers
-                          </Link>
-                        </div>
-                        <div className="rounded-lg border border-border p-4">
-                          <h3 className="font-semibold text-primary-dark mb-1">Integrations</h3>
-                          <p className="text-sm text-text-light mb-3">QuickBooks and Google Sheets setup readiness with feature flags.</p>
-                          <Link className="btn btn--primary text-sm py-2 px-4 inline-block" to="/portal/accounting/integrations">
-                            Open Integrations
-                          </Link>
-                        </div>
+                        {canAccessCompanyProfile && (
+                          <div className="rounded-lg border border-border p-4">
+                            <h3 className="font-semibold text-primary-dark mb-1">Business/Firm Profile</h3>
+                            <p className="text-sm text-text-light mb-3">Manage organization details, employee access, and portal permissions.</p>
+                            <Link
+                              className="btn btn--primary text-sm py-2 px-4 inline-block"
+                              to={canManageWorkspace
+                                ? '/portal/accounting/company-profile'
+                                : canInviteEmployees
+                                  ? '/portal/accounting/company-profile/employees'
+                                  : '/portal/accounting/company-profile/roles-and-permissions'}
+                            >
+                              Open Business/Firm Profile
+                            </Link>
+                          </div>
+                        )}
+                        {canAccessEngagements && (
+                          <div className="rounded-lg border border-border p-4">
+                            <h3 className="font-semibold text-primary-dark mb-1">Engagements</h3>
+                            <p className="text-sm text-text-light mb-3">Plan and monitor client work, then assign engagement roles per engagement.</p>
+                            <Link className="btn btn--primary text-sm py-2 px-4 inline-block" to="/portal/accounting/working-papers/engagements">
+                              Open Engagements
+                            </Link>
+                          </div>
+                        )}
+                        {canAccessWorkingPapers && (
+                          <div className="rounded-lg border border-border p-4">
+                            <h3 className="font-semibold text-primary-dark mb-1">Working Papers</h3>
+                            <p className="text-sm text-text-light mb-3">Engagements, trial balances, lead sheets, review notes, signoffs.</p>
+                            <Link className="btn btn--primary text-sm py-2 px-4 inline-block" to="/portal/accounting/working-papers/workspace">
+                              Open Working Papers
+                            </Link>
+                          </div>
+                        )}
+                        {canAccessIntegrations && (
+                          <div className="rounded-lg border border-border p-4">
+                            <h3 className="font-semibold text-primary-dark mb-1">Integrations</h3>
+                            <p className="text-sm text-text-light mb-3">QuickBooks and Google Sheets setup readiness with feature flags.</p>
+                            <Link className="btn btn--primary text-sm py-2 px-4 inline-block" to="/portal/accounting/integrations">
+                              Open Integrations
+                            </Link>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -1758,7 +1781,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               value={newInviteRole}
                               onChange={(e) => setNewInviteRole(e.target.value)}
                             >
-                              {['admin', 'manager', 'reviewer', 'preparer', 'read_only', 'client'].map((role) => (
+                              {['admin', 'manager', 'employee'].map((role) => (
                                 <option key={role} value={role}>{role}</option>
                               ))}
                             </select>

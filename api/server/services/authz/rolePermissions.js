@@ -52,9 +52,10 @@ const WORKSPACE_ROLE_TO_PLATFORM_ROLE = {
   owner: 'firm_admin',
   admin: 'firm_admin',
   manager: 'manager',
-  reviewer: 'reviewer',
+  employee: 'staff',
   preparer: 'staff',
-  client: 'client',
+  reviewer: 'staff',
+  client: 'external_read_only',
   read_only: 'external_read_only'
 }
 
@@ -65,7 +66,10 @@ const CLERK_ORG_ROLE_TO_PLATFORM_ROLE = {
 
 export function mapWorkspaceRoleToPlatformRole (workspaceRole) {
   const normalized = String(workspaceRole || '').trim().toLowerCase()
-  return WORKSPACE_ROLE_TO_PLATFORM_ROLE[normalized] || 'external_read_only'
+  if (normalized === 'preparer' || normalized === 'reviewer' || normalized === 'read_only' || normalized === 'client' || normalized === 'member') {
+    return WORKSPACE_ROLE_TO_PLATFORM_ROLE.employee
+  }
+  return WORKSPACE_ROLE_TO_PLATFORM_ROLE[normalized] || WORKSPACE_ROLE_TO_PLATFORM_ROLE.employee
 }
 
 export function mapClerkOrganizationRoleToPlatformRole (clerkRole) {
@@ -86,10 +90,7 @@ const SYSTEM_WORKSPACE_ROLE_DEFINITIONS = [
   { role: 'owner', label: 'Owner', platformRole: 'firm_admin' },
   { role: 'admin', label: 'Admin', platformRole: 'firm_admin' },
   { role: 'manager', label: 'Manager', platformRole: 'manager' },
-  { role: 'reviewer', label: 'Reviewer', platformRole: 'reviewer' },
-  { role: 'preparer', label: 'Preparer', platformRole: 'staff' },
-  { role: 'read_only', label: 'Read only', platformRole: 'external_read_only' },
-  { role: 'client', label: 'Client', platformRole: 'client' }
+  { role: 'employee', label: 'Employee', platformRole: 'staff' }
 ]
 
 export function getPermissionCatalog () {

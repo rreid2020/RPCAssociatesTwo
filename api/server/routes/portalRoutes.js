@@ -138,6 +138,7 @@ import {
   deleteWorkspaceCustomRole,
   getOrganizationRbacSnapshot,
   listWorkspaceRoles,
+  removeMemberRbacAccess,
   updateMemberRbacAssignments,
   upsertWorkspaceCustomRole
 } from '../services/authz/workspaceRbacService.js'
@@ -1281,6 +1282,24 @@ export function createPortalRouter (pool) {
       res.json({ member })
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not update member access' })
+    }
+  })
+
+  r.delete('/v1/accounting/organization/rbac/members/:memberUserId', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const workspace = await requireAccountWorkspace(session, 'rbac.manage', res)
+    if (!workspace) return
+    try {
+      const result = await removeMemberRbacAccess(
+        pool,
+        session.userId,
+        workspace.id,
+        req.params.memberUserId
+      )
+      res.json(result)
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not remove member access' })
     }
   })
 

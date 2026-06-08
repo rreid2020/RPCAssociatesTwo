@@ -19,7 +19,6 @@ import {
 } from './authz/workspaceRbacService.js'
 import { ensurePortalSchema } from '../db/ensurePortalSchema.js'
 import {
-  mapWorkspaceRoleToEngagementAssignmentRole,
   normalizeEngagementAssignmentRole,
   parseEngagementAssignmentsPayload,
   resolveEngagementWorkflowLeadIds
@@ -46,7 +45,13 @@ import {
   upsertInvitedOrganizationMember
 } from './repositories/organizationRepository.js'
 
-const WORKSPACE_ROLES = new Set(['owner', 'admin', 'manager', 'reviewer', 'preparer', 'read_only', 'client'])
+import {
+  assertWorkspaceMemberRole,
+  normalizeWorkspaceMemberRole,
+  WORKSPACE_MEMBER_ROLES
+} from './authz/workspaceRoleCatalog.js'
+
+const WORKSPACE_ROLES = WORKSPACE_MEMBER_ROLES
 const WORKSPACE_TYPES = new Set(['business', 'firm'])
 const BUSINESS_PROFILE_TYPES = new Set([
   'accounting_firm',
@@ -66,9 +71,7 @@ const BUSINESS_PROFILE_TYPES = new Set([
 let workspaceTablesEnsurePromise = null
 
 function assertRole (role) {
-  if (!WORKSPACE_ROLES.has(role)) {
-    throw new Error('Invalid workspace role')
-  }
+  assertWorkspaceMemberRole(role)
 }
 
 function normalizeWorkspaceType (value) {
@@ -363,10 +366,9 @@ function mapWorkspaceRoleToOrganizationMemberRole (workspaceRole) {
 }
 
 function mapOrganizationInviteRoleToWorkspaceRole (organizationRole) {
-  const normalized = String(organizationRole || 'member').trim().toLowerCase()
+  const normalized = String(organizationRole || 'employee').trim().toLowerCase()
   if (normalized === 'admin' || normalized === 'owner') return 'admin'
-  if (WORKSPACE_ROLES.has(normalized)) return normalized
-  return 'preparer'
+  return normalizeWorkspaceMemberRole(normalized)
 }
 
 async function finalizeOrganizationEmployeeMembership (pool, {
@@ -374,7 +376,7 @@ async function finalizeOrganizationEmployeeMembership (pool, {
   workspaceId,
   clerkUserId,
   inviteEmail = null,
-  workspaceRole = 'preparer',
+  workspaceRole = 'employee',
   invitedBy = null
 }) {
   const resolvedWorkspaceRole = mapOrganizationInviteRoleToWorkspaceRole(workspaceRole)
@@ -504,9 +506,9 @@ async function resolveWorkspaceMemberRole (pool, workspaceId, clerkUserId, works
      LIMIT 1`,
     [workspaceId, clerkUserId]
   )
-  if (rows[0]?.role) return String(rows[0].role)
+  if (rows[0]?.role) return normalizeWorkspaceMemberRole(rows[0].role)
   if (workspace?.owner_user_id === clerkUserId) return 'owner'
-  return 'member'
+  return 'employee'
 }
 
 async function syncOrganizationMemberRolesForWorkspace (pool, workspaceId, organizationId) {
@@ -833,9 +835,11 @@ export async function upsertWorkspaceProfile (pool, actorUserId, workspaceId, pa
 
 async function enrichWorkspaceMemberRecord (member) {
   const clerkUserId = String(member.clerk_user_id || '')
+  const normalizedRole = normalizeWorkspaceMemberRole(member.role)
   if (!clerkUserId || clerkUserId.startsWith('invite:')) {
     return {
       ...member,
+      role: normalizedRole,
       display_name: clerkUserId.startsWith('invite:') ? clerkUserId.slice('invite:'.length) : clerkUserId,
       email: clerkUserId.startsWith('invite:') ? clerkUserId.slice('invite:'.length) : null
     }
@@ -845,12 +849,14 @@ async function enrichWorkspaceMemberRecord (member) {
     const user = await client.users.getUser(clerkUserId)
     return {
       ...member,
+      role: normalizedRole,
       display_name: buildDisplayNameFromClerkUser(user) || extractPrimaryEmailFromClerkUser(user) || clerkUserId,
       email: extractPrimaryEmailFromClerkUser(user)
     }
   } catch {
     return {
       ...member,
+      role: normalizedRole,
       display_name: clerkUserId,
       email: null
     }
@@ -878,7 +884,7 @@ export async function addWorkspaceMember (pool, actorUserId, workspaceId, payloa
   })
   const clerkUserId = String(payload?.clerkUserId || '').trim()
   if (!clerkUserId) throw new Error('clerkUserId is required')
-  const role = String(payload?.role || 'preparer')
+  const role = String(payload?.role || 'employee')
   assertRole(role)
   const entitlements = await getWorkspaceEntitlementSnapshot(pool, workspace.id)
   if (!entitlements.can_invite_users) {
@@ -948,7 +954,7 @@ export async function createWorkspaceInvite (pool, actorUserId, workspaceId, pay
   if (activeUsers >= Number(entitlements.max_users || 0)) {
     throw new Error('Workspace user limit reached for current plan')
   }
-  const role = String(payload?.role || 'preparer')
+  const role = String(payload?.role || 'employee')
   assertRole(role)
   const inviteEmail = normalizeInviteEmail(payload?.email)
   const linkedWorkspace = await safeEnsureWorkspaceClerkOrganization(pool, workspace, actorUserId)
@@ -1046,7 +1052,7 @@ export async function createOrganizationEmployeeInvite (pool, actorUserId, works
     permission: 'workspace.invite'
   })
   const inviteEmail = normalizeInviteEmail(payload?.email)
-  const memberRole = String(payload?.role || 'member').trim().toLowerCase() || 'member'
+  const memberRole = String(payload?.role || 'employee').trim().toLowerCase() || 'employee'
   const linkedWorkspace = await safeEnsureWorkspaceClerkOrganization(pool, workspace, actorUserId)
   const workspaceRole = mapOrganizationInviteRoleToWorkspaceRole(memberRole)
   const placeholderId = `invite:${inviteEmail}`
@@ -1463,7 +1469,7 @@ function mapClerkMembershipRoleToWorkspaceRole (payload = {}) {
   }
   const normalized = String(payload.role || '').trim().toLowerCase()
   if (normalized === 'org:admin') return 'admin'
-  return 'preparer'
+  return 'employee'
 }
 
 export async function syncOrganizationEmployeeFromClerkEvent (pool, payload = {}, options = {}) {
@@ -1606,38 +1612,8 @@ export async function assertWorkspaceAssignment (pool, workspace, clerkUserId, o
   })
 }
 
-async function fetchWorkspaceMemberRoleByUserId (pool, workspaceId) {
-  const { rows } = await pool.query(
-    `SELECT clerk_user_id, role
-     FROM taxgpt.accounting_workspace_members
-     WHERE workspace_id = $1::uuid
-       AND status = 'active'`,
-    [workspaceId]
-  )
-  const roleByUserId = {}
-  for (const row of rows) {
-    roleByUserId[String(row.clerk_user_id)] = String(row.role)
-  }
-  return roleByUserId
-}
-
 export async function grantEngagementAssignment (pool, workspace, engagementId, clerkUserId, options = {}) {
-  let assignmentRole = String(options.assignmentRole || 'member').trim().toLowerCase()
-  if (assignmentRole === 'member') {
-    const { rows: memberRows } = await pool.query(
-      `SELECT role
-       FROM taxgpt.accounting_workspace_members
-       WHERE workspace_id = $1::uuid
-         AND clerk_user_id = $2
-         AND status = 'active'
-       LIMIT 1`,
-      [workspace.id, clerkUserId]
-    )
-    if (memberRows[0]?.role) {
-      assignmentRole = mapWorkspaceRoleToEngagementAssignmentRole(memberRows[0].role)
-    }
-  }
-  assignmentRole = normalizeEngagementAssignmentRole(assignmentRole)
+  const assignmentRole = normalizeEngagementAssignmentRole(options.assignmentRole || 'partner')
   const { rows: existing } = await pool.query(
     `SELECT id, assignment_role
      FROM taxgpt.engagement_employee_assignments
@@ -1791,7 +1767,7 @@ export async function upsertEngagementEmployeeAssignment (pool, actorUserId, eng
   const clerkUserId = String(payload.clerkUserId || '').trim()
   if (!clerkUserId) throw new Error('clerkUserId is required')
   const workspace = await getWorkspaceContext(pool, actorUserId, payload.workspaceId || null)
-  const assignmentRole = normalizeEngagementAssignmentRole(payload.assignmentRole || 'member')
+  const assignmentRole = normalizeEngagementAssignmentRole(payload.assignmentRole || 'partner')
   await ensureWorkspaceEmployeeAssignment(pool, workspace, clerkUserId, actorUserId)
   await requireEngagementAssignment(pool, workspace, engagementId, actorUserId)
   await grantEngagementAssignment(pool, workspace, engagementId, clerkUserId, {
@@ -1896,8 +1872,7 @@ export async function replaceEngagementEmployeeAssignments (pool, actorUserId, e
   }
   await requireEngagementAssignment(pool, workspace, engagementId, actorUserId)
 
-  const roleByUserId = await fetchWorkspaceMemberRoleByUserId(pool, workspace.id)
-  const assignments = parseEngagementAssignmentsPayload(payload, roleByUserId)
+  const assignments = parseEngagementAssignmentsPayload(payload)
   if (assignments.length === 0) {
     throw new Error('At least one employee must be assigned to the engagement')
   }

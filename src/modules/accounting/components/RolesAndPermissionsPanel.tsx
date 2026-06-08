@@ -5,14 +5,20 @@ import {
   fetchOrganizationRbac,
   type OrganizationRbacSnapshot,
   type RbacCustomRole,
+  type RbacMemberAccess,
+  removeOrganizationMemberRbac,
   updateOrganizationMemberRbac,
   upsertOrganizationCustomRole
 } from '../../../services/accounting/rbacService'
 import type { TokenProvider } from '../../../services/api/client'
 import { usePermission } from '../../../platform/permissions/usePermission'
+import {
+  ASSIGNABLE_ORGANIZATION_ROLES,
+  normalizeOrganizationPortalRole,
+  organizationRoleLabel
+} from '../utils/organizationRoles'
 
-const SOURCE_ROLE_OPTIONS = ['admin', 'manager', 'reviewer', 'preparer', 'read_only', 'client']
-const MEMBER_ROLE_OPTIONS = ['admin', 'manager', 'reviewer', 'preparer', 'read_only', 'client']
+const SOURCE_ROLE_OPTIONS = [...ASSIGNABLE_ORGANIZATION_ROLES]
 
 const PERMISSION_LABELS: Record<string, string> = {
   'workspace.read': 'View organization',
@@ -63,9 +69,24 @@ function createEmptyRoleDraft () {
   return {
     roleName: '',
     displayName: '',
-    sourceRole: 'preparer',
+    sourceRole: 'employee',
     permissions: [] as string[]
   }
+}
+
+function buildMemberDraft (member: RbacMemberAccess): MemberDraft {
+  return {
+    role: normalizeOrganizationPortalRole(member.role),
+    customRoles: [...member.custom_roles]
+  }
+}
+
+function memberDraftIsDirty (member: RbacMemberAccess, draft: MemberDraft): boolean {
+  const saved = buildMemberDraft(member)
+  if (draft.role !== saved.role) return true
+  const savedCustom = [...saved.customRoles].sort().join('|')
+  const draftCustom = [...draft.customRoles].sort().join('|')
+  return savedCustom !== draftCustom
 }
 
 const RolesAndPermissionsPanel: FC<RolesAndPermissionsPanelProps> = ({
@@ -107,10 +128,7 @@ const RolesAndPermissionsPanel: FC<RolesAndPermissionsPanelProps> = ({
       setMemberLabels(labels)
       const drafts: Record<string, MemberDraft> = {}
       for (const member of rbac.members) {
-        drafts[member.clerk_user_id] = {
-          role: member.role,
-          customRoles: [...member.custom_roles]
-        }
+        drafts[member.clerk_user_id] = buildMemberDraft(member)
       }
       setMemberDrafts(drafts)
       onError?.('')
@@ -191,10 +209,45 @@ const RolesAndPermissionsPanel: FC<RolesAndPermissionsPanelProps> = ({
         role: draft.role,
         customRoles: draft.customRoles
       })
-      onNotice?.('Member access updated')
+      onNotice?.('Organization role saved')
       await loadSnapshot()
     } catch (error) {
       onError?.(error instanceof Error ? error.message : 'Could not update member access')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onToggleMemberStatus = async (member: RbacMemberAccess) => {
+    if (!canManageRbac) return
+    if (member.role === 'owner') return
+    const nextStatus = member.status === 'active' ? 'inactive' : 'active'
+    setSaving(true)
+    try {
+      await updateOrganizationMemberRbac(getToken, member.clerk_user_id, { status: nextStatus })
+      onNotice?.(nextStatus === 'active' ? 'Employee access restored' : 'Employee access deactivated')
+      await loadSnapshot()
+    } catch (error) {
+      onError?.(error instanceof Error ? error.message : 'Could not update employee status')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onRemoveMemberAccess = async (member: RbacMemberAccess) => {
+    if (!canManageRbac) return
+    if (member.role === 'owner') return
+    const label = memberLabels[member.clerk_user_id]?.name || member.clerk_user_id
+    if (!window.confirm(`Remove "${label}" from the organization? This revokes portal access and cannot be undone.`)) {
+      return
+    }
+    setSaving(true)
+    try {
+      await removeOrganizationMemberRbac(getToken, member.clerk_user_id)
+      onNotice?.('Employee removed from organization')
+      await loadSnapshot()
+    } catch (error) {
+      onError?.(error instanceof Error ? error.message : 'Could not remove employee')
     } finally {
       setSaving(false)
     }
@@ -212,15 +265,16 @@ const RolesAndPermissionsPanel: FC<RolesAndPermissionsPanelProps> = ({
     <div className="space-y-6">
       {!canManageRbac && (
         <p className="text-sm text-text-light">
-          You can review role definitions. Only admins and managers with RBAC access can make changes.
+          You can review organization portal roles. Only admins and managers with RBAC access can make changes.
         </p>
       )}
 
       <section className="rounded-lg border border-border bg-white p-5 sm:p-6 space-y-4">
         <div>
-          <h4 className="font-semibold text-primary-dark">Built-in roles</h4>
+          <h4 className="font-semibold text-primary-dark">Organization portal roles</h4>
           <p className="text-sm text-text-light mt-1">
-            Default organization roles and the permissions they include.
+            Built-in organization roles control which Accounting Operations portal sections each employee can access.
+            Engagement-specific roles are assigned separately on the Engagements page.
           </p>
         </div>
         <div className="overflow-x-auto">
@@ -280,7 +334,7 @@ const RolesAndPermissionsPanel: FC<RolesAndPermissionsPanelProps> = ({
                 onChange={(event) => setRoleDraft((prev) => ({ ...prev, sourceRole: event.target.value }))}
               >
                 {SOURCE_ROLE_OPTIONS.map((role) => (
-                  <option key={role} value={role}>{role}</option>
+                  <option key={role} value={role}>{organizationRoleLabel(role)}</option>
                 ))}
               </select>
             </div>
@@ -374,9 +428,9 @@ const RolesAndPermissionsPanel: FC<RolesAndPermissionsPanelProps> = ({
 
       <section className="rounded-lg border border-border bg-white p-5 sm:p-6 space-y-4">
         <div>
-          <h4 className="font-semibold text-primary-dark">Employee access</h4>
+          <h4 className="font-semibold text-primary-dark">Organization portal access</h4>
           <p className="text-sm text-text-light mt-1">
-            Assign built-in roles and optional custom roles for each employee.
+            Assign organization roles and optional custom roles for each employee. These roles do not set engagement staffing roles.
           </p>
         </div>
         <div className="overflow-x-auto">
@@ -384,7 +438,7 @@ const RolesAndPermissionsPanel: FC<RolesAndPermissionsPanelProps> = ({
             <thead>
               <tr className="border-b border-border text-left text-text-light">
                 <th className="py-2">Employee</th>
-                <th className="py-2">Built-in role</th>
+                <th className="py-2">Organization role</th>
                 <th className="py-2">Custom roles</th>
                 <th className="py-2">Status</th>
                 {canManageRbac && <th className="py-2">Actions</th>}
@@ -399,10 +453,9 @@ const RolesAndPermissionsPanel: FC<RolesAndPermissionsPanelProps> = ({
                 </tr>
               ) : snapshot.members.map((member) => {
                 const label = memberLabels[member.clerk_user_id]
-                const draft = memberDrafts[member.clerk_user_id] || {
-                  role: member.role,
-                  customRoles: member.custom_roles
-                }
+                const draft = memberDrafts[member.clerk_user_id] || buildMemberDraft(member)
+                const isOwner = member.role === 'owner'
+                const hasUnsavedChanges = memberDraftIsDirty(member, draft)
                 return (
                   <tr key={member.clerk_user_id} className="border-b border-border/70 align-top">
                     <td className="py-3">
@@ -414,7 +467,7 @@ const RolesAndPermissionsPanel: FC<RolesAndPermissionsPanelProps> = ({
                         <select
                           className="border border-border rounded-md px-2 py-1 text-sm"
                           value={draft.role}
-                          disabled={saving || member.role === 'owner'}
+                          disabled={saving || isOwner}
                           onChange={(event) => {
                             setMemberDrafts((prev) => ({
                               ...prev,
@@ -425,12 +478,12 @@ const RolesAndPermissionsPanel: FC<RolesAndPermissionsPanelProps> = ({
                             }))
                           }}
                         >
-                          {member.role === 'owner' && <option value="owner">owner</option>}
-                          {MEMBER_ROLE_OPTIONS.map((role) => (
-                            <option key={role} value={role}>{role}</option>
+                          {isOwner && <option value="owner">{organizationRoleLabel('owner')}</option>}
+                          {ASSIGNABLE_ORGANIZATION_ROLES.map((role) => (
+                            <option key={role} value={role}>{organizationRoleLabel(role)}</option>
                           ))}
                         </select>
-                      ) : member.role}
+                      ) : organizationRoleLabel(member.role)}
                     </td>
                     <td className="py-3">
                       {canManageRbac ? (
@@ -463,14 +516,36 @@ const RolesAndPermissionsPanel: FC<RolesAndPermissionsPanelProps> = ({
                     <td className="py-3">{member.status}</td>
                     {canManageRbac && (
                       <td className="py-3">
-                        <button
-                          type="button"
-                          className="text-xs text-primary-dark underline"
-                          disabled={saving}
-                          onClick={() => { void onSaveMemberAccess(member.clerk_user_id) }}
-                        >
-                          Save
-                        </button>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            className="text-xs font-medium text-primary-dark underline disabled:opacity-50"
+                            disabled={saving || isOwner || !hasUnsavedChanges}
+                            onClick={() => { void onSaveMemberAccess(member.clerk_user_id) }}
+                          >
+                            Save
+                          </button>
+                          {!isOwner && (
+                            <button
+                              type="button"
+                              className="text-xs text-primary-dark underline disabled:opacity-50"
+                              disabled={saving}
+                              onClick={() => { void onToggleMemberStatus(member) }}
+                            >
+                              {member.status === 'active' ? 'Deactivate' : 'Activate'}
+                            </button>
+                          )}
+                          {!isOwner && (
+                            <button
+                              type="button"
+                              className="text-xs text-red-700 underline disabled:opacity-50"
+                              disabled={saving}
+                              onClick={() => { void onRemoveMemberAccess(member) }}
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>

@@ -76,9 +76,9 @@ const SECTIONS: NavigationSection[] = [
     id: 'company-profile',
     depth: 2,
     items: [
-      { to: '/portal/accounting/company-profile', label: 'Business/Firm Details', iconKey: 'workspace' },
-      { to: '/portal/accounting/company-profile/employees', label: 'Invite Employees', iconKey: 'workspace' },
-      { to: '/portal/accounting/company-profile/entities', label: 'Entity Profiles / Clients', iconKey: 'document' },
+      { to: '/portal/accounting/company-profile', label: 'Business/Firm Details', iconKey: 'workspace', requiredPermission: 'workspace.manage' },
+      { to: '/portal/accounting/company-profile/employees', label: 'Invite Employees', iconKey: 'workspace', requiredPermission: 'workspace.invite' },
+      { to: '/portal/accounting/company-profile/entities', label: 'Entity Profiles / Clients', iconKey: 'document', requiredPermission: 'workspace.manage' },
       { to: '/portal/accounting/company-profile/roles-and-permissions', label: 'Roles & Permissions', iconKey: 'shield', requiredPermission: 'rbac.read' }
     ]
   },

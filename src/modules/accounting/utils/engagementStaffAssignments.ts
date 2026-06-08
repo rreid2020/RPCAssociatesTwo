@@ -1,123 +1,91 @@
-export const ENGAGEMENT_ASSIGNMENT_ROLES = [
-  'preparer',
-  'reviewer',
-  'manager',
-  'member'
-] as const
-
-export type EngagementAssignmentRole = typeof ENGAGEMENT_ASSIGNMENT_ROLES[number]
-
-export type EngagementStaffAssignment = {
-  clerk_user_id: string
-  assignment_role: EngagementAssignmentRole
-}
-
-const ROLE_SET = new Set<string>(ENGAGEMENT_ASSIGNMENT_ROLES)
-
-export function formatEngagementAssignmentRole (role: string): string {
-  const normalized = String(role || 'member').trim().toLowerCase()
-  if (normalized === 'read_only') return 'Read only'
-  return normalized.charAt(0).toUpperCase() + normalized.slice(1)
-}
-
-export function normalizeEngagementAssignmentRole (role: unknown): EngagementAssignmentRole {
-  const normalized = String(role || 'member').trim().toLowerCase()
-  if (ROLE_SET.has(normalized)) return normalized as EngagementAssignmentRole
-  return 'member'
-}
-
-export function mapWorkspaceRoleToEngagementAssignmentRole (workspaceRole: unknown): EngagementAssignmentRole {
-  const normalized = String(workspaceRole || '').trim().toLowerCase()
-  if (normalized === 'preparer') return 'preparer'
-  if (normalized === 'reviewer') return 'reviewer'
-  if (normalized === 'owner' || normalized === 'admin' || normalized === 'manager') return 'manager'
-  return 'member'
-}
-
-function resolveWorkspaceRoleForUser (
-  clerkUserId: string,
-  roleByUserId?: Map<string, string> | Record<string, string>
-): string | null {
-  if (!roleByUserId) return null
-  if (roleByUserId instanceof Map) return roleByUserId.get(clerkUserId) || null
-  return roleByUserId[clerkUserId] || null
-}
-
-export function normalizeEngagementStaffAssignments (value: unknown): EngagementStaffAssignment[] {
-  if (!value) return []
-  if (Array.isArray(value)) {
-    const parsed: EngagementStaffAssignment[] = []
-    for (const entry of value) {
-      if (!entry || typeof entry !== 'object') continue
-      const record = entry as Record<string, unknown>
-      const clerkUserId = String(record.clerk_user_id || record.clerkUserId || '').trim()
-      if (!clerkUserId) continue
-      parsed.push({
-        clerk_user_id: clerkUserId,
-        assignment_role: normalizeEngagementAssignmentRole(record.assignment_role || record.assignmentRole)
-      })
-    }
-    return dedupeStaffAssignments(parsed)
-  }
-  return []
-}
-
-/** Legacy rows may only expose assigned_employee_ids without roles. */
-export function staffAssignmentsFromEmployeeIds (
-  ids: unknown,
-  roleByUserId?: Map<string, string> | Record<string, string>
-): EngagementStaffAssignment[] {
-  const clerkUserIds = Array.isArray(ids)
-    ? ids.map((entry) => String(entry || '').trim()).filter(Boolean)
-    : []
-  return clerkUserIds.map((clerk_user_id) => ({
-    clerk_user_id,
-    assignment_role: mapWorkspaceRoleToEngagementAssignmentRole(
-      resolveWorkspaceRoleForUser(clerk_user_id, roleByUserId)
-    )
-  }))
-}
-
-export function inheritEngagementAssignmentRole (
-  assignment: EngagementStaffAssignment,
-  roleByUserId?: Map<string, string> | Record<string, string>
-): EngagementStaffAssignment {
-  const workspaceRole = resolveWorkspaceRoleForUser(assignment.clerk_user_id, roleByUserId)
-  if (!workspaceRole) return assignment
-  const inheritedRole = mapWorkspaceRoleToEngagementAssignmentRole(workspaceRole)
-  if (assignment.assignment_role !== 'member' || inheritedRole === 'member') {
-    return assignment
-  }
-  return {
-    ...assignment,
-    assignment_role: inheritedRole
-  }
-}
-
-export function dedupeStaffAssignments (
-  assignments: EngagementStaffAssignment[]
-): EngagementStaffAssignment[] {
-  const byUserId = new Map<string, EngagementStaffAssignment>()
-  for (const assignment of assignments) {
-    byUserId.set(assignment.clerk_user_id, assignment)
-  }
-  return Array.from(byUserId.values())
-}
-
-export function toAssignmentApiPayload (assignments: EngagementStaffAssignment[]) {
-  return dedupeStaffAssignments(assignments).map((assignment) => ({
-    clerkUserId: assignment.clerk_user_id,
-    assignmentRole: assignment.assignment_role
-  }))
-}
-
-export function formatStaffAssignmentLabels (
-  assignments: EngagementStaffAssignment[],
-  memberLabelByUserId: Map<string, string>
-): string {
-  if (assignments.length === 0) return '—'
-  return assignments.map((assignment) => {
-    const name = memberLabelByUserId.get(assignment.clerk_user_id) || assignment.clerk_user_id
-    return `${name} (${formatEngagementAssignmentRole(assignment.assignment_role)})`
-  }).join(', ')
-}
+export const ENGAGEMENT_ASSIGNMENT_ROLES = [
+  'preparer',
+  'reviewer',
+  'manager',
+  'partner'
+] as const
+
+export type EngagementAssignmentRole = typeof ENGAGEMENT_ASSIGNMENT_ROLES[number]
+
+export type EngagementStaffAssignment = {
+  clerk_user_id: string
+  assignment_role: EngagementAssignmentRole
+}
+
+const ROLE_SET = new Set<string>(ENGAGEMENT_ASSIGNMENT_ROLES)
+
+const LEGACY_ENGAGEMENT_ROLE_ALIASES: Record<string, EngagementAssignmentRole> = {
+  member: 'partner'
+}
+
+export function formatEngagementAssignmentRole (role: string): string {
+  const normalized = normalizeEngagementAssignmentRole(role)
+  if (normalized === 'partner') return 'Partner'
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1)
+}
+
+export function normalizeEngagementAssignmentRole (role: unknown): EngagementAssignmentRole {
+  const normalized = String(role || 'partner').trim().toLowerCase()
+  const canonical = LEGACY_ENGAGEMENT_ROLE_ALIASES[normalized] || normalized
+  if (ROLE_SET.has(canonical)) return canonical as EngagementAssignmentRole
+  return 'partner'
+}
+
+export function normalizeEngagementStaffAssignments (value: unknown): EngagementStaffAssignment[] {
+  if (!value) return []
+  if (Array.isArray(value)) {
+    const parsed: EngagementStaffAssignment[] = []
+    for (const entry of value) {
+      if (!entry || typeof entry !== 'object') continue
+      const record = entry as Record<string, unknown>
+      const clerkUserId = String(record.clerk_user_id || record.clerkUserId || '').trim()
+      if (!clerkUserId) continue
+      parsed.push({
+        clerk_user_id: clerkUserId,
+        assignment_role: normalizeEngagementAssignmentRole(record.assignment_role || record.assignmentRole)
+      })
+    }
+    return dedupeStaffAssignments(parsed)
+  }
+  return []
+}
+
+/** Legacy rows may only expose assigned_employee_ids without roles. */
+export function staffAssignmentsFromEmployeeIds (ids: unknown): EngagementStaffAssignment[] {
+  const clerkUserIds = Array.isArray(ids)
+    ? ids.map((entry) => String(entry || '').trim()).filter(Boolean)
+    : []
+  return clerkUserIds.map((clerk_user_id) => ({
+    clerk_user_id,
+    assignment_role: 'partner' as EngagementAssignmentRole
+  }))
+}
+
+export function dedupeStaffAssignments (
+  assignments: EngagementStaffAssignment[]
+): EngagementStaffAssignment[] {
+  const byUserId = new Map<string, EngagementStaffAssignment>()
+  for (const assignment of assignments) {
+    byUserId.set(assignment.clerk_user_id, assignment)
+  }
+  return Array.from(byUserId.values())
+}
+
+export function toAssignmentApiPayload (assignments: EngagementStaffAssignment[]) {
+  return dedupeStaffAssignments(assignments).map((assignment) => ({
+    clerkUserId: assignment.clerk_user_id,
+    assignmentRole: assignment.assignment_role
+  }))
+}
+
+export function formatStaffAssignmentLabels (
+  assignments: EngagementStaffAssignment[],
+  memberLabelByUserId: Map<string, string>
+): string {
+  if (assignments.length === 0) return '—'
+  return assignments.map((assignment) => {
+    const name = memberLabelByUserId.get(assignment.clerk_user_id) || assignment.clerk_user_id
+    return `${name} (${formatEngagementAssignmentRole(assignment.assignment_role)})`
+  }).join(', ')
+}
+

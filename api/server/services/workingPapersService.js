@@ -558,7 +558,7 @@ export async function listEngagements (pool, clerkUserId, query = {}) {
     if (Array.isArray(value)) {
       return value.map((entry) => ({
         clerk_user_id: String(entry?.clerk_user_id || entry?.clerkUserId || '').trim(),
-        assignment_role: String(entry?.assignment_role || entry?.assignmentRole || 'member').trim().toLowerCase()
+        assignment_role: String(entry?.assignment_role || entry?.assignmentRole || 'partner').trim().toLowerCase()
       })).filter((entry) => entry.clerk_user_id)
     }
     if (typeof value === 'string') {
@@ -571,7 +571,7 @@ export async function listEngagements (pool, clerkUserId, query = {}) {
     }
     return normalizeAssignedEmployeeIds(fallbackIds).map((clerk_user_id) => ({
       clerk_user_id,
-      assignment_role: 'member'
+      assignment_role: 'partner'
     }))
   }
 

@@ -5,7 +5,6 @@ import {
   ENGAGEMENT_ASSIGNMENT_ROLES,
   dedupeStaffAssignments,
   formatEngagementAssignmentRole,
-  mapWorkspaceRoleToEngagementAssignmentRole,
   normalizeEngagementAssignmentRole,
   type EngagementStaffAssignment
 } from '../utils/engagementStaffAssignments'
@@ -108,15 +107,11 @@ const EngagementStaffingPanel: FC<EngagementStaffingPanelProps> = ({
 
   const handleAddEmployee = useCallback((clerkUserId: string) => {
     if (!clerkUserId || assignedUserIds.has(clerkUserId)) return
-    const workspaceMember = activeMembers.find((member) => member.clerk_user_id === clerkUserId)
     onAssignmentsChange(dedupeStaffAssignments([
       ...assignments,
-      {
-        clerk_user_id: clerkUserId,
-        assignment_role: mapWorkspaceRoleToEngagementAssignmentRole(workspaceMember?.role)
-      }
+      { clerk_user_id: clerkUserId, assignment_role: 'partner' }
     ]))
-  }, [activeMembers, assignedUserIds, assignments, onAssignmentsChange])
+  }, [assignedUserIds, assignments, onAssignmentsChange])
 
   const onCellEditingStopped = useCallback((event: CellEditingStoppedEvent<StaffingGridRow>) => {
     const row = event.data
@@ -145,14 +140,14 @@ const EngagementStaffingPanel: FC<EngagementStaffingPanelProps> = ({
     },
     {
       field: 'assignment_role',
-      headerName: 'Role',
+      headerName: 'Engagement role',
       flex: 1,
       minWidth: 130,
       editable: true,
       filter: 'agTextColumnFilter',
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: { values: [...ENGAGEMENT_ASSIGNMENT_ROLES] },
-      valueFormatter: (params) => formatEngagementAssignmentRole(String(params.value || 'member'))
+      valueFormatter: (params) => formatEngagementAssignmentRole(String(params.value || 'partner'))
     },
     {
       colId: 'actions',
@@ -216,6 +211,9 @@ const EngagementStaffingPanel: FC<EngagementStaffingPanelProps> = ({
             Staffing for <span className="font-medium text-text">{engagementName}</span>
             {engagementIsDraft ? ' (unsaved draft)' : ''}
           </p>
+          <p className="text-xs text-text-light mt-1 max-w-3xl">
+            Engagement roles control responsibilities on this engagement only. Organization portal roles are managed separately under Business/Firm Profile → Roles &amp; Permissions.
+          </p>
         </div>
         <button
           type="button"
@@ -256,7 +254,7 @@ const EngagementStaffingPanel: FC<EngagementStaffingPanelProps> = ({
           </select>
         </label>
         <p className="text-xs text-text-light">
-          {assignments.length} assigned · Preparer and reviewer sync to engagement workflow
+          {assignments.length} assigned · Set engagement preparer and reviewer roles to sync workflow leads
         </p>
       </div>
 

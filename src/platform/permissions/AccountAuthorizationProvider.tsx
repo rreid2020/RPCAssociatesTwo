@@ -20,10 +20,9 @@ function mapWorkspaceRoleToPlatformRole (workspaceRole: string | null | undefine
   const normalized = String(workspaceRole || '').trim().toLowerCase()
   if (normalized === 'owner' || normalized === 'admin') return 'firm_admin'
   if (normalized === 'manager') return 'manager'
-  if (normalized === 'reviewer') return 'reviewer'
-  if (normalized === 'preparer') return 'staff'
-  if (normalized === 'client') return 'client'
-  return 'external_read_only'
+  if (normalized === 'employee' || normalized === 'preparer' || normalized === 'reviewer') return 'staff'
+  if (normalized === 'client' || normalized === 'read_only') return 'external_read_only'
+  return 'staff'
 }
 
 function fallbackAuthorizationFromAccountRole (workspaceRole: string | null | undefined) {

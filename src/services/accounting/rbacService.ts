@@ -77,6 +77,7 @@ export async function updateOrganizationMemberRbac (
   payload: {
     role?: string
     customRoles?: string[]
+    status?: 'active' | 'inactive'
   }
 ) {
   return callPortalApi<{ member: RbacMemberAccess }>(
@@ -86,5 +87,16 @@ export async function updateOrganizationMemberRbac (
       method: 'PATCH',
       body: JSON.stringify(payload)
     }
+  )
+}
+
+export async function removeOrganizationMemberRbac (
+  getToken: TokenProvider,
+  memberUserId: string
+) {
+  return callPortalApi<{ clerk_user_id: string; removed: boolean }>(
+    `/v1/accounting/organization/rbac/members/${encodeURIComponent(memberUserId)}`,
+    getToken,
+    { method: 'DELETE' }
   )
 }

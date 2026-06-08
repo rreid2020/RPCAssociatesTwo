@@ -114,15 +114,15 @@ export function getAccountingRoutes () {
       >
         <Route
           index
-          element={guardedElement(<AccountingWorkspacePage view="companyProfile" />)}
+          element={guardedElement(<AccountingWorkspacePage view="companyProfile" />, null, 'workspace.manage')}
         />
         <Route
           path="entities"
-          element={guardedElement(<AccountingWorkspacePage view="companyProfileEntities" />)}
+          element={guardedElement(<AccountingWorkspacePage view="companyProfileEntities" />, null, 'workspace.manage')}
         />
         <Route
           path="employees"
-          element={guardedElement(<AccountingWorkspacePage view="companyProfileEmployees" />)}
+          element={guardedElement(<AccountingWorkspacePage view="companyProfileEmployees" />, null, 'workspace.invite')}
         />
         <Route
           path="roles-and-permissions"

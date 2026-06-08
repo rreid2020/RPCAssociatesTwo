@@ -10,6 +10,7 @@ import {
   createClerkOrganization,
   createClerkOrganizationInvitation,
   resolveClerkUserIdByEmail,
+  revokeOrganizationEmployeeClerkAccess,
   updateClerkUserPassword
 } from './clerkAdminService.js'
 import {
@@ -30,6 +31,7 @@ import {
 } from './engagementStaffAssignments.js'
 import {
   deleteWorkspaceRecord,
+  fetchPendingWorkspaceInviteClerkIds,
   fetchWorkspaceInvites,
   fetchWorkspaceMembers,
   fetchWorkspaceProfile,
@@ -46,6 +48,7 @@ import {
   fetchOrganizationAssignmentCounts,
   fetchOrganizationById,
   fetchOrganizationMembers,
+  reactivateOrganizationMemberHierarchy,
   updateOrganizationMemberByUserId,
   upsertInvitedOrganizationMember
 } from './repositories/organizationRepository.js'
@@ -1012,6 +1015,32 @@ export async function createWorkspaceInvite (pool, actorUserId, workspaceId, pay
   }
 }
 
+async function resolveWorkspaceClerkOrgId (pool, workspace) {
+  if (workspace?.clerk_org_id) return workspace.clerk_org_id
+  const { rows } = await pool.query(
+    `SELECT clerk_org_id
+     FROM taxgpt.accounting_workspaces
+     WHERE id = $1::uuid
+     LIMIT 1`,
+    [workspace.id]
+  )
+  return rows[0]?.clerk_org_id || null
+}
+
+async function revokeOrganizationEmployeeClerkAccessForWorkspace (pool, workspace, { clerkUserId = null, inviteEmail = null }) {
+  const clerkOrgId = await resolveWorkspaceClerkOrgId(pool, workspace)
+  const normalizedEmail = inviteEmail ? normalizeInviteEmail(inviteEmail) : null
+  const clerkInvitationIds = normalizedEmail
+    ? await fetchPendingWorkspaceInviteClerkIds(pool, workspace.id, normalizedEmail)
+    : []
+  return revokeOrganizationEmployeeClerkAccess({
+    clerkOrgId,
+    clerkUserId,
+    inviteEmail: normalizedEmail,
+    clerkInvitationIds
+  })
+}
+
 async function fetchOrganizationMemberRecord (pool, organizationId, clerkUserId) {
   const { rows } = await pool.query(
     `SELECT organization_id, clerk_user_id, role, status, invited_by
@@ -1354,12 +1383,60 @@ export async function updateOrganizationMember (pool, actorUserId, workspaceId, 
   if (!canManageWorkspace(workspace)) {
     throw new Error('Only owner/admin can update organization members')
   }
+  const normalizedMemberUserId = String(memberUserId || '').trim()
+  if (!normalizedMemberUserId) throw new Error('Member user id is required')
   const role = payload?.role ? String(payload.role).trim().toLowerCase() : null
   const status = payload?.status ? String(payload.status).trim().toLowerCase() : null
   if (status && !['active', 'inactive', 'invited'].includes(status)) throw new Error('Invalid organization member status')
-  const member = await updateOrganizationMemberByUserId(pool, workspace.organization_id, memberUserId, role, status)
+  if (normalizedMemberUserId.startsWith('invite:') && status && status !== 'invited') {
+    throw new Error('Invited employees cannot be activated or deactivated. Resend the invite or remove them from the roster.')
+  }
+  if (status === 'inactive') {
+    await deactivateOrganizationMemberHierarchy(pool, workspace.organization_id, normalizedMemberUserId)
+  } else if (status === 'active') {
+    await reactivateOrganizationMemberHierarchy(pool, workspace.organization_id, normalizedMemberUserId)
+  }
+  const member = await updateOrganizationMemberByUserId(pool, workspace.organization_id, normalizedMemberUserId, role, status)
   if (!member) throw new Error('Organization member not found')
+  await invalidateOrganizationMemberRbacCache(pool, workspace.organization_id, normalizedMemberUserId)
   return member
+}
+
+export async function resendOrganizationEmployeeInvite (pool, actorUserId, workspaceId, memberUserId) {
+  const workspace = await getWorkspaceContext(pool, actorUserId, workspaceId)
+  await assertWorkspacePermissionWithCustomRoles(pool, {
+    workspaceId: workspace.id,
+    workspaceRole: workspace.role,
+    clerkUserId: actorUserId,
+    permission: 'workspace.invite'
+  })
+  const normalizedMemberUserId = String(memberUserId || '').trim()
+  if (!normalizedMemberUserId.startsWith('invite:')) {
+    throw new Error('Only invited employees can have invites resent')
+  }
+  const inviteEmail = normalizeInviteEmail(normalizedMemberUserId.slice('invite:'.length))
+  const member = await fetchOrganizationMemberRecord(pool, workspace.organization_id, normalizedMemberUserId)
+  if (!member || member.status !== 'invited') {
+    throw new Error('This employee is not in invited status')
+  }
+
+  await revokeOrganizationEmployeeClerkAccessForWorkspace(pool, workspace, { inviteEmail })
+  await revokePendingWorkspaceInvitesForEmail(pool, workspace.id, inviteEmail)
+
+  const invite = await createOrganizationEmployeeInvite(pool, actorUserId, workspaceId, {
+    email: inviteEmail,
+    role: member.role || 'employee'
+  })
+
+  await writeWorkspaceAuditEvent(pool, workspace.id, actorUserId, 'organization.employee_invite_resent', 'organization_member', normalizedMemberUserId, null, {
+    email: inviteEmail,
+    role: member.role || 'employee'
+  })
+
+  return {
+    ...invite,
+    resent: true
+  }
 }
 
 export async function deleteOrganizationMember (pool, actorUserId, workspaceId, memberUserId) {
@@ -1393,10 +1470,24 @@ export async function deleteOrganizationMember (pool, actorUserId, workspaceId, 
   const removed = await deleteOrganizationMemberByUserId(pool, workspace.organization_id, normalizedMemberUserId)
   if (!removed) throw new Error('Organization member not found')
 
+  const primaryInviteEmail = isPendingInvitePlaceholder
+    ? normalizedMemberUserId.slice('invite:'.length)
+    : ([...emailsToCleanup][0] || null)
+
   for (const email of emailsToCleanup) {
     await deleteOrganizationMemberByUserId(pool, workspace.organization_id, `invite:${email}`)
     await revokePendingWorkspaceInvitesForEmail(pool, workspace.id, email)
   }
+
+  await revokeOrganizationEmployeeClerkAccessForWorkspace(pool, workspace, {
+    clerkUserId: isPendingInvitePlaceholder ? null : normalizedMemberUserId,
+    inviteEmail: primaryInviteEmail
+  })
+
+  await invalidateOrganizationMemberRbacCache(pool, workspace.organization_id, normalizedMemberUserId)
+  await writeWorkspaceAuditEvent(pool, workspace.id, actorUserId, 'organization.employee_removed', 'organization_member', normalizedMemberUserId, null, {
+    invitePlaceholder: isPendingInvitePlaceholder
+  })
 
   return { organizationId: workspace.organization_id, clerkUserId: normalizedMemberUserId, removed: true }
 }

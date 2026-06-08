@@ -55,6 +55,55 @@ export async function deleteOrganizationMemberByUserId (pool, organizationId, cl
   return Number(rowCount || 0) > 0
 }
 
+export async function reactivateOrganizationMemberHierarchy (pool, organizationId, clerkUserId) {
+  await pool.query(
+    `UPDATE taxgpt.accounting_organization_members
+     SET status = 'active',
+         updated_at = now()
+     WHERE organization_id = $1::uuid
+       AND clerk_user_id = $2`,
+    [organizationId, clerkUserId]
+  )
+
+  await pool.query(
+    `UPDATE taxgpt.accounting_workspace_members
+     SET status = 'active',
+         updated_at = now()
+     WHERE workspace_id IN (
+       SELECT id FROM taxgpt.accounting_workspaces WHERE organization_id = $1::uuid
+     )
+       AND clerk_user_id = $2`,
+    [organizationId, clerkUserId]
+  )
+
+  await pool.query(
+    `UPDATE taxgpt.workspace_employee_assignments
+     SET status = 'active',
+         updated_at = now()
+     WHERE organization_id = $1::uuid
+       AND clerk_user_id = $2`,
+    [organizationId, clerkUserId]
+  )
+
+  await pool.query(
+    `UPDATE taxgpt.engagement_employee_assignments
+     SET status = 'active',
+         updated_at = now()
+     WHERE organization_id = $1::uuid
+       AND clerk_user_id = $2`,
+    [organizationId, clerkUserId]
+  )
+
+  await pool.query(
+    `UPDATE taxgpt.working_paper_employee_assignments
+     SET status = 'active',
+         updated_at = now()
+     WHERE organization_id = $1::uuid
+       AND clerk_user_id = $2`,
+    [organizationId, clerkUserId]
+  )
+}
+
 export async function deactivateOrganizationMemberHierarchy (pool, organizationId, clerkUserId) {
   await pool.query(
     `UPDATE taxgpt.accounting_organization_members

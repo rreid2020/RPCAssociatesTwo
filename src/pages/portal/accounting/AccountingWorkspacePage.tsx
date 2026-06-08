@@ -1361,6 +1361,26 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     }
   }
 
+  const onResendOrganizationInvite = async (memberUserId: string, memberEmail: string) => {
+    if (!account) return
+    if (!window.confirm(`Resend the portal invite to ${memberEmail || 'this employee'}?`)) return
+    setSaving(true)
+    setError(null)
+    try {
+      await portalFetch(
+        `/v1/accounting/organization/members/${encodeURIComponent(memberUserId)}/resend-invite`,
+        getToken,
+        { method: 'POST', body: JSON.stringify({}) }
+      )
+      await loadOrganizationSnapshot()
+      setNotice('Invite resent. The employee should receive a fresh Clerk invitation email.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not resend employee invite')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const onDeleteOrganizationMember = async (memberUserId: string) => {
     if (!account) return
     if (!window.confirm('Remove this employee from the roster? This cannot be undone.')) return
@@ -1977,7 +1997,17 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                     <td className="py-2">{member.status}</td>
                                     <td className="py-2">
                                       <div className="flex flex-wrap gap-2">
-                                        {!String(member.clerk_user_id).startsWith('invite:') && (
+                                        {member.status === 'invited' && (
+                                          <button
+                                            type="button"
+                                            className="text-xs text-primary-dark underline"
+                                            disabled={saving || !canManageWorkspaceMembers}
+                                            onClick={() => { void onResendOrganizationInvite(member.clerk_user_id, member.email || '') }}
+                                          >
+                                            Resend invite
+                                          </button>
+                                        )}
+                                        {member.status === 'active' && !String(member.clerk_user_id).startsWith('invite:') && (
                                           <button
                                             type="button"
                                             className="text-xs text-primary-dark underline"
@@ -1987,16 +2017,20 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                             Reset password
                                           </button>
                                         )}
+                                        {(member.status === 'active' || member.status === 'inactive') && !String(member.clerk_user_id).startsWith('invite:') && (
+                                          <button
+                                            type="button"
+                                            className="text-xs text-primary-dark underline"
+                                            disabled={saving || !canManageWorkspaceMembers}
+                                            onClick={() => { void onUpdateOrganizationMember(member.clerk_user_id, member.role, member.status === 'active' ? 'inactive' : 'active') }}
+                                          >
+                                            {member.status === 'active' ? 'Deactivate' : 'Activate'}
+                                          </button>
+                                        )}
                                         <button
                                           type="button"
                                           className="text-xs text-primary-dark underline"
-                                          onClick={() => { void onUpdateOrganizationMember(member.clerk_user_id, member.role, member.status === 'active' ? 'inactive' : 'active') }}
-                                        >
-                                          {member.status === 'active' ? 'Deactivate' : 'Activate'}
-                                        </button>
-                                        <button
-                                          type="button"
-                                          className="text-xs text-primary-dark underline"
+                                          disabled={saving || !canManageWorkspaceMembers}
                                           onClick={() => { void onDeleteOrganizationMember(member.clerk_user_id) }}
                                         >
                                           Remove

@@ -171,3 +171,146 @@ export async function clearMustChangePasswordFlag (userId) {
     publicMetadata: buildMustChangePasswordMetadata(false, user.publicMetadata || {})
   })
 }
+
+export function isIgnorableClerkRemovalError (message) {
+  return /not found|does not exist|could not be found|not a member|no membership/i.test(String(message || ''))
+}
+
+export async function removeClerkOrganizationMembership ({ organizationId, userId }) {
+  if (!organizationId || !userId) return { removed: false, reason: 'missing_ids' }
+  const client = getClerkBackendClient()
+  if (!client.organizations?.deleteOrganizationMembership) {
+    return { removed: false, reason: 'api_unavailable' }
+  }
+  try {
+    await client.organizations.deleteOrganizationMembership({ organizationId, userId })
+    return { removed: true }
+  } catch (error) {
+    const message = formatClerkError(error)
+    if (isIgnorableClerkRemovalError(message)) {
+      return { removed: false, reason: 'not_a_member' }
+    }
+    throw error
+  }
+}
+
+export async function revokeClerkInvitationById ({ organizationId = null, invitationId = null }) {
+  if (!invitationId) return { revoked: false, reason: 'missing_invitation_id' }
+  const client = getClerkBackendClient()
+  if (organizationId && client.organizations?.revokeOrganizationInvitation) {
+    try {
+      await client.organizations.revokeOrganizationInvitation({
+        organizationId,
+        invitationId
+      })
+      return { revoked: true, channel: 'organization' }
+    } catch (error) {
+      const message = formatClerkError(error)
+      if (!isClerkNotFoundError(message)) {
+        throw error
+      }
+    }
+  }
+  if (client.invitations?.revokeInvitation) {
+    try {
+      await client.invitations.revokeInvitation(invitationId)
+      return { revoked: true, channel: 'platform' }
+    } catch (error) {
+      const message = formatClerkError(error)
+      if (isIgnorableClerkRemovalError(message)) {
+        return { revoked: false, reason: 'not_found' }
+      }
+      throw error
+    }
+  }
+  return { revoked: false, reason: 'api_unavailable' }
+}
+
+export async function revokePendingClerkOrganizationInvitationsForEmail ({ organizationId, emailAddress }) {
+  const normalizedEmail = String(emailAddress || '').trim().toLowerCase()
+  if (!organizationId || !normalizedEmail) return { revoked: 0 }
+  const client = getClerkBackendClient()
+  if (!client.organizations?.getOrganizationInvitationList || !client.organizations?.revokeOrganizationInvitation) {
+    return { revoked: 0 }
+  }
+  const list = await client.organizations.getOrganizationInvitationList({
+    organizationId,
+    status: ['pending'],
+    limit: 100
+  })
+  const invitations = Array.isArray(list?.data) ? list.data : []
+  let revoked = 0
+  for (const invitation of invitations) {
+    const email = String(invitation?.emailAddress || '').trim().toLowerCase()
+    if (email !== normalizedEmail) continue
+    await client.organizations.revokeOrganizationInvitation({
+      organizationId,
+      invitationId: invitation.id
+    })
+    revoked += 1
+  }
+  return { revoked }
+}
+
+export async function revokePendingClerkPlatformInvitationsForEmail (emailAddress) {
+  const normalizedEmail = String(emailAddress || '').trim().toLowerCase()
+  if (!normalizedEmail) return { revoked: 0 }
+  const client = getClerkBackendClient()
+  if (!client.invitations?.getInvitationList || !client.invitations?.revokeInvitation) {
+    return { revoked: 0 }
+  }
+  const list = await client.invitations.getInvitationList({
+    status: 'pending',
+    limit: 100
+  })
+  const invitations = Array.isArray(list?.data) ? list.data : []
+  let revoked = 0
+  for (const invitation of invitations) {
+    const email = String(invitation?.emailAddress || '').trim().toLowerCase()
+    if (email !== normalizedEmail) continue
+    await client.invitations.revokeInvitation(invitation.id)
+    revoked += 1
+  }
+  return { revoked }
+}
+
+export async function revokeOrganizationEmployeeClerkAccess ({
+  clerkOrgId = null,
+  clerkUserId = null,
+  inviteEmail = null,
+  clerkInvitationIds = []
+}) {
+  const results = {
+    membershipRemoved: false,
+    invitationsRevoked: 0
+  }
+  const normalizedEmail = inviteEmail ? String(inviteEmail).trim().toLowerCase() : null
+  const uniqueInvitationIds = [...new Set((clerkInvitationIds || []).map((entry) => String(entry || '').trim()).filter(Boolean))]
+
+  if (normalizedEmail) {
+    const orgRevoked = await revokePendingClerkOrganizationInvitationsForEmail({
+      organizationId: clerkOrgId,
+      emailAddress: normalizedEmail
+    })
+    const platformRevoked = await revokePendingClerkPlatformInvitationsForEmail(normalizedEmail)
+    results.invitationsRevoked += Number(orgRevoked.revoked || 0) + Number(platformRevoked.revoked || 0)
+  }
+
+  for (const invitationId of uniqueInvitationIds) {
+    const revoked = await revokeClerkInvitationById({
+      organizationId: clerkOrgId,
+      invitationId
+    })
+    if (revoked.revoked) results.invitationsRevoked += 1
+  }
+
+  if (clerkUserId && !String(clerkUserId).startsWith('invite:') && clerkOrgId) {
+    const removed = await removeClerkOrganizationMembership({
+      organizationId: clerkOrgId,
+      userId: clerkUserId
+    })
+    results.membershipRemoved = Boolean(removed.removed)
+  }
+
+  return results
+}

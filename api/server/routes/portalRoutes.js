@@ -109,6 +109,7 @@ import {
   createOrganizationEmployeeAccount,
   createOrganizationEmployeeInvite,
   resetOrganizationEmployeePassword,
+  resendOrganizationEmployeeInvite,
   createWorkspaceInvite,
   createWorkspace,
   deleteOrganizationMember,
@@ -1233,6 +1234,24 @@ export function createPortalRouter (pool) {
       res.json({ employee: result })
     } catch (e) {
       res.status(400).json({ error: e instanceof Error ? e.message : 'Could not reset employee password' })
+    }
+  })
+
+  r.post('/v1/accounting/organization/members/:memberUserId/resend-invite', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const workspace = await requireAccountWorkspace(session, 'workspace.invite', res)
+    if (!workspace) return
+    try {
+      const invite = await resendOrganizationEmployeeInvite(
+        pool,
+        session.userId,
+        workspace.id,
+        req.params.memberUserId
+      )
+      res.json({ invite })
+    } catch (e) {
+      res.status(400).json({ error: e instanceof Error ? e.message : 'Could not resend employee invite' })
     }
   })
 

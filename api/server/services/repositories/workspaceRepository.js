@@ -150,6 +150,19 @@ export async function revokePendingWorkspaceInvitesForEmail (pool, workspaceId, 
   )
 }
 
+export async function fetchPendingWorkspaceInviteClerkIds (pool, workspaceId, inviteEmail) {
+  const { rows } = await pool.query(
+    `SELECT clerk_invitation_id
+     FROM taxgpt.accounting_workspace_invites
+     WHERE workspace_id = $1::uuid
+       AND lower(invite_email) = lower($2)
+       AND status = 'pending'
+       AND clerk_invitation_id IS NOT NULL`,
+    [workspaceId, inviteEmail]
+  )
+  return rows.map((row) => String(row.clerk_invitation_id || '').trim()).filter(Boolean)
+}
+
 export async function insertWorkspaceInviteRecord (pool, payload = {}) {
   const { rows } = await pool.query(
     `INSERT INTO taxgpt.accounting_workspace_invites

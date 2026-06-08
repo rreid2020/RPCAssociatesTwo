@@ -11,12 +11,12 @@ import {
   mapWorkspaceRoleToPlatformRole
 } from './rolePermissions.js'
 import { ensurePortalSchema } from '../../db/ensurePortalSchema.js'
-import { getClerkBackendClient } from '../clerkAdminService.js'
+import { getClerkBackendClient, revokeOrganizationEmployeeClerkAccess } from '../clerkAdminService.js'
 import {
   deactivateOrganizationMemberHierarchy,
   deleteOrganizationMemberByUserId
 } from '../repositories/organizationRepository.js'
-import { revokePendingWorkspaceInvitesForEmail } from '../repositories/workspaceRepository.js'
+import { fetchPendingWorkspaceInviteClerkIds, revokePendingWorkspaceInvitesForEmail } from '../repositories/workspaceRepository.js'
 import {
   assertWorkspaceMemberRole,
   ensureRoleCatalogMigrations,
@@ -609,10 +609,32 @@ export async function removeMemberRbacAccess (pool, actorUserId, workspaceId, me
   const removed = await deleteOrganizationMemberByUserId(pool, workspace.organization_id, targetUserId)
   if (!removed) throw new Error('Workspace member not found')
 
+  const primaryInviteEmail = isPendingInvitePlaceholder
+    ? targetUserId.slice('invite:'.length)
+    : ([...emailsToCleanup][0] || null)
+
   for (const email of emailsToCleanup) {
     await deleteOrganizationMemberByUserId(pool, workspace.organization_id, `invite:${email}`)
     await revokePendingWorkspaceInvitesForEmail(pool, workspace.id, email)
   }
+
+  const { rows: workspaceOrgRows } = await pool.query(
+    `SELECT clerk_org_id
+     FROM taxgpt.accounting_workspaces
+     WHERE id = $1::uuid
+     LIMIT 1`,
+    [workspace.id]
+  )
+  const clerkOrgId = workspaceOrgRows[0]?.clerk_org_id || null
+  const clerkInvitationIds = primaryInviteEmail
+    ? await fetchPendingWorkspaceInviteClerkIds(pool, workspace.id, primaryInviteEmail)
+    : []
+  await revokeOrganizationEmployeeClerkAccess({
+    clerkOrgId,
+    clerkUserId: isPendingInvitePlaceholder ? null : targetUserId,
+    inviteEmail: primaryInviteEmail,
+    clerkInvitationIds
+  })
 
   await invalidateOrganizationMemberRbacCache(pool, workspace.organization_id, targetUserId)
   return { clerk_user_id: targetUserId, removed: true }

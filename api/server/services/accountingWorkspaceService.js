@@ -24,6 +24,7 @@ import {
   resolveEffectiveOrganizationMemberPermissions
 } from './authz/workspaceRbacService.js'
 import { ensurePortalSchema } from '../db/ensurePortalSchema.js'
+import { mapWithConcurrency, resolveClerkUser } from './clerkUserCache.js'
 import {
   normalizeEngagementAssignmentRole,
   parseEngagementAssignmentsPayload,
@@ -352,7 +353,7 @@ async function enrichOrganizationEmployees (employees = []) {
       continue
     }
     try {
-      const user = await client.users.getUser(clerkUserId)
+      const user = await resolveClerkUser(client, clerkUserId)
       enriched.push({
         ...member,
         display_name: buildDisplayNameFromClerkUser(user) || extractPrimaryEmailFromClerkUser(user) || clerkUserId,
@@ -854,7 +855,7 @@ async function enrichWorkspaceMemberRecord (member) {
   }
   try {
     const client = getClerkBackendClient()
-    const user = await client.users.getUser(clerkUserId)
+    const user = await resolveClerkUser(client, clerkUserId)
     return {
       ...member,
       role: normalizedRole,
@@ -878,7 +879,7 @@ export async function listWorkspaceMembers (pool, actorUserId, workspaceId, opti
     relaxedOrgContext: true
   })
   const members = await fetchWorkspaceMembers(pool, workspace.id)
-  const enriched = await Promise.all(members.map((member) => enrichWorkspaceMemberRecord(member)))
+  const enriched = await mapWithConcurrency(members, 3, (member) => enrichWorkspaceMemberRecord(member))
   return { workspace, members: enriched }
 }
 

@@ -5,7 +5,7 @@ import { useEngagementRouteParams } from '../../../modules/accounting/routing/us
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
-import { isPortalRequestAborted, portalFetch } from '../../../lib/portalApi'
+import { invalidatePortalFetchCache, isPortalRequestAborted, portalFetch } from '../../../lib/portalApi'
 import { useEngagementWorkspace } from '../../../modules/accounting/context/EngagementWorkspaceProvider'
 import { useAccountContext } from '../../../platform/account/AccountContextProvider'
 import { ensureStringArray } from '../../../shared/collections/ensureStringArray'
@@ -245,6 +245,17 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const { engagementId, leadSheetId } = useEngagementRouteParams()
   const engagementWorkspace = useEngagementWorkspace()
   const loadGenerationRef = useRef(0)
+  const [debouncedEngagementView, setDebouncedEngagementView] = useState<AccountingView>(view)
+  const activeLoadView = isEngagementSubview(view) ? debouncedEngagementView : view
+
+  useEffect(() => {
+    if (!isEngagementSubview(view)) {
+      setDebouncedEngagementView(view)
+      return
+    }
+    const timer = window.setTimeout(() => setDebouncedEngagementView(view), 250)
+    return () => window.clearTimeout(timer)
+  }, [view])
   const [clients, setClients] = useState<Client[]>([])
   const [engagements, setEngagements] = useState<Engagement[]>([])
   const [loading, setLoading] = useState(false)
@@ -406,11 +417,16 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setRepositoryFiles(files)
   }, [getToken])
 
-  const loadReviewNotes = useCallback(async () => {
+  const loadReviewNotes = useCallback(async (options?: { force?: boolean }) => {
     if (!engagementId) return
+    if (engagementWorkspace) {
+      const notes = await engagementWorkspace.refreshReviewNotes({ force: options?.force })
+      setReviewNotes(notes)
+      return
+    }
     const { notes } = await fetchReviewNotesDomain(getToken, engagementId)
     setReviewNotes(notes)
-  }, [engagementId, getToken])
+  }, [engagementId, engagementWorkspace, getToken])
 
   const loadTasks = useCallback(async () => {
     if (!engagementId) return
@@ -485,14 +501,27 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setIntegrationsData(data)
   }, [getToken])
 
-  const loadWorkspaceMembers = useCallback(async () => {
+  const loadWorkspaceMembers = useCallback(async (options?: { force?: boolean }) => {
     try {
-      const data = await portalFetch<{ members: any[] }>('/v1/accounting/members', getToken)
+      if (engagementWorkspace && !options?.force) {
+        const members = engagementWorkspace.members.length > 0
+          ? engagementWorkspace.members
+          : await engagementWorkspace.refreshMembers()
+        setWorkspaceMembers(members)
+        return
+      }
+      const data = await portalFetch<{ members: any[] }>(
+        '/v1/accounting/members',
+        getToken,
+        options?.force
+          ? { headers: { 'X-Portal-Cache-Bypass': '1' } }
+          : {}
+      )
       setWorkspaceMembers(Array.isArray(data.members) ? data.members : [])
     } catch {
       setWorkspaceMembers([])
     }
-  }, [getToken])
+  }, [engagementWorkspace, getToken])
 
   const loadOrganizationSnapshot = useCallback(async () => {
     try {
@@ -540,27 +569,38 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }, [engagementWorkspace?.bundleError, view])
 
   useEffect(() => {
-    if (isListCentricView(view)) return
+    if (!engagementWorkspace?.members.length) return
+    setWorkspaceMembers(engagementWorkspace.members)
+  }, [engagementWorkspace?.members])
+
+  useEffect(() => {
+    if (view !== 'review') return
+    if (!engagementWorkspace?.reviewNotes) return
+    setReviewNotes(engagementWorkspace.reviewNotes)
+  }, [engagementWorkspace?.reviewNotes, view])
+
+  useEffect(() => {
+    if (isListCentricView(activeLoadView)) return
 
     const generation = ++loadGenerationRef.current
     let mounted = true
     const run = async () => {
       setError(null)
       setNotice(null)
-      const blockWithLoadingState = !isCompanyProfileView(view)
+      const blockWithLoadingState = !isCompanyProfileView(activeLoadView)
       if (blockWithLoadingState) setLoading(true)
-      const usesSharedBundle = isEngagementSubview(view) && Boolean(engagementWorkspace)
+      const usesSharedEngagementData = isEngagementSubview(activeLoadView) && Boolean(engagementWorkspace)
       try {
-        if (view === 'joinWorkspaceInvite') {
+        if (activeLoadView === 'joinWorkspaceInvite') {
           await refreshAccount()
           return
         }
-        if (isCompanyProfileView(view)) {
+        if (isCompanyProfileView(activeLoadView)) {
           const profileTasks: Array<Promise<any>> = []
-          if (view === 'companyProfile' || view === 'companyProfileEntities') {
+          if (activeLoadView === 'companyProfile' || activeLoadView === 'companyProfileEntities') {
             profileTasks.push(loadWorkspaceProfile())
           }
-          if (view === 'companyProfileEntities') {
+          if (activeLoadView === 'companyProfileEntities') {
             profileTasks.push(loadClients())
           }
           if (profileTasks.length > 0) {
@@ -569,39 +609,36 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
           return
         }
 
-        if (view === 'engagementDashboard') {
+        if (activeLoadView === 'engagementDashboard') {
           await Promise.all([
-            ...(usesSharedBundle ? [] : [loadEngagementExecutionBundle({ includeDashboardFallback: true })]),
-            loadWorkspaceMembers(),
+            ...(usesSharedEngagementData ? [] : [loadEngagementExecutionBundle({ includeDashboardFallback: true })]),
+            ...(usesSharedEngagementData ? [] : [loadWorkspaceMembers()]),
             loadEngagementSnapshots()
           ])
-        } else if (view === 'trialBalance') {
-          await Promise.all([
-            loadTrialBalance(),
-            ...(usesSharedBundle ? [] : [loadEngagementExecutionBundle()])
-          ])
-        } else if (view === 'leadSheets') {
+        } else if (activeLoadView === 'trialBalance') {
+          await loadTrialBalance()
+        } else if (activeLoadView === 'leadSheets') {
           await loadLeadSheets()
-        } else if (view === 'leadSheetDetail') {
+        } else if (activeLoadView === 'leadSheetDetail') {
           await Promise.all([loadLeadSheetDetail(), loadEvidenceLinks()])
-        } else if (view === 'documents') {
+        } else if (activeLoadView === 'documents') {
           await Promise.all([loadDocuments(), loadRepositoryFiles()])
-        } else if (view === 'review') {
+        } else if (activeLoadView === 'review') {
           await Promise.all([
             loadReviewNotes(),
-            loadWorkspaceMembers(),
-            ...(usesSharedBundle ? [] : [loadEngagementExecutionBundle()])
+            ...(usesSharedEngagementData ? [] : [loadWorkspaceMembers()])
           ])
-        } else if (view === 'adjustments') {
-          await Promise.all([
-            ...(usesSharedBundle ? [] : [loadEngagementExecutionBundle()]),
-            loadWorkspaceMembers()
-          ])
-        } else if (view === 'settings') {
-          await loadWorkspaceMembers()
+        } else if (activeLoadView === 'adjustments') {
+          if (!usesSharedEngagementData) {
+            await loadEngagementExecutionBundle()
+          }
+        } else if (activeLoadView === 'settings') {
+          if (!usesSharedEngagementData) {
+            await loadWorkspaceMembers()
+          }
           await loadEngagementDashboard()
           await loadTasks()
-        } else if (view === 'integrations') {
+        } else if (activeLoadView === 'integrations') {
           await loadIntegrations()
         }
       } catch (e) {
@@ -639,10 +676,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     loadWorkingPaperExecution,
     loadWorkspaceProfile,
     loadWorkspaceMembers,
+    activeLoadView,
     engagementId,
     engagementWorkspace,
-    refreshAccount,
-    view
+    refreshAccount
   ])
 
   useEffect(() => {
@@ -739,8 +776,15 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     : descriptionByView[view]
   const pageLoading = loading || (
     isEngagementSubview(view) &&
+    view !== debouncedEngagementView
+  ) || (
+    isEngagementSubview(view) &&
     Boolean(engagementWorkspace?.bundleLoading) &&
     !engagementWorkspace?.bundle
+  ) || (
+    view === 'review' &&
+    Boolean(engagementWorkspace?.reviewNotesLoading) &&
+    !engagementWorkspace?.reviewNotes
   )
   const currentReviewFlowStatus = String(dashboard?.engagement?.review_flow_status || 'not_started')
   const nextReviewFlowStatuses = useMemo((): string[] => {
@@ -852,15 +896,20 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const refreshEngagementWorkflowViews = useCallback(async (
     options: { includeReviewNotes?: boolean; includeLeadSheetDetail?: boolean } = {}
   ) => {
+    invalidatePortalFetchCache('/v1/accounting/members')
+    if (options.includeReviewNotes && engagementId) {
+      invalidatePortalFetchCache(`/v1/accounting/engagements/${engagementId}/review-notes`)
+    }
     const tasks: Array<Promise<any>> = [
-      loadEngagementExecutionBundle({ includeDashboardFallback: true }),
+      loadEngagementExecutionBundle({ includeDashboardFallback: true, force: true }),
       loadEngagements(),
-      loadWorkspaceMembers()
+      loadWorkspaceMembers({ force: true })
     ]
-    if (options.includeReviewNotes) tasks.push(loadReviewNotes())
+    if (options.includeReviewNotes) tasks.push(loadReviewNotes({ force: true }))
     if (options.includeLeadSheetDetail) tasks.push(loadLeadSheetDetail())
     await Promise.all(tasks)
   }, [
+    engagementId,
     loadEngagementExecutionBundle,
     loadEngagements,
     loadLeadSheetDetail,
@@ -1431,7 +1480,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       await portalFetch(`/v1/accounting/organization/members/${encodeURIComponent(memberUserId)}`, getToken, {
         method: 'DELETE'
       })
-      await Promise.all([loadOrganizationSnapshot(), loadWorkspaceMembers()])
+      invalidatePortalFetchCache('/v1/accounting/members')
+      await Promise.all([
+        loadOrganizationSnapshot(),
+        loadWorkspaceMembers({ force: true }),
+        engagementWorkspace?.refreshMembers({ force: true })
+      ])
       setNotice('Employee removed.')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not remove employee')

@@ -15,6 +15,33 @@ const htmlInsteadOfJsonHint =
   'The app received a web page instead of API data. The portal API must be reachable at /api (same host) or set VITE_API_BASE_URL to your API origin at build time, with CORS enabled on the API.'
 
 const inflightGetRequests = new Map<string, Promise<unknown>>()
+const stableGetCache = new Map<string, { at: number; data: unknown }>()
+
+function getStableCacheTtlMs (path: string): number | null {
+  if (path === '/v1/accounting/members' || path === '/v1/accounting/clients') return 60_000
+  if (path.startsWith('/v1/accounting/engagements/') && path.endsWith('/review-notes')) return 30_000
+  return null
+}
+
+function shouldBypassPortalCache (init: RequestInit): boolean {
+  const headers = init.headers
+  if (!headers) return false
+  if (headers instanceof Headers) {
+    return headers.get('X-Portal-Cache-Bypass') === '1'
+  }
+  const record = headers as Record<string, string>
+  return record['X-Portal-Cache-Bypass'] === '1'
+}
+
+export function invalidatePortalFetchCache (prefix = ''): void {
+  if (!prefix) {
+    stableGetCache.clear()
+    return
+  }
+  for (const key of stableGetCache.keys()) {
+    if (key.startsWith(prefix)) stableGetCache.delete(key)
+  }
+}
 
 function isDeadlockMessage (errorMessage: string): boolean {
   return String(errorMessage || '').toLowerCase().includes('deadlock detected')
@@ -56,6 +83,14 @@ export async function portalFetch<T> (
 
   const method = String(init.method || 'GET').toUpperCase()
   const dedupeKey = method === 'GET' && !init.body ? `${method}:${path}` : null
+  const cacheTtlMs = dedupeKey && !shouldBypassPortalCache(init) ? getStableCacheTtlMs(path) : null
+
+  if (cacheTtlMs && dedupeKey) {
+    const cached = stableGetCache.get(dedupeKey)
+    if (cached && Date.now() - cached.at < cacheTtlMs) {
+      return cached.data as T
+    }
+  }
 
   const request = async (): Promise<T> => {
     const res = await fetch(`${getApiPrefix()}${path}`, {
@@ -94,7 +129,11 @@ export async function portalFetch<T> (
 
   const execute = async (): Promise<T> => {
     try {
-      return await request()
+      const data = await request()
+      if (cacheTtlMs && dedupeKey) {
+        stableGetCache.set(dedupeKey, { at: Date.now(), data })
+      }
+      return data
     } catch (error) {
       if (isPortalRequestAborted(error)) {
         throw error

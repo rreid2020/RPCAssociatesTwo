@@ -1,4 +1,4 @@
-import { FC, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { buildEngagementSubPath } from '../../../modules/accounting/routing/engagementPaths'
 import { useEngagementRouteParams } from '../../../modules/accounting/routing/useEngagementRouteParams'
@@ -38,17 +38,19 @@ import { downloadBase64File, exportEngagementWorkbookDomain } from '../../../dom
 import { createEngagementSnapshotDomain, fetchEngagementSnapshotsDomain } from '../../../domains/snapshots'
 import { CompanyProfileTabs } from '../../../modules/accounting/layouts/CompanyProfileLayout'
 import PageLoadingSkeleton from '../../../shared/loading/PageLoadingSkeleton'
+import { LazyPanelBoundary } from '../../../shared/loading/LazyPanelBoundary'
+import { lazyWithRetry } from '../../../shared/loading/lazyWithRetry'
 import { usePermission } from '../../../platform/permissions/usePermission'
+import WorkflowQueuePanel from '../../../modules/working-papers/components/WorkflowQueuePanel'
+import AuditTimelinePanel from '../../../modules/working-papers/components/AuditTimelinePanel'
+import WorkingPaperTreePanel from '../../../modules/working-papers/components/WorkingPaperTreePanel'
+import AdjustmentWorkspacePanel from '../../../modules/working-papers/components/AdjustmentWorkspacePanel'
 
-const LazyEngagementOperationsPanel = lazy(() => import('../../../modules/accounting/components/EngagementOperationsPanel'))
-const LazyRolesAndPermissionsPanel = lazy(() => import('../../../modules/accounting/components/RolesAndPermissionsPanel'))
-const LazyTrialBalanceGridPanel = lazy(() => import('../../../modules/working-papers/components/TrialBalanceGridPanel'))
-const LazyTrialBalanceImportPanel = lazy(() => import('../../../modules/working-papers/components/TrialBalanceImportPanel'))
-const LazyAgGridTable = lazy(() => import('../../../modules/working-papers/components/grid/AgGridTable'))
-const LazyWorkingPaperTreePanel = lazy(() => import('../../../modules/working-papers/components/WorkingPaperTreePanel'))
-const LazyWorkflowQueuePanel = lazy(() => import('../../../modules/working-papers/components/WorkflowQueuePanel'))
-const LazyAuditTimelinePanel = lazy(() => import('../../../modules/working-papers/components/AuditTimelinePanel'))
-const LazyAdjustmentWorkspacePanel = lazy(() => import('../../../modules/working-papers/components/AdjustmentWorkspacePanel'))
+const LazyEngagementOperationsPanel = lazyWithRetry(() => import('../../../modules/accounting/components/EngagementOperationsPanel'))
+const LazyRolesAndPermissionsPanel = lazyWithRetry(() => import('../../../modules/accounting/components/RolesAndPermissionsPanel'))
+const LazyTrialBalanceGridPanel = lazyWithRetry(() => import('../../../modules/working-papers/components/TrialBalanceGridPanel'))
+const LazyTrialBalanceImportPanel = lazyWithRetry(() => import('../../../modules/working-papers/components/TrialBalanceImportPanel'))
+const LazyAgGridTable = lazyWithRetry(() => import('../../../modules/working-papers/components/grid/AgGridTable'))
 
 const AccountingPanelFallback = () => <PageLoadingSkeleton variant="table" />
 import {
@@ -253,7 +255,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       setDebouncedEngagementView(view)
       return
     }
-    const timer = window.setTimeout(() => setDebouncedEngagementView(view), 250)
+    const timer = window.setTimeout(() => setDebouncedEngagementView(view), 400)
     return () => window.clearTimeout(timer)
   }, [view])
   const [clients, setClients] = useState<Client[]>([])
@@ -1946,13 +1948,13 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                     )}
 
                     {view === 'companyProfileRoles' && (
-                      <Suspense fallback={<AccountingPanelFallback />}>
+                      <LazyPanelBoundary fallback={<AccountingPanelFallback />}>
                         <LazyRolesAndPermissionsPanel
                           getToken={getToken}
                           onError={setError}
                           onNotice={setNotice}
                         />
-                      </Suspense>
+                      </LazyPanelBoundary>
                     )}
 
                     {view === 'companyProfileEmployees' && (
@@ -2131,7 +2133,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                     )}
 
                     {(view === 'engagementList' || view === 'newEngagement') && (
-                      <Suspense fallback={<AccountingPanelFallback />}>
+                      <LazyPanelBoundary fallback={<AccountingPanelFallback />}>
                       <LazyEngagementOperationsPanel
                         getToken={getToken}
                         accountReady={Boolean(account)}
@@ -2151,7 +2153,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         onNotice={setNotice}
                         onSavingChange={setSaving}
                       />
-                      </Suspense>
+                      </LazyPanelBoundary>
                     )}
 
                     {view === 'engagementDashboard' && dashboard && (
@@ -2235,16 +2237,10 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           </button>
                         </div>
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                          <Suspense fallback={<AccountingPanelFallback />}>
-                            <LazyWorkingPaperTreePanel sections={Array.isArray(workingPaperTree?.sections) ? workingPaperTree.sections : []} />
-                          </Suspense>
-                          <Suspense fallback={<AccountingPanelFallback />}>
-                            <LazyWorkflowQueuePanel queue={workflowQueue} />
-                          </Suspense>
+                          <WorkingPaperTreePanel sections={Array.isArray(workingPaperTree?.sections) ? workingPaperTree.sections : []} />
+                          <WorkflowQueuePanel queue={workflowQueue} />
                         </div>
-                        <Suspense fallback={<AccountingPanelFallback />}>
-                          <LazyAuditTimelinePanel events={auditEvents} />
-                        </Suspense>
+                        <AuditTimelinePanel events={auditEvents} />
                         <div className="rounded-lg border border-border p-4">
                           <h3 className="font-semibold text-primary-dark">AI Foundations</h3>
                           <p className="text-xs text-text-light mt-1">
@@ -2271,7 +2267,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           </div>
                         </div>
                         {engagementId && (
-                          <Suspense fallback={<AccountingPanelFallback />}>
+                          <LazyPanelBoundary fallback={<AccountingPanelFallback />}>
                             <LazyTrialBalanceImportPanel
                               engagementId={engagementId}
                               getToken={getToken}
@@ -2285,12 +2281,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                               }}
                               onGenerateLeadSheets={onGenerateLeadSheets}
                             />
-                          </Suspense>
+                          </LazyPanelBoundary>
                         )}
                         {trialBalanceAccounts.length === 0 ? (
                           <p className="text-sm text-text-light">No trial balance accounts imported yet.</p>
                         ) : (
-                          <Suspense fallback={<AccountingPanelFallback />}>
+                          <LazyPanelBoundary fallback={<AccountingPanelFallback />}>
                           <LazyTrialBalanceGridPanel
                             getToken={getToken}
                             accounts={trialBalanceAccounts}
@@ -2300,7 +2296,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             onNotice={setNotice}
                             onSavingChange={setSaving}
                           />
-                          </Suspense>
+                          </LazyPanelBoundary>
                         )}
                       </div>
                     )}
@@ -2325,7 +2321,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         {leadSheets.length === 0 ? (
                           <p className="text-sm text-text-light">No lead sheets generated yet.</p>
                         ) : (
-                          <Suspense fallback={<AccountingPanelFallback />}>
+                          <LazyPanelBoundary fallback={<AccountingPanelFallback />}>
                             <LazyAgGridTable
                               rowData={leadSheets}
                               height={320}
@@ -2341,7 +2337,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                 { field: 'document_count', headerName: 'Docs', minWidth: 90 }
                               ]}
                             />
-                          </Suspense>
+                          </LazyPanelBoundary>
                         )}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                           {leadSheets.map((sheet) => (
@@ -2492,14 +2488,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             Capture Reviewer Signoff
                           </button>
                         </div>
-                        <Suspense fallback={<AccountingPanelFallback />}>
-                          <LazyWorkflowQueuePanel queue={workflowQueue} />
-                        </Suspense>
+                        <WorkflowQueuePanel queue={workflowQueue} />
                         {reviewNotes.length === 0 ? (
                           <p className="text-sm text-text-light">No review notes for this engagement.</p>
                         ) : (
                           <>
-                            <Suspense fallback={<AccountingPanelFallback />}>
+                            <LazyPanelBoundary fallback={<AccountingPanelFallback />}>
                               <LazyAgGridTable
                                 rowData={reviewNotes}
                                 height={280}
@@ -2509,7 +2503,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                   { field: 'note_text', headerName: 'Note', minWidth: 360 }
                                 ]}
                               />
-                            </Suspense>
+                            </LazyPanelBoundary>
                             <div className="space-y-2">
                               {reviewNotes.map((note) => (
                                 <div key={`review-actions-${note.id}`} className="rounded border border-border/70 p-2">
@@ -2543,25 +2537,19 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                             ))}
                           </div>
                         </div>
-                        <Suspense fallback={<AccountingPanelFallback />}>
-                          <LazyAuditTimelinePanel events={auditEvents} />
-                        </Suspense>
+                        <AuditTimelinePanel events={auditEvents} />
                       </div>
                     )}
 
                     {view === 'adjustments' && (
                       <div className="space-y-4">
-                        <Suspense fallback={<AccountingPanelFallback />}>
-                          <LazyAdjustmentWorkspacePanel
-                            entries={adjustments}
-                            saving={saving}
-                            onCreateEntry={onCreateAdjustmentEntry}
-                            onUpdateLines={onUpsertAdjustmentLines}
-                          />
-                        </Suspense>
-                        <Suspense fallback={<AccountingPanelFallback />}>
-                          <LazyAuditTimelinePanel events={auditEvents} />
-                        </Suspense>
+                        <AdjustmentWorkspacePanel
+                          entries={adjustments}
+                          saving={saving}
+                          onCreateEntry={onCreateAdjustmentEntry}
+                          onUpdateLines={onUpsertAdjustmentLines}
+                        />
+                        <AuditTimelinePanel events={auditEvents} />
                       </div>
                     )}
 

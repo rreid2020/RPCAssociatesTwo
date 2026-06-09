@@ -1,6 +1,7 @@
 import { FC, useEffect } from 'react'
 import { Link, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { EngagementWorkspaceProvider } from '../context/EngagementWorkspaceProvider'
+import { preloadEngagementWorkspacePanels } from '../preloadEngagementPanels'
 import {
   RESERVED_ENGAGEMENT_PATH_SEGMENTS,
   parseEngagementIdFromPathname
@@ -23,6 +24,11 @@ const EngagementLayout: FC = () => {
   const location = useLocation()
   const { engagementId: paramEngagementId = '' } = useParams()
   const engagementId = paramEngagementId || parseEngagementIdFromPathname(location.pathname) || ''
+
+  useEffect(() => {
+    if (!engagementId) return
+    preloadEngagementWorkspacePanels()
+  }, [engagementId])
 
   useEffect(() => {
     const segment = location.pathname

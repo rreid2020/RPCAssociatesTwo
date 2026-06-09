@@ -51,7 +51,11 @@ const WorkingPaperTreePanel: FC<WorkingPaperTreePanelProps> = ({ sections }) => 
 
   const gridOptions = useMemo<GridOptions<any>>(
     () => ({
-      suppressRowClickSelection: true
+      rowSelection: {
+        mode: 'singleRow',
+        checkboxes: false,
+        enableClickSelection: false
+      }
     }),
     []
   )

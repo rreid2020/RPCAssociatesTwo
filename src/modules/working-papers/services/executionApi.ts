@@ -81,7 +81,12 @@ export type EngagementExecutionBundle = {
 
 export async function fetchEngagementExecutionBundle (
   engagementId: string,
-  getToken: () => Promise<string | null>
+  getToken: () => Promise<string | null>,
+  init: RequestInit = {}
 ) {
-  return portalFetch<EngagementExecutionBundle>(`/v1/accounting/engagements/${engagementId}/execution-bundle`, getToken)
+  return portalFetch<EngagementExecutionBundle>(
+    `/v1/accounting/engagements/${engagementId}/execution-bundle`,
+    getToken,
+    init
+  )
 }

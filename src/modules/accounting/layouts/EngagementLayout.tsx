@@ -1,5 +1,6 @@
 import { FC, useEffect } from 'react'
 import { Link, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { EngagementWorkspaceProvider } from '../context/EngagementWorkspaceProvider'
 import {
   RESERVED_ENGAGEMENT_PATH_SEGMENTS,
   parseEngagementIdFromPathname
@@ -57,7 +58,9 @@ const EngagementLayout: FC = () => {
           ))}
         </div>
       </div>
-      <Outlet />
+      <EngagementWorkspaceProvider engagementId={engagementId}>
+        <Outlet />
+      </EngagementWorkspaceProvider>
     </div>
   )
 }

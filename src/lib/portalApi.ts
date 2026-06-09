@@ -14,8 +14,15 @@ function getApiPrefix (): string {
 const htmlInsteadOfJsonHint =
   'The app received a web page instead of API data. The portal API must be reachable at /api (same host) or set VITE_API_BASE_URL to your API origin at build time, with CORS enabled on the API.'
 
+const inflightGetRequests = new Map<string, Promise<unknown>>()
+
 function isDeadlockMessage (errorMessage: string): boolean {
   return String(errorMessage || '').toLowerCase().includes('deadlock detected')
+}
+
+export function isPortalRequestAborted (error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+  return error.name === 'AbortError' || error.message === 'The user aborted a request.'
 }
 
 function parseJsonBody<T> (text: string, allowEmpty: boolean): T {
@@ -46,6 +53,9 @@ export async function portalFetch<T> (
   if (!token) {
     throw new Error('Not signed in')
   }
+
+  const method = String(init.method || 'GET').toUpperCase()
+  const dedupeKey = method === 'GET' && !init.body ? `${method}:${path}` : null
 
   const request = async (): Promise<T> => {
     const res = await fetch(`${getApiPrefix()}${path}`, {
@@ -82,20 +92,40 @@ export async function portalFetch<T> (
     return parseJsonBody<T>(text, false)
   }
 
-  try {
-    return await request()
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    const shouldRetryTransient = isDeadlockMessage(message) ||
-      message.toLowerCase().includes('temporary database conflict') ||
-      message.toLowerCase().includes('took too long to respond') ||
-      message.toLowerCase().includes('temporarily unavailable')
-    if (shouldRetryTransient) {
-      await new Promise((resolve) => setTimeout(resolve, 120))
+  const execute = async (): Promise<T> => {
+    try {
       return await request()
+    } catch (error) {
+      if (isPortalRequestAborted(error)) {
+        throw error
+      }
+      const message = error instanceof Error ? error.message : String(error)
+      const shouldRetryTransient = isDeadlockMessage(message) ||
+        message.toLowerCase().includes('temporary database conflict')
+      if (shouldRetryTransient) {
+        await new Promise((resolve) => setTimeout(resolve, 120))
+        return await request()
+      }
+      throw error
     }
-    throw error
   }
+
+  if (!dedupeKey) {
+    return await execute()
+  }
+
+  const existing = inflightGetRequests.get(dedupeKey)
+  if (existing) {
+    return await existing as Promise<T>
+  }
+
+  const pending = execute().finally(() => {
+    if (inflightGetRequests.get(dedupeKey) === pending) {
+      inflightGetRequests.delete(dedupeKey)
+    }
+  })
+  inflightGetRequests.set(dedupeKey, pending)
+  return await pending
 }
 
 export type PortalDashboard = {

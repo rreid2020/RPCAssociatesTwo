@@ -5,7 +5,8 @@ import { useEngagementRouteParams } from '../../../modules/accounting/routing/us
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
-import { portalFetch } from '../../../lib/portalApi'
+import { isPortalRequestAborted, portalFetch } from '../../../lib/portalApi'
+import { useEngagementWorkspace } from '../../../modules/accounting/context/EngagementWorkspaceProvider'
 import { useAccountContext } from '../../../platform/account/AccountContextProvider'
 import { ensureStringArray } from '../../../shared/collections/ensureStringArray'
 import {
@@ -242,6 +243,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const { engagementId, leadSheetId } = useEngagementRouteParams()
+  const engagementWorkspace = useEngagementWorkspace()
+  const loadGenerationRef = useRef(0)
   const [clients, setClients] = useState<Client[]>([])
   const [engagements, setEngagements] = useState<Engagement[]>([])
   const [loading, setLoading] = useState(false)
@@ -431,14 +434,17 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     if (bundle.dashboard) setDashboard(bundle.dashboard)
   }, [])
 
-  const loadEngagementExecutionBundle = useCallback(async (options?: { includeDashboardFallback?: boolean }) => {
+  const loadEngagementExecutionBundle = useCallback(async (options?: { includeDashboardFallback?: boolean; force?: boolean }) => {
     if (!engagementId) return
-    const bundle = await fetchEngagementExecutionBundle(engagementId, getToken)
+    const bundle = engagementWorkspace && engagementWorkspace.engagementId === engagementId
+      ? await engagementWorkspace.refreshBundle({ force: options?.force })
+      : await fetchEngagementExecutionBundle(engagementId, getToken)
+    if (!bundle) return
     applyEngagementExecutionBundle(bundle)
     if (options?.includeDashboardFallback && !bundle.dashboard) {
       await loadEngagementDashboard()
     }
-  }, [applyEngagementExecutionBundle, engagementId, getToken, loadEngagementDashboard])
+  }, [applyEngagementExecutionBundle, engagementId, engagementWorkspace, getToken, loadEngagementDashboard])
 
   const loadWorkingPaperExecution = useCallback(async () => {
     if (!engagementId) return
@@ -515,14 +521,35 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   }, [getToken])
 
   useEffect(() => {
+    if (!isEngagementSubview(view)) return
+    if (!engagementWorkspace || engagementWorkspace.engagementId !== engagementId) return
+    if (!engagementWorkspace.bundle) return
+    applyEngagementExecutionBundle(engagementWorkspace.bundle)
+  }, [
+    applyEngagementExecutionBundle,
+    engagementId,
+    engagementWorkspace?.bundle,
+    engagementWorkspace?.engagementId,
+    view
+  ])
+
+  useEffect(() => {
+    if (!isEngagementSubview(view)) return
+    if (!engagementWorkspace?.bundleError) return
+    setError(engagementWorkspace.bundleError)
+  }, [engagementWorkspace?.bundleError, view])
+
+  useEffect(() => {
     if (isListCentricView(view)) return
 
+    const generation = ++loadGenerationRef.current
     let mounted = true
     const run = async () => {
       setError(null)
       setNotice(null)
       const blockWithLoadingState = !isCompanyProfileView(view)
       if (blockWithLoadingState) setLoading(true)
+      const usesSharedBundle = isEngagementSubview(view) && Boolean(engagementWorkspace)
       try {
         if (view === 'joinWorkspaceInvite') {
           await refreshAccount()
@@ -544,12 +571,15 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
         if (view === 'engagementDashboard') {
           await Promise.all([
-            loadEngagementExecutionBundle({ includeDashboardFallback: true }),
+            ...(usesSharedBundle ? [] : [loadEngagementExecutionBundle({ includeDashboardFallback: true })]),
             loadWorkspaceMembers(),
             loadEngagementSnapshots()
           ])
         } else if (view === 'trialBalance') {
-          await Promise.all([loadTrialBalance(), loadEngagementExecutionBundle()])
+          await Promise.all([
+            loadTrialBalance(),
+            ...(usesSharedBundle ? [] : [loadEngagementExecutionBundle()])
+          ])
         } else if (view === 'leadSheets') {
           await loadLeadSheets()
         } else if (view === 'leadSheetDetail') {
@@ -560,11 +590,11 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
           await Promise.all([
             loadReviewNotes(),
             loadWorkspaceMembers(),
-            loadEngagementExecutionBundle()
+            ...(usesSharedBundle ? [] : [loadEngagementExecutionBundle()])
           ])
         } else if (view === 'adjustments') {
           await Promise.all([
-            loadEngagementExecutionBundle(),
+            ...(usesSharedBundle ? [] : [loadEngagementExecutionBundle()]),
             loadWorkspaceMembers()
           ])
         } else if (view === 'settings') {
@@ -575,14 +605,16 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
           await loadIntegrations()
         }
       } catch (e) {
-        if (mounted) setError(e instanceof Error ? e.message : 'Could not load data')
+        if (!mounted || loadGenerationRef.current !== generation || isPortalRequestAborted(e)) return
+        setError(e instanceof Error ? e.message : 'Could not load data')
       } finally {
-        if (mounted && blockWithLoadingState) setLoading(false)
+        if (mounted && loadGenerationRef.current === generation && blockWithLoadingState) setLoading(false)
       }
     }
     void run()
     return () => {
       mounted = false
+      loadGenerationRef.current += 1
     }
   }, [
     loadClients,
@@ -607,6 +639,8 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     loadWorkingPaperExecution,
     loadWorkspaceProfile,
     loadWorkspaceMembers,
+    engagementId,
+    engagementWorkspace,
     refreshAccount,
     view
   ])
@@ -640,6 +674,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     }
     if (listBootstrapViewRef.current === view) return
 
+    const generation = ++loadGenerationRef.current
     let mounted = true
     const run = async () => {
       setListLoading(true)
@@ -654,19 +689,21 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         } else {
           await loadEngagements()
         }
-        if (mounted) {
+        if (mounted && loadGenerationRef.current === generation) {
           listBootstrapViewRef.current = view
           lastLoadedEngagementFiltersRef.current = JSON.stringify(engagementFiltersRef.current)
         }
       } catch (e) {
-        if (mounted) setError(e instanceof Error ? e.message : 'Could not load data')
+        if (!mounted || loadGenerationRef.current !== generation || isPortalRequestAborted(e)) return
+        setError(e instanceof Error ? e.message : 'Could not load data')
       } finally {
-        if (mounted) setListLoading(false)
+        if (mounted && loadGenerationRef.current === generation) setListLoading(false)
       }
     }
     void run()
     return () => {
       mounted = false
+      loadGenerationRef.current += 1
     }
   }, [loadClients, loadEngagements, loadWorkspaceMembers, view])
 
@@ -700,6 +737,11 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       ? 'Create and maintain client records that engagements will be attached to.'
       : 'Create reporting entities (subsidiary, division, or legal entity) that engagements will be attached to.')
     : descriptionByView[view]
+  const pageLoading = loading || (
+    isEngagementSubview(view) &&
+    Boolean(engagementWorkspace?.bundleLoading) &&
+    !engagementWorkspace?.bundle
+  )
   const currentReviewFlowStatus = String(dashboard?.engagement?.review_flow_status || 'not_started')
   const nextReviewFlowStatuses = useMemo((): string[] => {
     const fromDashboard = ensureStringArray(dashboard?.nextReviewFlowStatuses)
@@ -770,6 +812,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     if (listBootstrapViewRef.current !== view) return
     if (engagementFilterSignature === lastLoadedEngagementFiltersRef.current) return
 
+    const generation = ++loadGenerationRef.current
     let mounted = true
     const showSkeleton = engagements.length === 0
     const run = async () => {
@@ -777,18 +820,20 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       setError(null)
       try {
         await loadEngagements()
-        if (mounted) {
+        if (mounted && loadGenerationRef.current === generation) {
           lastLoadedEngagementFiltersRef.current = engagementFilterSignature
         }
       } catch (e) {
-        if (mounted) setError(e instanceof Error ? e.message : 'Could not refresh engagements')
+        if (!mounted || loadGenerationRef.current !== generation || isPortalRequestAborted(e)) return
+        setError(e instanceof Error ? e.message : 'Could not refresh engagements')
       } finally {
-        if (mounted && showSkeleton) setListLoading(false)
+        if (mounted && loadGenerationRef.current === generation && showSkeleton) setListLoading(false)
       }
     }
     void run()
     return () => {
       mounted = false
+      loadGenerationRef.current += 1
     }
   }, [engagementFilterSignature, engagements.length, loadEngagements, view])
 
@@ -1542,7 +1587,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                 </div>
               )}
               <div className={isCompanyProfileView(view) ? 'space-y-4' : 'bg-white p-6 rounded-lg border border-border shadow-sm'}>
-              {loading && !isListCentricView(view) ? (
+              {pageLoading && !isListCentricView(view) ? (
                   <PageLoadingSkeleton variant={view === 'landing' ? 'cards' : 'default'} />
                 ) : (
                   <div className="space-y-4">

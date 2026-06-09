@@ -13,26 +13,30 @@ export async function getEngagementExecutionBundle (pool, clerkUserId, engagemen
   const tree = await getWorkingPaperExecutionTree(pool, clerkUserId, engagementId)
   if (!tree) return null
 
-  let execution = null
-  if (options.includeExecution !== false) {
-    try {
-      const workspace = options.workspace || await getWorkspaceContext(pool, clerkUserId, options.workspaceId || null)
-      execution = await getEngagementExecutionSnapshot(pool, clerkUserId, engagementId, workspace.id, {
-        workspace
-      })
-    } catch {
-      execution = null
-    }
-  }
+  const workspace = options.workspace || await getWorkspaceContext(pool, clerkUserId, options.workspaceId || null)
 
-  const queue = await getEngagementWorkflowQueue(pool, clerkUserId, engagementId)
-  const entries = await listAdjustmentEntries(pool, clerkUserId, engagementId)
-  const events = await getEngagementAuditEvents(pool, clerkUserId, engagementId)
-  const signoffs = await getReviewSignoffTimeline(pool, clerkUserId, engagementId)
-  const aiFoundations = await getAiExecutionFoundations(pool, clerkUserId, engagementId)
-  const dashboard = options.includeDashboard
-    ? await getEngagementDashboard(pool, clerkUserId, engagementId)
-    : null
+  const [
+    execution,
+    queue,
+    entries,
+    events,
+    signoffs,
+    aiFoundations,
+    dashboard
+  ] = await Promise.all([
+    options.includeExecution === false
+      ? Promise.resolve(null)
+      : getEngagementExecutionSnapshot(pool, clerkUserId, engagementId, workspace.id, { workspace })
+        .catch(() => null),
+    getEngagementWorkflowQueue(pool, clerkUserId, engagementId),
+    listAdjustmentEntries(pool, clerkUserId, engagementId),
+    getEngagementAuditEvents(pool, clerkUserId, engagementId),
+    getReviewSignoffTimeline(pool, clerkUserId, engagementId),
+    getAiExecutionFoundations(pool, clerkUserId, engagementId),
+    options.includeDashboard
+      ? getEngagementDashboard(pool, clerkUserId, engagementId)
+      : Promise.resolve(null)
+  ])
 
   return {
     tree,

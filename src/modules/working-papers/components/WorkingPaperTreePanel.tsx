@@ -14,7 +14,6 @@ const WorkingPaperTreePanel: FC<WorkingPaperTreePanelProps> = ({ sections }) => 
       flattened.push({
         id: `section-${section.id}`,
         type: 'section',
-        path: [sectionCode],
         section_label: `${sectionCode} - ${section.section_name || 'Section'}`,
         review_status: section.status || 'not_started',
         row_count: Array.isArray(section.rows) ? section.rows.length : Number(section.row_count || 0)
@@ -23,8 +22,7 @@ const WorkingPaperTreePanel: FC<WorkingPaperTreePanelProps> = ({ sections }) => 
         flattened.push({
           id: row.id,
           type: 'row',
-          path: [sectionCode, String(row.row_label || row.account_name || row.id)],
-          section_label: row.row_label || row.account_name || 'Row',
+          section_label: `  ${row.row_label || row.account_name || 'Row'}`,
           review_status: row.review_status || 'pending',
           row_count: null
         })
@@ -53,13 +51,7 @@ const WorkingPaperTreePanel: FC<WorkingPaperTreePanelProps> = ({ sections }) => 
 
   const gridOptions = useMemo<GridOptions<any>>(
     () => ({
-      treeData: true,
-      getDataPath: (data: any) => data.path,
-      autoGroupColumnDef: {
-        headerName: 'Hierarchy',
-        minWidth: 280
-      },
-      groupDefaultExpanded: 1
+      suppressRowClickSelection: true
     }),
     []
   )

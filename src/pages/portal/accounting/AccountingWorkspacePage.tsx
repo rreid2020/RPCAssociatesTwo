@@ -1,5 +1,7 @@
 import { FC, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { buildEngagementSubPath } from '../../../modules/accounting/routing/engagementPaths'
+import { useEngagementRouteParams } from '../../../modules/accounting/routing/useEngagementRouteParams'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
@@ -239,7 +241,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
-  const { engagementId, leadSheetId } = useParams()
+  const { engagementId, leadSheetId } = useEngagementRouteParams()
   const [clients, setClients] = useState<Client[]>([])
   const [engagements, setEngagements] = useState<Engagement[]>([])
   const [loading, setLoading] = useState(false)
@@ -2082,7 +2084,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                                 Move to {formatWorkflowLabel(status)}
                               </button>
                             ))}
-                            <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/settings`} className="text-sm text-primary-dark underline self-center">
+                            <Link to="settings" className="text-sm text-primary-dark underline self-center">
                               Edit workflow details
                             </Link>
                             <button
@@ -2117,13 +2119,13 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/execution`} className="btn btn--primary text-sm py-2 px-4">Execution</Link>
-                          <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/trial-balance`} className="btn btn--primary text-sm py-2 px-4">Trial Balance</Link>
-                          <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/lead-sheets`} className="btn btn--primary text-sm py-2 px-4">Lead Sheets</Link>
-                          <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/documents`} className="btn btn--primary text-sm py-2 px-4">Documents</Link>
-                          <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/review`} className="btn btn--primary text-sm py-2 px-4">Review</Link>
-                          <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/adjustments`} className="btn btn--primary text-sm py-2 px-4">Adjustments</Link>
-                          <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/settings`} className="btn btn--primary text-sm py-2 px-4">Settings</Link>
+                          <Link to="execution" className="btn btn--primary text-sm py-2 px-4">Execution</Link>
+                          <Link to="trial-balance" className="btn btn--primary text-sm py-2 px-4">Trial Balance</Link>
+                          <Link to="lead-sheets" className="btn btn--primary text-sm py-2 px-4">Lead Sheets</Link>
+                          <Link to="documents" className="btn btn--primary text-sm py-2 px-4">Documents</Link>
+                          <Link to="review" className="btn btn--primary text-sm py-2 px-4">Review</Link>
+                          <Link to="adjustments" className="btn btn--primary text-sm py-2 px-4">Adjustments</Link>
+                          <Link to="settings" className="btn btn--primary text-sm py-2 px-4">Settings</Link>
                           <button
                             type="button"
                             className="btn btn--secondary text-sm py-2 px-4"
@@ -2245,7 +2247,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                           {leadSheets.map((sheet) => (
                             <div key={`sheet-actions-${sheet.id}`} className="rounded border border-border/70 p-2 flex items-center justify-between gap-2">
-                              <Link className="text-primary-dark hover:underline text-sm" to={`/portal/accounting/working-papers/engagements/${engagementId}/lead-sheets/${sheet.id}`}>
+                              <Link className="text-primary-dark hover:underline text-sm" to={engagementId ? buildEngagementSubPath(engagementId, `lead-sheets/${sheet.id}`) : '#'}>
                                 Open {sheet.section_code} - {sheet.section_name}
                               </Link>
                               <button
@@ -2560,7 +2562,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
                           <p className="text-sm text-text-light mb-2">
                             {clientLabelPlural} in organization: {clients.length} | Tasks in engagement: {tasks.length}
                           </p>
-                          <Link to={`/portal/accounting/working-papers/engagements/${engagementId}/review`} className="text-sm text-primary-dark underline">
+                          <Link to={engagementId ? buildEngagementSubPath(engagementId, 'review') : '#'} className="text-sm text-primary-dark underline">
                             Manage review notes and workflow
                           </Link>
                         </div>

@@ -1,5 +1,6 @@
 import { FC, useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import { useEngagementRouteParams } from '../../accounting/routing/useEngagementRouteParams'
 import PageLoadingSkeleton from '../../../shared/loading/PageLoadingSkeleton'
 import ChecklistExecutionGrid from '../components/ChecklistExecutionGrid'
 import ProcedureExecutionGrid from '../components/ProcedureExecutionGrid'
@@ -25,7 +26,7 @@ function formatPhaseLabel (phase: string) {
 }
 
 const EngagementExecutionPage: FC<EngagementExecutionPageProps> = ({ getToken }) => {
-  const { engagementId = '' } = useParams()
+  const { engagementId } = useEngagementRouteParams()
   const [snapshot, setSnapshot] = useState<ExecutionSnapshot | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -112,7 +113,6 @@ const EngagementExecutionPage: FC<EngagementExecutionPageProps> = ({ getToken })
     )
   }
 
-  const basePath = `/portal/accounting/working-papers/engagements/${engagementId}`
   const metrics = snapshot.metrics
 
   return (
@@ -203,9 +203,9 @@ const EngagementExecutionPage: FC<EngagementExecutionPageProps> = ({ getToken })
         </label>
 
         <div className="flex flex-wrap gap-2 text-sm">
-          <Link to={`${basePath}/trial-balance`} className="text-primary-dark hover:underline">Trial balance</Link>
-          <Link to={`${basePath}/lead-sheets`} className="text-primary-dark hover:underline">Lead sheets</Link>
-          <Link to={`${basePath}/review`} className="text-primary-dark hover:underline">Review notes</Link>
+          <Link to="../trial-balance" className="text-primary-dark hover:underline">Trial balance</Link>
+          <Link to="../lead-sheets" className="text-primary-dark hover:underline">Lead sheets</Link>
+          <Link to="../review" className="text-primary-dark hover:underline">Review notes</Link>
         </div>
       </div>
 

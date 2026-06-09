@@ -35,6 +35,7 @@ type EngagementWorkspaceContextValue = {
   membersError: string | null
   reviewNotes: any[] | null
   reviewNotesLoading: boolean
+  reviewNotesError: string | null
   refreshBundle: (options?: { force?: boolean }) => Promise<EngagementExecutionBundle | null>
   refreshMembers: (options?: { force?: boolean }) => Promise<WorkspaceMember[]>
   refreshReviewNotes: (options?: { force?: boolean }) => Promise<any[]>
@@ -60,12 +61,16 @@ export const EngagementWorkspaceProvider: FC<EngagementWorkspaceProviderProps> =
   const [membersError, setMembersError] = useState<string | null>(null)
   const [reviewNotes, setReviewNotes] = useState<any[] | null>(null)
   const [reviewNotesLoading, setReviewNotesLoading] = useState(false)
+  const [reviewNotesError, setReviewNotesError] = useState<string | null>(null)
 
   const bundleRef = useRef<EngagementExecutionBundle | null>(null)
   const membersRef = useRef<WorkspaceMember[]>([])
   const reviewNotesRef = useRef<any[] | null>(null)
+  const reviewNotesInFlightRef = useRef(false)
+  const reviewNotesLoadedForEngagementRef = useRef<string | null>(null)
   const loadedEngagementIdRef = useRef<string | null>(null)
   const loadedMembersRef = useRef(false)
+  const membersInFlightRef = useRef(false)
 
   const refreshBundle = useCallback(async (options?: { force?: boolean; signal?: AbortSignal }) => {
     if (!engagementId) return null
@@ -99,10 +104,14 @@ export const EngagementWorkspaceProvider: FC<EngagementWorkspaceProviderProps> =
   }, [engagementId, getToken])
 
   const refreshMembers = useCallback(async (options?: { force?: boolean; signal?: AbortSignal }) => {
-    if (!options?.force && loadedMembersRef.current && membersRef.current.length > 0) {
+    if (!options?.force && loadedMembersRef.current) {
+      return membersRef.current
+    }
+    if (membersInFlightRef.current) {
       return membersRef.current
     }
 
+    membersInFlightRef.current = true
     setMembersLoading(true)
     setMembersError(null)
     try {
@@ -120,9 +129,12 @@ export const EngagementWorkspaceProvider: FC<EngagementWorkspaceProviderProps> =
         return membersRef.current
       }
       const message = error instanceof Error ? error.message : 'Could not load workspace members'
+      const fallback = membersRef.current
+      loadedMembersRef.current = true
       setMembersError(message)
-      throw error
+      return fallback
     } finally {
+      membersInFlightRef.current = false
       if (!options?.signal?.aborted) {
         setMembersLoading(false)
       }
@@ -131,24 +143,37 @@ export const EngagementWorkspaceProvider: FC<EngagementWorkspaceProviderProps> =
 
   const refreshReviewNotes = useCallback(async (options?: { force?: boolean; signal?: AbortSignal }) => {
     if (!engagementId) return []
-    if (!options?.force && reviewNotesRef.current) {
-      return reviewNotesRef.current
+    if (!options?.force && reviewNotesLoadedForEngagementRef.current === engagementId) {
+      return reviewNotesRef.current ?? []
+    }
+    if (reviewNotesInFlightRef.current) {
+      return reviewNotesRef.current ?? []
     }
 
+    reviewNotesInFlightRef.current = true
     setReviewNotesLoading(true)
+    setReviewNotesError(null)
     try {
       const { notes } = await fetchReviewNotesDomain(getToken, engagementId)
-      if (options?.signal?.aborted) return reviewNotesRef.current || []
+      if (options?.signal?.aborted) return reviewNotesRef.current ?? []
       const nextNotes = Array.isArray(notes) ? notes : []
       reviewNotesRef.current = nextNotes
       setReviewNotes(nextNotes)
+      reviewNotesLoadedForEngagementRef.current = engagementId
       return nextNotes
     } catch (error) {
       if (isPortalRequestAborted(error) || options?.signal?.aborted) {
-        return reviewNotesRef.current || []
+        return reviewNotesRef.current ?? []
       }
-      throw error
+      const message = error instanceof Error ? error.message : 'Could not load review notes'
+      const fallback = reviewNotesRef.current ?? []
+      reviewNotesRef.current = fallback
+      setReviewNotes(fallback)
+      reviewNotesLoadedForEngagementRef.current = engagementId
+      setReviewNotesError(message)
+      return fallback
     } finally {
+      reviewNotesInFlightRef.current = false
       if (!options?.signal?.aborted) {
         setReviewNotesLoading(false)
       }
@@ -204,6 +229,7 @@ export const EngagementWorkspaceProvider: FC<EngagementWorkspaceProviderProps> =
     membersError,
     reviewNotes,
     reviewNotesLoading,
+    reviewNotesError,
     refreshBundle,
     refreshMembers,
     refreshReviewNotes
@@ -219,6 +245,7 @@ export const EngagementWorkspaceProvider: FC<EngagementWorkspaceProviderProps> =
     refreshMembers,
     refreshReviewNotes,
     reviewNotes,
+    reviewNotesError,
     reviewNotesLoading
   ])
 

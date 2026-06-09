@@ -16,6 +16,8 @@ const htmlInsteadOfJsonHint =
 
 const inflightGetRequests = new Map<string, Promise<unknown>>()
 const stableGetCache = new Map<string, { at: number; data: unknown }>()
+const failedGetCache = new Map<string, number>()
+const FAILED_GET_COOLDOWN_MS = 20_000
 
 function getStableCacheTtlMs (path: string): number | null {
   if (path === '/v1/accounting/members' || path === '/v1/accounting/clients') return 60_000
@@ -33,13 +35,22 @@ function shouldBypassPortalCache (init: RequestInit): boolean {
   return record['X-Portal-Cache-Bypass'] === '1'
 }
 
+function isTransientGatewayMessage (message: string): boolean {
+  const lower = String(message || '').toLowerCase()
+  return lower.includes('took too long to respond') || lower.includes('temporarily unavailable')
+}
+
 export function invalidatePortalFetchCache (prefix = ''): void {
   if (!prefix) {
     stableGetCache.clear()
+    failedGetCache.clear()
     return
   }
   for (const key of stableGetCache.keys()) {
     if (key.startsWith(prefix)) stableGetCache.delete(key)
+  }
+  for (const key of failedGetCache.keys()) {
+    if (key.includes(prefix)) failedGetCache.delete(key)
   }
 }
 
@@ -84,6 +95,13 @@ export async function portalFetch<T> (
   const method = String(init.method || 'GET').toUpperCase()
   const dedupeKey = method === 'GET' && !init.body ? `${method}:${path}` : null
   const cacheTtlMs = dedupeKey && !shouldBypassPortalCache(init) ? getStableCacheTtlMs(path) : null
+
+  if (dedupeKey && !shouldBypassPortalCache(init)) {
+    const failedAt = failedGetCache.get(dedupeKey)
+    if (failedAt && Date.now() - failedAt < FAILED_GET_COOLDOWN_MS) {
+      throw new Error('The server took too long to respond. Please retry in a moment.')
+    }
+  }
 
   if (cacheTtlMs && dedupeKey) {
     const cached = stableGetCache.get(dedupeKey)
@@ -139,6 +157,9 @@ export async function portalFetch<T> (
         throw error
       }
       const message = error instanceof Error ? error.message : String(error)
+      if (dedupeKey && isTransientGatewayMessage(message)) {
+        failedGetCache.set(dedupeKey, Date.now())
+      }
       const shouldRetryTransient = isDeadlockMessage(message) ||
         message.toLowerCase().includes('temporary database conflict')
       if (shouldRetryTransient) {

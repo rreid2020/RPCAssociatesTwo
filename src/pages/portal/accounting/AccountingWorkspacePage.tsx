@@ -246,7 +246,17 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
   const [searchParams] = useSearchParams()
   const { engagementId, leadSheetId } = useEngagementRouteParams()
   const engagementWorkspace = useEngagementWorkspace()
+  const refreshBundleRef = useRef(engagementWorkspace?.refreshBundle)
+  const refreshMembersRef = useRef(engagementWorkspace?.refreshMembers)
+  const refreshReviewNotesRef = useRef(engagementWorkspace?.refreshReviewNotes)
+  const workspaceMembersRef = useRef(engagementWorkspace?.members ?? [])
+  const engagementWorkspaceIdRef = useRef(engagementWorkspace?.engagementId ?? '')
   const loadGenerationRef = useRef(0)
+  refreshBundleRef.current = engagementWorkspace?.refreshBundle
+  refreshMembersRef.current = engagementWorkspace?.refreshMembers
+  refreshReviewNotesRef.current = engagementWorkspace?.refreshReviewNotes
+  workspaceMembersRef.current = engagementWorkspace?.members ?? []
+  engagementWorkspaceIdRef.current = engagementWorkspace?.engagementId ?? ''
   const [debouncedEngagementView, setDebouncedEngagementView] = useState<AccountingView>(view)
   const activeLoadView = isEngagementSubview(view) ? debouncedEngagementView : view
 
@@ -421,14 +431,15 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
   const loadReviewNotes = useCallback(async (options?: { force?: boolean }) => {
     if (!engagementId) return
-    if (engagementWorkspace) {
-      const notes = await engagementWorkspace.refreshReviewNotes({ force: options?.force })
+    const refresh = refreshReviewNotesRef.current
+    if (refresh) {
+      const notes = await refresh({ force: options?.force })
       setReviewNotes(notes)
       return
     }
     const { notes } = await fetchReviewNotesDomain(getToken, engagementId)
     setReviewNotes(notes)
-  }, [engagementId, engagementWorkspace, getToken])
+  }, [engagementId, getToken])
 
   const loadTasks = useCallback(async () => {
     if (!engagementId) return
@@ -454,15 +465,16 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
   const loadEngagementExecutionBundle = useCallback(async (options?: { includeDashboardFallback?: boolean; force?: boolean }) => {
     if (!engagementId) return
-    const bundle = engagementWorkspace && engagementWorkspace.engagementId === engagementId
-      ? await engagementWorkspace.refreshBundle({ force: options?.force })
+    const refreshBundle = refreshBundleRef.current
+    const bundle = refreshBundle && engagementWorkspaceIdRef.current === engagementId
+      ? await refreshBundle({ force: options?.force })
       : await fetchEngagementExecutionBundle(engagementId, getToken)
     if (!bundle) return
     applyEngagementExecutionBundle(bundle)
     if (options?.includeDashboardFallback && !bundle.dashboard) {
       await loadEngagementDashboard()
     }
-  }, [applyEngagementExecutionBundle, engagementId, engagementWorkspace, getToken, loadEngagementDashboard])
+  }, [applyEngagementExecutionBundle, engagementId, getToken, loadEngagementDashboard])
 
   const loadWorkingPaperExecution = useCallback(async () => {
     if (!engagementId) return
@@ -505,10 +517,11 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
   const loadWorkspaceMembers = useCallback(async (options?: { force?: boolean }) => {
     try {
-      if (engagementWorkspace && !options?.force) {
-        const members = engagementWorkspace.members.length > 0
-          ? engagementWorkspace.members
-          : await engagementWorkspace.refreshMembers()
+      const refreshMembers = refreshMembersRef.current
+      if (refreshMembers && !options?.force) {
+        const members = workspaceMembersRef.current.length > 0
+          ? workspaceMembersRef.current
+          : await refreshMembers()
         setWorkspaceMembers(members)
         return
       }
@@ -523,7 +536,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     } catch {
       setWorkspaceMembers([])
     }
-  }, [engagementWorkspace, getToken])
+  }, [getToken])
 
   const loadOrganizationSnapshot = useCallback(async () => {
     try {
@@ -580,6 +593,12 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     if (!engagementWorkspace?.reviewNotes) return
     setReviewNotes(engagementWorkspace.reviewNotes)
   }, [engagementWorkspace?.reviewNotes, view])
+
+  useEffect(() => {
+    if (view !== 'review') return
+    if (!engagementWorkspace?.reviewNotesError) return
+    setError(engagementWorkspace.reviewNotesError)
+  }, [engagementWorkspace?.reviewNotesError, view])
 
   useEffect(() => {
     if (isListCentricView(activeLoadView)) return
@@ -680,7 +699,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     loadWorkspaceMembers,
     activeLoadView,
     engagementId,
-    engagementWorkspace,
     refreshAccount
   ])
 
@@ -783,10 +801,6 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     isEngagementSubview(view) &&
     Boolean(engagementWorkspace?.bundleLoading) &&
     !engagementWorkspace?.bundle
-  ) || (
-    view === 'review' &&
-    Boolean(engagementWorkspace?.reviewNotesLoading) &&
-    !engagementWorkspace?.reviewNotes
   )
   const currentReviewFlowStatus = String(dashboard?.engagement?.review_flow_status || 'not_started')
   const nextReviewFlowStatuses = useMemo((): string[] => {

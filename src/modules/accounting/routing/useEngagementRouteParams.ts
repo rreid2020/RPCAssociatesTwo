@@ -3,16 +3,17 @@ import { useLocation, useParams } from 'react-router-dom'
 import { parseEngagementIdFromPathname } from './engagementPaths'
 
 export function useEngagementRouteParams () {
-  const params = useParams()
+  const params = useParams() ?? {}
   const { pathname } = useLocation()
+  const paramEngagementId = String(params.engagementId || '').trim()
+  const paramLeadSheetId = String(params.leadSheetId || '').trim()
 
   const engagementId = useMemo(() => {
-    const paramId = String(params.engagementId || '').trim()
-    if (paramId) return paramId
+    if (paramEngagementId) return paramEngagementId
     return parseEngagementIdFromPathname(pathname) || ''
-  }, [params.engagementId, pathname])
+  }, [paramEngagementId, pathname])
 
-  const leadSheetId = String(params.leadSheetId || '').trim() || null
+  const leadSheetId = paramLeadSheetId || null
 
   return { engagementId, leadSheetId }
 }

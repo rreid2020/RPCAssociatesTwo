@@ -1,9 +1,11 @@
 import * as cheerio from 'cheerio';
+import { BrowserClient } from '@crawler/core';
 import { getCrawlerConfig, type CrawlerConfig } from '@shared/types';
 import { sources, getDb } from '@shared/types/db';
 import { logger } from '@shared/types';
 import { eq } from 'drizzle-orm';
 import type { PageKind, SourceType, SourceCategory } from '@shared/types';
+import { shouldDiscoverSource } from '../../corpus/sourcePolicy';
 import { UrlNormalizer } from './urlNormalizer';
 import type { DiscoveryResult, DiscoveredLink } from './types';
 
@@ -19,6 +21,36 @@ export class CraPublicationsDiscoveryService {
   constructor(config?: CrawlerConfig, maxDepth: number = 2) {
     this.config = config || getCrawlerConfig();
     this.maxDiscoveryDepth = maxDepth;
+  }
+
+  private async fetchDiscoveryHtml (url: string): Promise<string> {
+    const referer = 'https://www.canada.ca/en/revenue-agency/services/forms-publications.html'
+
+    try {
+      const { requestText } = await import('@shared/types')
+      const response = await requestText(url, {
+        referer,
+        timeout: 60000,
+        retries: 1
+      })
+
+      if (response.status === 200 && response.text.length >= 500) {
+        return response.text
+      }
+    } catch (error) {
+      logger.crawlWarn('HTTP fetch failed for publications discovery, trying browser', {
+        url,
+        error: error instanceof Error ? error.message : String(error)
+      })
+    }
+
+    const browser = new BrowserClient(this.config)
+    const browserResponse = await browser.fetch(url)
+    if (browserResponse.html.length < 500) {
+      throw new Error(`Browser fetch content too short (${browserResponse.html.length} bytes)`)
+    }
+
+    return browserResponse.html
   }
 
   /**
@@ -170,24 +202,11 @@ export class CraPublicationsDiscoveryService {
 
       logger.crawl('Starting publications discovery', { sourceId, url });
 
-      // Fetch page using Excel-like HTTP client
       logger.crawl('Fetching publications directory page', { url });
 
-      const { requestText } = await import('@shared/types');
-      const response = await requestText(url, {
-        referer: 'https://www.canada.ca/en/revenue-agency/services/forms-publications.html',
-        timeout: 30000,
-        retries: 2,
-      });
-
-      if (response.status !== 200 || response.text.length < 500) {
-        throw new Error(`HTTP ${response.status}: Content too short (${response.text.length} bytes)`);
-      }
-
-      const html = response.text;
+      const html = await this.fetchDiscoveryHtml(url);
       logger.crawl('Page fetched successfully', {
         url,
-        status: response.status,
         textLength: html.length,
       });
 
@@ -261,22 +280,14 @@ export class CraPublicationsDiscoveryService {
             continue;
           }
 
-          // For publications in /publications/ directory, fetch the page to check if it's an index page
-          let classification;
-          if (link.url.includes('/publications/') && /\/publications\/\d+-\d+(-\d+)?\.html$/i.test(link.url)) {
-            // This might be an index page - we'll check during ingestion
-            // For now, mark as 'unknown' pageKind so ingestion can determine if it's an index
-            classification = this.classifyPublication(link.url, link.title, link.number);
-            // If it matches the pattern, set to 'unknown' so ingestion can check
-            if (classification.pageKind === 'content') {
-              classification.pageKind = 'unknown';
-            }
-          } else {
-            // Classify normally
-            classification = this.classifyPublication(link.url, link.title, link.number);
-          }
+          const classification = this.classifyPublication(link.url, link.title, link.number)
+          const isArchived = !shouldDiscoverSource(link.title)
+          // Table rows are publication landing pages; HTML/PDF content is discovered in phase 2.
+          const ingestStatus = isArchived ? 'skipped' : 'pending'
+          const pageKind = isArchived
+            ? classification.pageKind
+            : 'unknown'
 
-          // Create new source
           await this.db.insert(sources).values({
             url: link.url,
             normalizedUrl: normalizedUrl,
@@ -284,11 +295,15 @@ export class CraPublicationsDiscoveryService {
             sourceType: classification.sourceType,
             category: classification.category,
             jurisdictionTags: ['CA-FED'],
-            pageKind: classification.pageKind,
-            ingestStatus: classification.pageKind === 'directory' ? 'skipped' : 'pending',
-            priority: classification.pageKind === 'content' ? 'high' : 'medium',
+            pageKind,
+            ingestStatus,
+            errorMessage: isArchived ? 'Archived/Cancelled' : undefined,
+            priority: 'high',
             parentSourceId: sourceId,
-            metadata: link.number ? { publicationNumber: link.number } : undefined,
+            metadata: {
+              corpusRole: 'publication_landing',
+              ...(link.number ? { publicationNumber: link.number } : {})
+            },
           });
 
           logger.crawl('Created new source from discovery', {
@@ -371,19 +386,7 @@ export class CraPublicationsDiscoveryService {
 
       logger.crawl('Starting publication page discovery', { sourceId, url });
 
-      // Fetch the publication page
-      const { requestText } = await import('@shared/types');
-      const response = await requestText(url, {
-        referer: 'https://www.canada.ca/en/revenue-agency/services/forms-publications.html',
-        timeout: 30000,
-        retries: 2,
-      });
-
-      if (response.status !== 200) {
-        throw new Error(`HTTP ${response.status}: Failed to fetch page`);
-      }
-
-      const html = response.text;
+      const html = await this.fetchDiscoveryHtml(url);
       const $ = cheerio.load(html);
       const baseUrlObj = new URL(url);
       const basePath = baseUrlObj.pathname.toLowerCase();

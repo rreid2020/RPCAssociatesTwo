@@ -1,4 +1,12 @@
 import OpenAI from 'openai'
+import { getTaxgptCorpusStats } from './taxgptCorpusRepository.js'
+import {
+  buildTaxgptSources,
+  buildTaxgptSystemPrompt,
+  buildTaxgptUserPrompt,
+  extractTaxgptCitations
+} from './taxgptPrompt.js'
+import { retrieveTaxgptChunks } from './taxgptRetrievalRepository.js'
 
 const HIGH_RISK_KEYWORDS = [
   'gaar',
@@ -97,14 +105,34 @@ async function ensureChatTables (pool) {
   `)
 }
 
-const SYSTEM_PROMPT = `You are a helpful Canadian tax assistant. You provide informational guidance based on CRA (Canada Revenue Agency) concepts and common Canadian tax practice.
+async function resolveRetrievedChunks (pool, message, corpus) {
+  if (!corpus.retrievalReady) {
+    return { chunks: [], mode: 'degraded', notice: 'CRA knowledge base is empty. Run TaxGPT ingestion to enable source-backed answers.' }
+  }
 
-CRITICAL RULES:
-1. Be clear when guidance is general and may depend on facts.
-2. Never fabricate citations or legal references.
-3. If a question needs professional judgment, recommend consulting a qualified tax professional.
-4. Include a brief reminder that this is informational only, not legal or tax advice.
-5. Focus on Canadian federal and provincial tax context when relevant.`
+  try {
+    const chunks = await retrieveTaxgptChunks(pool, message, { topK: 5, minSimilarity: 0.25 })
+    if (chunks.length > 0) {
+      return { chunks, mode: 'rag', notice: null }
+    }
+    return {
+      chunks: [],
+      mode: 'degraded',
+      notice: 'No sufficiently relevant CRA sources were found for this question. The answer is general guidance only.'
+    }
+  } catch (error) {
+    console.warn('[taxgpt] retrieval failed, falling back to degraded mode:', error)
+    return {
+      chunks: [],
+      mode: 'degraded',
+      notice: 'Source retrieval is temporarily unavailable. The answer is general guidance only.'
+    }
+  }
+}
+
+export async function getTaxgptCorpus (pool) {
+  return getTaxgptCorpusStats(pool)
+}
 
 export async function handleTaxgptChat (pool, userId, payload = {}) {
   const message = sanitizeInput(redactPII(String(payload.message || '')))
@@ -119,6 +147,7 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
 
   const openai = getOpenAIClient()
   const model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
+  const corpus = await getTaxgptCorpusStats(pool)
   let sessionId = payload.sessionId || null
 
   if (sessionId) {
@@ -153,16 +182,22 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
   )
 
   const riskLevel = detectHighRiskTopics(message) ? 'high' : 'low'
+  const retrieval = await resolveRetrievedChunks(pool, message, corpus)
+  const retrievalMode = retrieval.mode
+  const systemPrompt = buildTaxgptSystemPrompt(retrievalMode)
+  const userPrompt = retrievalMode === 'rag'
+    ? buildTaxgptUserPrompt(message, retrieval.chunks)
+    : message
 
   let completion
   try {
     completion = await openai.chat.completions.create({
       model,
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: message }
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
       ],
-      temperature: 0.7
+      temperature: retrievalMode === 'rag' ? 0.4 : 0.7
     })
   } catch (error) {
     throw mapOpenAIError(error)
@@ -170,27 +205,49 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
 
   const response = completion.choices[0]?.message?.content ||
     'I apologize, but I could not generate a response.'
+  const citations = retrievalMode === 'rag'
+    ? extractTaxgptCitations(response, retrieval.chunks)
+    : []
+  const sources = retrievalMode === 'rag'
+    ? buildTaxgptSources(retrieval.chunks)
+    : []
 
   await pool.query(
     `INSERT INTO taxgpt.chat_messages (session_id, role, content, citations, risk_level, created_at)
      VALUES ($1::uuid, 'assistant', $2, $3::jsonb, $4, now())`,
-    [sessionId, response, JSON.stringify([]), riskLevel]
+    [sessionId, response, JSON.stringify(citations), riskLevel]
   )
 
   return {
     response,
-    citations: [],
-    sources: [],
+    citations,
+    sources,
     riskLevel,
     sessionId,
-    reasoning: payload.agentic ? ['Analyzed the question using integrated TaxGPT chat.'] : undefined,
+    retrievalMode,
+    retrievalNotice: retrieval.notice,
+    corpus: {
+      retrievalReady: corpus.retrievalReady,
+      embeddingCount: corpus.embeddingCount,
+      ingestedSourceCount: corpus.ingestedSourceCount
+    },
+    reasoning: payload.agentic
+      ? [
+          retrievalMode === 'rag'
+            ? `Retrieved ${retrieval.chunks.length} CRA source chunks for grounding.`
+            : 'Answered without retrieved CRA source chunks.'
+        ]
+      : undefined,
     actions: undefined
   }
 }
 
-export function getTaxgptStatus () {
+export async function getTaxgptStatus (pool) {
+  const corpus = await getTaxgptCorpusStats(pool)
   return {
     configured: Boolean(process.env.OPENAI_API_KEY),
-    model: process.env.OPENAI_MODEL || 'gpt-4o-mini'
+    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    embedModel: process.env.OPENAI_EMBED_MODEL || 'text-embedding-3-small',
+    corpus
   }
 }

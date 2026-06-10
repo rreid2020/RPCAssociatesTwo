@@ -1,3 +1,4 @@
+export * from './corpus';
 export * from './ingestion';
 export * from './chunking';
 export * from './embedding';

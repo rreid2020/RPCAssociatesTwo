@@ -100,8 +100,9 @@ export class Crawler {
       return;
     }
 
-    // Check allowlist
-    if (!isAllowedUrl(normalizedUrl, this.config.allowlistPrefixes)) {
+    // Catalogue seed pages are used for link discovery and may sit outside allowlist prefixes.
+    const isCatalogueSeed = depth === 0;
+    if (!isCatalogueSeed && !isAllowedUrl(normalizedUrl, this.config.allowlistPrefixes)) {
       logger.crawl('URL skipped: not in allowlist', {
         url: normalizedUrl,
         allowlistPrefixes: this.config.allowlistPrefixes,

@@ -46,7 +46,9 @@ const TaxGPT: FC = () => {
       <ClientPortalShell>
         <div>
           <h1 className="text-3xl font-bold text-primary-dark mb-2">TaxGPT</h1>
-          <p className="text-text-light mb-6">AI tax research, document help, and form guidance.</p>
+          <p className="text-text-light mb-6">
+            AI tax research grounded in CRA publications when the knowledge base is indexed, with citations and source links.
+          </p>
 
           {!hasAccess ? (
             <UpgradePrompt feature="TaxGPT" />

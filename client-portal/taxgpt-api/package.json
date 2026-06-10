@@ -8,7 +8,14 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src --ext .ts"
+    "lint": "eslint src --ext .ts",
+    "taxgpt:stats": "tsx src/scripts/taxgpt-corpus.ts stats",
+    "taxgpt:audit": "tsx src/scripts/taxgpt-corpus.ts audit",
+    "taxgpt:discover": "tsx src/scripts/taxgpt-corpus.ts discover",
+    "taxgpt:expand": "tsx src/scripts/taxgpt-corpus.ts expand --limit=50",
+    "taxgpt:discover-all": "tsx src/scripts/taxgpt-corpus.ts discover-all --limit=100",
+    "taxgpt:reconcile": "tsx src/scripts/taxgpt-corpus.ts reconcile",
+    "taxgpt:ingest": "tsx src/scripts/taxgpt-corpus.ts ingest --limit=10"
   },
   "dependencies": {
     "@shared/types": "file:../packages/shared",

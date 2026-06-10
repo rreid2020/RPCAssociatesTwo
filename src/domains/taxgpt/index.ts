@@ -2,6 +2,8 @@ import { portalFetch } from '../../lib/portalApi'
 
 export type RiskLevel = 'low' | 'medium' | 'high'
 
+export type TaxgptRetrievalMode = 'rag' | 'degraded'
+
 export type Citation = {
   id: string
   chunkId: string
@@ -9,8 +11,24 @@ export type Citation = {
   sourceUrl: string
   sectionHeading?: string
   pageNumber?: number
-  retrievedAt: Date
+  retrievedAt: string
   similarityScore?: number
+}
+
+export type TaxgptCorpusStats = {
+  sourceCount: number
+  ingestedSourceCount: number
+  pendingSourceCount: number
+  chunkCount: number
+  embeddingCount: number
+  retrievalReady: boolean
+}
+
+export type TaxgptStatus = {
+  configured: boolean
+  model: string
+  embedModel: string
+  corpus: TaxgptCorpusStats
 }
 
 export type TaxgptChatResponse = {
@@ -19,6 +37,9 @@ export type TaxgptChatResponse = {
   sources: Array<{ id: string; title: string; url: string }>
   riskLevel: RiskLevel
   sessionId: string
+  retrievalMode: TaxgptRetrievalMode
+  retrievalNotice: string | null
+  corpus: Pick<TaxgptCorpusStats, 'retrievalReady' | 'embeddingCount' | 'ingestedSourceCount'>
   reasoning?: string[]
   actions?: Array<{ type: string; description: string }>
 }
@@ -39,6 +60,10 @@ export async function sendTaxgptChatMessage (
   })
 }
 
-export async function fetchTaxgptStatus (getToken: () => Promise<string | null>) {
-  return portalFetch<{ configured: boolean; model: string }>('/v1/taxgpt/status', getToken)
+export async function fetchTaxgptStatus (getToken: () => Promise<string | null>): Promise<TaxgptStatus> {
+  return portalFetch<TaxgptStatus>('/v1/taxgpt/status', getToken)
+}
+
+export async function fetchTaxgptCorpus (getToken: () => Promise<string | null>): Promise<TaxgptCorpusStats> {
+  return portalFetch<TaxgptCorpusStats>('/v1/taxgpt/corpus', getToken)
 }

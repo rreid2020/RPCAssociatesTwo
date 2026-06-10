@@ -155,7 +155,7 @@ import {
   verifySignedIntegrationState
 } from '../services/integrationOAuthService.js'
 import { assertWorkspaceEntitlement } from '../services/authz/entitlementPolicy.js'
-import { getTaxgptStatus, handleTaxgptChat } from '../services/taxgptChatService.js'
+import { getTaxgptCorpus, getTaxgptStatus, handleTaxgptChat } from '../services/taxgptChatService.js'
 
 const MAX_UPLOAD_BYTES = parseInt(process.env.PORTAL_MAX_UPLOAD_BYTES || String(100 * 1024 * 1024), 10)
 
@@ -3352,7 +3352,24 @@ export function createPortalRouter (pool) {
     const scope = await resolveAccountingScope(req, res, session)
     if (!scope) return
     if (!(await hasEntitlement(res, scope.workspace.id, 'taxgpt'))) return
-    res.json(getTaxgptStatus())
+    try {
+      res.json(await getTaxgptStatus(pool))
+    } catch (e) {
+      res.status(500).json({ error: e instanceof Error ? e.message : 'Could not load TaxGPT status' })
+    }
+  })
+
+  r.get('/v1/taxgpt/corpus', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    if (!(await hasEntitlement(res, scope.workspace.id, 'taxgpt'))) return
+    try {
+      res.json(await getTaxgptCorpus(pool))
+    } catch (e) {
+      res.status(500).json({ error: e instanceof Error ? e.message : 'Could not load TaxGPT corpus stats' })
+    }
   })
 
   r.post('/v1/taxgpt/chat', async (req, res) => {

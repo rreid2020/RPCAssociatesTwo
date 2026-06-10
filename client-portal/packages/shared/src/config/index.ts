@@ -90,7 +90,7 @@ export function getCrawlerConfig(): CrawlerConfig {
     requestsPerSecond: parseFloat(process.env.CRAWLER_RPS || '1.5'),
     maxDepth: parseInt(process.env.CRAWLER_MAX_DEPTH || '1', 10),
         allowlistPrefixes: process.env.CRAWLER_ALLOWLIST_PREFIXES
-          ? process.env.CRAWLER_ALLOWLIST_PREFIXES.split(',')
+          ? process.env.CRAWLER_ALLOWLIST_PREFIXES.split(',').map((value) => value.trim()).filter(Boolean)
           : [
               'https://www.canada.ca/en/revenue-agency/services/forms-publications/publications',
               'https://www.canada.ca/en/revenue-agency/services/forms-publications/guides',

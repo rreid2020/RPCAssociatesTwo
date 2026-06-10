@@ -1,7 +1,9 @@
 import { FC, useEffect, useRef, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
-import { sendTaxgptChatMessage } from '../../../domains/taxgpt'
+import { fetchTaxgptCorpus, sendTaxgptChatMessage } from '../../../domains/taxgpt'
+import type { TaxgptCorpusStats } from '../../../domains/taxgpt'
 import type { ChatMessage, RiskLevel } from '../types'
+import CorpusBanner from './CorpusBanner'
 import DisclaimerBanner from './DisclaimerBanner'
 import ExportButton from './ExportButton'
 import LoadingIndicator from './LoadingIndicator'
@@ -22,6 +24,8 @@ const ChatInterface: FC = () => {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [corpus, setCorpus] = useState<TaxgptCorpusStats | null>(null)
+  const [retrievalNotice, setRetrievalNotice] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
 
@@ -36,6 +40,22 @@ const ChatInterface: FC = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, sending])
+
+  useEffect(() => {
+    let mounted = true
+    const loadCorpus = async () => {
+      try {
+        const stats = await fetchTaxgptCorpus(getToken)
+        if (mounted) setCorpus(stats)
+      } catch {
+        if (mounted) setCorpus(null)
+      }
+    }
+    void loadCorpus()
+    return () => {
+      mounted = false
+    }
+  }, [getToken])
 
   const handleCopy = (text: string) => {
     void navigator.clipboard.writeText(text).then(
@@ -78,6 +98,24 @@ const ChatInterface: FC = () => {
       ])
       setSources(data.sources || [])
       setRiskLevel(data.riskLevel || 'low')
+      setRetrievalNotice(data.retrievalNotice || null)
+      if (data.corpus) {
+        setCorpus((prev) => prev
+          ? {
+              ...prev,
+              ingestedSourceCount: data.corpus.ingestedSourceCount,
+              embeddingCount: data.corpus.embeddingCount,
+              retrievalReady: data.corpus.retrievalReady
+            }
+          : {
+              sourceCount: 0,
+              pendingSourceCount: 0,
+              chunkCount: 0,
+              ingestedSourceCount: data.corpus.ingestedSourceCount,
+              embeddingCount: data.corpus.embeddingCount,
+              retrievalReady: data.corpus.retrievalReady
+            })
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to send message. Please try again.')
     } finally {
@@ -116,8 +154,14 @@ const ChatInterface: FC = () => {
 
   return (
     <div className="flex flex-col min-h-[70vh]">
+      {corpus && <CorpusBanner corpus={corpus} />}
       {error && <p className="text-sm text-red-700 mb-3">{error}</p>}
       {notice && <p className="text-sm text-emerald-800 mb-3">{notice}</p>}
+      {retrievalNotice && (
+        <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-3">
+          {retrievalNotice}
+        </p>
+      )}
       {riskLevel === 'high' && <RiskBanner />}
 
       <div className="flex flex-1 min-h-0 border border-border rounded-lg overflow-hidden bg-white shadow-sm">

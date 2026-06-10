@@ -11,17 +11,10 @@ import { EmbeddingService } from './embedding';
 import { SectionAwareChunker } from './chunking';
 import { CraFolioExtractor } from './services/extraction/craFolioExtractor';
 import { CraFolioChunker } from './services/chunking/craFolioChunker';
+import { isArchivedOrCancelledTitle } from './corpus/sourcePolicy';
 
 const turndownService = new TurndownService();
 const MIN_TEXT_LENGTH = 0; // No minimum - ingest all content regardless of length
-
-const ARCHIVED_CANCELLED_PATTERN =
-  /\b(archived|cancelled|canceled|annul[ée]|annul[e]e|archiv[ée]|archivee)\b/i;
-
-function isArchivedOrCancelledTitle(title?: string): boolean {
-  if (!title) return false;
-  return ARCHIVED_CANCELLED_PATTERN.test(title);
-}
 
 function detectContentType(url: string, contentType?: string | null): 'pdf' | 'html' {
   // Check Content-Type header first
@@ -217,7 +210,7 @@ export class IngestionService {
             LIMIT 1
           `);
 
-          const htmlRow = (htmlCandidates as Array<{ id: string; url: string }>)[0];
+          const htmlRow = (htmlCandidates as unknown as Array<{ id: string; url: string }>)[0];
           if (htmlRow) {
             await db
               .update(sources)
@@ -376,8 +369,8 @@ export class IngestionService {
             }
           });
           
-          // If there are multiple content links (PDFs or HTML), it's likely an index page
-          if (contentLinkCount >= 2) {
+          // Landing pages usually expose at least one HTML or PDF content link.
+          if (contentLinkCount >= 1) {
             // Run discovery to find content pages linked from this index page
             const { CraPublicationsDiscoveryService } = await import('./services/discovery/craPublicationsDiscovery');
             const publicationsDiscovery = new CraPublicationsDiscoveryService();
@@ -804,13 +797,27 @@ export class IngestionService {
     // Apply filters
     const allSources = await query;
 
-    let filtered = allSources.filter((s: typeof allSources[0]) => {
-      if (filters.category && s.category !== filters.category) return false;
-      if (filters.type && s.sourceType !== filters.type) return false;
-      if (filters.priority && s.priority !== filters.priority) return false;
-      if (s.ingestStatus === 'ingested' && !filters.limit) return false;
-      return true;
-    });
+    const priorityRank = { high: 0, medium: 1, low: 2 } as const;
+
+    let filtered = allSources
+      .filter((s: typeof allSources[0]) => {
+        if (filters.category && s.category !== filters.category) return false;
+        if (filters.type && s.sourceType !== filters.type) return false;
+        if (filters.priority && s.priority !== filters.priority) return false;
+        if (s.ingestStatus !== 'pending') return false;
+        if (isArchivedOrCancelledTitle(s.title)) return false;
+        if (s.pageKind === 'directory') return false;
+        const metadata = (s.metadata || {}) as Record<string, unknown>;
+        if (metadata.corpusRole === 'publication_landing') return false;
+        return true;
+      })
+      .sort((a, b) => {
+        const priorityDelta =
+          (priorityRank[a.priority as keyof typeof priorityRank] ?? 2) -
+          (priorityRank[b.priority as keyof typeof priorityRank] ?? 2);
+        if (priorityDelta !== 0) return priorityDelta;
+        return String(a.title || '').localeCompare(String(b.title || ''));
+      });
 
     if (filters.limit) {
       filtered = filtered.slice(0, filters.limit);

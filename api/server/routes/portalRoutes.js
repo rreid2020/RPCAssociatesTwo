@@ -3377,7 +3377,9 @@ export function createPortalRouter (pool) {
       res.json(result)
     } catch (e) {
       const messageText = e instanceof Error ? e.message : 'Could not process TaxGPT chat message'
-      const status = messageText.includes('not configured') ? 503 : 500
+      let status = 500
+      if (messageText.includes('not configured')) status = 503
+      else if (messageText.includes('quota is exceeded')) status = 429
       res.status(status).json({ error: messageText })
     }
   })

@@ -45,6 +45,28 @@ function getOpenAIClient () {
   return new OpenAI({ apiKey })
 }
 
+function mapOpenAIError (error) {
+  const status = error?.status || error?.response?.status
+  const message = String(error?.message || error?.error?.message || '')
+  if (status === 429 || message.includes('exceeded your current quota')) {
+    return new Error(
+      'OpenAI usage quota is exceeded. Add billing or credits at platform.openai.com, then try again.'
+    )
+  }
+  if (status === 401 || message.toLowerCase().includes('incorrect api key')) {
+    return new Error('OpenAI API key is invalid. Check OPENAI_API_KEY on the API server.')
+  }
+  if (status === 404 || message.includes('does not exist')) {
+    return new Error(
+      `OpenAI model is unavailable. Check OPENAI_MODEL on the API server (current: ${process.env.OPENAI_MODEL || 'gpt-4o-mini'}).`
+    )
+  }
+  if (message) {
+    return new Error(message)
+  }
+  return new Error('TaxGPT could not reach OpenAI. Please try again.')
+}
+
 async function ensureChatTables (pool) {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS taxgpt.chat_sessions (
@@ -132,14 +154,19 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
 
   const riskLevel = detectHighRiskTopics(message) ? 'high' : 'low'
 
-  const completion = await openai.chat.completions.create({
-    model,
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: message }
-    ],
-    temperature: 0.7
-  })
+  let completion
+  try {
+    completion = await openai.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: message }
+      ],
+      temperature: 0.7
+    })
+  } catch (error) {
+    throw mapOpenAIError(error)
+  }
 
   const response = completion.choices[0]?.message?.content ||
     'I apologize, but I could not generate a response.'

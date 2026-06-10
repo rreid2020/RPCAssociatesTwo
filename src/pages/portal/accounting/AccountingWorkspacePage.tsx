@@ -461,6 +461,9 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
     setReviewSignoffs(Array.isArray(bundle.signoffs?.signoffs) ? bundle.signoffs.signoffs : [])
     setAiFoundations(bundle.aiFoundations ?? null)
     if (bundle.dashboard) setDashboard(bundle.dashboard)
+    if (Array.isArray(bundle.reviewNotes?.notes)) {
+      setReviewNotes(bundle.reviewNotes.notes)
+    }
   }, [])
 
   const loadEngagementExecutionBundle = useCallback(async (options?: { includeDashboardFallback?: boolean; force?: boolean }) => {
@@ -590,7 +593,7 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
 
   useEffect(() => {
     if (view !== 'review') return
-    if (!engagementWorkspace?.reviewNotes) return
+    if (!Array.isArray(engagementWorkspace?.reviewNotes)) return
     setReviewNotes(engagementWorkspace.reviewNotes)
   }, [engagementWorkspace?.reviewNotes, view])
 
@@ -645,10 +648,9 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
         } else if (activeLoadView === 'documents') {
           await Promise.all([loadDocuments(), loadRepositoryFiles()])
         } else if (activeLoadView === 'review') {
-          await Promise.all([
-            loadReviewNotes(),
-            ...(usesSharedEngagementData ? [] : [loadWorkspaceMembers()])
-          ])
+          if (!usesSharedEngagementData) {
+            await Promise.all([loadReviewNotes(), loadWorkspaceMembers()])
+          }
         } else if (activeLoadView === 'adjustments') {
           if (!usesSharedEngagementData) {
             await loadEngagementExecutionBundle()
@@ -921,11 +923,14 @@ const AccountingWorkspacePage: FC<AccountingWorkspacePageProps> = ({ view }) => 
       loadEngagements(),
       loadWorkspaceMembers({ force: true })
     ]
-    if (options.includeReviewNotes) tasks.push(loadReviewNotes({ force: true }))
+    if (options.includeReviewNotes && !engagementWorkspace) {
+      tasks.push(loadReviewNotes({ force: true }))
+    }
     if (options.includeLeadSheetDetail) tasks.push(loadLeadSheetDetail())
     await Promise.all(tasks)
   }, [
     engagementId,
+    engagementWorkspace,
     loadEngagementExecutionBundle,
     loadEngagements,
     loadLeadSheetDetail,

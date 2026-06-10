@@ -77,6 +77,7 @@ export type EngagementExecutionBundle = {
   signoffs: { signoffs: any[] }
   aiFoundations: Record<string, unknown> | null
   dashboard: any | null
+  reviewNotes?: { notes: any[] }
 }
 
 export async function fetchEngagementExecutionBundle (

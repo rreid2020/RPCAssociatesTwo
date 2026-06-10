@@ -88,6 +88,15 @@ export const EngagementWorkspaceProvider: FC<EngagementWorkspaceProviderProps> =
       bundleRef.current = nextBundle
       setBundle(nextBundle)
       loadedEngagementIdRef.current = engagementId
+      const bundledNotes = Array.isArray(nextBundle.reviewNotes?.notes)
+        ? nextBundle.reviewNotes.notes
+        : null
+      if (bundledNotes) {
+        reviewNotesRef.current = bundledNotes
+        setReviewNotes(bundledNotes)
+        reviewNotesLoadedForEngagementRef.current = engagementId
+        setReviewNotesError(null)
+      }
       return nextBundle
     } catch (error) {
       if (isPortalRequestAborted(error) || options?.signal?.aborted) {

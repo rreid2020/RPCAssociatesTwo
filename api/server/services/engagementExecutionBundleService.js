@@ -6,6 +6,7 @@ import {
   getWorkingPaperExecutionTree
 } from './workingPapersExecutionService.js'
 import { getEngagementDashboard, listAdjustmentEntries } from './workingPapersService.js'
+import { listReviewNotesForEngagement } from './repositories/workingPaperDomainRepository.js'
 import { getEngagementExecutionSnapshot } from './engagementExecution/engagementExecutionService.js'
 import { getWorkspaceContext } from './accountingWorkspaceService.js'
 
@@ -22,7 +23,8 @@ export async function getEngagementExecutionBundle (pool, clerkUserId, engagemen
     events,
     signoffs,
     aiFoundations,
-    dashboard
+    dashboard,
+    notes
   ] = await Promise.all([
     options.includeExecution === false
       ? Promise.resolve(null)
@@ -35,7 +37,8 @@ export async function getEngagementExecutionBundle (pool, clerkUserId, engagemen
     getAiExecutionFoundations(pool, clerkUserId, engagementId),
     options.includeDashboard
       ? getEngagementDashboard(pool, clerkUserId, engagementId)
-      : Promise.resolve(null)
+      : Promise.resolve(null),
+    listReviewNotesForEngagement(pool, engagementId)
   ])
 
   return {
@@ -46,6 +49,7 @@ export async function getEngagementExecutionBundle (pool, clerkUserId, engagemen
     signoffs: { signoffs: Array.isArray(signoffs) ? signoffs : [] },
     aiFoundations,
     dashboard,
+    reviewNotes: { notes: Array.isArray(notes) ? notes : [] },
     execution
   }
 }

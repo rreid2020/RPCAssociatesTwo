@@ -123,6 +123,19 @@ const ChatInterface: FC = () => {
     }
   }
 
+  const handleNewChat = () => {
+    if (sending) return
+    setMessages([])
+    setSessionId(null)
+    setSources([])
+    setRiskLevel('low')
+    setShowSources(false)
+    setError(null)
+    setNotice(null)
+    setRetrievalNotice(null)
+    messagesContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const handleExport = () => {
     if (messages.length === 0) {
       setError('No messages to export.')
@@ -215,7 +228,26 @@ const ChatInterface: FC = () => {
                     {agenticMode ? 'Agentic mode' : 'Standard mode'}
                   </button>
                 </div>
-                <ExportButton onExport={handleExport} />
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleNewChat}
+                    disabled={sending || (messages.length === 0 && !sessionId)}
+                    className="inline-flex items-center gap-2 border border-border bg-white px-3 py-1.5 text-sm font-medium text-text shadow-sm hover:bg-background disabled:cursor-not-allowed disabled:opacity-50"
+                    title="Start a new chat"
+                  >
+                    <svg className="h-4 w-4 text-text-light" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 4v6h6M20 20v-6h-6M20 9A8 8 0 006.34 6.34M4 15a8 8 0 0013.66 2.66"
+                      />
+                    </svg>
+                    New chat
+                  </button>
+                  <ExportButton onExport={handleExport} />
+                </div>
               </div>
               <MessageInput onSend={(message) => { void handleSend(message) }} disabled={sending} />
             </div>

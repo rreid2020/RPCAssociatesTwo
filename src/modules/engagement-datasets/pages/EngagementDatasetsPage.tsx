@@ -1,5 +1,5 @@
 import { FC, useCallback, useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useEngagementRouteParams } from '../../accounting/routing/useEngagementRouteParams'
 import {
   archiveDatasetViewDomain,
   createDatasetViewDomain,
@@ -27,7 +27,7 @@ const DATASET_TYPES = [
 ]
 
 const EngagementDatasetsPage: FC<EngagementDatasetsPageProps> = ({ getToken }) => {
-  const { engagementId = '' } = useParams()
+  const { engagementId } = useEngagementRouteParams()
   const [datasets, setDatasets] = useState<EngagementDataset[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [rows, setRows] = useState<Array<{ id: string; source_row_number: number; row_data: Record<string, unknown> }>>([])

@@ -22,7 +22,7 @@ const navItems = [
 const EngagementLayout: FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const { engagementId: paramEngagementId = '' } = useParams()
+  const { engagementId: paramEngagementId = '' } = useParams() ?? {}
   const engagementId = paramEngagementId || parseEngagementIdFromPathname(location.pathname) || ''
 
   useEffect(() => {

@@ -90,6 +90,7 @@ const ChatInterface: FC = () => {
           id: `assistant-${Date.now()}`,
           role: 'assistant',
           content: data.response,
+          structuredResponse: data.structuredResponse,
           citations: data.citations,
           createdAt: new Date(),
           reasoning: data.reasoning,
@@ -144,14 +145,7 @@ const ChatInterface: FC = () => {
     const markdown = messages
       .map((message) => {
         if (message.role === 'user') return `## User\n\n${message.content}\n`
-        let content = `## Assistant\n\n${message.content}\n`
-        if (message.citations?.length) {
-          content += '\n### Sources\n\n'
-          message.citations.forEach((citation, index) => {
-            content += `${index + 1}. ${citation.sourceTitle} - ${citation.sourceUrl}\n`
-          })
-        }
-        return content
+        return `## Assistant\n\n${message.content}\n`
       })
       .join('\n---\n\n')
 

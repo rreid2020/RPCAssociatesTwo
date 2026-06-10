@@ -48,6 +48,8 @@ export async function retrieveTaxgptChunks (pool, query, options = {}) {
           s.id AS "sourceId",
           s.url AS "sourceUrl",
           s.title AS "sourceTitle",
+          s.category AS "sourceCategory",
+          s.metadata AS "sourceMetadata",
           te.base_similarity,
           LEAST(
             1.0,
@@ -76,6 +78,8 @@ export async function retrieveTaxgptChunks (pool, query, options = {}) {
       chunkId: row.chunkId,
       content: row.content,
       similarity: Number(row.similarity) || 0,
+      sourceCategory: row.sourceCategory,
+      sourceMetadata: row.sourceMetadata,
       citation: buildCitation(row, index)
     }))
 }

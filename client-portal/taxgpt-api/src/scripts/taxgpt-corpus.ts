@@ -1,85 +1,186 @@
-import { config } from 'dotenv'
-import { resolve, dirname } from 'path'
-import { fileURLToPath } from 'url'
-import {
-  auditCorpus,
-  discoverFullPublicationsCorpus,
-  discoverPublicationsCatalog,
-  expandPublicationLandingPages,
-  reconcileArchivedPendingSources
-} from '@rag/core'
-import { IngestionService } from '@rag/core'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
-
-for (const envPath of [
-  resolve(__dirname, '../../../../.env'),
-  resolve(__dirname, '../../../../api/server/.env'),
-  resolve(__dirname, '../../../.env')
-]) {
-  config({ path: envPath })
-}
-
-if (!process.env.OPENAI_API_KEY && process.env.OPEN_API_KEY) {
-  process.env.OPENAI_API_KEY = process.env.OPEN_API_KEY
-}
-
-function readLimit (argv: string[], fallback: number) {
-  const limitArg = argv.find((arg) => arg.startsWith('--limit='))
-  return limitArg ? Number(limitArg.split('=')[1]) : fallback
-}
-
-async function ingestBatch (argv: string[]) {
-  const limit = readLimit(argv, 10)
-  const ingestionService = new IngestionService()
-  const summary = await ingestionService.ingestBatch({ limit })
-  console.log(JSON.stringify(summary, null, 2))
-}
-
-async function main () {
-  const [, , command, ...argv] = process.argv
-
-  switch (command) {
-    case 'stats':
-      console.log(JSON.stringify((await auditCorpus()).totals, null, 2))
-      break
-    case 'audit':
-      console.log(JSON.stringify(await auditCorpus(), null, 2))
-      break
-    case 'discover':
-      console.log(JSON.stringify(await discoverPublicationsCatalog(), null, 2))
-      break
-    case 'expand':
-      console.log(JSON.stringify(
-        await expandPublicationLandingPages({ limit: readLimit(argv, 50) }),
-        null,
-        2
-      ))
-      break
-    case 'discover-all':
-      console.log(JSON.stringify(
-        await discoverFullPublicationsCorpus({ expandLimit: readLimit(argv, 100) }),
-        null,
-        2
-      ))
-      break
-    case 'reconcile':
-      console.log(JSON.stringify(await reconcileArchivedPendingSources(), null, 2))
-      break
-    case 'ingest':
-      await ingestBatch(argv)
-      break
-    default:
-      console.error(
-        'Usage: tsx src/scripts/taxgpt-corpus.ts <stats|audit|discover|expand|discover-all|reconcile|ingest> [--limit=N]'
-      )
-      process.exit(1)
-  }
-}
-
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error)
-  process.exit(1)
-})
-
+import { config } from 'dotenv'
+import { resolve, dirname } from 'path'
+import { fileURLToPath } from 'url'
+import {
+  auditCorpus,
+  discoverFullPublicationsCorpus,
+  discoverPublicationsCatalog,
+  expandPublicationLandingPages,
+  reconcileArchivedPendingSources
+} from '@rag/core'
+import { IngestionService } from '@rag/core'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+for (const envPath of [
+  resolve(__dirname, '../../../../.env'),
+  resolve(__dirname, '../../../../api/server/.env'),
+  resolve(__dirname, '../../../.env')
+]) {
+  config({ path: envPath })
+}
+
+if (!process.env.OPENAI_API_KEY && process.env.OPEN_API_KEY) {
+  process.env.OPENAI_API_KEY = process.env.OPEN_API_KEY
+}
+
+function readLimit (argv: string[], fallback: number) {
+  const limitArg = argv.find((arg) => arg.startsWith('--limit='))
+  return limitArg ? Number(limitArg.split('=')[1]) : fallback
+}
+
+function readOption (argv: string[], key: string, fallback: number) {
+  const prefix = `--${key}=`
+  const match = argv.find((arg) => arg.startsWith(prefix))
+  return match ? Number(match.slice(prefix.length)) : fallback
+}
+
+function sleep (ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function runExpandIngestPipeline (argv: string[]) {
+  const expandLimit = readOption(argv, 'expand-limit', readLimit(argv, 50))
+  const ingestLimit = readOption(argv, 'ingest-limit', 10)
+  const maxConsecutiveErrors = readOption(argv, 'max-errors', 5)
+  const retryDelayMs = readOption(argv, 'retry-delay-ms', 5000)
+  const phase = argv.find((arg) => arg.startsWith('--phase='))?.split('=')[1] || 'all'
+
+  const log = (message: string, payload?: unknown) => {
+    const line = payload === undefined
+      ? `[pipeline] ${new Date().toISOString()} ${message}`
+      : `[pipeline] ${new Date().toISOString()} ${message} ${JSON.stringify(payload)}`
+    console.log(line)
+  }
+
+  if (phase === 'all' || phase === 'expand') {
+    log('Starting expand phase', { expandLimit, maxConsecutiveErrors })
+    let expandBatch = 0
+    let consecutiveErrors = 0
+    let totalProcessed = 0
+
+    while (true) {
+      expandBatch += 1
+      try {
+        const result = await expandPublicationLandingPages({ limit: expandLimit })
+        consecutiveErrors = 0
+        totalProcessed += result.processed
+        log(`Expand batch ${expandBatch} complete`, result)
+
+        if (result.processed === 0) {
+          log('Expand phase complete — no remaining publication landing pages', { expandBatch, totalProcessed })
+          break
+        }
+      } catch (error) {
+        consecutiveErrors += 1
+        const message = error instanceof Error ? error.message : String(error)
+        log(`Expand batch ${expandBatch} failed (${consecutiveErrors}/${maxConsecutiveErrors})`, { error: message })
+
+        if (consecutiveErrors >= maxConsecutiveErrors) {
+          throw new Error(`Expand pipeline stopped after ${maxConsecutiveErrors} consecutive failures: ${message}`)
+        }
+
+        await sleep(retryDelayMs)
+      }
+    }
+  }
+
+  if (phase === 'all' || phase === 'ingest') {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is required for ingest')
+    }
+
+    log('Starting ingest phase', { ingestLimit, maxConsecutiveErrors })
+    const ingestionService = new IngestionService()
+    let ingestBatch = 0
+    let consecutiveErrors = 0
+    let totalIngested = 0
+
+    while (true) {
+      ingestBatch += 1
+      try {
+        const summary = await ingestionService.ingestBatch({ limit: ingestLimit })
+        consecutiveErrors = 0
+        totalIngested += summary.successful
+        log(`Ingest batch ${ingestBatch} complete`, summary)
+
+        if (summary.total === 0) {
+          log('Ingest phase complete — no remaining ingestible sources', { ingestBatch, totalIngested })
+          break
+        }
+      } catch (error) {
+        consecutiveErrors += 1
+        const message = error instanceof Error ? error.message : String(error)
+        log(`Ingest batch ${ingestBatch} failed (${consecutiveErrors}/${maxConsecutiveErrors})`, { error: message })
+
+        if (consecutiveErrors >= maxConsecutiveErrors) {
+          throw new Error(`Ingest pipeline stopped after ${maxConsecutiveErrors} consecutive failures: ${message}`)
+        }
+
+        await sleep(retryDelayMs)
+      }
+    }
+  }
+
+  const totals = (await auditCorpus()).totals
+  log('Pipeline finished', totals)
+  console.log(JSON.stringify(totals, null, 2))
+}
+
+async function ingestBatch (argv: string[]) {
+  const limit = readLimit(argv, 10)
+  const ingestionService = new IngestionService()
+  const summary = await ingestionService.ingestBatch({ limit })
+  console.log(JSON.stringify(summary, null, 2))
+}
+
+async function main () {
+  const [, , command, ...argv] = process.argv
+
+  switch (command) {
+    case 'stats':
+      console.log(JSON.stringify((await auditCorpus()).totals, null, 2))
+      break
+    case 'audit':
+      console.log(JSON.stringify(await auditCorpus(), null, 2))
+      break
+    case 'discover':
+      console.log(JSON.stringify(await discoverPublicationsCatalog(), null, 2))
+      break
+    case 'expand':
+      console.log(JSON.stringify(
+        await expandPublicationLandingPages({ limit: readLimit(argv, 50) }),
+        null,
+        2
+      ))
+      break
+    case 'discover-all':
+      console.log(JSON.stringify(
+        await discoverFullPublicationsCorpus({ expandLimit: readLimit(argv, 100) }),
+        null,
+        2
+      ))
+      break
+    case 'reconcile':
+      console.log(JSON.stringify(await reconcileArchivedPendingSources(), null, 2))
+      break
+    case 'ingest':
+      await ingestBatch(argv)
+      break
+    case 'run-pipeline':
+      await runExpandIngestPipeline(argv)
+      break
+    default:
+      console.error(
+        'Usage: tsx src/scripts/taxgpt-corpus.ts <stats|audit|discover|expand|discover-all|reconcile|ingest|run-pipeline> [--limit=N] [--expand-limit=N] [--ingest-limit=N] [--phase=all|expand|ingest] [--max-errors=N]'
+      )
+      process.exit(1)
+  }
+}
+
+main().catch((error) => {
+  console.error(error instanceof Error ? error.message : error)
+  process.exit(1)
+})
+

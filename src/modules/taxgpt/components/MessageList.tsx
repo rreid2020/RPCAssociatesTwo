@@ -1,6 +1,7 @@
 import { FC } from 'react'
 import { TAXGPT_STARTER_PROMPTS } from '../starterPrompts'
 import type { ChatMessage } from '../types'
+import StructuredAssistantMessage from './StructuredAssistantMessage'
 
 type MessageListProps = {
   messages: ChatMessage[]
@@ -102,26 +103,14 @@ const MessageList: FC<MessageListProps> = ({
                   Copy
                 </button>
               </div>
-              <div className={`whitespace-pre-wrap leading-relaxed ${
-                message.role === 'user' ? 'text-white' : 'text-text'
-              }`}
-              >
-                {message.content}
-              </div>
-              {message.citations && message.citations.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-border space-y-2">
-                  <p className="text-sm font-semibold text-primary-dark">Sources</p>
-                  {message.citations.map((citation, index) => (
-                    <a
-                      key={citation.id || `${message.id}-cit-${index}`}
-                      href={citation.sourceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block text-sm text-primary hover:underline"
-                    >
-                      {citation.sourceTitle}
-                    </a>
-                  ))}
+              {message.role === 'assistant' && message.structuredResponse ? (
+                <StructuredAssistantMessage structured={message.structuredResponse} />
+              ) : (
+                <div className={`whitespace-pre-wrap leading-relaxed ${
+                  message.role === 'user' ? 'text-white' : 'text-text'
+                }`}
+                >
+                  {message.content}
                 </div>
               )}
             </div>

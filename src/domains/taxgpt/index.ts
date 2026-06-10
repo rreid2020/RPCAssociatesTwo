@@ -4,6 +4,10 @@ export type RiskLevel = 'low' | 'medium' | 'high'
 
 export type TaxgptRetrievalMode = 'rag' | 'degraded'
 
+export type TaxgptSourceBucket = 'cra' | 'legislation' | 'case_law'
+
+export type TaxgptConfidence = 'high' | 'medium' | 'low'
+
 export type Citation = {
   id: string
   chunkId: string
@@ -13,6 +17,35 @@ export type Citation = {
   pageNumber?: number
   retrievedAt: string
   similarityScore?: number
+  sourceBucket?: TaxgptSourceBucket
+  summary?: string
+}
+
+export type TaxgptSourceAnalysisEntry = {
+  citationIndex: number
+  summary: string
+}
+
+export type TaxgptSourceGroup = {
+  bucket: TaxgptSourceBucket
+  label: string
+  entries: Citation[]
+  emptyMessage: string
+}
+
+export type TaxgptStructuredResponse = {
+  directAnswer: string
+  sourceAnalysis: {
+    cra: TaxgptSourceAnalysisEntry[]
+    legislation: TaxgptSourceAnalysisEntry[]
+    caseLaw: TaxgptSourceAnalysisEntry[]
+  }
+  keyPoints: string[]
+  whatThisMeansForYou: string
+  considerations: string[]
+  suggestedNextSteps: string[]
+  confidence: TaxgptConfidence
+  groupedSources?: Record<TaxgptSourceBucket, TaxgptSourceGroup>
 }
 
 export type TaxgptCorpusStats = {
@@ -33,6 +66,7 @@ export type TaxgptStatus = {
 
 export type TaxgptChatResponse = {
   response: string
+  structuredResponse?: TaxgptStructuredResponse
   citations: Citation[]
   sources: Array<{ id: string; title: string; url: string }>
   riskLevel: RiskLevel

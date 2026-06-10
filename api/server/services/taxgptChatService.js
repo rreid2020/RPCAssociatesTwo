@@ -1,11 +1,12 @@
 import OpenAI from 'openai'
 import { getTaxgptCorpusStats } from './taxgptCorpusRepository.js'
+import { buildTaxgptSources } from './taxgptPrompt.js'
 import {
-  buildTaxgptSources,
-  buildTaxgptSystemPrompt,
-  buildTaxgptUserPrompt,
-  extractTaxgptCitations
-} from './taxgptPrompt.js'
+  annotateChunksWithBuckets,
+  buildTaxgptStructuredSystemPrompt,
+  buildTaxgptStructuredUserPrompt,
+  parseTaxgptStructuredResponse
+} from './taxgptStructuredResponse.js'
 import { retrieveTaxgptChunks } from './taxgptRetrievalRepository.js'
 
 const HIGH_RISK_KEYWORDS = [
@@ -92,8 +93,13 @@ async function ensureChatTables (pool) {
       content text NOT NULL,
       citations jsonb,
       risk_level varchar(10),
+      structured_response jsonb,
       created_at timestamptz NOT NULL DEFAULT now()
     )
+  `)
+  await pool.query(`
+    ALTER TABLE taxgpt.chat_messages
+    ADD COLUMN IF NOT EXISTS structured_response jsonb
   `)
   await pool.query(`
     CREATE INDEX IF NOT EXISTS chat_messages_session_id_idx
@@ -184,10 +190,11 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
   const riskLevel = detectHighRiskTopics(message) ? 'high' : 'low'
   const retrieval = await resolveRetrievedChunks(pool, message, corpus)
   const retrievalMode = retrieval.mode
-  const systemPrompt = buildTaxgptSystemPrompt(retrievalMode)
+  const annotatedChunks = annotateChunksWithBuckets(retrieval.chunks)
+  const systemPrompt = buildTaxgptStructuredSystemPrompt(retrievalMode)
   const userPrompt = retrievalMode === 'rag'
-    ? buildTaxgptUserPrompt(message, retrieval.chunks)
-    : message
+    ? buildTaxgptStructuredUserPrompt(message, annotatedChunks)
+    : `User Question: ${message}\n\nNo retrieved sources are available. Return the degraded JSON schema.`
 
   let completion
   try {
@@ -197,29 +204,36 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
-      temperature: retrievalMode === 'rag' ? 0.4 : 0.7
+      temperature: retrievalMode === 'rag' ? 0.3 : 0.5,
+      response_format: { type: 'json_object' }
     })
   } catch (error) {
     throw mapOpenAIError(error)
   }
 
-  const response = completion.choices[0]?.message?.content ||
-    'I apologize, but I could not generate a response.'
-  const citations = retrievalMode === 'rag'
-    ? extractTaxgptCitations(response, retrieval.chunks)
-    : []
+  const rawResponse = completion.choices[0]?.message?.content ||
+    '{"directAnswer":"I apologize, but I could not generate a response.","sourceAnalysis":{"cra":[],"legislation":[],"caseLaw":[]},"keyPoints":[],"whatThisMeansForYou":"","considerations":[],"suggestedNextSteps":[],"confidence":"low"}'
+
+  const parsed = parseTaxgptStructuredResponse(rawResponse, annotatedChunks, retrievalMode)
+  const response = parsed.plainText
+  const citations = parsed.citations
+  const structuredResponse = {
+    ...parsed.structured,
+    groupedSources: parsed.groupedSources
+  }
   const sources = retrievalMode === 'rag'
-    ? buildTaxgptSources(retrieval.chunks)
+    ? buildTaxgptSources(annotatedChunks)
     : []
 
   await pool.query(
-    `INSERT INTO taxgpt.chat_messages (session_id, role, content, citations, risk_level, created_at)
-     VALUES ($1::uuid, 'assistant', $2, $3::jsonb, $4, now())`,
-    [sessionId, response, JSON.stringify(citations), riskLevel]
+    `INSERT INTO taxgpt.chat_messages (session_id, role, content, citations, risk_level, structured_response, created_at)
+     VALUES ($1::uuid, 'assistant', $2, $3::jsonb, $4, $5::jsonb, now())`,
+    [sessionId, response, JSON.stringify(citations), riskLevel, JSON.stringify(structuredResponse)]
   )
 
   return {
     response,
+    structuredResponse,
     citations,
     sources,
     riskLevel,

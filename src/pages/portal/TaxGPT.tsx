@@ -1,15 +1,40 @@
-import { FC } from 'react'
+import { FC, useEffect, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../components/SEO'
 import ClientPortalShell from '../../components/ClientPortalShell'
-import { useFeatureAccess } from '../../lib/subscriptions/hooks'
-import { getTaxgptWebUrl } from '../../lib/portalApi'
 import UpgradePrompt from '../../components/UpgradePrompt'
+import { fetchTaxgptStatus } from '../../domains/taxgpt'
+import ChatInterface from '../../modules/taxgpt/components/ChatInterface'
+import { useFeatureAccess } from '../../lib/subscriptions/hooks'
 
 const TaxGPT: FC = () => {
-  const { isLoaded } = useAuth()
+  const { getToken, isLoaded } = useAuth()
   const hasAccess = useFeatureAccess('taxgpt')
-  const url = getTaxgptWebUrl().trim().replace(/\/$/, '')
+  const [configured, setConfigured] = useState<boolean | null>(null)
+  const [statusError, setStatusError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!hasAccess || !isLoaded) return
+    let mounted = true
+    const run = async () => {
+      try {
+        const status = await fetchTaxgptStatus(getToken)
+        if (mounted) {
+          setConfigured(status.configured)
+          setStatusError(null)
+        }
+      } catch (e) {
+        if (mounted) {
+          setConfigured(false)
+          setStatusError(e instanceof Error ? e.message : 'Could not verify TaxGPT status')
+        }
+      }
+    }
+    void run()
+    return () => {
+      mounted = false
+    }
+  }, [getToken, hasAccess, isLoaded])
 
   return (
     <>
@@ -25,28 +50,21 @@ const TaxGPT: FC = () => {
 
           {!hasAccess ? (
             <UpgradePrompt feature="TaxGPT" />
-          ) : !url ? (
-            <div className="bg-white p-6 rounded-lg border border-border shadow-sm">
-              <p className="text-text-light mb-2">
-                The TaxGPT web app URL is not configured. Set <code className="bg-background px-2 py-0.5 rounded">VITE_TAXGPT_WEB_URL</code> in
-                the frontend environment to the deployed taxgpt-web origin (for example, your <code className="bg-background px-2 py-0.5 rounded">taxgpt-web</code> site).
+          ) : !isLoaded || configured === null ? (
+            <p className="text-text-light">Loading TaxGPT…</p>
+          ) : !configured ? (
+            <div className="bg-white p-6 rounded-lg border border-border shadow-sm space-y-2">
+              <p className="text-text">
+                TaxGPT chat is not configured on the API server yet.
               </p>
+              <p className="text-sm text-text-light">
+                Set <code className="bg-background px-2 py-0.5 rounded">OPENAI_API_KEY</code> on the API
+                component, then redeploy the API service.
+              </p>
+              {statusError && <p className="text-sm text-red-700">{statusError}</p>}
             </div>
           ) : (
-            <>
-              <p className="text-sm text-text-light mb-4 max-w-3xl">
-                TaxGPT opens in a secure window below. Use the same Clerk sign-in you use for this portal. If the embedded app asks you to
-                sign in, complete sign-in and return here as needed. Deep integration can share session cookies when both apps use the same
-                Clerk instance and allowed domains.
-              </p>
-              {isLoaded ? (
-                <div className="w-full min-h-[70vh] border border-border rounded-lg overflow-hidden bg-white shadow-sm">
-                  <iframe title="TaxGPT" src={url} className="w-full h-[min(80vh,900px)] border-0" />
-                </div>
-              ) : (
-                <p className="text-text-light">Loading&hellip;</p>
-              )}
-            </>
+            <ChatInterface />
           )}
         </div>
       </ClientPortalShell>

@@ -155,6 +155,7 @@ import {
   verifySignedIntegrationState
 } from '../services/integrationOAuthService.js'
 import { assertWorkspaceEntitlement } from '../services/authz/entitlementPolicy.js'
+import { getTaxgptStatus, handleTaxgptChat } from '../services/taxgptChatService.js'
 
 const MAX_UPLOAD_BYTES = parseInt(process.env.PORTAL_MAX_UPLOAD_BYTES || String(100 * 1024 * 1024), 10)
 
@@ -3343,6 +3344,42 @@ export function createPortalRouter (pool) {
       enabled: service.enabled,
       message: service.enabled ? 'AI review enabled' : 'AI review is not enabled yet'
     })
+  })
+
+  r.get('/v1/taxgpt/status', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    if (!(await hasEntitlement(res, scope.workspace.id, 'taxgpt'))) return
+    res.json(getTaxgptStatus())
+  })
+
+  r.post('/v1/taxgpt/chat', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    if (!(await hasEntitlement(res, scope.workspace.id, 'taxgpt'))) return
+    const message = String(req.body?.message || '').trim()
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' })
+    }
+    if (message.length > 10000) {
+      return res.status(400).json({ error: 'Message is too long' })
+    }
+    try {
+      const result = await handleTaxgptChat(pool, session.userId, {
+        sessionId: req.body?.sessionId || null,
+        message,
+        agentic: req.body?.agentic === true
+      })
+      res.json(result)
+    } catch (e) {
+      const messageText = e instanceof Error ? e.message : 'Could not process TaxGPT chat message'
+      const status = messageText.includes('not configured') ? 503 : 500
+      res.status(status).json({ error: messageText })
+    }
   })
 
   return r

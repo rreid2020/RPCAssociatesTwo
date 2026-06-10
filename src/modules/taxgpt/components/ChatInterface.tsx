@@ -168,7 +168,12 @@ const ChatInterface: FC = () => {
         <div className="flex-1 flex flex-col min-h-0">
           <div ref={messagesContainerRef} className="flex-1 overflow-y-auto relative">
             <div className="mx-auto max-w-4xl px-6 py-6">
-              <MessageList messages={messages} onCopy={handleCopy} />
+              <MessageList
+                messages={messages}
+                onCopy={handleCopy}
+                onSelectPrompt={(prompt) => { void handleSend(prompt) }}
+                promptsDisabled={sending}
+              />
               {sending && (
                 <div className="mt-4">
                   <LoadingIndicator />

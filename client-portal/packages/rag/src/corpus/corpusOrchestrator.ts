@@ -94,6 +94,10 @@ export async function expandPublicationLandingPages (options: { limit?: number }
     .where(eq(sources.ingestStatus, 'pending'))
 
   const candidates = landingPages
+    .filter((row) => {
+      const metadata = (row.metadata || {}) as Record<string, unknown>
+      return metadata.corpusRole === 'publication_landing'
+    })
     .filter((row) => isPublicationLandingUrl(row.url))
     .filter((row) => !isArchivedOrCancelledTitle(row.title))
     .slice(0, limit)
@@ -122,6 +126,16 @@ export async function expandPublicationLandingPages (options: { limit?: number }
           })
           .where(eq(sources.id, landing.id))
       } else {
+        // No child links — the landing page itself is the content to ingest.
+        const existingMeta = (landing.metadata || {}) as Record<string, unknown>
+        const { corpusRole: _removed, ...restMeta } = existingMeta
+        await db
+          .update(sources)
+          .set({
+            pageKind: 'content',
+            metadata: Object.keys(restMeta).length > 0 ? restMeta : null
+          })
+          .where(eq(sources.id, landing.id))
         summary.skipped += 1
       }
     } catch {

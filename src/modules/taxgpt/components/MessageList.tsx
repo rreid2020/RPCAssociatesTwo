@@ -1,9 +1,12 @@
 import { FC } from 'react'
+import { TAXGPT_STARTER_PROMPTS } from '../starterPrompts'
 import type { ChatMessage } from '../types'
 
 type MessageListProps = {
   messages: ChatMessage[]
   onCopy?: (text: string) => void
+  onSelectPrompt?: (prompt: string) => void
+  promptsDisabled?: boolean
 }
 
 function formatRelativeTime (date: Date): string {
@@ -18,18 +21,47 @@ function formatRelativeTime (date: Date): string {
   return date.toLocaleDateString()
 }
 
-const MessageList: FC<MessageListProps> = ({ messages, onCopy }) => {
+const MessageList: FC<MessageListProps> = ({
+  messages,
+  onCopy,
+  onSelectPrompt,
+  promptsDisabled = false
+}) => {
   if (messages.length === 0) {
     return (
       <div className="flex items-center justify-center h-full min-h-[320px]">
-        <div className="max-w-md rounded-lg border border-border bg-white p-6 text-center shadow-sm">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-primary text-white text-lg">
-            ✨
+        <div className="w-full max-w-3xl rounded-lg border border-border bg-white p-6 shadow-sm">
+          <div className="text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-primary text-white text-lg">
+              ✨
+            </div>
+            <p className="mt-4 text-lg font-semibold text-primary-dark">Welcome to TaxGPT</p>
+            <p className="mt-2 text-sm text-text-light">
+              Ask about Canadian tax law, CRA guidance, and common compliance questions.
+            </p>
           </div>
-          <p className="mt-4 text-lg font-semibold text-primary-dark">Welcome to TaxGPT</p>
-          <p className="mt-2 text-sm text-text-light">
-            Ask about Canadian tax law, CRA guidance, and common compliance questions.
-          </p>
+
+          <div className="mt-6 border-t border-border pt-6">
+            <p className="text-sm font-semibold text-primary-dark text-center">
+              Popular questions Canadians ask
+            </p>
+            <p className="mt-1 text-xs text-text-light text-center">
+              Select a starter prompt to begin, or type your own question below.
+            </p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {TAXGPT_STARTER_PROMPTS.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  onClick={() => onSelectPrompt?.(prompt)}
+                  disabled={promptsDisabled || !onSelectPrompt}
+                  className="rounded-md border border-border bg-background px-3 py-2.5 text-left text-sm text-text transition-colors hover:border-primary/40 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     )

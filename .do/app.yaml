@@ -142,3 +142,7 @@ jobs:
       - key: OPENAI_API_KEY
         scope: RUN_TIME
         type: SECRET
+      # CanLII Tax Court case law (2010–present); set when API key is received:
+      - key: CANLII_API_KEY
+        scope: RUN_TIME
+        type: SECRET

@@ -129,8 +129,8 @@ export interface TaxFormAlias {
   createdAt: Date;
 }
 
-export type SourceType = 'html' | 'pdf' | 'cra_folio_directory' | 'cra_folio_content' | 'cra_ic_directory' | 'cra_ic_content';
-export type SourceCategory = 'form' | 'publication' | 'guide' | 'package' | 'other' | 'folio' | 'circular';
+export type SourceType = 'html' | 'pdf' | 'cra_folio_directory' | 'cra_folio_content' | 'cra_ic_directory' | 'cra_ic_content' | 'canlii_decision';
+export type SourceCategory = 'form' | 'publication' | 'guide' | 'package' | 'other' | 'folio' | 'circular' | 'case_law';
 export type IngestStatus = 'pending' | 'ingested' | 'failed' | 'skipped';
 export type Priority = 'low' | 'medium' | 'high';
 export type RiskLevel = 'low' | 'medium' | 'high';

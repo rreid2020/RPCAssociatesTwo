@@ -15,6 +15,7 @@
     "taxgpt:expand": "tsx src/scripts/taxgpt-corpus.ts expand --limit=50",
     "taxgpt:discover-all": "tsx src/scripts/taxgpt-corpus.ts discover-all --limit=100",
     "taxgpt:reconcile": "tsx src/scripts/taxgpt-corpus.ts reconcile",
+    "taxgpt:discover-canlii": "tsx src/scripts/taxgpt-corpus.ts discover-canlii --limit=50",
     "taxgpt:ingest": "tsx src/scripts/taxgpt-corpus.ts ingest --limit=10",
     "taxgpt:pipeline": "tsx src/scripts/taxgpt-corpus.ts run-pipeline --expand-limit=50 --ingest-limit=10",
     "taxgpt:batch": "tsx src/scripts/taxgpt-corpus.ts run-batch --expand-limit=50 --ingest-limit=20"

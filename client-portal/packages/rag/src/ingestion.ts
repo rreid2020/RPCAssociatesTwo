@@ -4,12 +4,13 @@ import { JSDOM } from 'jsdom';
 import pdfParse from 'pdf-parse';
 import TurndownService from 'turndown';
 import { sources, documents, chunks, embeddings, getDb, ensureDbValidated } from '@shared/types/db';
-import { calculateContentHash, type IngestSummary, logger, requestText, requestBytes } from '@shared/types';
+import { calculateContentHash, getCrawlerConfig, type IngestSummary, logger, requestText, requestBytes, type TextResult } from '@shared/types';
 import { eq, and, count, sql } from 'drizzle-orm';
 import { createStorageProvider } from '@storage/core';
 import { EmbeddingService } from './embedding';
 import { SectionAwareChunker } from './chunking';
 import { CraFolioExtractor } from './services/extraction/craFolioExtractor';
+import { CanliiCaseExtractor } from './services/extraction/canliiCaseExtractor';
 import { CraFolioChunker } from './services/chunking/craFolioChunker';
 import { isArchivedOrCancelledTitle } from './corpus/sourcePolicy';
 
@@ -107,8 +108,12 @@ async function determineReferer(
   // Check if it's a CRA domain
   const isCraDomain = url.includes('canada.ca');
   
+  if (url.includes('canlii.org') || url.includes('canlii.ca')) {
+    return 'https://www.canlii.org/';
+  }
+
   if (!isCraDomain) {
-    return undefined; // No referer for non-CRA domains
+    return undefined;
   }
   
   // For folio content pages, try to use parent source URL as referer
@@ -127,6 +132,80 @@ async function determineReferer(
   
   // Default: Use CRA base URL for all CRA domains
   return 'https://www.canada.ca/en/revenue-agency/services/forms-publications.html';
+}
+
+function readHttpTimeoutMs (isCanliiSource: boolean): number {
+  const configured = Number(process.env.HTTP_TIMEOUT_MS || '')
+  if (Number.isFinite(configured) && configured > 0) {
+    return configured
+  }
+  return isCanliiSource ? 90_000 : 90_000
+}
+
+function readHttpRetries (): number {
+  const configured = Number(process.env.HTTP_RETRIES || '')
+  if (Number.isFinite(configured) && configured >= 0) {
+    return configured
+  }
+  return 2
+}
+
+async function fetchHtmlForIngest (
+  url: string,
+  referer: string | undefined,
+  isCanliiSource: boolean
+): Promise<TextResult> {
+  const timeout = readHttpTimeoutMs(isCanliiSource)
+  const retries = readHttpRetries()
+
+  try {
+    const result = await requestText(url, { referer, timeout, retries })
+    if (result.text.length >= 200) {
+      return result
+    }
+    logger.ingestWarn('HTTP fetch returned short HTML for ingest, trying browser fallback', {
+      url,
+      textLength: result.text.length
+    })
+  } catch (error) {
+    logger.ingestWarn('HTTP fetch failed for ingest, trying browser fallback', {
+      url,
+      error: error instanceof Error ? error.message : String(error)
+    })
+  }
+
+  if (isCanliiSource || !url.includes('canada.ca')) {
+    throw new Error(`Failed to fetch HTML for ingest: ${url}`)
+  }
+
+  const { BrowserClient } = await import('@crawler/core')
+  const browser = new BrowserClient(getCrawlerConfig())
+  try {
+    const browserResponse = await browser.fetch(url, {
+      timeout: Math.max(timeout, 120_000),
+      retries: 1
+    })
+
+    if (browserResponse.html.length < 200) {
+      throw new Error(`Browser fetch content too short (${browserResponse.html.length} bytes)`)
+    }
+
+    logger.ingest('Fetched HTML content via browser fallback', {
+      url,
+      status: browserResponse.status,
+      textLength: browserResponse.html.length
+    })
+
+    return {
+      status: browserResponse.status,
+      statusText: browserResponse.statusText,
+      headers: browserResponse.headers,
+      contentType: 'text/html',
+      text: browserResponse.html
+    }
+  } finally {
+    await browser.close()
+  }
 }
 
 export class IngestionService {
@@ -288,9 +367,12 @@ export class IngestionService {
           referer,
         });
         
-        const result = await requestText(sourceRecord.url, {
-          referer,
-        });
+        const isCanliiSource =
+          sourceRecord.sourceType === 'canlii_decision' ||
+          sourceRecord.url.includes('canlii.org') ||
+          sourceRecord.url.includes('canlii.ca');
+
+        const result = await fetchHtmlForIngest(sourceRecord.url, referer, isCanliiSource);
         statusCode = result.status;
         contentType = result.contentType;
         contentLength = result.text.length;
@@ -315,10 +397,13 @@ export class IngestionService {
         
         // Check if this is a publication index page that needs discovery
         // These are HTML pages that contain links to actual content pages (HTML or PDF)
-        if (sourceRecord.sourceType === 'html' && 
-            (sourceRecord.url.includes('/publications/') || 
-             sourceRecord.url.includes('/payroll/') ||
-             sourceRecord.url.includes('/forms-publications/'))) {
+        if (
+          !isCanliiSource &&
+          sourceRecord.sourceType === 'html' &&
+          (sourceRecord.url.includes('/publications/') ||
+            sourceRecord.url.includes('/payroll/') ||
+            sourceRecord.url.includes('/forms-publications/'))
+        ) {
           // Check if the page has links to content (indicating it's an index page)
           const $ = cheerio.load(result.text);
           const basePath = new URL(sourceRecord.url).pathname.toLowerCase().replace(/\.html$/, '');
@@ -415,6 +500,12 @@ export class IngestionService {
         if (sourceRecord.sourceType === 'cra_folio_content' || sourceRecord.sourceType === 'cra_ic_content') {
           const folioExtractor = new CraFolioExtractor();
           const extracted = folioExtractor.extract(result.text, sourceRecord.url);
+          text = extracted.text;
+          extractedTitle = extracted.title || sourceRecord.title;
+          Object.assign(metadata, extracted.metadata);
+        } else if (isCanliiSource) {
+          const canliiExtractor = new CanliiCaseExtractor();
+          const extracted = canliiExtractor.extract(result.text, sourceRecord.url);
           text = extracted.text;
           extractedTitle = extracted.title || sourceRecord.title;
           Object.assign(metadata, extracted.metadata);

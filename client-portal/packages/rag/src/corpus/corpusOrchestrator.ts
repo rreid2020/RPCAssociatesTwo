@@ -155,6 +155,30 @@ export async function discoverFullPublicationsCorpus (options: {
   return { catalog, expanded }
 }
 
+/** Reset timeout/abort ingest failures so the job can retry after fetch tuning. */
+export async function reconcileTimeoutFailedSources (): Promise<{ updatedCount: number }> {
+  await ensureDbValidated()
+  const db = getDb()
+
+  const result = await db.execute(sql`
+    UPDATE taxgpt.sources
+    SET ingest_status = 'pending',
+        error_code = NULL,
+        error_message = NULL,
+        last_attempt_at = NOW()
+    WHERE ingest_status = 'failed'
+      AND (
+        error_message ILIKE '%aborted%'
+        OR error_message ILIKE '%timeout%'
+        OR error_message ILIKE '%timed out%'
+      )
+    RETURNING id
+  `)
+
+  const rows = result as unknown as Array<{ id: string }>
+  return { updatedCount: rows.length }
+}
+
 export async function reconcileArchivedPendingSources (): Promise<{ updatedCount: number }> {
   await ensureDbValidated()
   const db = getDb()

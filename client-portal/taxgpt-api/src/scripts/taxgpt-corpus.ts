@@ -3,10 +3,12 @@ import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import {
   auditCorpus,
+  discoverCanliiTaxCourtBatch,
   discoverFullPublicationsCorpus,
   discoverPublicationsCatalog,
   expandPublicationLandingPages,
-  reconcileArchivedPendingSources
+  reconcileArchivedPendingSources,
+  reconcileTimeoutFailedSources
 } from '@rag/core'
 import { IngestionService } from '@rag/core'
 
@@ -82,6 +84,43 @@ async function runExpandIngestPipeline (argv: string[]) {
         }
 
         await sleep(retryDelayMs)
+      }
+    }
+  }
+
+  if (phase === 'all' || phase === 'canlii') {
+    if (!process.env.CANLII_API_KEY) {
+      log('Skipping CanLII discovery — CANLII_API_KEY is not set')
+    } else {
+      const canliiDiscoverLimit = readOption(argv, 'canlii-discover-limit', 50)
+      log('Starting CanLII discover phase', { canliiDiscoverLimit, maxConsecutiveErrors })
+      let canliiBatch = 0
+      let consecutiveErrors = 0
+      let totalDiscovered = 0
+
+      while (true) {
+        canliiBatch += 1
+        try {
+          const result = await discoverCanliiTaxCourtBatch({ limit: canliiDiscoverLimit })
+          consecutiveErrors = 0
+          totalDiscovered += result.discovered
+          log(`CanLII discover batch ${canliiBatch} complete`, result)
+
+          if (result.complete) {
+            log('CanLII discover phase complete', { canliiBatch, totalDiscovered })
+            break
+          }
+        } catch (error) {
+          consecutiveErrors += 1
+          const message = error instanceof Error ? error.message : String(error)
+          log(`CanLII discover batch ${canliiBatch} failed (${consecutiveErrors}/${maxConsecutiveErrors})`, { error: message })
+
+          if (consecutiveErrors >= maxConsecutiveErrors) {
+            throw new Error(`CanLII discover pipeline stopped after ${maxConsecutiveErrors} consecutive failures: ${message}`)
+          }
+
+          await sleep(retryDelayMs)
+        }
       }
     }
   }
@@ -165,6 +204,28 @@ async function runScheduledBatch (argv: string[]) {
     throw error
   }
 
+  let canliiDiscoverResult = {
+    discovered: 0,
+    skippedDuplicates: 0,
+    errors: 0,
+    offset: 0,
+    complete: true
+  }
+
+  if (!process.env.CANLII_API_KEY) {
+    log('Skipping CanLII discovery — CANLII_API_KEY is not set')
+  } else {
+    try {
+      const canliiDiscoverLimit = readOption(argv, 'canlii-discover-limit', 50)
+      canliiDiscoverResult = await discoverCanliiTaxCourtBatch({ limit: canliiDiscoverLimit })
+      log('CanLII discover step complete', canliiDiscoverResult)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      log('CanLII discover step failed', { error: message })
+      throw error
+    }
+  }
+
   let ingestResult = {
     total: 0,
     successful: 0,
@@ -190,9 +251,11 @@ async function runScheduledBatch (argv: string[]) {
   const totals = (await auditCorpus()).totals
   const summary = {
     expand: expandResult,
+    canliiDiscover: canliiDiscoverResult,
     ingest: ingestResult,
     corpus: totals,
     expandComplete: expandResult.processed === 0,
+    canliiDiscoverComplete: canliiDiscoverResult.complete,
     ingestComplete: ingestResult.total === 0,
     retrievalReady: totals.retrievalReady
   }
@@ -228,7 +291,17 @@ async function main () {
       ))
       break
     case 'reconcile':
-      console.log(JSON.stringify(await reconcileArchivedPendingSources(), null, 2))
+      console.log(JSON.stringify({
+        archived: await reconcileArchivedPendingSources(),
+        timeouts: await reconcileTimeoutFailedSources()
+      }, null, 2))
+      break
+    case 'discover-canlii':
+      console.log(JSON.stringify(
+        await discoverCanliiTaxCourtBatch({ limit: readLimit(argv, 50) }),
+        null,
+        2
+      ))
       break
     case 'ingest':
       await ingestBatch(argv)
@@ -241,7 +314,7 @@ async function main () {
       break
     default:
       console.error(
-        'Usage: tsx src/scripts/taxgpt-corpus.ts <stats|audit|discover|expand|discover-all|reconcile|ingest|run-pipeline|run-batch> [--limit=N] [--expand-limit=N] [--ingest-limit=N] [--phase=all|expand|ingest] [--max-errors=N]'
+        'Usage: tsx src/scripts/taxgpt-corpus.ts <stats|audit|discover|expand|discover-all|discover-canlii|reconcile|ingest|run-pipeline|run-batch> [--limit=N] [--expand-limit=N] [--ingest-limit=N] [--canlii-discover-limit=N] [--phase=all|expand|canlii|ingest] [--max-errors=N]'
       )
       process.exit(1)
   }

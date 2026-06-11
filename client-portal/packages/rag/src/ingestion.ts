@@ -12,7 +12,11 @@ import { SectionAwareChunker } from './chunking';
 import { CraFolioExtractor } from './services/extraction/craFolioExtractor';
 import { CanliiCaseExtractor } from './services/extraction/canliiCaseExtractor';
 import { CraFolioChunker } from './services/chunking/craFolioChunker';
-import { isArchivedOrCancelledTitle } from './corpus/sourcePolicy';
+import {
+  isArchivedOrCancelledTitle,
+  isCatalogPublicationLandingUrl,
+  publicationUrlDepth
+} from './corpus/sourcePolicy';
 
 const turndownService = new TurndownService();
 const MIN_TEXT_LENGTH = 0; // No minimum - ingest all content regardless of length
@@ -900,6 +904,8 @@ export class IngestionService {
         if (s.pageKind === 'directory') return false;
         const metadata = (s.metadata || {}) as Record<string, unknown>;
         if (metadata.corpusRole === 'publication_landing') return false;
+        // Catalog landing pages (step 2) must be expanded before ingest — not final content.
+        if (isCatalogPublicationLandingUrl(s.url)) return false;
         return true;
       })
       .sort((a, b) => {
@@ -907,6 +913,8 @@ export class IngestionService {
           (priorityRank[a.priority as keyof typeof priorityRank] ?? 2) -
           (priorityRank[b.priority as keyof typeof priorityRank] ?? 2);
         if (priorityDelta !== 0) return priorityDelta;
+        const depthDelta = publicationUrlDepth(b.url) - publicationUrlDepth(a.url);
+        if (depthDelta !== 0) return depthDelta;
         return String(a.title || '').localeCompare(String(b.title || ''));
       });
 

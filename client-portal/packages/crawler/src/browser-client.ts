@@ -38,6 +38,8 @@ export class BrowserClient {
       '--no-zygote',
       '--disable-gpu',
       '--disable-blink-features=AutomationControlled',
+      // canada.ca / Akamai often fails from cloud with ERR_HTTP2_PROTOCOL_ERROR
+      '--disable-http2',
     ];
 
     // Add proxy if configured

@@ -2,7 +2,7 @@ import { count, eq, inArray, sql } from 'drizzle-orm'
 import { embeddings, getDb, ensureDbValidated, sources } from '@shared/types'
 import { CraPublicationsDiscoveryService } from '../services/discovery'
 import { CRA_PUBLICATIONS_CATALOG_SEED, CRA_PUBLICATIONS_CATALOG_URL } from './discoverySeeds'
-import { isArchivedOrCancelledTitle } from './sourcePolicy'
+import { isArchivedOrCancelledTitle, isCatalogPublicationLandingUrl } from './sourcePolicy'
 
 export type CorpusAuditReport = {
   totals: {
@@ -52,12 +52,7 @@ async function ensureCatalogSeedSource () {
 
 function isPublicationLandingUrl (url: string): boolean {
   if (url === CRA_PUBLICATIONS_CATALOG_URL) return false
-  try {
-    const path = new URL(url).pathname.toLowerCase()
-    return path.includes('/forms-publications/publications/') && path.endsWith('.html')
-  } catch {
-    return false
-  }
+  return isCatalogPublicationLandingUrl(url)
 }
 
 /** Phase 1: parse publications.html table → one source per publication number. */
@@ -96,7 +91,7 @@ export async function expandPublicationLandingPages (options: { limit?: number }
   const candidates = landingPages
     .filter((row) => {
       const metadata = (row.metadata || {}) as Record<string, unknown>
-      return metadata.corpusRole === 'publication_landing'
+      return metadata.corpusRole === 'publication_landing' || isPublicationLandingUrl(row.url)
     })
     .filter((row) => isPublicationLandingUrl(row.url))
     .filter((row) => !isArchivedOrCancelledTitle(row.title))

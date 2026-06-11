@@ -24,3 +24,29 @@ export function classifyCorpusDisposition (input: {
   }
   return 'index'
 }
+
+/** Step-2 CRA landing page: publications/p-106.html (not publications/17-10/tax-discounters.html). */
+export function isCatalogPublicationLandingUrl (url: string): boolean {
+  try {
+    const pathname = new URL(url).pathname.toLowerCase()
+    const match = pathname.match(/\/forms-publications\/publications\/([^/]+)\.html$/)
+    if (!match) return false
+    const filename = match[1]
+    // Content siblings from the landing page often use an -e suffix (e.g. 17-10-e.html).
+    if (/-e$/i.test(filename)) return false
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** Prefer ingesting deeper content URLs before shallow catalog landings. */
+export function publicationUrlDepth (url: string): number {
+  try {
+    const pathname = new URL(url).pathname
+    const after = pathname.split('/forms-publications/publications/')[1] || pathname
+    return after.split('/').filter(Boolean).length
+  } catch {
+    return 0
+  }
+}

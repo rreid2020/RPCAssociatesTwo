@@ -34,7 +34,8 @@ function readLimit (argv: string[], fallback: number) {
 
 function readOption (argv: string[], key: string, fallback: number) {
   const prefix = `--${key}=`
-  const match = argv.find((arg) => arg.startsWith(prefix))
+  const matches = argv.filter((arg) => arg.startsWith(prefix))
+  const match = matches[matches.length - 1]
   return match ? Number(match.slice(prefix.length)) : fallback
 }
 

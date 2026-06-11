@@ -8,7 +8,7 @@ Use an **App Platform Job** (scheduled cron) that runs one batch per tick, then 
 
 | Approach | Best for |
 |----------|----------|
-| **Scheduled job** (`taxgpt:batch` every 30–60 min) | Production — survives restarts, no multi-hour timeout risk |
+| **Scheduled job** (`taxgpt:batch` every **60 min**) | Production — survives restarts, no multi-hour timeout risk |
 | **One-off job** (`taxgpt:pipeline`) | Initial backfill — trigger manually from DO console |
 | **Local machine** | Debugging only |
 
@@ -50,14 +50,31 @@ Set **OPENAI_API_KEY** on this job component (not only on the API).
 
 Set **CANLII_API_KEY** on the same job when received (Tax Court case law discovery runs in each `taxgpt:batch` tick).
 
-### Faster runs
+### Run command override (DigitalOcean → taxgpt-corpus → Settings → Run command)
+
+**Replace** the default — do not append flags (duplicate `--ingest-limit` values ignore the second one unless you use the full command below).
+
+Recommended while catching up (each canada.ca fetch can take several minutes):
+
+```bash
+tsx src/scripts/taxgpt-corpus.ts run-batch --expand-limit=5 --ingest-limit=5
+```
+
+Or leave empty to use the Dockerfile default (`npm run taxgpt:batch` → 5 expand + 5 ingest per run).
+
+### Schedule: avoid job pile-up
+
+If a run takes longer than the cron interval, DigitalOcean queues another invocation (**PENDING** behind **RUNNING**).
+
+- Use **every 60 minutes** (`0 * * * *`), not every 30 minutes, until batches finish reliably in under an hour.
+- Set job **timeout** to `2h` while catching up.
+- **Cancel** stale PENDING/RUNNING jobs before changing limits.
+- Keep `--expand-limit=5` — `50` expand landings × ~7 min each can exceed 5 hours per run.
+
+### Faster runs (after ingest is healthy)
 
 - Increase job size to `basic-m` or `professional-s` if expand is CPU-bound.
-- Raise ingest batch size in the run command override:
-
-  ```
-  npm run taxgpt:batch -- --ingest-limit=30
-  ```
+- Raise limits only when canada.ca responds consistently from the job.
 
 ## 2. Manual full pipeline (one-off)
 

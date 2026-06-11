@@ -135,6 +135,71 @@ async function ingestBatch (argv: string[]) {
   console.log(JSON.stringify(summary, null, 2))
 }
 
+/** One expand batch + one ingest batch, then exit — safe for DigitalOcean scheduled jobs. */
+async function runScheduledBatch (argv: string[]) {
+  const expandLimit = readOption(argv, 'expand-limit', 50)
+  const ingestLimit = readOption(argv, 'ingest-limit', 20)
+  const log = (message: string, payload?: unknown) => {
+    const line = payload === undefined
+      ? `[batch] ${new Date().toISOString()} ${message}`
+      : `[batch] ${new Date().toISOString()} ${message} ${JSON.stringify(payload)}`
+    console.log(line)
+  }
+
+  log('Starting scheduled corpus batch', { expandLimit, ingestLimit })
+
+  let expandResult = {
+    processed: 0,
+    expanded: 0,
+    contentSourcesCreated: 0,
+    skipped: 0,
+    errors: 0
+  }
+
+  try {
+    expandResult = await expandPublicationLandingPages({ limit: expandLimit })
+    log('Expand step complete', expandResult)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    log('Expand step failed', { error: message })
+    throw error
+  }
+
+  let ingestResult = {
+    total: 0,
+    successful: 0,
+    failed: 0,
+    skipped: 0,
+    errors: [] as Array<{ sourceId: string; error: string }>
+  }
+
+  if (!process.env.OPENAI_API_KEY) {
+    log('Skipping ingest — OPENAI_API_KEY is not set')
+  } else {
+    try {
+      const ingestionService = new IngestionService()
+      ingestResult = await ingestionService.ingestBatch({ limit: ingestLimit })
+      log('Ingest step complete', ingestResult)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      log('Ingest step failed', { error: message })
+      throw error
+    }
+  }
+
+  const totals = (await auditCorpus()).totals
+  const summary = {
+    expand: expandResult,
+    ingest: ingestResult,
+    corpus: totals,
+    expandComplete: expandResult.processed === 0,
+    ingestComplete: ingestResult.total === 0,
+    retrievalReady: totals.retrievalReady
+  }
+  log('Scheduled batch finished', summary)
+  console.log(JSON.stringify(summary, null, 2))
+}
+
 async function main () {
   const [, , command, ...argv] = process.argv
 
@@ -171,9 +236,12 @@ async function main () {
     case 'run-pipeline':
       await runExpandIngestPipeline(argv)
       break
+    case 'run-batch':
+      await runScheduledBatch(argv)
+      break
     default:
       console.error(
-        'Usage: tsx src/scripts/taxgpt-corpus.ts <stats|audit|discover|expand|discover-all|reconcile|ingest|run-pipeline> [--limit=N] [--expand-limit=N] [--ingest-limit=N] [--phase=all|expand|ingest] [--max-errors=N]'
+        'Usage: tsx src/scripts/taxgpt-corpus.ts <stats|audit|discover|expand|discover-all|reconcile|ingest|run-pipeline|run-batch> [--limit=N] [--expand-limit=N] [--ingest-limit=N] [--phase=all|expand|ingest] [--max-errors=N]'
       )
       process.exit(1)
   }

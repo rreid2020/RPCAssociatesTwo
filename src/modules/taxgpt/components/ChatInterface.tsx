@@ -1,4 +1,5 @@
 import { FC, useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import { fetchTaxgptCorpus, sendTaxgptChatMessage } from '../../../domains/taxgpt'
 import type { TaxgptCorpusStats } from '../../../domains/taxgpt'
@@ -223,6 +224,12 @@ const ChatInterface: FC = () => {
                   </button>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    to={sessionId ? `/portal/taxgpt/feedback?sessionId=${sessionId}` : '/portal/taxgpt/feedback'}
+                    className="inline-flex items-center gap-2 border border-border bg-white px-3 py-1.5 text-sm font-medium text-text shadow-sm hover:bg-background"
+                  >
+                    Feedback
+                  </Link>
                   <button
                     type="button"
                     onClick={handleNewChat}

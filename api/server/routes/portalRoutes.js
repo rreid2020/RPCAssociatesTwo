@@ -156,6 +156,11 @@ import {
 } from '../services/integrationOAuthService.js'
 import { assertWorkspaceEntitlement } from '../services/authz/entitlementPolicy.js'
 import { getTaxgptCorpus, getTaxgptStatus, handleTaxgptChat } from '../services/taxgptChatService.js'
+import {
+  getTaxgptFeedbackCategories,
+  listUserTaxgptFeedback,
+  submitTaxgptFeedback
+} from '../services/taxgptFeedbackService.js'
 
 const MAX_UPLOAD_BYTES = parseInt(process.env.PORTAL_MAX_UPLOAD_BYTES || String(100 * 1024 * 1024), 10)
 
@@ -3369,6 +3374,56 @@ export function createPortalRouter (pool) {
       res.json(await getTaxgptCorpus(pool))
     } catch (e) {
       res.status(500).json({ error: e instanceof Error ? e.message : 'Could not load TaxGPT corpus stats' })
+    }
+  })
+
+  r.get('/v1/taxgpt/feedback/categories', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    if (!(await hasEntitlement(res, scope.workspace.id, 'taxgpt'))) return
+    res.json({ categories: getTaxgptFeedbackCategories() })
+  })
+
+  r.get('/v1/taxgpt/feedback', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    if (!(await hasEntitlement(res, scope.workspace.id, 'taxgpt'))) return
+    try {
+      const items = await listUserTaxgptFeedback(pool, session.userId, {
+        limit: req.query?.limit
+      })
+      res.json({ items })
+    } catch (e) {
+      res.status(500).json({ error: e instanceof Error ? e.message : 'Could not load feedback history' })
+    }
+  })
+
+  r.post('/v1/taxgpt/feedback', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    if (!(await hasEntitlement(res, scope.workspace.id, 'taxgpt'))) return
+    try {
+      const item = await submitTaxgptFeedback(pool, session.userId, {
+        category: req.body?.category,
+        subject: req.body?.subject,
+        message: req.body?.message,
+        rating: req.body?.rating,
+        sessionId: req.body?.sessionId || null,
+        workspaceId: scope.workspace.id,
+        sourcePage: req.body?.sourcePage || 'taxgpt_feedback',
+        userAgent: req.headers['user-agent'] || null
+      })
+      res.status(201).json({ item })
+    } catch (e) {
+      const messageText = e instanceof Error ? e.message : 'Could not submit feedback'
+      const status = messageText.includes('must be') || messageText.includes('Invalid') ? 400 : 500
+      res.status(status).json({ error: messageText })
     }
   })
 

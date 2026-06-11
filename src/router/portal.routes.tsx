@@ -7,6 +7,7 @@ import { ProtectedRoute } from './route-guards'
 import RouteSuspense from './route-suspense'
 
 const TaxGPT = lazy(async () => await import('../pages/portal/TaxGPT'))
+const TaxGPTFeedback = lazy(async () => await import('../pages/portal/TaxGPTFeedback'))
 
 export function getPortalRoutes () {
   return (
@@ -25,6 +26,16 @@ export function getPortalRoutes () {
           <ProtectedRoute>
             <RouteSuspense>
               <TaxGPT />
+            </RouteSuspense>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/portal/taxgpt/feedback"
+        element={
+          <ProtectedRoute>
+            <RouteSuspense>
+              <TaxGPTFeedback />
             </RouteSuspense>
           </ProtectedRoute>
         }

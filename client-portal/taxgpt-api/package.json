@@ -16,7 +16,8 @@
     "taxgpt:discover-all": "tsx src/scripts/taxgpt-corpus.ts discover-all --limit=100",
     "taxgpt:reconcile": "tsx src/scripts/taxgpt-corpus.ts reconcile",
     "taxgpt:ingest": "tsx src/scripts/taxgpt-corpus.ts ingest --limit=10",
-    "taxgpt:pipeline": "tsx src/scripts/taxgpt-corpus.ts run-pipeline --expand-limit=50 --ingest-limit=10"
+    "taxgpt:pipeline": "tsx src/scripts/taxgpt-corpus.ts run-pipeline --expand-limit=50 --ingest-limit=10",
+    "taxgpt:batch": "tsx src/scripts/taxgpt-corpus.ts run-batch --expand-limit=50 --ingest-limit=20"
   },
   "dependencies": {
     "@shared/types": "file:../packages/shared",

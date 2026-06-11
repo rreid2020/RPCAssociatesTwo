@@ -1,4 +1,5 @@
 import { FC, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../components/SEO'
 import ClientPortalShell from '../../components/ClientPortalShell'
@@ -45,10 +46,19 @@ const TaxGPT: FC = () => {
       />
       <ClientPortalShell>
         <div>
-          <h1 className="text-3xl font-bold text-primary-dark mb-2">TaxGPT</h1>
-          <p className="text-text-light mb-6">
-            AI tax research grounded in CRA publications when the knowledge base is indexed, with citations and source links.
-          </p>
+          <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-primary-dark mb-2">TaxGPT</h1>
+              <p className="text-text-light">
+                AI tax research grounded in CRA publications when the knowledge base is indexed, with citations and source links.
+              </p>
+            </div>
+            {hasAccess && (
+              <Link to="/portal/taxgpt/feedback" className="btn btn--secondary text-sm py-2 px-4 whitespace-nowrap">
+                Feedback &amp; suggestions
+              </Link>
+            )}
+          </div>
 
           {!hasAccess ? (
             <UpgradePrompt feature="TaxGPT" />

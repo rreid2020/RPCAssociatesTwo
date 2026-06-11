@@ -107,3 +107,38 @@ services:
       #   DO_SPACES_SECRET= (Spaces secret; use encrypted/SECRET in UI)
       #   DO_SPACES_REGION=us-east-1
       # See api/server/PORTAL_FILE_STORAGE_SETUP.md
+      # TaxGPT chat (set in App Platform UI as SECRET):
+      #   OPENAI_API_KEY
+      #   OPENAI_MODEL=gpt-4o-mini
+      #   OPENAI_EMBED_MODEL=text-embedding-3-small
+
+jobs:
+  - name: taxgpt-corpus
+    kind: SCHEDULED
+    schedule:
+      cron: "0 * * * *"
+      time_zone: America/Toronto
+    dockerfile_path: client-portal/Dockerfile.taxgpt-corpus
+    instance_size_slug: basic-s
+    instance_count: 1
+    github:
+      repo: your-username/your-repo-name
+      branch: main
+      deploy_on_push: true
+    envs:
+      - key: NODE_ENV
+        value: production
+        scope: RUN_TIME
+      - key: PUPPETEER_EXECUTABLE_PATH
+        value: /usr/bin/chromium
+        scope: RUN_TIME
+      - key: OPENAI_EMBED_MODEL
+        value: text-embedding-3-small
+        scope: RUN_TIME
+      # Set as SECRET in App Platform UI (same pooled DATABASE_URL as api):
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        type: SECRET
+      - key: OPENAI_API_KEY
+        scope: RUN_TIME
+        type: SECRET

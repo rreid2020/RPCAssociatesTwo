@@ -66,25 +66,10 @@ services:
       - key: API_INSTANCE_COUNT
         value: "1"
         scope: RUN_TIME
-      # Database Configuration (PostgreSQL - Digital Ocean Managed Database)
-      - key: DB_HOST
-        value: db-postgresql-tor1-60715-do-user-20752759-0.e.db.ondigitalocean.com
+      # Database (required — api/server no longer reads DB_* fallbacks)
+      - key: DATABASE_URL
         scope: RUN_TIME
-      - key: DB_PORT
-        value: "25060"
-        scope: RUN_TIME
-      - key: DB_NAME
-        value: defaultdb
-        scope: RUN_TIME
-      - key: DB_USER
-        value: doadmin
-        scope: RUN_TIME
-      - key: DB_PASSWORD
-        value: REPLACE_IN_APP_PLATFORM
-        scope: RUN_TIME
-      - key: DB_SSL
-        value: "true"
-        scope: RUN_TIME
+        type: SECRET
       # Email Configuration (Resend)
       - key: RESEND_API_KEY
         value: REPLACE_IN_APP_PLATFORM

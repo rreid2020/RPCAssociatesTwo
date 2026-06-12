@@ -17,11 +17,15 @@ const TaxGPT: FC = () => {
   const [configured, setConfigured] = useState<boolean | null>(null)
   const [corpus, setCorpus] = useState<TaxgptCorpusStats | null>(null)
   const [statusError, setStatusError] = useState<string | null>(null)
+  const [statusReloadKey, setStatusReloadKey] = useState(0)
 
   useEffect(() => {
     if (!hasAccess || !isLoaded) return
     let mounted = true
     const run = async () => {
+      setConfigured(null)
+      setCorpus(null)
+      setStatusError(null)
       try {
         const [status] = await Promise.all([
           fetchTaxgptStatus(getToken),
@@ -30,11 +34,10 @@ const TaxGPT: FC = () => {
         if (mounted) {
           setConfigured(status.configured)
           setCorpus(status.corpus)
-          setStatusError(null)
         }
       } catch (e) {
         if (mounted) {
-          setConfigured(false)
+          setConfigured(null)
           setCorpus(null)
           setStatusError(e instanceof Error ? e.message : 'Could not verify TaxGPT status')
         }
@@ -44,7 +47,7 @@ const TaxGPT: FC = () => {
     return () => {
       mounted = false
     }
-  }, [getToken, hasAccess, isLoaded])
+  }, [getToken, hasAccess, isLoaded, statusReloadKey])
 
   return (
     <>
@@ -57,9 +60,27 @@ const TaxGPT: FC = () => {
         <div>
           {!hasAccess ? (
             <UpgradePrompt feature="TaxGPT" />
-          ) : !isLoaded || configured === null ? (
+          ) : !isLoaded || (configured === null && !statusError) ? (
             <div className="py-8">
               <PageLoadingSkeleton variant="default" />
+            </div>
+          ) : statusError ? (
+            <div className="bg-white p-6 rounded-lg border border-border shadow-sm space-y-3">
+              <p className="text-text font-medium">Could not load TaxGPT right now.</p>
+              <p className="text-sm text-red-700">{statusError}</p>
+              <p className="text-sm text-text-light">
+                This is usually a temporary API or database connection issue. If it keeps happening,
+                confirm the API component has <code className="bg-background px-2 py-0.5 rounded">DATABASE_URL</code>{' '}
+                and <code className="bg-background px-2 py-0.5 rounded">OPENAI_API_KEY</code> set in App Platform,
+                then redeploy the API service.
+              </p>
+              <button
+                type="button"
+                className="text-sm font-medium text-primary hover:underline"
+                onClick={() => setStatusReloadKey((key) => key + 1)}
+              >
+                Retry
+              </button>
             </div>
           ) : !configured ? (
             <div className="bg-white p-6 rounded-lg border border-border shadow-sm space-y-2">
@@ -70,7 +91,6 @@ const TaxGPT: FC = () => {
                 Set <code className="bg-background px-2 py-0.5 rounded">OPENAI_API_KEY</code> on the API
                 component, then redeploy the API service.
               </p>
-              {statusError && <p className="text-sm text-red-700">{statusError}</p>}
             </div>
           ) : corpus ? (
             <Suspense

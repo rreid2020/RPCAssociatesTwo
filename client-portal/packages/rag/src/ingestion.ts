@@ -16,6 +16,7 @@ import {
   isArchivedOrCancelledTitle,
   isCatalogPublicationLandingUrl,
   isFrenchCraPublicationUrl,
+  isPublicationIngestContentUrl,
   publicationUrlDepth
 } from './corpus/sourcePolicy';
 
@@ -477,10 +478,9 @@ export class IngestionService {
             }
           });
           
-          const alreadyExpandedChild =
-            !!sourceRecord.parentSourceId && publicationUrlDepth(sourceRecord.url) <= 1
-          const skipIngestDiscovery =
-            isCatalogPublicationLandingUrl(sourceRecord.url) || alreadyExpandedChild
+          // Depth-2+ URLs (e.g. …/19-3-1-1/stated-price-net-rebate.html) are final content.
+          // Only shallow catalog landings (step 2) should trigger in-ingest discovery.
+          const skipIngestDiscovery = isPublicationIngestContentUrl(sourceRecord.url)
 
           // Landing pages usually expose at least one HTML or PDF content link.
           if (!skipIngestDiscovery && contentLinkCount >= 1) {
@@ -966,7 +966,18 @@ export class IngestionService {
     for (const source of filtered) {
       try {
         await this.ingestSource(source.id);
-        summary.successful++;
+        const [updated] = await db
+          .select({ ingestStatus: sources.ingestStatus })
+          .from(sources)
+          .where(eq(sources.id, source.id))
+          .limit(1);
+        if (updated?.ingestStatus === 'ingested') {
+          summary.successful++;
+        } else if (updated?.ingestStatus === 'skipped') {
+          summary.skipped++;
+        } else {
+          summary.successful++;
+        }
       } catch (error) {
         summary.failed++;
         const errorMsg = error instanceof Error ? error.message : String(error);

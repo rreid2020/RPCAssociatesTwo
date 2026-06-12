@@ -62,3 +62,20 @@ export function publicationUrlDepth (url: string): number {
     return 0
   }
 }
+
+/**
+ * Step-3 CRA publication content (not a catalog landing).
+ * Ingest directly — do not re-run landing-page link discovery.
+ */
+export function isPublicationIngestContentUrl (url: string): boolean {
+  if (publicationUrlDepth(url) >= 2) return true
+  try {
+    const pathname = new URL(url).pathname.toLowerCase()
+    const match = pathname.match(
+      /\/(?:forms-publications|formulaires-publications)\/publications\/([^/]+)\.html$/
+    )
+    return !!match && /-e$/i.test(match[1])
+  } catch {
+    return false
+  }
+}

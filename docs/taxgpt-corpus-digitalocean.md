@@ -50,17 +50,25 @@ Set **OPENAI_API_KEY** on this job component (not only on the API).
 
 Set **CANLII_API_KEY** on the same job when received (Tax Court case law discovery runs in each `taxgpt:batch` tick).
 
-### Run command override (DigitalOcean → taxgpt-corpus → Settings → Run command)
+### Run command (DigitalOcean → taxgpt-corpus → Settings → Run command)
 
-**Replace** the default — do not append flags (duplicate `--ingest-limit` values ignore the second one unless you use the full command below).
-
-Recommended while catching up (each canada.ca fetch can take several minutes):
+**Leave empty** to use the Dockerfile default — this is the recommended setting after deploy `6768d48+`:
 
 ```bash
-tsx src/scripts/taxgpt-corpus.ts run-batch --expand-limit=5 --ingest-limit=5
+npm run taxgpt:batch
 ```
 
-Or leave empty to use the Dockerfile default (`npm run taxgpt:batch` → 5 expand + 5 ingest per run).
+That runs **5 expand + 5 ingest** per tick (defined in `taxgpt-api/package.json`).
+
+Do **not** use bare `tsx ...` as the run command — `tsx` is not on the container `PATH` and DO will fail immediately with **Command Not Executable**.
+
+To override limits without editing `package.json`, use `npx` (not bare `tsx`):
+
+```bash
+npx tsx src/scripts/taxgpt-corpus.ts run-batch --expand-limit=5 --ingest-limit=5
+```
+
+Do **not** append flags to `npm run taxgpt:batch -- ...` unless you intend to override; duplicate `--ingest-limit` values use the **last** one.
 
 ### Schedule: avoid job pile-up
 

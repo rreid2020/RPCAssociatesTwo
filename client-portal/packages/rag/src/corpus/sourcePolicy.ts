@@ -29,12 +29,24 @@ export function classifyCorpusDisposition (input: {
 export function isCatalogPublicationLandingUrl (url: string): boolean {
   try {
     const pathname = new URL(url).pathname.toLowerCase()
-    const match = pathname.match(/\/forms-publications\/publications\/([^/]+)\.html$/)
+    const match = pathname.match(
+      /\/(?:forms-publications|formulaires-publications)\/publications\/([^/]+)\.html$/
+    )
     if (!match) return false
     const filename = match[1]
     // Content siblings from the landing page often use an -e suffix (e.g. 17-10-e.html).
     if (/-e$/i.test(filename)) return false
     return true
+  } catch {
+    return false
+  }
+}
+
+/** French CRA paths are language toggles — deprioritize for English-first ingest. */
+export function isFrenchCraPublicationUrl (url: string): boolean {
+  try {
+    const pathname = new URL(url).pathname.toLowerCase()
+    return pathname.includes('/fr/agence-revenu/')
   } catch {
     return false
   }

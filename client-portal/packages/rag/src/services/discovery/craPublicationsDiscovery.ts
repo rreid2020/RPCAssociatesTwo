@@ -25,32 +25,40 @@ export class CraPublicationsDiscoveryService {
 
   private async fetchDiscoveryHtml (url: string): Promise<string> {
     const referer = 'https://www.canada.ca/en/revenue-agency/services/forms-publications.html'
+    const browser = new BrowserClient(this.config)
 
     try {
-      const { requestText } = await import('@shared/types')
-      const response = await requestText(url, {
-        referer,
-        timeout: 60000,
-        retries: 1
-      })
-
-      if (response.status === 200 && response.text.length >= 500) {
-        return response.text
+      const browserResponse = await browser.fetch(url, { timeout: 45_000, retries: 1 })
+      if (browserResponse.html.length >= 500) {
+        logger.crawl('Browser fetch successful for publications discovery', {
+          url,
+          status: browserResponse.status,
+          textLength: browserResponse.html.length
+        })
+        return browserResponse.html
       }
+      throw new Error(`Browser fetch content too short (${browserResponse.html.length} bytes)`)
     } catch (error) {
-      logger.crawlWarn('HTTP fetch failed for publications discovery, trying browser', {
+      logger.crawlWarn('Browser fetch failed for publications discovery, trying HTTP fallback', {
         url,
         error: error instanceof Error ? error.message : String(error)
       })
+    } finally {
+      await browser.close().catch(() => undefined)
     }
 
-    const browser = new BrowserClient(this.config)
-    const browserResponse = await browser.fetch(url)
-    if (browserResponse.html.length < 500) {
-      throw new Error(`Browser fetch content too short (${browserResponse.html.length} bytes)`)
+    const { requestText } = await import('@shared/types')
+    const response = await requestText(url, {
+      referer,
+      timeout: 20_000,
+      retries: 0
+    })
+
+    if (response.status === 200 && response.text.length >= 500) {
+      return response.text
     }
 
-    return browserResponse.html
+    throw new Error(`HTTP fallback content too short or non-200 (${response.status})`)
   }
 
   /**

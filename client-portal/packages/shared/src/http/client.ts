@@ -248,55 +248,27 @@ async function fetchWithRetry(
 }
 
 /**
- * Fetch text content from a URL with retry logic and rate limiting
- * Automatically routes CRA domains to browser client
+ * Fetch text content from a URL with retry logic and rate limiting.
+ * CRA canada.ca HTML is fetched browser-first by discovery/ingest callers; this
+ * path is the HTTP fallback only (short timeout, standard headers).
  */
 export async function requestText(
   url: string,
   options: RequestOptions = {}
 ): Promise<TextResult> {
-  // For CRA domains, skip browser client and use Excel-like HTTP directly
-  // Browser client is consistently blocked by Akamai WAF and wastes 30+ seconds per request
-  // Excel-like HTTP works reliably and is much faster
-  if (isCraDomainUrl(url)) {
-    logger.crawl('Routing CRA domain to Excel-like HTTP client (skipping browser client)', { url });
-    
-    // Try Excel-like headers first (simpler, less bot-detection flags)
-    // Excel Power Query uses WinHTTP which has different TLS characteristics
-    try {
-      const response = await fetchWithRetry(url, options, fetch, true);
-      if (response.ok) {
-        logger.crawl('Excel-like HTTP fetch successful', { url, status: response.status });
-        const text = await response.text();
-        const headers: Record<string, string> = {};
-        response.headers.forEach((value, key) => {
-          headers[key] = value;
-        });
-        return {
-          status: response.status,
-          statusText: response.statusText,
-          headers,
-          contentType: response.headers.get('content-type') || undefined,
-          text,
-        };
-      } else {
-        // Non-200 response, throw error
-        const errorText = await response.text().catch(() => '');
-        throw new Error(
-          `HTTP ${response.status} ${response.statusText}: ${errorText.substring(0, 200)}`
-        );
+  const httpOptions = isCraDomainUrl(url)
+    ? {
+        ...options,
+        timeout: options.timeout ?? 20_000,
+        retries: options.retries ?? 0,
       }
-    } catch (excelError) {
-      logger.crawlError('Excel-like HTTP fetch failed, falling back to standard HTTP', {
-        url,
-        error: excelError instanceof Error ? excelError.message : String(excelError),
-      });
-      // Fall through to standard HTTP fetch
-    }
+    : options;
+
+  if (isCraDomainUrl(url)) {
+    logger.crawl('CRA HTTP fallback fetch', { url });
   }
-  
-  // Standard HTTP fetch for non-CRA domains or if Excel-like fails
-  const response = await fetchWithRetry(url, options, fetch, false);
+
+  const response = await fetchWithRetry(url, httpOptions, fetch, false);
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => '');

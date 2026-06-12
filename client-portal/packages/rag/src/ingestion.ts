@@ -15,6 +15,7 @@ import { CraFolioChunker } from './services/chunking/craFolioChunker';
 import {
   isArchivedOrCancelledTitle,
   isCatalogPublicationLandingUrl,
+  isFrenchCraPublicationUrl,
   publicationUrlDepth
 } from './corpus/sourcePolicy';
 
@@ -154,51 +155,21 @@ function readHttpRetries (): number {
   return 2
 }
 
-async function fetchHtmlForIngest (
+async function fetchHtmlViaBrowser (
   url: string,
-  referer: string | undefined,
-  isCanliiSource: boolean
+  timeout: number
 ): Promise<TextResult> {
-  const timeout = readHttpTimeoutMs(isCanliiSource)
-  const retries = readHttpRetries()
-
-  try {
-    const result = await requestText(url, { referer, timeout, retries })
-    if (result.text.length >= 200) {
-      return result
-    }
-    logger.ingestWarn('HTTP fetch returned short HTML for ingest, trying browser fallback', {
-      url,
-      textLength: result.text.length
-    })
-  } catch (error) {
-    logger.ingestWarn('HTTP fetch failed for ingest, trying browser fallback', {
-      url,
-      error: error instanceof Error ? error.message : String(error)
-    })
-  }
-
-  if (isCanliiSource || !url.includes('canada.ca')) {
-    throw new Error(`Failed to fetch HTML for ingest: ${url}`)
-  }
-
   const { BrowserClient } = await import('@crawler/core')
   const browser = new BrowserClient(getCrawlerConfig())
   try {
     const browserResponse = await browser.fetch(url, {
-      timeout: Math.max(timeout, 120_000),
+      timeout: Math.max(timeout, 45_000),
       retries: 1
     })
 
     if (browserResponse.html.length < 200) {
       throw new Error(`Browser fetch content too short (${browserResponse.html.length} bytes)`)
     }
-
-    logger.ingest('Fetched HTML content via browser fallback', {
-      url,
-      status: browserResponse.status,
-      textLength: browserResponse.html.length
-    })
 
     return {
       status: browserResponse.status,
@@ -209,6 +180,54 @@ async function fetchHtmlForIngest (
     }
   } finally {
     await browser.close()
+  }
+}
+
+async function fetchHtmlForIngest (
+  url: string,
+  referer: string | undefined,
+  isCanliiSource: boolean
+): Promise<TextResult> {
+  const timeout = readHttpTimeoutMs(isCanliiSource)
+  const retries = readHttpRetries()
+  const useBrowserFirst = !isCanliiSource && url.includes('canada.ca')
+
+  if (useBrowserFirst) {
+    try {
+      const result = await fetchHtmlViaBrowser(url, timeout)
+      logger.ingest('Fetched HTML content via browser', {
+        url,
+        status: result.status,
+        textLength: result.text.length
+      })
+      return result
+    } catch (error) {
+      logger.ingestWarn('Browser fetch failed for ingest, trying HTTP fallback', {
+        url,
+        error: error instanceof Error ? error.message : String(error)
+      })
+    }
+  }
+
+  try {
+    const result = await requestText(url, {
+      referer,
+      timeout: useBrowserFirst ? 20_000 : timeout,
+      retries: useBrowserFirst ? 0 : retries
+    })
+    if (result.text.length >= 200) {
+      return result
+    }
+    throw new Error(`HTTP fetch returned short HTML (${result.text.length} bytes)`)
+  } catch (error) {
+    if (!useBrowserFirst) {
+      throw new Error(`Failed to fetch HTML for ingest: ${url}`)
+    }
+    logger.ingestWarn('HTTP fallback failed for ingest', {
+      url,
+      error: error instanceof Error ? error.message : String(error)
+    })
+    throw new Error(`Failed to fetch HTML for ingest: ${url}`)
   }
 }
 
@@ -458,8 +477,13 @@ export class IngestionService {
             }
           });
           
+          const alreadyExpandedChild =
+            !!sourceRecord.parentSourceId && publicationUrlDepth(sourceRecord.url) <= 1
+          const skipIngestDiscovery =
+            isCatalogPublicationLandingUrl(sourceRecord.url) || alreadyExpandedChild
+
           // Landing pages usually expose at least one HTML or PDF content link.
-          if (contentLinkCount >= 1) {
+          if (!skipIngestDiscovery && contentLinkCount >= 1) {
             // Run discovery to find content pages linked from this index page
             const { CraPublicationsDiscoveryService } = await import('./services/discovery/craPublicationsDiscovery');
             const publicationsDiscovery = new CraPublicationsDiscoveryService();
@@ -913,6 +937,9 @@ export class IngestionService {
           (priorityRank[a.priority as keyof typeof priorityRank] ?? 2) -
           (priorityRank[b.priority as keyof typeof priorityRank] ?? 2);
         if (priorityDelta !== 0) return priorityDelta;
+        const localeDelta =
+          Number(isFrenchCraPublicationUrl(a.url)) - Number(isFrenchCraPublicationUrl(b.url));
+        if (localeDelta !== 0) return localeDelta;
         const depthDelta = publicationUrlDepth(b.url) - publicationUrlDepth(a.url);
         if (depthDelta !== 0) return depthDelta;
         return String(a.title || '').localeCompare(String(b.title || ''));

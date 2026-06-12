@@ -52,7 +52,7 @@ const TaxGPT: FC = () => {
   return (
     <>
       <SEO
-        title="TaxGPT | Client Portal"
+        title="Axiom TaxGPT | Client Portal"
         description="AI-powered tax research and guidance with instant answers to complex tax questions."
         canonical="/portal/taxgpt"
       />

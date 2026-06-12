@@ -170,12 +170,14 @@ export async function discoverCanliiTaxCourtBatch (options: {
         metadata: {
           corpusFamily: 'case_law',
           corpusRole: 'canlii_decision',
+          ingestMode: 'metadata_only',
           canliiDatabaseId: item.databaseId,
           canliiCaseId: item.caseId,
           citation: metadata.citation || item.citation,
           decisionDate: metadata.decisionDate || null,
           docketNumber: metadata.docketNumber || null,
-          keywords: metadata.keywords || null
+          keywords: metadata.keywords || null,
+          fullTextIndexed: false
         }
       })
 

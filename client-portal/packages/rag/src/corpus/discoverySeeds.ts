@@ -27,7 +27,7 @@ export const CRA_PUBLICATIONS_CATALOG_SEED: CorpusDiscoverySeed = {
 
 export const CANLII_TAX_COURT_URL = 'https://www.canlii.org/en/ca/tcc/'
 
-/** CanLII Tax Court of Canada seed (2010–present via API discovery). */
+/** CanLII Tax Court seed — API metadata discovery only; ingest indexes metadata, not full text. */
 export const CANLII_TAX_COURT_SEED: CorpusDiscoverySeed = {
   key: 'canlii_tax_court',
   url: CANLII_TAX_COURT_URL,

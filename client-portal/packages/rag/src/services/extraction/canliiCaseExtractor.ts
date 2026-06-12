@@ -1,3 +1,4 @@
+/** @deprecated CanLII API license prohibits full-text indexing. Use canliiMetadataIngest instead. */
 import * as cheerio from 'cheerio'
 import TurndownService from 'turndown'
 import { logger } from '@shared/types'

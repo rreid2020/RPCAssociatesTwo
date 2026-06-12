@@ -1,5 +1,6 @@
 import { logger } from '@shared/types'
 
+/** Metadata-only endpoints. Full decision text must not be fetched via the CanLII API. */
 const CANLII_API_BASE = 'https://api.canlii.org/v1'
 
 export type CanliiCaseListItem = {

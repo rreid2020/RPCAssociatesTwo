@@ -48,7 +48,7 @@ Set **DATABASE_URL** to your **pooled** Postgres connection string (same DB the 
 
 Set **OPENAI_API_KEY** on this job component (not only on the API).
 
-Set **CANLII_API_KEY** on the same job when received (Tax Court case law discovery runs in each `taxgpt:batch` tick).
+Set **CANLII_API_KEY** on the same job when received. The CanLII API is **metadata-only** (titles, citations, dates, keywords, URLs). Full decision text must not be fetched via the API; ingest indexes metadata fields only.
 
 ### Run command (DigitalOcean → taxgpt-corpus → Settings → Run command)
 
@@ -112,7 +112,7 @@ Look for `embeddingCount > 0` and `retrievalReady: true`.
 | Command | Behavior |
 |---------|----------|
 | `npm run taxgpt:batch` | CRA expand + CanLII discover (if key set) + ingest batch, then exit |
-| `npm run taxgpt:discover-canlii` | Discover Tax Court decisions (2010–present) via CanLII API |
+| `npm run taxgpt:discover-canlii` | Discover Tax Court metadata (2010–present) via CanLII API; ingest stores metadata only |
 | `npm run taxgpt:pipeline` | Loop until fully complete (long-running) |
 | `npm run taxgpt:stats` | Corpus snapshot |
 

@@ -10,7 +10,10 @@ import { createStorageProvider } from '@storage/core';
 import { EmbeddingService } from './embedding';
 import { SectionAwareChunker } from './chunking';
 import { CraFolioExtractor } from './services/extraction/craFolioExtractor';
-import { CanliiCaseExtractor } from './services/extraction/canliiCaseExtractor';
+import {
+  buildCanliiMetadataIngestDocument,
+  isCanliiMetadataOnlySource
+} from './services/canlii/canliiMetadataIngest';
 import { CraFolioChunker } from './services/chunking/craFolioChunker';
 import {
   isArchivedOrCancelledTitle,
@@ -294,11 +297,37 @@ export class IngestionService {
         }
       }
 
+      const metadataOnlyCanlii = isCanliiMetadataOnlySource(sourceRecord)
+
+      let text: string;
+      let extractedTitle: string;
+      let contentType: string | undefined;
+      let contentLength: number;
+      let statusCode: number | undefined;
+      
+      const metadata: Record<string, unknown> = {
+        url: sourceRecord.url,
+        title: sourceRecord.title,
+        type: metadataOnlyCanlii ? 'canlii_metadata' : detectContentType(sourceRecord.url),
+      };
+
+      if (metadataOnlyCanlii) {
+        logger.ingest('Ingesting CanLII metadata only (full text not permitted via API)', {
+          sourceId,
+          url: sourceRecord.url
+        })
+        const built = buildCanliiMetadataIngestDocument(sourceRecord)
+        text = built.text
+        extractedTitle = built.title
+        contentLength = text.length
+        Object.assign(metadata, built.metadata)
+      } else {
       // Fetch content using unified HTTP client
       logger.ingest('Fetching content', { url: sourceRecord.url });
       
       // Detect content type from URL first
       const detectedType = detectContentType(sourceRecord.url);
+      metadata.type = detectedType;
 
       if (detectedType === 'pdf') {
         const baseKey = getBaseContentKey(sourceRecord.url);
@@ -330,18 +359,6 @@ export class IngestionService {
         }
       }
       
-      let text: string;
-      let extractedTitle: string;
-      let contentType: string | undefined;
-      let contentLength: number;
-      let statusCode: number;
-      
-      const metadata: Record<string, unknown> = {
-        url: sourceRecord.url,
-        title: sourceRecord.title,
-        type: detectedType,
-      };
-
       // Determine referer header based on source type and parent
       const referer = await determineReferer(sourceRecord);
       
@@ -391,12 +408,7 @@ export class IngestionService {
           referer,
         });
         
-        const isCanliiSource =
-          sourceRecord.sourceType === 'canlii_decision' ||
-          sourceRecord.url.includes('canlii.org') ||
-          sourceRecord.url.includes('canlii.ca');
-
-        const result = await fetchHtmlForIngest(sourceRecord.url, referer, isCanliiSource);
+        const result = await fetchHtmlForIngest(sourceRecord.url, referer, false);
         statusCode = result.status;
         contentType = result.contentType;
         contentLength = result.text.length;
@@ -422,7 +434,6 @@ export class IngestionService {
         // Check if this is a publication index page that needs discovery
         // These are HTML pages that contain links to actual content pages (HTML or PDF)
         if (
-          !isCanliiSource &&
           sourceRecord.sourceType === 'html' &&
           (sourceRecord.url.includes('/publications/') ||
             sourceRecord.url.includes('/payroll/') ||
@@ -531,12 +542,6 @@ export class IngestionService {
           text = extracted.text;
           extractedTitle = extracted.title || sourceRecord.title;
           Object.assign(metadata, extracted.metadata);
-        } else if (isCanliiSource) {
-          const canliiExtractor = new CanliiCaseExtractor();
-          const extracted = canliiExtractor.extract(result.text, sourceRecord.url);
-          text = extracted.text;
-          extractedTitle = extracted.title || sourceRecord.title;
-          Object.assign(metadata, extracted.metadata);
         } else {
           const extracted = extractHtmlContent(result.text, sourceRecord.url);
           text = extracted.text;
@@ -551,6 +556,7 @@ export class IngestionService {
           title: extractedTitle,
           originalLength: contentLength,
         });
+      }
       }
 
       // Skip archived/cancelled content (based on title)

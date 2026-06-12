@@ -18,7 +18,19 @@ export type Citation = {
   retrievedAt: string
   similarityScore?: number
   sourceBucket?: TaxgptSourceBucket
+  citationIndex?: number
   summary?: string
+}
+
+export type TaxgptSourceReference = {
+  citationIndex: number
+  id?: string
+  chunkId: string
+  sourceTitle: string
+  sourceUrl: string
+  sectionHeading?: string
+  pageNumber?: number
+  sourceBucket?: TaxgptSourceBucket
 }
 
 export type TaxgptSourceAnalysisEntry = {
@@ -63,6 +75,7 @@ export type TaxgptStructuredResponse = {
   considerations: string[]
   suggestedNextSteps: string[]
   confidence: TaxgptConfidence
+  sourceReferences?: TaxgptSourceReference[]
   groupedSources?: Record<TaxgptSourceBucket, TaxgptSourceGroup>
 }
 

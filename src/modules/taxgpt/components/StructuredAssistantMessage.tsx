@@ -1,5 +1,6 @@
 import { FC } from 'react'
 import type { TaxgptSourceBucket, TaxgptStructuredResponse } from '../../../domains/taxgpt'
+import CitedText from './CitedText'
 
 type StructuredAssistantMessageProps = {
   structured: TaxgptStructuredResponse
@@ -43,6 +44,7 @@ function isGenericComplianceRisk (text: string): boolean {
 
 const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({ structured }) => {
   const grouped = structured.groupedSources
+  const sourceReferences = structured.sourceReferences ?? []
   const keyPoints = structured.keyPoints ?? []
   const considerations = structured.considerations ?? []
   const suggestedNextSteps = structured.suggestedNextSteps ?? []
@@ -61,11 +63,38 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({ struc
 
       <section>
         <h3 className="text-sm font-semibold text-primary-dark">Direct answer</h3>
-        <p className="mt-2 text-sm leading-relaxed text-text">{structured.directAnswer}</p>
+        <p className="mt-2 text-sm leading-relaxed text-text">
+          <CitedText text={structured.directAnswer} sourceReferences={sourceReferences} />
+        </p>
       </section>
 
       <section>
         <h3 className="text-sm font-semibold text-primary-dark">Sources consulted</h3>
+        {sourceReferences.length > 0 && (
+          <div className="mt-3 rounded-md border border-border bg-background px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-text-light">Reference index</p>
+            <p className="mt-1 text-xs text-text-light">
+              Numbered sources match inline citations such as [1] and [6] in the answer below.
+            </p>
+            <ul className="mt-2 space-y-1.5">
+              {sourceReferences.map((reference) => (
+                <li key={`ref-${reference.citationIndex}-${reference.chunkId}`} className="text-sm">
+                  <a
+                    href={reference.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-primary hover:underline"
+                  >
+                    [{reference.citationIndex}] {reference.sourceTitle}
+                  </a>
+                  {reference.sectionHeading && (
+                    <span className="text-xs text-text-light"> — {reference.sectionHeading}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <div className="mt-3 space-y-3">
           {BUCKET_ORDER.map((bucket) => {
             const group = grouped?.[bucket]
@@ -85,7 +114,7 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({ struc
                           rel="noopener noreferrer"
                           className="text-sm font-medium text-primary hover:underline"
                         >
-                          {entry.sourceTitle}
+                          {entry.citationIndex ? `[${entry.citationIndex}] ` : ''}{entry.sourceTitle}
                         </a>
                         {entry.sectionHeading && (
                           <p className="text-xs text-text-light">{entry.sectionHeading}</p>
@@ -150,7 +179,9 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({ struc
           <h3 className="text-sm font-semibold text-primary-dark">What this means for you</h3>
 
           {structured.whatThisMeansForYou && (
-            <p className="mt-2 text-sm leading-relaxed text-text">{structured.whatThisMeansForYou}</p>
+            <p className="mt-2 text-sm leading-relaxed text-text">
+              <CitedText text={structured.whatThisMeansForYou} sourceReferences={sourceReferences} />
+            </p>
           )}
 
           {keyPoints.length > 0 && (
@@ -158,7 +189,9 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({ struc
               <h4 className="text-sm font-semibold text-primary-dark">Key points</h4>
               <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-text">
                 {keyPoints.map((point) => (
-                  <li key={point}>{point}</li>
+                  <li key={point}>
+                    <CitedText text={point} sourceReferences={sourceReferences} />
+                  </li>
                 ))}
               </ul>
             </div>
@@ -169,7 +202,9 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({ struc
               <h4 className="text-sm font-semibold text-primary-dark">Considerations</h4>
               <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-text">
                 {considerations.map((item) => (
-                  <li key={item}>{item}</li>
+                  <li key={item}>
+                    <CitedText text={item} sourceReferences={sourceReferences} />
+                  </li>
                 ))}
               </ul>
             </div>
@@ -180,7 +215,9 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({ struc
               <h4 className="text-sm font-semibold text-primary-dark">Suggested next steps</h4>
               <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-text">
                 {suggestedNextSteps.map((item) => (
-                  <li key={item}>{item}</li>
+                  <li key={item}>
+                    <CitedText text={item} sourceReferences={sourceReferences} />
+                  </li>
                 ))}
               </ul>
             </div>

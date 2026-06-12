@@ -41,12 +41,21 @@ Please answer the user's question based on the sources above. Include numbered c
 
 export function extractTaxgptCitations (response, chunks) {
   const citationPattern = /\[(\d+)\]/g
-  const matches = Array.from(String(response || '').matchAll(citationPattern))
-  const citationIndices = new Set(matches.map((match) => parseInt(match[1], 10) - 1))
+  const citationIndices = new Set()
+
+  for (const match of String(response || '').matchAll(citationPattern)) {
+    const citationIndex = parseInt(match[1], 10)
+    if (citationIndex >= 1 && citationIndex <= chunks.length) {
+      citationIndices.add(citationIndex)
+    }
+  }
 
   return Array.from(citationIndices)
-    .filter((index) => index >= 0 && index < chunks.length)
-    .map((index) => chunks[index].citation)
+    .sort((a, b) => a - b)
+    .map((citationIndex) => ({
+      ...chunks[citationIndex - 1].citation,
+      citationIndex
+    }))
 }
 
 export function buildTaxgptSources (chunks) {

@@ -297,10 +297,14 @@ export function parseTaxgptStructuredResponse (raw, chunks, mode) {
     : []
 
   const enrichedCitations = enrichCitationsWithBuckets(citations, chunks)
-  const groupedSources = buildGroupedSources(enrichedCitations, sourceAnalysis)
+  const sourceReferences = buildSourceReferences(chunks)
+  const groupedSources = buildGroupedSources(enrichedCitations, sourceAnalysis, sourceReferences)
 
   return {
-    structured,
+    structured: {
+      ...structured,
+      sourceReferences
+    },
     citations: enrichedCitations,
     groupedSources,
     plainText: renderStructuredPlainText(structured, groupedSources, mode)
@@ -313,7 +317,8 @@ export function parseTaxgptStructuredResponse (raw, chunks, mode) {
  */
 function enrichCitationsWithBuckets (citations, chunks) {
   return citations.map((citation) => {
-    const chunk = chunks.find((item) => item.citation.chunkId === citation.chunkId)
+    const chunk = chunks[citation.citationIndex - 1] ||
+      chunks.find((item) => item.citation.chunkId === citation.chunkId)
     const sourceBucket = chunk?.sourceBucket || chunk?.citation?.sourceBucket || 'cra'
     return {
       ...citation,
@@ -323,14 +328,35 @@ function enrichCitationsWithBuckets (citations, chunks) {
 }
 
 /**
+ * @param {Array<{ citation: Record<string, unknown>, sourceBucket?: string }>} chunks
+ */
+function buildSourceReferences (chunks) {
+  return chunks.map((chunk, index) => ({
+    citationIndex: index + 1,
+    id: chunk.citation.id,
+    chunkId: chunk.citation.chunkId,
+    sourceTitle: chunk.citation.sourceTitle || 'Unknown source',
+    sourceUrl: chunk.citation.sourceUrl || '',
+    sectionHeading: chunk.citation.sectionHeading || undefined,
+    pageNumber: chunk.citation.pageNumber ?? undefined,
+    sourceBucket: chunk.sourceBucket || chunk.citation?.sourceBucket || 'cra'
+  }))
+}
+
+/**
  * @param {Array<Record<string, unknown>>} citations
  * @param {Record<string, Array<{ citationIndex: number, summary: string }>>} sourceAnalysis
  */
-function buildGroupedSources (citations, sourceAnalysis) {
+function buildGroupedSources (citations, sourceAnalysis, sourceReferences = []) {
   const citationByIndex = new Map()
-  citations.forEach((citation, index) => {
-    citationByIndex.set(index + 1, citation)
-  })
+  for (const reference of sourceReferences) {
+    citationByIndex.set(reference.citationIndex, reference)
+  }
+  for (const citation of citations) {
+    if (citation.citationIndex) {
+      citationByIndex.set(citation.citationIndex, citation)
+    }
+  }
 
   /** @type {Record<string, { bucket: string, label: string, entries: Array<Record<string, unknown>>, emptyMessage: string }>} */
   const grouped = {}
@@ -349,13 +375,14 @@ function buildGroupedSources (citations, sourceAnalysis) {
       seen.add(dedupeKey)
       entries.push({
         ...citation,
+        citationIndex: item.citationIndex,
         summary: item.summary
       })
     }
 
     for (const citation of citations) {
       if (citation.sourceBucket !== bucket) continue
-      const dedupeKey = citation.sourceUrl || citation.chunkId
+      const dedupeKey = `${citation.citationIndex || ''}:${citation.sourceUrl || citation.chunkId}`
       if (seen.has(dedupeKey)) continue
       seen.add(dedupeKey)
       entries.push(citation)
@@ -385,6 +412,15 @@ function renderStructuredPlainText (structured, groupedSources, mode) {
     '## Sources consulted'
   ]
 
+  if (Array.isArray(structured.sourceReferences) && structured.sourceReferences.length > 0) {
+    lines.push('### Reference index')
+    structured.sourceReferences.forEach((reference) => {
+      const heading = reference.sectionHeading ? ` — ${reference.sectionHeading}` : ''
+      lines.push(`[${reference.citationIndex}] ${reference.sourceTitle}${heading}`)
+    })
+    lines.push('')
+  }
+
   for (const bucket of TAXGPT_SOURCE_BUCKETS) {
     const group = groupedSources[bucket]
     lines.push(`### ${group.label}`)
@@ -393,7 +429,8 @@ function renderStructuredPlainText (structured, groupedSources, mode) {
     } else {
       group.entries.forEach((entry, index) => {
         const summary = entry.summary ? ` — ${entry.summary}` : ''
-        lines.push(`${index + 1}. ${entry.sourceTitle}${summary}`)
+        const prefix = entry.citationIndex ? `[${entry.citationIndex}] ` : ''
+        lines.push(`${index + 1}. ${prefix}${entry.sourceTitle}${summary}`)
       })
     }
     lines.push('')
@@ -468,10 +505,14 @@ function buildFallbackStructuredResponse (raw, chunks, mode) {
 
   const citations = mode === 'rag' ? extractTaxgptCitations(raw, chunks) : []
   const enrichedCitations = enrichCitationsWithBuckets(citations, chunks)
-  const groupedSources = buildGroupedSources(enrichedCitations, structured.sourceAnalysis)
+  const sourceReferences = buildSourceReferences(chunks)
+  const groupedSources = buildGroupedSources(enrichedCitations, structured.sourceAnalysis, sourceReferences)
 
   return {
-    structured,
+    structured: {
+      ...structured,
+      sourceReferences
+    },
     citations: enrichedCitations,
     groupedSources,
     plainText: renderStructuredPlainText(structured, groupedSources, mode)

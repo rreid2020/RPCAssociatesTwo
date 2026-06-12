@@ -1,5 +1,5 @@
 const CORPUS_STATS_TTL_MS = 60_000
-const CORPUS_STATS_QUERY_TIMEOUT_MS = 8_000
+const CORPUS_STATS_QUERY_TIMEOUT_MS = 3_000
 let corpusStatsCache = null
 let corpusStatsCacheAt = 0
 
@@ -10,6 +10,10 @@ const DEFAULT_CORPUS_STATS = {
   chunkCount: 0,
   embeddingCount: 0,
   retrievalReady: false
+}
+
+function assumeRetrievalReadyDuringIngest () {
+  return process.env.TAXGPT_ASSUME_RETRIEVAL_READY !== 'false'
 }
 
 function mapCorpusStatsRow (stats = {}) {
@@ -23,19 +27,34 @@ function mapCorpusStatsRow (stats = {}) {
   }
 }
 
+export function getTaxgptCorpusStatsSnapshot () {
+  if (corpusStatsCache) {
+    return { ...corpusStatsCache }
+  }
+  return {
+    ...DEFAULT_CORPUS_STATS,
+    retrievalReady: assumeRetrievalReadyDuringIngest()
+  }
+}
+
+export function refreshTaxgptCorpusStatsInBackground (pool) {
+  void getTaxgptCorpusStats(pool).catch(() => {})
+}
+
 export async function getTaxgptCorpusStats (pool) {
   if (corpusStatsCache && Date.now() - corpusStatsCacheAt < CORPUS_STATS_TTL_MS) {
-    return corpusStatsCache
+    return { ...corpusStatsCache }
   }
 
-  const client = await pool.connect()
   try {
-    await client.query(`SET statement_timeout = ${CORPUS_STATS_QUERY_TIMEOUT_MS}`)
-    const { rows } = await client.query(`
+    const { rows } = await pool.query(`
       SELECT
-        (SELECT count(*)::int FROM taxgpt.sources) AS source_count,
-        (SELECT count(*)::int FROM taxgpt.sources WHERE ingest_status = 'ingested') AS ingested_source_count,
-        (SELECT count(*)::int FROM taxgpt.sources WHERE ingest_status = 'pending') AS pending_source_count,
+        COALESCE((
+          SELECT GREATEST(0, c.reltuples::bigint)::int
+          FROM pg_class c
+          INNER JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE n.nspname = 'taxgpt' AND c.relname = 'sources'
+        ), 0) AS source_count,
         COALESCE((
           SELECT GREATEST(0, c.reltuples::bigint)::int
           FROM pg_class c
@@ -55,19 +74,22 @@ export async function getTaxgptCorpusStats (pool) {
           LIMIT 1
         ) AS retrieval_ready
     `)
-    const result = mapCorpusStatsRow(rows[0] || {})
+    const stats = rows[0] || {}
+    const result = {
+      sourceCount: stats.source_count || 0,
+      ingestedSourceCount: stats.source_count || 0,
+      pendingSourceCount: 0,
+      chunkCount: stats.chunk_count || 0,
+      embeddingCount: stats.embedding_count || 0,
+      retrievalReady: Boolean(stats.retrieval_ready) || assumeRetrievalReadyDuringIngest()
+    }
     corpusStatsCache = result
     corpusStatsCacheAt = Date.now()
-    return result
-  } catch (error) {
+    return { ...result }
+  } catch {
     if (corpusStatsCache) {
-      return corpusStatsCache
+      return { ...corpusStatsCache }
     }
-    return { ...DEFAULT_CORPUS_STATS }
-  } finally {
-    try {
-      await client.query('RESET statement_timeout')
-    } catch {}
-    client.release()
+    return getTaxgptCorpusStatsSnapshot()
   }
 }

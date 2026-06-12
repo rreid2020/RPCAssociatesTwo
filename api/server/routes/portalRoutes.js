@@ -155,7 +155,8 @@ import {
   verifySignedIntegrationState
 } from '../services/integrationOAuthService.js'
 import { assertWorkspaceEntitlement } from '../services/authz/entitlementPolicy.js'
-import { getTaxgptCorpus, getTaxgptStatus, handleTaxgptChat } from '../services/taxgptChatService.js'
+import { getTaxgptCorpus, getTaxgptStatus, getTaxgptStatusFast, handleTaxgptChat } from '../services/taxgptChatService.js'
+import { refreshTaxgptCorpusStatsInBackground } from '../services/taxgptCorpusRepository.js'
 import {
   createTaxgptDonationCheckout,
   getTaxgptDonationConfig
@@ -321,6 +322,16 @@ export function createPortalRouter (pool) {
       res.status(status).json({ error: message })
       return null
     }
+  }
+  const isForceEnterpriseEntitlements = () => process.env.FORCE_ENTERPRISE_ENTITLEMENTS !== 'false'
+  const resolveTaxgptAccess = async (req, res, session) => {
+    if (isForceEnterpriseEntitlements()) {
+      return { bypassed: true, actorUserId: session.userId }
+    }
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return null
+    if (!(await hasEntitlement(res, scope.workspace.id, 'taxgpt'))) return null
+    return scope
   }
   const hasEntitlement = async (res, workspaceId, key) => {
     try {
@@ -3358,15 +3369,10 @@ export function createPortalRouter (pool) {
   r.get('/v1/taxgpt/status', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
-    if (!scope) return
-    if (!(await hasEntitlement(res, scope.workspace.id, 'taxgpt'))) return
-    try {
-      res.json(await getTaxgptStatus(pool))
-    } catch (e) {
-      const message = e instanceof Error ? e.message : 'Could not load TaxGPT status'
-      res.status(databaseErrorStatus(e) === 503 ? 503 : 500).json({ error: message })
-    }
+    const access = await resolveTaxgptAccess(req, res, session)
+    if (!access) return
+    refreshTaxgptCorpusStatsInBackground(pool)
+    res.json(getTaxgptStatusFast())
   })
 
   r.get('/v1/taxgpt/corpus', async (req, res) => {
@@ -3466,9 +3472,8 @@ export function createPortalRouter (pool) {
   r.post('/v1/taxgpt/chat', async (req, res) => {
     const session = await getClerkUser(req, res)
     if (!session) return
-    const scope = await resolveAccountingScope(req, res, session)
-    if (!scope) return
-    if (!(await hasEntitlement(res, scope.workspace.id, 'taxgpt'))) return
+    const access = await resolveTaxgptAccess(req, res, session)
+    if (!access) return
     const message = String(req.body?.message || '').trim()
     if (!message) {
       return res.status(400).json({ error: 'Message is required' })

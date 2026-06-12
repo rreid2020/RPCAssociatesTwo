@@ -1,5 +1,5 @@
 import OpenAI from 'openai'
-import { getTaxgptCorpusStats } from './taxgptCorpusRepository.js'
+import { getTaxgptCorpusStats, getTaxgptCorpusStatsSnapshot, refreshTaxgptCorpusStatsInBackground } from './taxgptCorpusRepository.js'
 import { buildTaxgptSources } from './taxgptPrompt.js'
 import {
   annotateChunksWithBuckets,
@@ -154,7 +154,8 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
   await ensureChatTables(pool)
 
   const openai = getOpenAIClient()
-  const corpus = await getTaxgptCorpusStats(pool)
+  const corpus = getTaxgptCorpusStatsSnapshot()
+  refreshTaxgptCorpusStatsInBackground(pool)
   let sessionId = payload.sessionId || null
 
   if (sessionId) {
@@ -267,14 +268,18 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
   }
 }
 
-export async function getTaxgptStatus (pool) {
-  const corpus = await getTaxgptCorpusStats(pool)
+export function getTaxgptStatusFast () {
   const routing = getTaxgptModelRoutingSummary()
   return {
     configured: Boolean(process.env.OPENAI_API_KEY),
     model: routing.models.standard,
     modelRouting: routing,
     embedModel: process.env.OPENAI_EMBED_MODEL || 'text-embedding-3-small',
-    corpus
+    corpus: getTaxgptCorpusStatsSnapshot()
   }
+}
+
+export async function getTaxgptStatus (pool) {
+  refreshTaxgptCorpusStatsInBackground(pool)
+  return getTaxgptStatusFast()
 }

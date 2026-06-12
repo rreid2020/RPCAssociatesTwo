@@ -16,9 +16,10 @@ const DonationButton = lazy(async () => await import('./DonationButton'))
 
 type ChatInterfaceProps = {
   initialCorpus: TaxgptCorpusStats
+  corpusOverride?: TaxgptCorpusStats | null
 }
 
-const ChatInterface: FC<ChatInterfaceProps> = ({ initialCorpus }) => {
+const ChatInterface: FC<ChatInterfaceProps> = ({ initialCorpus, corpusOverride = null }) => {
   const { getToken } = useAuth()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -31,6 +32,12 @@ const ChatInterface: FC<ChatInterfaceProps> = ({ initialCorpus }) => {
   const [retrievalNotice, setRetrievalNotice] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (corpusOverride) {
+      setCorpus(corpusOverride)
+    }
+  }, [corpusOverride])
 
   useEffect(() => {
     const container = messagesContainerRef.current

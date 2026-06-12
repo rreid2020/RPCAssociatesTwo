@@ -558,7 +558,7 @@ async function ensureLegacyAssignmentsForWorkspaceUser (pool, workspace, clerkUs
   await ensureWorkingPaperAssignmentsForWorkspaceMember(pool, workspace, clerkUserId, assignedBy)
 }
 
-export async function prepareAccountingWorkspaceScope (pool, clerkUserId, options = {}) {
+export async function ensureWorkspaceAccessForUser (pool, clerkUserId, options = {}) {
   let workspace = await getWorkspaceContext(pool, clerkUserId, null, {
     expectedClerkOrgId: options.expectedClerkOrgId || null,
     skipClerkOrgSync: true,
@@ -567,21 +567,30 @@ export async function prepareAccountingWorkspaceScope (pool, clerkUserId, option
   if (!workspace.organization_id) {
     workspace = await ensureOrganizationLinkForWorkspace(pool, workspace)
   }
-  if (!workspace.organization_id) {
-    throw new Error('Workspace is not linked to an organization. Please complete organization linking first.')
-  }
   try {
     await assertWorkspaceAssignment(pool, workspace, clerkUserId, { assignedBy: clerkUserId })
   } catch (error) {
     if (!canManageWorkspace(workspace)) throw error
-    await ensureWorkspaceEmployeeAssignment(
-      pool,
-      workspace,
-      clerkUserId,
-      clerkUserId,
-      mapWorkspaceRoleToOrganizationMemberRole(workspace.role)
-    )
+    if (!workspace.organization_id) {
+      workspace = await ensureOrganizationLinkForWorkspace(pool, workspace)
+    }
+    if (workspace.organization_id) {
+      await ensureWorkspaceEmployeeAssignment(
+        pool,
+        workspace,
+        clerkUserId,
+        clerkUserId,
+        mapWorkspaceRoleToOrganizationMemberRole(workspace.role)
+      )
+    } else {
+      throw error
+    }
   }
+  return workspace
+}
+
+export async function prepareAccountingWorkspaceScope (pool, clerkUserId, options = {}) {
+  const workspace = await ensureWorkspaceAccessForUser(pool, clerkUserId, options)
   return {
     workspace,
     organizationId: workspace.organization_id,
@@ -1828,27 +1837,7 @@ export async function getWorkspacePermissionSnapshot (pool, actorUserId, workspa
 }
 
 export async function getAccountForUser (pool, clerkUserId, options = {}) {
-  const workspace = await getWorkspaceContext(pool, clerkUserId, null, {
-    expectedClerkOrgId: options.expectedClerkOrgId || null,
-    skipClerkOrgSync: true,
-    relaxedOrgContext: true
-  })
-  try {
-    await assertWorkspaceAssignment(pool, workspace, clerkUserId, { assignedBy: clerkUserId })
-  } catch (error) {
-    if (!canManageWorkspace(workspace)) throw error
-    if (workspace.organization_id) {
-      await ensureWorkspaceEmployeeAssignment(
-        pool,
-        workspace,
-        clerkUserId,
-        clerkUserId,
-        mapWorkspaceRoleToOrganizationMemberRole(workspace.role)
-      )
-    } else {
-      throw error
-    }
-  }
+  const workspace = await ensureWorkspaceAccessForUser(pool, clerkUserId, options)
   const profile = await fetchWorkspaceProfile(pool, workspace.id)
   const authorization = await getWorkspaceAuthorizationContext(pool, workspace, clerkUserId)
   return {

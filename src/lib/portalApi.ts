@@ -38,7 +38,11 @@ function shouldBypassPortalCache (init: RequestInit): boolean {
 
 function isTransientGatewayMessage (message: string): boolean {
   const lower = String(message || '').toLowerCase()
-  return lower.includes('took too long to respond') || lower.includes('temporarily unavailable')
+  return lower.includes('took too long to respond')
+    || lower.includes('temporarily unavailable')
+    || lower.includes('connection terminated')
+    || lower.includes('connection timeout')
+    || lower.includes('timeout exceeded')
 }
 
 export function invalidatePortalFetchCache (prefix = ''): void {

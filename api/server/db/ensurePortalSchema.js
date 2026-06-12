@@ -1689,9 +1689,11 @@ const EVOLUTIONARY_STATEMENTS = [
 ]
 
 async function runEvolutionaryMigrations (pool) {
+  if (evolutionaryMigrationsReady) return
   for (const sql of EVOLUTIONARY_STATEMENTS) {
     await pool.query(sql)
   }
+  evolutionaryMigrationsReady = true
 }
 
 // Update when adding new tables in ensurePortalSchema so bootstrap re-runs once per release.
@@ -1699,6 +1701,7 @@ const SCHEMA_MARKER_TABLE = 'workspace_dataset_import_templates'
 
 let portalSchemaEnsurePromise = null
 let portalSchemaReady = false
+let evolutionaryMigrationsReady = false
 
 export function isPortalSchemaReady () {
   return portalSchemaReady
@@ -1732,10 +1735,7 @@ async function runPortalSchemaBootstrap (pool) {
 }
 
 export async function ensurePortalSchema (pool) {
-  if (portalSchemaReady) {
-    await runEvolutionaryMigrations(pool)
-    return
-  }
+  if (portalSchemaReady) return
   if (!portalSchemaEnsurePromise) {
     portalSchemaEnsurePromise = (async () => {
       if (await isPortalSchemaCurrent(pool)) {

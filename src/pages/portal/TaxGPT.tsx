@@ -86,11 +86,16 @@ const TaxGPT: FC = () => {
               <p className="text-text font-medium">Could not load TaxGPT right now.</p>
               <p className="text-sm text-red-700">{statusError}</p>
               <p className="text-sm text-text-light">
-                This is usually a temporary API or database connection issue. If account setup failed during
-                sign-up, complete workspace onboarding first. Otherwise confirm the API component has{' '}
-                <code className="bg-background px-2 py-0.5 rounded">DATABASE_URL</code>{' '}
-                and <code className="bg-background px-2 py-0.5 rounded">OPENAI_API_KEY</code> set in App Platform,
-                then redeploy the API service.
+                {statusError.toLowerCase().includes('timeout') || statusError.toLowerCase().includes('temporarily')
+                  ? 'The database may be busy while corpus ingestion or migrations are running. Wait a moment, then retry.'
+                  : 'This is usually a temporary API or database connection issue. If account setup failed during sign-up, complete workspace onboarding first. Otherwise confirm the API component has '}
+                {!statusError.toLowerCase().includes('timeout') && !statusError.toLowerCase().includes('temporarily') && (
+                  <>
+                    <code className="bg-background px-2 py-0.5 rounded">DATABASE_URL</code>{' '}
+                    and <code className="bg-background px-2 py-0.5 rounded">OPENAI_API_KEY</code> set in App Platform,
+                    then redeploy the API service.
+                  </>
+                )}
               </p>
               <button
                 type="button"

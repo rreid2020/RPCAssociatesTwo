@@ -317,7 +317,7 @@ export function createPortalRouter (pool) {
         res.status(400).json({ error: message })
         return null
       }
-      const status = /denied|forbidden|mismatch/i.test(message) ? 403 : 400
+      const status = /denied|forbidden|mismatch/i.test(message) ? 403 : databaseErrorStatus(e)
       res.status(status).json({ error: message })
       return null
     }
@@ -1068,7 +1068,7 @@ export function createPortalRouter (pool) {
     } catch (e) {
       if (handleAssignmentError(res, e, 'Workspace assignment required')) return
       const message = e instanceof Error ? e.message : 'Could not load account'
-      const status = /denied|forbidden|mismatch/i.test(message) ? 403 : 400
+      const status = /denied|forbidden|mismatch/i.test(message) ? 403 : databaseErrorStatus(e)
       res.status(status).json({ error: message })
     }
   })
@@ -3364,7 +3364,8 @@ export function createPortalRouter (pool) {
     try {
       res.json(await getTaxgptStatus(pool))
     } catch (e) {
-      res.status(500).json({ error: e instanceof Error ? e.message : 'Could not load TaxGPT status' })
+      const message = e instanceof Error ? e.message : 'Could not load TaxGPT status'
+      res.status(databaseErrorStatus(e) === 503 ? 503 : 500).json({ error: message })
     }
   })
 

@@ -61,8 +61,9 @@ import {
 } from './authz/workspaceRoleCatalog.js'
 
 const WORKSPACE_ROLES = WORKSPACE_MEMBER_ROLES
-const WORKSPACE_TYPES = new Set(['business', 'firm'])
+const WORKSPACE_TYPES = new Set(['business', 'firm', 'individual'])
 const BUSINESS_PROFILE_TYPES = new Set([
+  'individual',
   'accounting_firm',
   'sole_proprietorship',
   'partnership',
@@ -813,10 +814,19 @@ export async function upsertWorkspaceProfile (pool, actorUserId, workspaceId, pa
   if (!canManageWorkspace(workspace)) {
     throw new Error('Only owner/admin can update workspace profile')
   }
-  const companyLegalName = String(payload?.companyLegalName || '').trim()
-  if (!companyLegalName) throw new Error('companyLegalName is required')
   const organizationType = normalizeWorkspaceType(payload?.organizationType || workspace.workspace_type)
-  const businessType = normalizeBusinessProfileType(payload?.businessType)
+  const isIndividualWorkspace = organizationType === 'individual'
+  let companyLegalName = String(payload?.companyLegalName || '').trim()
+  if (!companyLegalName) {
+    if (isIndividualWorkspace) {
+      companyLegalName = normalizeOptionalText(payload?.primaryContactName) || workspace.name || 'Individual account'
+    } else {
+      throw new Error('companyLegalName is required')
+    }
+  }
+  const businessType = isIndividualWorkspace
+    ? 'individual'
+    : normalizeBusinessProfileType(payload?.businessType)
   const onboardingCompletedAt = payload?.onboardingCompleted ? new Date().toISOString() : null
 
   const profile = await upsertWorkspaceProfileRecord(pool, workspace.id, {

@@ -53,7 +53,13 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children, wideContent =
     }
   }, [account?.profileOnboardingCompletedAt, getToken, isLoaded, isSignedIn])
 
-  const workspaceType = account?.businessType === 'firm' ? 'firm' : account?.businessType ? 'business' : null
+  const workspaceType = account?.businessType === 'firm'
+    ? 'firm'
+    : account?.businessType === 'individual'
+      ? 'individual'
+      : account?.businessType
+        ? 'business'
+        : null
 
   const workingPapers = useFeatureAccess('workingPapers')
   const integrations = useFeatureAccess('integrations')

@@ -17,7 +17,7 @@ export async function fetchAccount (getToken: TokenProvider) {
 
 export async function createAccount (
   getToken: TokenProvider,
-  payload: { name: string; workspaceType: 'business' | 'firm'; profile?: Record<string, unknown> }
+  payload: { name: string; workspaceType: 'business' | 'firm' | 'individual'; profile?: Record<string, unknown> }
 ) {
   return callPortalApi<{ account: Record<string, unknown>; profile: Record<string, unknown> | null }>(
     '/v1/accounting/account',

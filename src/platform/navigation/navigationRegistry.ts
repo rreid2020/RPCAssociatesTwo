@@ -1,7 +1,7 @@
 import { resolveEntityProfilesNavLabel } from '../workspace/companyProfileLabels'
 
 export type NavigationContext = {
-  workspaceType: 'business' | 'firm' | null
+  workspaceType: 'business' | 'firm' | 'individual' | null
   profileBusinessType: string | null
   workspaceRole: string | null
   onboardingComplete: boolean
@@ -105,6 +105,9 @@ const SECTIONS: NavigationSection[] = [
 function isItemVisible (item: NavigationItem, context: NavigationContext) {
   if (ROLLOUT_BYPASS_ENABLED) return true
   if (item.to === '/portal/billing/subscription') return true
+  if (context.workspaceType === 'individual' && item.to === '/portal/accounting/company-profile/employees') {
+    return false
+  }
   if (!context.onboardingComplete && item.to.startsWith('/portal/accounting/working-papers')) return false
   if (item.requiredFeature && !context.features[item.requiredFeature]) return false
   if (item.requiredPermission && !context.permissions.includes(item.requiredPermission)) return false

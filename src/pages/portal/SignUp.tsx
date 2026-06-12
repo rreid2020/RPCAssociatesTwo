@@ -29,7 +29,8 @@ const SignUp: FC = () => {
   const nextPath = nextParam && nextParam.startsWith('/') ? nextParam : null
   const createMode = modeParam === 'create' && !inviteFlow
   const onboardingTarget = createMode && Boolean(nextPath?.includes('/portal/subscription?onboarding=1'))
-  const [workspaceType, setWorkspaceType] = useState<'business' | 'firm'>('business')
+  const [workspaceType, setWorkspaceType] = useState<'business' | 'firm' | 'individual'>('business')
+  const isIndividualSignup = workspaceType === 'individual'
   const [workspaceName, setWorkspaceName] = useState('')
   const [companyLegalName, setCompanyLegalName] = useState('')
   const [companyOperatingName, setCompanyOperatingName] = useState('')
@@ -87,41 +88,67 @@ const SignUp: FC = () => {
     await setActive({ session: sessionId })
     if (onboardingTarget) {
       const created = await createWorkspaceProfileForOnboarding()
+      if (!created) {
+        setError('Could not finish account setup. Try again from subscription onboarding.')
+        return
+      }
+      if (isIndividualSignup) {
+        navigate('/portal/post-auth', { replace: true })
+        return
+      }
       const target = new URLSearchParams({
         onboarding: '1',
         selectedPlan: selectedPlanId
       })
       target.set('step', 'invites')
-      if (!created) {
-        setError('Could not finish account setup. Try again from subscription onboarding.')
-        return
-      }
       navigate(`/portal/subscription?${target.toString()}`)
       return
     }
     goPostAuth()
   }
 
+  const buildWorkspaceProfilePayload = () => {
+    const fullName = `${firstName} ${lastName}`.trim()
+    const resolvedWorkspaceName = workspaceName.trim() || fullName || 'My workspace'
+
+    if (isIndividualSignup) {
+      return {
+        name: resolvedWorkspaceName,
+        workspaceType,
+        profile: {
+          organizationType: 'individual',
+          businessType: 'individual',
+          companyLegalName: fullName || resolvedWorkspaceName,
+          primaryContactName: fullName || undefined,
+          primaryContactEmail: email.trim() || undefined,
+          onboardingCompleted: true
+        }
+      }
+    }
+
+    return {
+      name: resolvedWorkspaceName,
+      workspaceType,
+      profile: {
+        organizationType: workspaceType,
+        companyLegalName: companyLegalName.trim(),
+        companyOperatingName: companyOperatingName.trim(),
+        industry: industry.trim(),
+        websiteUrl: websiteUrl.trim(),
+        taxIdentifier: taxIdentifier.trim(),
+        primaryContactName: primaryContactName.trim(),
+        primaryContactEmail: primaryContactEmail.trim(),
+        primaryContactPhone: primaryContactPhone.trim(),
+        onboardingCompleted: false
+      }
+    }
+  }
+
   const createWorkspaceProfileForOnboarding = async (): Promise<string | null> => {
     const run = async () => {
       await portalFetch('/v1/accounting/account', getToken, {
         method: 'POST',
-        body: JSON.stringify({
-          name: workspaceName.trim(),
-          workspaceType,
-          profile: {
-            organizationType: workspaceType,
-            companyLegalName: companyLegalName.trim(),
-            companyOperatingName: companyOperatingName.trim(),
-            industry: industry.trim(),
-            websiteUrl: websiteUrl.trim(),
-            taxIdentifier: taxIdentifier.trim(),
-            primaryContactName: primaryContactName.trim(),
-            primaryContactEmail: primaryContactEmail.trim(),
-            primaryContactPhone: primaryContactPhone.trim(),
-            onboardingCompleted: false
-          }
-        })
+        body: JSON.stringify(buildWorkspaceProfilePayload())
       })
       await portalFetch('/v1/billing/subscription/sync', getToken, {
         method: 'POST',
@@ -259,7 +286,13 @@ const SignUp: FC = () => {
     }
 
     if (createMode) {
-      if (!workspaceName.trim() || !companyLegalName.trim()) {
+      const fullName = `${firstName} ${lastName}`.trim()
+      if (isIndividualSignup) {
+        if (!workspaceName.trim() && !fullName) {
+          setError('Enter your name or a workspace display name.')
+          return
+        }
+      } else if (!workspaceName.trim() || !companyLegalName.trim()) {
         setError('Workspace name and company/firm legal name are required.')
         return
       }
@@ -449,143 +482,158 @@ const SignUp: FC = () => {
                   {createMode && (
                     <>
                       <div>
-                        <h2 className="text-base font-semibold text-primary-dark">Company / Firm Profile</h2>
+                        <h2 className="text-base font-semibold text-primary-dark">
+                          {isIndividualSignup ? 'Account profile' : 'Company / Firm Profile'}
+                        </h2>
                         <p className="text-xs text-text-light mt-1">
-                          This profile is created immediately after account setup and before employee invites.
+                          {isIndividualSignup
+                            ? 'Create a personal workspace for individual tax research and filing support.'
+                            : 'This profile is created immediately after account setup and before employee invites.'}
                         </p>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className={isIndividualSignup ? 'space-y-4' : 'grid grid-cols-1 md:grid-cols-2 gap-4'}>
                         <div>
                           <label htmlFor="workspaceType" className="block text-sm font-medium text-text mb-1">
-                            Workspace type
+                            Account type
                           </label>
                           <select
                             id="workspaceType"
                             value={workspaceType}
-                            onChange={(e) => { setWorkspaceType(e.target.value as 'business' | 'firm') }}
+                            onChange={(e) => { setWorkspaceType(e.target.value as 'business' | 'firm' | 'individual') }}
                             className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                           >
+                            <option value="individual">Individual</option>
                             <option value="business">Business</option>
                             <option value="firm">Accounting firm</option>
                           </select>
                         </div>
                         <div>
                           <label htmlFor="workspaceName" className="block text-sm font-medium text-text mb-1">
-                            Workspace name
+                            {isIndividualSignup ? 'Workspace display name' : 'Workspace name'}
                           </label>
                           <input
                             id="workspaceName"
                             type="text"
                             value={workspaceName}
                             onChange={(e) => { setWorkspaceName(e.target.value) }}
-                            required
+                            placeholder={isIndividualSignup ? 'e.g. My tax workspace' : undefined}
+                            required={!isIndividualSignup}
                             className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                           />
+                          {isIndividualSignup && (
+                            <p className="mt-1 text-xs text-text-light">
+                              Optional. If left blank, your name will be used.
+                            </p>
+                          )}
                         </div>
                       </div>
-                      <div>
-                        <label htmlFor="companyLegalName" className="block text-sm font-medium text-text mb-1">
-                          Company/Firm legal name
-                        </label>
-                        <input
-                          id="companyLegalName"
-                          type="text"
-                          value={companyLegalName}
-                          onChange={(e) => { setCompanyLegalName(e.target.value) }}
-                          required
-                          className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                        />
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label htmlFor="companyOperatingName" className="block text-sm font-medium text-text mb-1">
-                            Operating name
-                          </label>
-                          <input
-                            id="companyOperatingName"
-                            type="text"
-                            value={companyOperatingName}
-                            onChange={(e) => { setCompanyOperatingName(e.target.value) }}
-                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="industry" className="block text-sm font-medium text-text mb-1">
-                            Industry
-                          </label>
-                          <input
-                            id="industry"
-                            type="text"
-                            value={industry}
-                            onChange={(e) => { setIndustry(e.target.value) }}
-                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label htmlFor="websiteUrl" className="block text-sm font-medium text-text mb-1">
-                            Website
-                          </label>
-                          <input
-                            id="websiteUrl"
-                            type="url"
-                            value={websiteUrl}
-                            onChange={(e) => { setWebsiteUrl(e.target.value) }}
-                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="taxIdentifier" className="block text-sm font-medium text-text mb-1">
-                            Business number / Tax ID
-                          </label>
-                          <input
-                            id="taxIdentifier"
-                            type="text"
-                            value={taxIdentifier}
-                            onChange={(e) => { setTaxIdentifier(e.target.value) }}
-                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <label htmlFor="primaryContactName" className="block text-sm font-medium text-text mb-1">
-                            Primary contact name
-                          </label>
-                          <input
-                            id="primaryContactName"
-                            type="text"
-                            value={primaryContactName}
-                            onChange={(e) => { setPrimaryContactName(e.target.value) }}
-                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="primaryContactEmail" className="block text-sm font-medium text-text mb-1">
-                            Primary contact email
-                          </label>
-                          <input
-                            id="primaryContactEmail"
-                            type="email"
-                            value={primaryContactEmail}
-                            onChange={(e) => { setPrimaryContactEmail(e.target.value) }}
-                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="primaryContactPhone" className="block text-sm font-medium text-text mb-1">
-                            Primary contact phone
-                          </label>
-                          <input
-                            id="primaryContactPhone"
-                            type="text"
-                            value={primaryContactPhone}
-                            onChange={(e) => { setPrimaryContactPhone(e.target.value) }}
-                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                          />
-                        </div>
-                      </div>
+                      {!isIndividualSignup && (
+                        <>
+                          <div>
+                            <label htmlFor="companyLegalName" className="block text-sm font-medium text-text mb-1">
+                              Company/Firm legal name
+                            </label>
+                            <input
+                              id="companyLegalName"
+                              type="text"
+                              value={companyLegalName}
+                              onChange={(e) => { setCompanyLegalName(e.target.value) }}
+                              required
+                              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                            />
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label htmlFor="companyOperatingName" className="block text-sm font-medium text-text mb-1">
+                                Operating name
+                              </label>
+                              <input
+                                id="companyOperatingName"
+                                type="text"
+                                value={companyOperatingName}
+                                onChange={(e) => { setCompanyOperatingName(e.target.value) }}
+                                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="industry" className="block text-sm font-medium text-text mb-1">
+                                Industry
+                              </label>
+                              <input
+                                id="industry"
+                                type="text"
+                                value={industry}
+                                onChange={(e) => { setIndustry(e.target.value) }}
+                                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label htmlFor="websiteUrl" className="block text-sm font-medium text-text mb-1">
+                                Website
+                              </label>
+                              <input
+                                id="websiteUrl"
+                                type="url"
+                                value={websiteUrl}
+                                onChange={(e) => { setWebsiteUrl(e.target.value) }}
+                                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="taxIdentifier" className="block text-sm font-medium text-text mb-1">
+                                Business number / Tax ID
+                              </label>
+                              <input
+                                id="taxIdentifier"
+                                type="text"
+                                value={taxIdentifier}
+                                onChange={(e) => { setTaxIdentifier(e.target.value) }}
+                                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <label htmlFor="primaryContactName" className="block text-sm font-medium text-text mb-1">
+                                Primary contact name
+                              </label>
+                              <input
+                                id="primaryContactName"
+                                type="text"
+                                value={primaryContactName}
+                                onChange={(e) => { setPrimaryContactName(e.target.value) }}
+                                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="primaryContactEmail" className="block text-sm font-medium text-text mb-1">
+                                Primary contact email
+                              </label>
+                              <input
+                                id="primaryContactEmail"
+                                type="email"
+                                value={primaryContactEmail}
+                                onChange={(e) => { setPrimaryContactEmail(e.target.value) }}
+                                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="primaryContactPhone" className="block text-sm font-medium text-text mb-1">
+                                Primary contact phone
+                              </label>
+                              <input
+                                id="primaryContactPhone"
+                                type="text"
+                                value={primaryContactPhone}
+                                onChange={(e) => { setPrimaryContactPhone(e.target.value) }}
+                                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                              />
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </>
                   )}
 

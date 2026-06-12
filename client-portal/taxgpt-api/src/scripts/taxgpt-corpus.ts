@@ -8,6 +8,7 @@ import {
   discoverPublicationsCatalog,
   expandPublicationLandingPages,
   reconcileArchivedPendingSources,
+  reconcileEmbeddingFailedSources,
   reconcileTimeoutFailedSources
 } from '@rag/core'
 import { IngestionService } from '@rag/core'
@@ -39,6 +40,10 @@ function readOption (argv: string[], key: string, fallback: number) {
   return match ? Number(match.slice(prefix.length)) : fallback
 }
 
+function hasFlag (argv: string[], flag: string) {
+  return argv.includes(flag)
+}
+
 function sleep (ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -49,6 +54,7 @@ async function runExpandIngestPipeline (argv: string[]) {
   const maxConsecutiveErrors = readOption(argv, 'max-errors', 5)
   const retryDelayMs = readOption(argv, 'retry-delay-ms', 5000)
   const phase = argv.find((arg) => arg.startsWith('--phase='))?.split('=')[1] || 'all'
+  const reconcileFirst = !hasFlag(argv, '--no-reconcile')
 
   const log = (message: string, payload?: unknown) => {
     const line = payload === undefined
@@ -57,104 +63,121 @@ async function runExpandIngestPipeline (argv: string[]) {
     console.log(line)
   }
 
-  if (phase === 'all' || phase === 'expand') {
-    log('Starting expand phase', { expandLimit, maxConsecutiveErrors })
-    let expandBatch = 0
+  if (reconcileFirst) {
+    log('Reconciling corpus before continuous run')
+    const reconciled = {
+      archived: await reconcileArchivedPendingSources(),
+      timeouts: await reconcileTimeoutFailedSources(),
+      embeddings: await reconcileEmbeddingFailedSources()
+    }
+    log('Reconcile complete', reconciled)
+  }
+
+  const runExpand = phase === 'all' || phase === 'expand'
+  const runCanlii = phase === 'all' || phase === 'canlii'
+  const runIngest = phase === 'all' || phase === 'ingest'
+
+  if (runIngest && !process.env.OPENAI_API_KEY) {
+    throw new Error('OPENAI_API_KEY is required for ingest')
+  }
+
+  if (runCanlii && process.env.CANLII_API_KEY) {
+    const canliiDiscoverLimit = readOption(argv, 'canlii-discover-limit', 50)
+    log('Starting CanLII discover phase', { canliiDiscoverLimit, maxConsecutiveErrors })
+    let canliiBatch = 0
     let consecutiveErrors = 0
-    let totalProcessed = 0
+    let totalDiscovered = 0
 
     while (true) {
-      expandBatch += 1
+      canliiBatch += 1
       try {
-        const result = await expandPublicationLandingPages({ limit: expandLimit })
+        const result = await discoverCanliiTaxCourtBatch({ limit: canliiDiscoverLimit })
         consecutiveErrors = 0
-        totalProcessed += result.processed
-        log(`Expand batch ${expandBatch} complete`, result)
+        totalDiscovered += result.discovered
+        log(`CanLII discover batch ${canliiBatch} complete`, result)
 
-        if (result.processed === 0) {
-          log('Expand phase complete — no remaining publication landing pages', { expandBatch, totalProcessed })
+        if (result.complete) {
+          log('CanLII discover phase complete', { canliiBatch, totalDiscovered })
           break
         }
       } catch (error) {
         consecutiveErrors += 1
         const message = error instanceof Error ? error.message : String(error)
-        log(`Expand batch ${expandBatch} failed (${consecutiveErrors}/${maxConsecutiveErrors})`, { error: message })
+        log(`CanLII discover batch ${canliiBatch} failed (${consecutiveErrors}/${maxConsecutiveErrors})`, { error: message })
 
         if (consecutiveErrors >= maxConsecutiveErrors) {
+          throw new Error(`CanLII discover pipeline stopped after ${maxConsecutiveErrors} consecutive failures: ${message}`)
+        }
+
+        await sleep(retryDelayMs)
+      }
+    }
+  } else if (runCanlii) {
+    log('Skipping CanLII discovery — CANLII_API_KEY is not set')
+  }
+
+  log('Starting continuous corpus run (expand + ingest until queue empty)', {
+    expandLimit,
+    ingestLimit,
+    maxConsecutiveErrors,
+    runExpand,
+    runIngest
+  })
+
+  const ingestionService = runIngest ? new IngestionService() : null
+  let cycle = 0
+  let expandConsecutiveErrors = 0
+  let ingestConsecutiveErrors = 0
+  let totalExpanded = 0
+  let totalIngested = 0
+  let expandComplete = !runExpand
+  let ingestComplete = !runIngest
+
+  while (!expandComplete || !ingestComplete) {
+    cycle += 1
+    log(`Cycle ${cycle} starting`, { expandComplete, ingestComplete })
+
+    if (!expandComplete) {
+      try {
+        const result = await expandPublicationLandingPages({ limit: expandLimit })
+        expandConsecutiveErrors = 0
+        totalExpanded += result.processed
+        log(`Cycle ${cycle} expand complete`, result)
+
+        if (result.processed === 0) {
+          expandComplete = true
+          log('Expand queue empty', { cycle, totalExpanded })
+        }
+      } catch (error) {
+        expandConsecutiveErrors += 1
+        const message = error instanceof Error ? error.message : String(error)
+        log(`Cycle ${cycle} expand failed (${expandConsecutiveErrors}/${maxConsecutiveErrors})`, { error: message })
+
+        if (expandConsecutiveErrors >= maxConsecutiveErrors) {
           throw new Error(`Expand pipeline stopped after ${maxConsecutiveErrors} consecutive failures: ${message}`)
         }
 
         await sleep(retryDelayMs)
       }
     }
-  }
 
-  if (phase === 'all' || phase === 'canlii') {
-    if (!process.env.CANLII_API_KEY) {
-      log('Skipping CanLII discovery — CANLII_API_KEY is not set')
-    } else {
-      const canliiDiscoverLimit = readOption(argv, 'canlii-discover-limit', 50)
-      log('Starting CanLII discover phase', { canliiDiscoverLimit, maxConsecutiveErrors })
-      let canliiBatch = 0
-      let consecutiveErrors = 0
-      let totalDiscovered = 0
-
-      while (true) {
-        canliiBatch += 1
-        try {
-          const result = await discoverCanliiTaxCourtBatch({ limit: canliiDiscoverLimit })
-          consecutiveErrors = 0
-          totalDiscovered += result.discovered
-          log(`CanLII discover batch ${canliiBatch} complete`, result)
-
-          if (result.complete) {
-            log('CanLII discover phase complete', { canliiBatch, totalDiscovered })
-            break
-          }
-        } catch (error) {
-          consecutiveErrors += 1
-          const message = error instanceof Error ? error.message : String(error)
-          log(`CanLII discover batch ${canliiBatch} failed (${consecutiveErrors}/${maxConsecutiveErrors})`, { error: message })
-
-          if (consecutiveErrors >= maxConsecutiveErrors) {
-            throw new Error(`CanLII discover pipeline stopped after ${maxConsecutiveErrors} consecutive failures: ${message}`)
-          }
-
-          await sleep(retryDelayMs)
-        }
-      }
-    }
-  }
-
-  if (phase === 'all' || phase === 'ingest') {
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY is required for ingest')
-    }
-
-    log('Starting ingest phase', { ingestLimit, maxConsecutiveErrors })
-    const ingestionService = new IngestionService()
-    let ingestBatch = 0
-    let consecutiveErrors = 0
-    let totalIngested = 0
-
-    while (true) {
-      ingestBatch += 1
+    if (!ingestComplete && ingestionService) {
       try {
         const summary = await ingestionService.ingestBatch({ limit: ingestLimit })
-        consecutiveErrors = 0
+        ingestConsecutiveErrors = 0
         totalIngested += summary.successful
-        log(`Ingest batch ${ingestBatch} complete`, summary)
+        log(`Cycle ${cycle} ingest complete`, summary)
 
         if (summary.total === 0) {
-          log('Ingest phase complete — no remaining ingestible sources', { ingestBatch, totalIngested })
-          break
+          ingestComplete = true
+          log('Ingest queue empty', { cycle, totalIngested })
         }
       } catch (error) {
-        consecutiveErrors += 1
+        ingestConsecutiveErrors += 1
         const message = error instanceof Error ? error.message : String(error)
-        log(`Ingest batch ${ingestBatch} failed (${consecutiveErrors}/${maxConsecutiveErrors})`, { error: message })
+        log(`Cycle ${cycle} ingest failed (${ingestConsecutiveErrors}/${maxConsecutiveErrors})`, { error: message })
 
-        if (consecutiveErrors >= maxConsecutiveErrors) {
+        if (ingestConsecutiveErrors >= maxConsecutiveErrors) {
           throw new Error(`Ingest pipeline stopped after ${maxConsecutiveErrors} consecutive failures: ${message}`)
         }
 
@@ -164,7 +187,7 @@ async function runExpandIngestPipeline (argv: string[]) {
   }
 
   const totals = (await auditCorpus()).totals
-  log('Pipeline finished', totals)
+  log('Pipeline finished', { cycle, totalExpanded, totalIngested, totals })
   console.log(JSON.stringify(totals, null, 2))
 }
 
@@ -294,7 +317,8 @@ async function main () {
     case 'reconcile':
       console.log(JSON.stringify({
         archived: await reconcileArchivedPendingSources(),
-        timeouts: await reconcileTimeoutFailedSources()
+        timeouts: await reconcileTimeoutFailedSources(),
+        embeddings: await reconcileEmbeddingFailedSources()
       }, null, 2))
       break
     case 'discover-canlii':
@@ -315,7 +339,7 @@ async function main () {
       break
     default:
       console.error(
-        'Usage: tsx src/scripts/taxgpt-corpus.ts <stats|audit|discover|expand|discover-all|discover-canlii|reconcile|ingest|run-pipeline|run-batch> [--limit=N] [--expand-limit=N] [--ingest-limit=N] [--canlii-discover-limit=N] [--phase=all|expand|canlii|ingest] [--max-errors=N]'
+        'Usage: tsx src/scripts/taxgpt-corpus.ts <stats|audit|discover|expand|discover-all|discover-canlii|reconcile|ingest|run-pipeline|run-batch> [--limit=N] [--expand-limit=N] [--ingest-limit=N] [--canlii-discover-limit=N] [--phase=all|expand|canlii|ingest] [--max-errors=N] [--no-reconcile]'
       )
       process.exit(1)
   }

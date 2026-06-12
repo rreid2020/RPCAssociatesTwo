@@ -150,6 +150,33 @@ export async function discoverFullPublicationsCorpus (options: {
   return { catalog, expanded }
 }
 
+/** Reset embedding/API ingest failures so the job can retry after key or model fixes. */
+export async function reconcileEmbeddingFailedSources (): Promise<{ updatedCount: number }> {
+  await ensureDbValidated()
+  const db = getDb()
+
+  const result = await db.execute(sql`
+    UPDATE taxgpt.sources
+    SET ingest_status = 'pending',
+        page_kind = 'content',
+        error_code = NULL,
+        error_message = NULL,
+        last_attempt_at = NOW()
+    WHERE ingest_status = 'failed'
+      AND (
+        error_message ILIKE '%embedding%'
+        OR error_message ILIKE '%text-embedding%'
+        OR error_message ILIKE '%does not have access to model%'
+        OR error_message ILIKE '%incorrect api key%'
+        OR error_message ILIKE '%invalid api key%'
+      )
+    RETURNING id
+  `)
+
+  const rows = result as unknown as Array<{ id: string }>
+  return { updatedCount: rows.length }
+}
+
 /** Reset timeout/abort ingest failures so the job can retry after fetch tuning. */
 export async function reconcileTimeoutFailedSources (): Promise<{ updatedCount: number }> {
   await ensureDbValidated()

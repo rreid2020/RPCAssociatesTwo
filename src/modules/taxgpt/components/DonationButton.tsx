@@ -4,7 +4,7 @@ import {
   createTaxgptDonationCheckout,
   fetchTaxgptDonationConfig,
   type TaxgptDonationConfig
-} from '../../../domains/taxgpt'
+} from '../../../domains/taxgpt/donations'
 
 function formatCadAmount (amountCents: number): string {
   return new Intl.NumberFormat('en-CA', {

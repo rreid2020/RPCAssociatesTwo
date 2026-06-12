@@ -25,7 +25,7 @@ const CorpusBanner: FC<CorpusBannerProps> = ({ corpus }) => {
         in retrieved official publications. Run TaxGPT corpus ingestion on the API database to enable cited, source-backed responses.
       </p>
       <p className="text-xs text-amber-800 mt-1">
-        Sources discovered: {corpus.sourceCount.toLocaleString()} · Pending ingestion: {corpus.pendingSourceCount.toLocaleString()}
+        Sources discovered: {corpus.sourceCount.toLocaleString()} · Pending ingestion: {(corpus.pendingSourceCount ?? 0).toLocaleString()}
       </p>
     </div>
   )

@@ -52,8 +52,8 @@ export type TaxgptStructuredResponse = {
 export type TaxgptCorpusStats = {
   sourceCount: number
   ingestedSourceCount: number
-  pendingSourceCount: number
-  chunkCount: number
+  pendingSourceCount?: number
+  chunkCount?: number
   embeddingCount: number
   retrievalReady: boolean
 }
@@ -103,45 +103,15 @@ export async function fetchTaxgptCorpus (getToken: () => Promise<string | null>)
   return portalFetch<TaxgptCorpusStats>('/v1/taxgpt/corpus', getToken)
 }
 
-export type TaxgptDonationConfig = {
-  configured: boolean
-  paymentLinkUrl: string | null
-  stripeCheckoutEnabled: boolean
-  amountsCents: number[]
-  currency: 'cad'
-}
-
-export type TaxgptDonationCheckoutResponse = {
-  checkoutUrl: string
-  checkoutSessionId: string
-}
-
-export type CreateTaxgptDonationCheckoutPayload = {
-  amountCents: number
-  successUrl: string
-  cancelUrl: string
-}
-
-export async function fetchTaxgptDonationConfig (
-  getToken: () => Promise<string | null>
-): Promise<TaxgptDonationConfig> {
-  return portalFetch<TaxgptDonationConfig>('/v1/taxgpt/donations/config', getToken)
-}
-
-export async function createTaxgptDonationCheckout (
-  getToken: () => Promise<string | null>,
-  payload: CreateTaxgptDonationCheckoutPayload
-): Promise<TaxgptDonationCheckoutResponse> {
-  const data = await portalFetch<{ checkout: TaxgptDonationCheckoutResponse }>(
-    '/v1/taxgpt/donations/checkout',
-    getToken,
-    {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    }
-  )
-  return data.checkout
-}
+export type {
+  CreateTaxgptDonationCheckoutPayload,
+  TaxgptDonationCheckoutResponse,
+  TaxgptDonationConfig
+} from './donations'
+export {
+  createTaxgptDonationCheckout,
+  fetchTaxgptDonationConfig
+} from './donations'
 
 export type TaxgptFeedbackCategory = 'feedback' | 'suggestion' | 'answer_quality' | 'corpus_gap'
 

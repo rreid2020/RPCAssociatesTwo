@@ -1,19 +1,24 @@
-import { FC, useEffect, useRef, useState } from 'react'
+import { FC, lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
-import { fetchTaxgptCorpus, sendTaxgptChatMessage } from '../../../domains/taxgpt'
+import { sendTaxgptChatMessage } from '../../../domains/taxgpt'
 import type { TaxgptCorpusStats } from '../../../domains/taxgpt'
 import type { ChatMessage, RiskLevel } from '../types'
-import CorpusBanner from './CorpusBanner'
+import ChatWindowHeader from './ChatWindowHeader'
 import DisclaimerBanner from './DisclaimerBanner'
 import ExportButton from './ExportButton'
 import LoadingIndicator from './LoadingIndicator'
 import MessageInput from './MessageInput'
 import MessageList from './MessageList'
-import DonationButton from './DonationButton'
 import RiskBanner from './RiskBanner'
 
-const ChatInterface: FC = () => {
+const DonationButton = lazy(async () => await import('./DonationButton'))
+
+type ChatInterfaceProps = {
+  initialCorpus: TaxgptCorpusStats
+}
+
+const ChatInterface: FC<ChatInterfaceProps> = ({ initialCorpus }) => {
   const { getToken } = useAuth()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -22,7 +27,7 @@ const ChatInterface: FC = () => {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const [corpus, setCorpus] = useState<TaxgptCorpusStats | null>(null)
+  const [corpus, setCorpus] = useState<TaxgptCorpusStats | null>(initialCorpus)
   const [retrievalNotice, setRetrievalNotice] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -57,22 +62,6 @@ const ChatInterface: FC = () => {
       : window.location.pathname
     window.history.replaceState({}, '', nextUrl)
   }, [])
-
-  useEffect(() => {
-    let mounted = true
-    const loadCorpus = async () => {
-      try {
-        const stats = await fetchTaxgptCorpus(getToken)
-        if (mounted) setCorpus(stats)
-      } catch {
-        if (mounted) setCorpus(null)
-      }
-    }
-    void loadCorpus()
-    return () => {
-      mounted = false
-    }
-  }, [getToken])
 
   const handleCopy = (text: string) => {
     void navigator.clipboard.writeText(text).then(
@@ -172,17 +161,22 @@ const ChatInterface: FC = () => {
 
   return (
     <div className="flex flex-col min-h-[70vh]">
-      {corpus && <CorpusBanner corpus={corpus} />}
-      {error && <p className="text-sm text-red-700 mb-3">{error}</p>}
-      {notice && <p className="text-sm text-emerald-800 mb-3">{notice}</p>}
-      {retrievalNotice && (
-        <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-3">
-          {retrievalNotice}
-        </p>
-      )}
-      {riskLevel === 'high' && <RiskBanner />}
+      <div className="flex flex-1 min-h-0 flex-col border border-border rounded-lg overflow-hidden bg-white shadow-sm">
+        <ChatWindowHeader corpus={corpus} />
 
-      <div className="flex flex-1 min-h-0 border border-border rounded-lg overflow-hidden bg-white shadow-sm">
+        {(error || notice || retrievalNotice || riskLevel === 'high') && (
+          <div className="border-b border-border bg-background px-6 py-3 space-y-2">
+            {error && <p className="text-sm text-red-700">{error}</p>}
+            {notice && <p className="text-sm text-emerald-800">{notice}</p>}
+            {retrievalNotice && (
+              <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                {retrievalNotice}
+              </p>
+            )}
+            {riskLevel === 'high' && <RiskBanner />}
+          </div>
+        )}
+
         <div className="flex-1 flex flex-col min-h-0">
           <div ref={messagesContainerRef} className="flex-1 overflow-y-auto relative">
             <div className="mx-auto max-w-4xl px-6 py-6">
@@ -214,7 +208,15 @@ const ChatInterface: FC = () => {
           <div className="border-t border-border bg-background">
             <div className="max-w-4xl mx-auto px-6 py-4 space-y-4">
               <div className="flex flex-wrap items-center justify-end gap-2">
-                  <DonationButton />
+                  <Suspense
+                    fallback={(
+                      <span className="inline-flex items-center gap-2 border border-border bg-white px-3 py-1.5 text-sm font-medium text-text-light shadow-sm">
+                        Donations
+                      </span>
+                    )}
+                  >
+                    <DonationButton />
+                  </Suspense>
                   <Link
                     to={sessionId ? `/portal/taxgpt/feedback?sessionId=${sessionId}` : '/portal/taxgpt/feedback'}
                     className="inline-flex items-center gap-2 border border-border bg-white px-3 py-1.5 text-sm font-medium text-text shadow-sm hover:bg-background"

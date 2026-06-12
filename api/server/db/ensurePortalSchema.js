@@ -1674,6 +1674,26 @@ const STATEMENTS = [
   'CREATE INDEX IF NOT EXISTS workspace_dataset_import_templates_workspace_idx ON taxgpt.workspace_dataset_import_templates(workspace_id) WHERE deleted_at IS NULL'
 ]
 
+// Idempotent migrations applied on every ensurePortalSchema call (including existing databases).
+const EVOLUTIONARY_STATEMENTS = [
+  `ALTER TABLE taxgpt.accounting_workspaces
+   DROP CONSTRAINT IF EXISTS accounting_workspaces_workspace_type_chk`,
+  `ALTER TABLE taxgpt.accounting_workspaces
+   ADD CONSTRAINT accounting_workspaces_workspace_type_chk
+   CHECK (workspace_type IN ('business', 'firm', 'individual'))`,
+  `ALTER TABLE taxgpt.accounting_organizations
+   DROP CONSTRAINT IF EXISTS accounting_organizations_org_type_chk`,
+  `ALTER TABLE taxgpt.accounting_organizations
+   ADD CONSTRAINT accounting_organizations_org_type_chk
+   CHECK (organization_type IN ('business', 'firm', 'individual'))`
+]
+
+async function runEvolutionaryMigrations (pool) {
+  for (const sql of EVOLUTIONARY_STATEMENTS) {
+    await pool.query(sql)
+  }
+}
+
 // Update when adding new tables in ensurePortalSchema so bootstrap re-runs once per release.
 const SCHEMA_MARKER_TABLE = 'workspace_dataset_import_templates'
 
@@ -1712,14 +1732,19 @@ async function runPortalSchemaBootstrap (pool) {
 }
 
 export async function ensurePortalSchema (pool) {
-  if (portalSchemaReady) return
+  if (portalSchemaReady) {
+    await runEvolutionaryMigrations(pool)
+    return
+  }
   if (!portalSchemaEnsurePromise) {
     portalSchemaEnsurePromise = (async () => {
       if (await isPortalSchemaCurrent(pool)) {
+        await runEvolutionaryMigrations(pool)
         portalSchemaReady = true
         return
       }
       await runPortalSchemaBootstrap(pool)
+      await runEvolutionaryMigrations(pool)
       portalSchemaReady = true
     })().catch((error) => {
       portalSchemaEnsurePromise = null

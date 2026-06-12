@@ -143,8 +143,11 @@ export async function sendTaxgptChatMessage (
   })
 }
 
-export async function fetchTaxgptStatus (getToken: () => Promise<string | null>): Promise<TaxgptStatus> {
-  return portalFetch<TaxgptStatus>('/v1/taxgpt/status', getToken)
+export async function fetchTaxgptStatus (
+  getToken: () => Promise<string | null>,
+  options: { signal?: AbortSignal } = {}
+): Promise<TaxgptStatus> {
+  return portalFetch<TaxgptStatus>('/v1/taxgpt/status', getToken, { signal: options.signal })
 }
 
 export async function fetchTaxgptCorpus (getToken: () => Promise<string | null>): Promise<TaxgptCorpusStats> {

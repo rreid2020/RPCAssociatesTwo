@@ -21,6 +21,7 @@ const FAILED_GET_COOLDOWN_MS = 20_000
 
 function getStableCacheTtlMs (path: string): number | null {
   if (path === '/v1/accounting/members' || path === '/v1/accounting/clients') return 60_000
+  if (path === '/v1/taxgpt/status' || path === '/v1/taxgpt/corpus') return 60_000
   if (path.startsWith('/v1/accounting/engagements/') && path.endsWith('/review-notes')) return 30_000
   return null
 }

@@ -1,4 +1,4 @@
-import { FC, lazy, Suspense, useEffect, useState } from 'react'
+import { FC, lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../components/SEO'
 import ClientPortalShell from '../../components/ClientPortalShell'
@@ -11,6 +11,8 @@ import PageLoadingSkeleton from '../../shared/loading/PageLoadingSkeleton'
 const ChatInterface = lazy(async () => await import('../../modules/taxgpt/components/ChatInterface'))
 const chatInterfacePreload = import('../../modules/taxgpt/components/ChatInterface')
 
+const STATUS_FETCH_TIMEOUT_MS = 20_000
+
 const TaxGPT: FC = () => {
   const { getToken, isLoaded } = useAuth()
   const hasAccess = useFeatureAccess('taxgpt')
@@ -18,36 +20,51 @@ const TaxGPT: FC = () => {
   const [corpus, setCorpus] = useState<TaxgptCorpusStats | null>(null)
   const [statusError, setStatusError] = useState<string | null>(null)
   const [statusReloadKey, setStatusReloadKey] = useState(0)
+  const statusRequestIdRef = useRef(0)
 
   useEffect(() => {
     if (!hasAccess || !isLoaded) return
-    let mounted = true
-    const run = async () => {
+
+    const requestId = statusRequestIdRef.current + 1
+    statusRequestIdRef.current = requestId
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => controller.abort(), STATUS_FETCH_TIMEOUT_MS)
+
+    if (statusReloadKey > 0) {
       setConfigured(null)
       setCorpus(null)
       setStatusError(null)
+    }
+
+    const run = async () => {
       try {
         const [status] = await Promise.all([
-          fetchTaxgptStatus(getToken),
+          fetchTaxgptStatus(getToken, { signal: controller.signal }),
           chatInterfacePreload
         ])
-        if (mounted) {
-          setConfigured(status.configured)
-          setCorpus(status.corpus)
-        }
+        if (statusRequestIdRef.current !== requestId) return
+        setConfigured(status.configured)
+        setCorpus(status.corpus)
+        setStatusError(null)
       } catch (e) {
-        if (mounted) {
-          setConfigured(null)
-          setCorpus(null)
-          setStatusError(e instanceof Error ? e.message : 'Could not verify TaxGPT status')
+        if (statusRequestIdRef.current !== requestId) return
+        if (e instanceof Error && e.name === 'AbortError') {
+          setStatusError('TaxGPT status request timed out. Please retry.')
+          return
         }
+        setConfigured(null)
+        setCorpus(null)
+        setStatusError(e instanceof Error ? e.message : 'Could not verify TaxGPT status')
+      } finally {
+        window.clearTimeout(timeoutId)
       }
     }
     void run()
     return () => {
-      mounted = false
+      controller.abort()
+      window.clearTimeout(timeoutId)
     }
-  }, [getToken, hasAccess, isLoaded, statusReloadKey])
+  }, [hasAccess, isLoaded, statusReloadKey])
 
   return (
     <>
@@ -69,8 +86,9 @@ const TaxGPT: FC = () => {
               <p className="text-text font-medium">Could not load TaxGPT right now.</p>
               <p className="text-sm text-red-700">{statusError}</p>
               <p className="text-sm text-text-light">
-                This is usually a temporary API or database connection issue. If it keeps happening,
-                confirm the API component has <code className="bg-background px-2 py-0.5 rounded">DATABASE_URL</code>{' '}
+                This is usually a temporary API or database connection issue. If account setup failed during
+                sign-up, complete workspace onboarding first. Otherwise confirm the API component has{' '}
+                <code className="bg-background px-2 py-0.5 rounded">DATABASE_URL</code>{' '}
                 and <code className="bg-background px-2 py-0.5 rounded">OPENAI_API_KEY</code> set in App Platform,
                 then redeploy the API service.
               </p>

@@ -1,5 +1,5 @@
 import { FC, useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import { fetchTaxgptCorpus, sendTaxgptChatMessage } from '../../../domains/taxgpt'
 import type { TaxgptCorpusStats } from '../../../domains/taxgpt'
@@ -10,18 +10,16 @@ import ExportButton from './ExportButton'
 import LoadingIndicator from './LoadingIndicator'
 import MessageInput from './MessageInput'
 import MessageList from './MessageList'
+import DonationButton from './DonationButton'
 import RiskBanner from './RiskBanner'
-import SourcesDrawer from './SourcesDrawer'
 
 const ChatInterface: FC = () => {
   const { getToken } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [sessionId, setSessionId] = useState<string | null>(null)
-  const [sources, setSources] = useState<Array<{ id: string; title: string; url: string }>>([])
   const [riskLevel, setRiskLevel] = useState<RiskLevel>('low')
-  const [showSources, setShowSources] = useState(false)
   const [showScrollTop, setShowScrollTop] = useState(false)
-  const [agenticMode, setAgenticMode] = useState(true)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -41,6 +39,17 @@ const ChatInterface: FC = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, sending])
+
+  useEffect(() => {
+    const donation = searchParams.get('donation')
+    if (donation === 'success') {
+      setNotice('Thank you for supporting TaxGPT development.')
+      setSearchParams({}, { replace: true })
+    } else if (donation === 'cancelled') {
+      setNotice('Donation checkout was cancelled.')
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   useEffect(() => {
     let mounted = true
@@ -81,8 +90,7 @@ const ChatInterface: FC = () => {
     try {
       const data = await sendTaxgptChatMessage(getToken, {
         sessionId,
-        message,
-        agentic: agenticMode
+        message
       })
       setSessionId(data.sessionId)
       setMessages((prev) => [
@@ -93,12 +101,9 @@ const ChatInterface: FC = () => {
           content: data.response,
           structuredResponse: data.structuredResponse,
           citations: data.citations,
-          createdAt: new Date(),
-          reasoning: data.reasoning,
-          actions: data.actions
+          createdAt: new Date()
         }
       ])
-      setSources(data.sources || [])
       setRiskLevel(data.riskLevel || 'low')
       setRetrievalNotice(data.retrievalNotice || null)
       if (data.corpus) {
@@ -129,9 +134,7 @@ const ChatInterface: FC = () => {
     if (sending) return
     setMessages([])
     setSessionId(null)
-    setSources([])
     setRiskLevel('low')
-    setShowSources(false)
     setError(null)
     setNotice(null)
     setRetrievalNotice(null)
@@ -203,27 +206,8 @@ const ChatInterface: FC = () => {
 
           <div className="border-t border-border bg-background">
             <div className="max-w-4xl mx-auto px-6 py-4 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowSources((value) => !value)}
-                    className="btn btn--secondary text-sm py-1.5 px-3"
-                  >
-                    {showSources ? 'Hide sources' : 'Show sources'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAgenticMode((value) => !value)}
-                    className={`btn text-sm py-1.5 px-3 ${
-                      agenticMode ? 'btn--primary' : 'btn--secondary'
-                    }`}
-                    title="Agentic mode enables multi-step reasoning when available"
-                  >
-                    {agenticMode ? 'Agentic mode' : 'Standard mode'}
-                  </button>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                  <DonationButton />
                   <Link
                     to={sessionId ? `/portal/taxgpt/feedback?sessionId=${sessionId}` : '/portal/taxgpt/feedback'}
                     className="inline-flex items-center gap-2 border border-border bg-white px-3 py-1.5 text-sm font-medium text-text shadow-sm hover:bg-background"
@@ -248,13 +232,11 @@ const ChatInterface: FC = () => {
                     New chat
                   </button>
                   <ExportButton onExport={handleExport} />
-                </div>
               </div>
               <MessageInput onSend={(message) => { void handleSend(message) }} disabled={sending} />
             </div>
           </div>
         </div>
-        {showSources && <SourcesDrawer sources={sources} onClose={() => setShowSources(false)} />}
       </div>
 
       <DisclaimerBanner />

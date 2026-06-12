@@ -157,6 +157,10 @@ import {
 import { assertWorkspaceEntitlement } from '../services/authz/entitlementPolicy.js'
 import { getTaxgptCorpus, getTaxgptStatus, handleTaxgptChat } from '../services/taxgptChatService.js'
 import {
+  createTaxgptDonationCheckout,
+  getTaxgptDonationConfig
+} from '../services/taxgptDonationService.js'
+import {
   getTaxgptFeedbackCategories,
   listUserTaxgptFeedback,
   submitTaxgptFeedback
@@ -3423,6 +3427,37 @@ export function createPortalRouter (pool) {
     } catch (e) {
       const messageText = e instanceof Error ? e.message : 'Could not submit feedback'
       const status = messageText.includes('must be') || messageText.includes('Invalid') ? 400 : 500
+      res.status(status).json({ error: messageText })
+    }
+  })
+
+  r.get('/v1/taxgpt/donations/config', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    if (!(await hasEntitlement(res, scope.workspace.id, 'taxgpt'))) return
+    res.json(getTaxgptDonationConfig())
+  })
+
+  r.post('/v1/taxgpt/donations/checkout', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const scope = await resolveAccountingScope(req, res, session)
+    if (!scope) return
+    if (!(await hasEntitlement(res, scope.workspace.id, 'taxgpt'))) return
+    try {
+      const checkout = await createTaxgptDonationCheckout({
+        amountCents: Number(req.body?.amountCents),
+        clerkUserId: session.userId,
+        successUrl: String(req.body?.successUrl || '').trim(),
+        cancelUrl: String(req.body?.cancelUrl || '').trim(),
+        customerEmail: session.email || null
+      })
+      res.json({ checkout })
+    } catch (e) {
+      const messageText = e instanceof Error ? e.message : 'Could not create donation checkout session'
+      const status = messageText.includes('Invalid') || messageText.includes('required') ? 400 : 503
       res.status(status).json({ error: messageText })
     }
   })

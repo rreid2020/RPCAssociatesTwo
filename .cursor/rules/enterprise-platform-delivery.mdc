@@ -40,3 +40,5 @@ For admin/business domains, include list/create/edit/delete-or-archive, filterin
 ## Definition of Done Checks
 
 Before marking complete, verify frontend/API/DB behavior, onboarding integration, authorization + entitlements, page refresh reliability, cross-session behavior, and tenant isolation.
+
+When changes touch shared frontend infrastructure (build config, routing, lazy chunks, portal shell), also run `npm run build` and smoke-test protected surfaces defined in `enterprise-platform-regression-safety.mdc` (Accounting Operations, TaxGPT, portal navigation).

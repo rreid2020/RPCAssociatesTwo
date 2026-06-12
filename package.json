@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "vite",
     "prebuild": "node scripts/generate-sitemap.mjs",
-    "build": "npx tsc && vite build && npm run prerender",
+    "build": "npx tsc && vite build && npm run verify-build-chunks && npm run prerender",
+    "verify-build-chunks": "node scripts/verify-build-chunks.mjs",
     "start": "npx serve -s dist -l 8080",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",

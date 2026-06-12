@@ -1,0 +1,48 @@
+---
+description: Prevent regressions in existing portal flows when shipping new features
+alwaysApply: true
+---
+
+# Regression Safety for New Feature Work
+
+New functionality must not break working production flows. Treat existing user journeys as protected surfaces.
+
+## Protected Critical Surfaces
+
+Before completing work, confirm these still load and function when your changes touch frontend build, routing, shared components, or portal shell:
+
+1. **Accounting Operations** — `/portal/accounting/company-profile`, engagements list, roles & permissions (AG Grid lazy chunks)
+2. **TaxGPT** — `/portal/taxgpt` chat send/receive and structured response render
+3. **Portal shell** — auth, workspace context, navigation, subscription/entitlement gates
+
+## Mandatory Checks When Touching Shared Frontend Infrastructure
+
+Run when changing any of: `vite.config.ts`, `index.html`, lazy imports, `lazyWithRetry`, route tables, shared layout/shell, or cross-cutting domain types.
+
+```bash
+npm run build
+```
+
+`npm run build` includes `verify-build-chunks` and must pass before deploy.
+
+## Build / Chunk Rules (Non-Negotiable)
+
+- Never ship **fixed** JS/CSS asset names for entry or lazy chunks (e.g. `main.js`, `AgGridTable.js`, `index.css`).
+- Use Vite **content hashes** in `entryFileNames` and `chunkFileNames` so HTML and dynamic imports stay in sync across deploys.
+- Keep heavy vendors (React, AG Grid) in dedicated `manualChunks` — do not make lazy feature chunks import React from the entry bundle.
+- Use `lazyWithRetry` for portal feature panels that users depend on operationally.
+
+## Scope Discipline
+
+- Prefer **additive** changes in the module you are extending; avoid unrelated edits to build config, routing, or shared utilities.
+- Do not remove or repurpose existing toolbar actions, routes, or API contracts unless explicitly requested and migration/redirect is included.
+- If a feature needs a new global hook (router, env, provider), verify it does not break lazy-loaded route chunks.
+
+## Definition of Done (Regression)
+
+A feature is not done until:
+
+1. `npm run build` succeeds (TypeScript + Vite + chunk verification + prerender)
+2. The new flow works end-to-end
+3. At least one **adjacent protected surface** above still works (manual smoke or existing e2e)
+4. No new console errors on first load of affected portal pages

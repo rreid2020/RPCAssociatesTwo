@@ -43,14 +43,28 @@ export default defineConfig({
     cssCodeSplit: false,
     rollupOptions: {
       output: {
-        // Serve deterministic JS/CSS filenames to avoid stale hashed-chunk
-        // mismatches across deploy windows and upstream cache propagation.
-        entryFileNames: 'assets/main.js',
-        chunkFileNames: 'assets/[name].js',
+        // Content hashes keep lazy chunks (e.g. AgGridTable) in sync with the entry
+        // bundle. Fixed names like main.js + AgGridTable.js break across deploys when
+        // only one file is refreshed from cache/CDN.
+        manualChunks (id) {
+          if (!id.includes('node_modules')) return undefined
+          if (id.includes('ag-grid')) return 'ag-grid-vendor'
+          if (
+            id.includes('/react/') ||
+            id.includes('/react-dom/') ||
+            id.includes('react-router') ||
+            id.includes('scheduler')
+          ) {
+            return 'react-vendor'
+          }
+          return undefined
+        },
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: (assetInfo) => {
           const name = String(assetInfo.name || '')
-          if (name.endsWith('.css')) return 'assets/index.css'
-          return 'assets/[name][extname]'
+          if (name.endsWith('.css')) return 'assets/index-[hash].css'
+          return 'assets/[name]-[hash][extname]'
         },
       },
     },

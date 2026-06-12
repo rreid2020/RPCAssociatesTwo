@@ -54,10 +54,8 @@
     <div id="root"></div>
     <script>
       window.__loadAxiomAppFallback = function () {
-        const el = document.createElement('script')
-        el.type = 'module'
-        el.src = '/assets/main.js'
-        document.head.appendChild(el)
+        // Production entry is injected by Vite with a content hash; reload to pick up the latest deploy.
+        window.location.reload()
       }
     </script>
     <script

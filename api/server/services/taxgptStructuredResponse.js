@@ -13,6 +13,7 @@ const STRUCTURED_RESPONSE_SCHEMA = `{
     "legislation": [{ "citationIndex": 2, "summary": "One sentence on how this legislative source supports the answer" }],
     "caseLaw": [{ "citationIndex": 3, "summary": "One sentence on how this case supports the answer" }]
   },
+  "complianceRisk": "Risks of non-compliance with CRA rules if applicable (penalties, reassessment, denied claims). Empty string if none identified.",
   "keyPoints": ["Bullet with supporting detail and [1] style citations"],
   "whatThisMeansForYou": "Practical plain-language implications for the user. Not legal advice.",
   "considerations": ["Caveats, provincial differences, timing, or when professional advice is needed"],
@@ -31,9 +32,10 @@ RULES:
 3. Only include a bucket entry when that source type was actually provided in the source list.
 4. If no legislation or case law sources were provided, return empty arrays for those buckets.
 5. Never fabricate citations, statutes, or cases.
-6. whatThisMeansForYou must be practical and user-focused, not legal advice.
-7. confidence: high = strong source support; medium = partial; low = limited or conflicting support.
-8. If sources are insufficient, say so in directAnswer and keep confidence low.`
+6. complianceRisk must describe CRA non-compliance risks when relevant (e.g. denied deductions, reassessment, penalties, interest). Use an empty string when no meaningful compliance risk applies.
+7. whatThisMeansForYou must be practical and user-focused, not legal advice.
+8. confidence: high = strong source support; medium = partial; low = limited or conflicting support.
+9. If sources are insufficient, say so in directAnswer and keep confidence low.`
 
 const DEGRADED_STRUCTURED_SYSTEM_PROMPT = `You are a helpful Canadian tax assistant. The curated knowledge base is not available for this question.
 
@@ -45,7 +47,8 @@ RULES:
 2. Never fabricate citations, statutes, or cases.
 3. Be explicit in directAnswer that this is general guidance only.
 4. confidence must be "low".
-5. whatThisMeansForYou must recommend consulting a qualified tax professional for case-specific advice.`
+5. complianceRisk should note general risks of relying on general guidance without professional review, or use an empty string if not applicable.
+6. whatThisMeansForYou must recommend consulting a qualified tax professional for case-specific advice.`
 
 /**
  * @param {string} mode
@@ -142,6 +145,7 @@ export function parseTaxgptStructuredResponse (raw, chunks, mode) {
   const structured = {
     directAnswer: String(parsed.directAnswer || '').trim() || 'I could not generate a structured answer.',
     sourceAnalysis,
+    complianceRisk: String(parsed.complianceRisk || '').trim(),
     keyPoints: Array.isArray(parsed.keyPoints)
       ? parsed.keyPoints.map((item) => String(item || '').trim()).filter(Boolean)
       : [],
@@ -157,6 +161,7 @@ export function parseTaxgptStructuredResponse (raw, chunks, mode) {
 
   const citationText = [
     structured.directAnswer,
+    structured.complianceRisk,
     ...structured.keyPoints,
     structured.whatThisMeansForYou,
     ...structured.considerations,
@@ -273,28 +278,38 @@ function renderStructuredPlainText (structured, groupedSources, mode) {
     lines.push('')
   }
 
-  if (structured.keyPoints.length > 0) {
-    lines.push('## Key points')
-    structured.keyPoints.forEach((point) => lines.push(`- ${point}`))
+  if (structured.complianceRisk) {
+    lines.push('## Compliance Risk')
+    lines.push(structured.complianceRisk)
     lines.push('')
   }
 
-  if (structured.whatThisMeansForYou) {
+  const hasPracticalSection = structured.whatThisMeansForYou ||
+    structured.keyPoints.length > 0 ||
+    structured.considerations.length > 0 ||
+    structured.suggestedNextSteps.length > 0
+
+  if (hasPracticalSection) {
     lines.push('## What this means for you')
-    lines.push(structured.whatThisMeansForYou)
-    lines.push('')
-  }
-
-  if (structured.considerations.length > 0) {
-    lines.push('## Considerations')
-    structured.considerations.forEach((item) => lines.push(`- ${item}`))
-    lines.push('')
-  }
-
-  if (structured.suggestedNextSteps.length > 0) {
-    lines.push('## Suggested next steps')
-    structured.suggestedNextSteps.forEach((item) => lines.push(`- ${item}`))
-    lines.push('')
+    if (structured.whatThisMeansForYou) {
+      lines.push(structured.whatThisMeansForYou)
+      lines.push('')
+    }
+    if (structured.keyPoints.length > 0) {
+      lines.push('### Key points')
+      structured.keyPoints.forEach((point) => lines.push(`- ${point}`))
+      lines.push('')
+    }
+    if (structured.considerations.length > 0) {
+      lines.push('### Considerations')
+      structured.considerations.forEach((item) => lines.push(`- ${item}`))
+      lines.push('')
+    }
+    if (structured.suggestedNextSteps.length > 0) {
+      lines.push('### Suggested next steps')
+      structured.suggestedNextSteps.forEach((item) => lines.push(`- ${item}`))
+      lines.push('')
+    }
   }
 
   lines.push(`Confidence: ${structured.confidence}`)
@@ -314,6 +329,7 @@ function buildFallbackStructuredResponse (raw, chunks, mode) {
   const structured = {
     directAnswer: raw.trim() || 'I apologize, but I could not generate a response.',
     sourceAnalysis: { cra: [], legislation: [], caseLaw: [] },
+    complianceRisk: '',
     keyPoints: [],
     whatThisMeansForYou: mode === 'degraded'
       ? 'This answer is general guidance only. Consult a qualified tax professional for advice specific to your situation.'

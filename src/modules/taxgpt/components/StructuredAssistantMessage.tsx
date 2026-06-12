@@ -84,43 +84,56 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({ struc
         </div>
       </section>
 
-      {structured.keyPoints.length > 0 && (
-        <section>
-          <h3 className="text-sm font-semibold text-primary-dark">Key points</h3>
-          <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-text">
-            {structured.keyPoints.map((point) => (
-              <li key={point}>{point}</li>
-            ))}
-          </ul>
+      {structured.complianceRisk && (
+        <section className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
+          <h3 className="text-sm font-semibold text-amber-900">Compliance Risk</h3>
+          <p className="mt-2 text-sm leading-relaxed text-amber-950">{structured.complianceRisk}</p>
         </section>
       )}
 
-      {structured.whatThisMeansForYou && (
+      {(structured.whatThisMeansForYou ||
+        structured.keyPoints.length > 0 ||
+        structured.considerations.length > 0 ||
+        structured.suggestedNextSteps.length > 0) && (
         <section className="rounded-md border border-primary/20 bg-primary/5 px-4 py-3">
           <h3 className="text-sm font-semibold text-primary-dark">What this means for you</h3>
-          <p className="mt-2 text-sm leading-relaxed text-text">{structured.whatThisMeansForYou}</p>
-        </section>
-      )}
 
-      {structured.considerations.length > 0 && (
-        <section>
-          <h3 className="text-sm font-semibold text-primary-dark">Considerations</h3>
-          <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-text">
-            {structured.considerations.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </section>
-      )}
+          {structured.whatThisMeansForYou && (
+            <p className="mt-2 text-sm leading-relaxed text-text">{structured.whatThisMeansForYou}</p>
+          )}
 
-      {structured.suggestedNextSteps.length > 0 && (
-        <section>
-          <h3 className="text-sm font-semibold text-primary-dark">Suggested next steps</h3>
-          <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-text">
-            {structured.suggestedNextSteps.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
+          {structured.keyPoints.length > 0 && (
+            <div className={structured.whatThisMeansForYou ? 'mt-4' : 'mt-2'}>
+              <h4 className="text-sm font-semibold text-primary-dark">Key points</h4>
+              <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-text">
+                {structured.keyPoints.map((point) => (
+                  <li key={point}>{point}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {structured.considerations.length > 0 && (
+            <div className="mt-4">
+              <h4 className="text-sm font-semibold text-primary-dark">Considerations</h4>
+              <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-text">
+                {structured.considerations.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {structured.suggestedNextSteps.length > 0 && (
+            <div className="mt-4">
+              <h4 className="text-sm font-semibold text-primary-dark">Suggested next steps</h4>
+              <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-text">
+                {structured.suggestedNextSteps.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
       )}
     </div>

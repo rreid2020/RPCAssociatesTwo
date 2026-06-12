@@ -40,6 +40,7 @@ export type TaxgptStructuredResponse = {
     legislation: TaxgptSourceAnalysisEntry[]
     caseLaw: TaxgptSourceAnalysisEntry[]
   }
+  complianceRisk?: string
   keyPoints: string[]
   whatThisMeansForYou: string
   considerations: string[]

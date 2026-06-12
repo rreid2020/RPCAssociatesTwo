@@ -29,11 +29,27 @@ function confidenceLabel (confidence: TaxgptStructuredResponse['confidence']) {
   }
 }
 
+const GENERIC_COMPLIANCE_RISK_PATTERNS = [
+  /if\s+.+\s+(are|is)\s+not\s+reported\s+correctly/i,
+  /there\s+may\s+be\s+risks\s+of\s+reassessment,\s*penalties,\s*(and\s+)?or\s+denied\s+claims/i,
+  /risks\s+of\s+reassessment,\s*penalties,\s*or\s+denied\s+claims/i
+]
+
+function isGenericComplianceRisk (text: string): boolean {
+  const normalized = text.trim()
+  if (!normalized || normalized.length < 48) return true
+  return GENERIC_COMPLIANCE_RISK_PATTERNS.some((pattern) => pattern.test(normalized))
+}
+
 const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({ structured }) => {
   const grouped = structured.groupedSources
   const keyPoints = structured.keyPoints ?? []
   const considerations = structured.considerations ?? []
   const suggestedNextSteps = structured.suggestedNextSteps ?? []
+  const complianceRisks = (structured.complianceRisks ?? []).filter((entry) => !isGenericComplianceRisk(entry.risk))
+  const legacyComplianceRisk = structured.complianceRisk && !isGenericComplianceRisk(structured.complianceRisk)
+    ? structured.complianceRisk
+    : null
 
   return (
     <div className="space-y-5">
@@ -87,10 +103,42 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({ struc
         </div>
       </section>
 
-      {structured.complianceRisk && (
+      {(complianceRisks.length > 0 || legacyComplianceRisk) && (
         <section className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
-          <h3 className="text-sm font-semibold text-amber-900">Compliance Risk</h3>
-          <p className="mt-2 text-sm leading-relaxed text-amber-950">{structured.complianceRisk}</p>
+          <h3 className="text-sm font-semibold text-amber-900">Compliance risks</h3>
+          <p className="mt-1 text-xs text-amber-800">
+            Source-backed non-compliance consequences for this question. Not legal advice.
+          </p>
+          {complianceRisks.length > 0 ? (
+            <ul className="mt-3 space-y-3">
+              {complianceRisks.map((entry) => (
+                <li key={`${entry.risk}-${entry.citationIndices.join(',')}`} className="text-sm leading-relaxed text-amber-950">
+                  <p>{entry.risk}</p>
+                  {entry.sources && entry.sources.length > 0 && (
+                    <ul className="mt-2 space-y-1">
+                      {entry.sources.map((source) => (
+                        <li key={`${entry.risk}-${source.citationIndex}-${source.sourceUrl}`}>
+                          <a
+                            href={source.sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-medium text-amber-900 underline decoration-amber-300 hover:decoration-amber-700"
+                          >
+                            [{source.citationIndex}] {source.sourceTitle}
+                          </a>
+                          {source.sectionHeading && (
+                            <span className="text-xs text-amber-800"> — {source.sectionHeading}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : legacyComplianceRisk ? (
+            <p className="mt-2 text-sm leading-relaxed text-amber-950">{legacyComplianceRisk}</p>
+          ) : null}
         </section>
       )}
 

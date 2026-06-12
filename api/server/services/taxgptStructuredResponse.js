@@ -13,13 +13,29 @@ const STRUCTURED_RESPONSE_SCHEMA = `{
     "legislation": [{ "citationIndex": 2, "summary": "One sentence on how this legislative source supports the answer" }],
     "caseLaw": [{ "citationIndex": 3, "summary": "One sentence on how this case supports the answer" }]
   },
-  "complianceRisk": "Risks of non-compliance with CRA rules if applicable (penalties, reassessment, denied claims). Empty string if none identified.",
+  "complianceRisks": [
+    {
+      "risk": "Question-specific non-compliance consequence grounded in a retrieved source",
+      "citationIndices": [1],
+      "basis": "cra | legislation | case_law"
+    }
+  ],
   "keyPoints": ["Bullet with supporting detail and [1] style citations"],
   "whatThisMeansForYou": "Practical plain-language implications for the user. Not legal advice.",
   "considerations": ["Caveats, provincial differences, timing, or when professional advice is needed"],
   "suggestedNextSteps": ["Concrete next actions or follow-up questions"],
   "confidence": "high | medium | low"
 }`
+
+const GENERIC_COMPLIANCE_RISK_PATTERNS = [
+  /if\s+.+\s+(are|is)\s+not\s+reported\s+correctly/i,
+  /there\s+may\s+be\s+risks\s+of\s+reassessment,\s*penalties,\s*(and\s+)?or\s+denied\s+claims/i,
+  /failure\s+to\s+comply\s+may\s+result\s+in\s+penalties/i,
+  /may\s+face\s+penalties\s+and\s+interest/i,
+  /non-?compliance\s+may\s+lead\s+to\s+penalties/i,
+  /could\s+result\s+in\s+reassessment,\s*penalties,\s*and\s+interest/i,
+  /risks\s+of\s+reassessment,\s*penalties,\s*or\s+denied\s+claims/i
+]
 
 const RAG_STRUCTURED_SYSTEM_PROMPT = `You are a helpful Canadian tax research assistant. Answer using ONLY the provided source material.
 
@@ -32,10 +48,13 @@ RULES:
 3. Only include a bucket entry when that source type was actually provided in the source list.
 4. If no legislation or case law sources were provided, return empty arrays for those buckets.
 5. Never fabricate citations, statutes, or cases.
-6. complianceRisk must describe CRA non-compliance risks when relevant (e.g. denied deductions, reassessment, penalties, interest). Use an empty string when no meaningful compliance risk applies.
-7. whatThisMeansForYou must be practical and user-focused, not legal advice.
-8. confidence: high = strong source support; medium = partial; low = limited or conflicting support.
-9. If sources are insufficient, say so in directAnswer and keep confidence low.`
+6. complianceRisks must be an array. Include items ONLY when retrieved sources describe a concrete non-compliance consequence for THIS question (missed filing, incorrect reporting, denied claim, reassessment, penalties, interest, or similar).
+7. Each complianceRisks item must cite at least one retrieved source index in citationIndices and name the specific obligation, form, section, policy, or case principle from that source. Do not use generic boilerplate such as "if not reported correctly there may be penalties."
+8. If no source-backed compliance consequence applies to this question, return complianceRisks as an empty array [].
+9. When case law sources are retrieved, a compliance risk may reference the judicial principle or outcome described in that case.
+10. whatThisMeansForYou must be practical and user-focused, not legal advice.
+11. confidence: high = strong source support; medium = partial; low = limited or conflicting support.
+12. If sources are insufficient, say so in directAnswer and keep confidence low.`
 
 const DEGRADED_STRUCTURED_SYSTEM_PROMPT = `You are a helpful Canadian tax assistant. The curated knowledge base is not available for this question.
 
@@ -47,7 +66,7 @@ RULES:
 2. Never fabricate citations, statutes, or cases.
 3. Be explicit in directAnswer that this is general guidance only.
 4. confidence must be "low".
-5. complianceRisk should note general risks of relying on general guidance without professional review, or use an empty string if not applicable.
+5. complianceRisks must be an empty array [] because no source-backed compliance analysis is available in degraded mode.
 6. whatThisMeansForYou must recommend consulting a qualified tax professional for case-specific advice.`
 
 /**
@@ -76,7 +95,8 @@ export function buildTaxgptStructuredUserPrompt (message, chunks) {
 Retrieved Sources (index, bucket, title, excerpt):
 ${sourcesText}
 
-Populate sourceAnalysis buckets using the bucket label shown for each source index.`
+Populate sourceAnalysis buckets using the bucket label shown for each source index.
+For complianceRisks, include only consequences that are supported by these retrieved excerpts for this specific question. Each item must cite source indices and avoid generic penalty boilerplate.`
 }
 
 /**
@@ -115,6 +135,98 @@ function normalizeConfidence (raw, fallback = 'medium') {
 }
 
 /**
+ * @param {string} text
+ */
+function isGenericComplianceRisk (text) {
+  const normalized = String(text || '').trim()
+  if (!normalized) return true
+  if (normalized.length < 48) return true
+  return GENERIC_COMPLIANCE_RISK_PATTERNS.some((pattern) => pattern.test(normalized))
+}
+
+/**
+ * @param {unknown} raw
+ */
+function normalizeComplianceBasis (raw) {
+  const value = String(raw || '').trim().toLowerCase()
+  if (value === 'cra' || value === 'legislation' || value === 'case_law') return value
+  return null
+}
+
+/**
+ * @param {unknown} raw
+ * @param {'rag' | 'degraded'} mode
+ */
+function normalizeComplianceRiskEntries (raw, mode) {
+  if (!Array.isArray(raw)) return []
+
+  return raw
+    .map((entry) => {
+      if (!isObject(entry)) return null
+      const risk = String(entry.risk || '').trim()
+      if (!risk || isGenericComplianceRisk(risk)) return null
+
+      const citationIndices = Array.isArray(entry.citationIndices)
+        ? entry.citationIndices
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value) && value >= 1)
+        : []
+
+      if (mode === 'rag' && citationIndices.length === 0) return null
+
+      return {
+        risk,
+        citationIndices,
+        basis: normalizeComplianceBasis(entry.basis)
+      }
+    })
+    .filter(Boolean)
+}
+
+/**
+ * @param {string} legacyRisk
+ * @param {'rag' | 'degraded'} mode
+ */
+function normalizeLegacyComplianceRisk (legacyRisk, mode) {
+  const risk = String(legacyRisk || '').trim()
+  if (!risk || isGenericComplianceRisk(risk)) return []
+  if (mode === 'degraded') return []
+
+  return [{
+    risk,
+    citationIndices: [],
+    basis: null
+  }]
+}
+
+/**
+ * @param {Array<{ risk: string, citationIndices: number[], basis: string | null }>} complianceRisks
+ * @param {Array<{ citation: Record<string, unknown>, sourceBucket?: string }>} chunks
+ */
+function enrichComplianceRisksWithSources (complianceRisks, chunks) {
+  return complianceRisks.map((entry) => {
+    const sources = entry.citationIndices
+      .map((index) => {
+        const chunk = chunks[index - 1]
+        if (!chunk?.citation) return null
+        return {
+          citationIndex: index,
+          sourceTitle: chunk.citation.sourceTitle || 'Unknown source',
+          sourceUrl: chunk.citation.sourceUrl || '',
+          sectionHeading: chunk.citation.sectionHeading || undefined,
+          sourceBucket: chunk.sourceBucket || chunk.citation.sourceBucket || entry.basis || 'cra'
+        }
+      })
+      .filter(Boolean)
+
+    return {
+      ...entry,
+      sources
+    }
+  })
+}
+
+/**
  * @param {string} raw
  * @param {Array<{ citation: Record<string, unknown> }>} chunks
  * @param {'rag' | 'degraded'} mode
@@ -142,10 +254,19 @@ export function parseTaxgptStructuredResponse (raw, chunks, mode) {
     caseLaw: normalizeBucketEntries(sourceAnalysisRaw.caseLaw)
   }
 
+  const complianceRisks = normalizeComplianceRiskEntries(parsed.complianceRisks, mode)
+  const legacyComplianceRisks = complianceRisks.length === 0
+    ? normalizeLegacyComplianceRisk(parsed.complianceRisk, mode)
+    : []
+  const enrichedComplianceRisks = enrichComplianceRisksWithSources(
+    [...complianceRisks, ...legacyComplianceRisks],
+    chunks
+  ).filter((entry) => mode !== 'rag' || entry.sources.length > 0)
+
   const structured = {
     directAnswer: String(parsed.directAnswer || '').trim() || 'I could not generate a structured answer.',
     sourceAnalysis,
-    complianceRisk: String(parsed.complianceRisk || '').trim(),
+    complianceRisks: enrichedComplianceRisks,
     keyPoints: Array.isArray(parsed.keyPoints)
       ? parsed.keyPoints.map((item) => String(item || '').trim()).filter(Boolean)
       : [],
@@ -161,7 +282,7 @@ export function parseTaxgptStructuredResponse (raw, chunks, mode) {
 
   const citationText = [
     structured.directAnswer,
-    structured.complianceRisk,
+    ...structured.complianceRisks.map((entry) => entry.risk),
     ...structured.keyPoints,
     structured.whatThisMeansForYou,
     ...structured.considerations,
@@ -278,9 +399,15 @@ function renderStructuredPlainText (structured, groupedSources, mode) {
     lines.push('')
   }
 
-  if (structured.complianceRisk) {
-    lines.push('## Compliance Risk')
-    lines.push(structured.complianceRisk)
+  if (structured.complianceRisks.length > 0) {
+    lines.push('## Compliance risks')
+    structured.complianceRisks.forEach((entry, index) => {
+      lines.push(`${index + 1}. ${entry.risk}`)
+      entry.sources.forEach((source) => {
+        const heading = source.sectionHeading ? ` — ${source.sectionHeading}` : ''
+        lines.push(`   Source [${source.citationIndex}]: ${source.sourceTitle}${heading}`)
+      })
+    })
     lines.push('')
   }
 
@@ -329,7 +456,7 @@ function buildFallbackStructuredResponse (raw, chunks, mode) {
   const structured = {
     directAnswer: raw.trim() || 'I apologize, but I could not generate a response.',
     sourceAnalysis: { cra: [], legislation: [], caseLaw: [] },
-    complianceRisk: '',
+    complianceRisks: [],
     keyPoints: [],
     whatThisMeansForYou: mode === 'degraded'
       ? 'This answer is general guidance only. Consult a qualified tax professional for advice specific to your situation.'

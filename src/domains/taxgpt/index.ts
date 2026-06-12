@@ -26,6 +26,21 @@ export type TaxgptSourceAnalysisEntry = {
   summary: string
 }
 
+export type TaxgptComplianceRiskSource = {
+  citationIndex: number
+  sourceTitle: string
+  sourceUrl: string
+  sectionHeading?: string
+  sourceBucket?: TaxgptSourceBucket
+}
+
+export type TaxgptComplianceRisk = {
+  risk: string
+  citationIndices: number[]
+  basis?: TaxgptSourceBucket | null
+  sources?: TaxgptComplianceRiskSource[]
+}
+
 export type TaxgptSourceGroup = {
   bucket: TaxgptSourceBucket
   label: string
@@ -40,6 +55,8 @@ export type TaxgptStructuredResponse = {
     legislation: TaxgptSourceAnalysisEntry[]
     caseLaw: TaxgptSourceAnalysisEntry[]
   }
+  complianceRisks?: TaxgptComplianceRisk[]
+  /** @deprecated Legacy single-string field from older responses */
   complianceRisk?: string
   keyPoints: string[]
   whatThisMeansForYou: string
@@ -58,9 +75,24 @@ export type TaxgptCorpusStats = {
   retrievalReady: boolean
 }
 
+export type TaxgptModelRouting = {
+  routing: 'multi_tier'
+  models: {
+    fast: string
+    standard: string
+    complex: string
+  }
+  defaults: {
+    fast: string
+    standard: string
+    complex: string
+  }
+}
+
 export type TaxgptStatus = {
   configured: boolean
   model: string
+  modelRouting?: TaxgptModelRouting
   embedModel: string
   corpus: TaxgptCorpusStats
 }
@@ -77,6 +109,9 @@ export type TaxgptChatResponse = {
   corpus: Pick<TaxgptCorpusStats, 'retrievalReady' | 'embeddingCount' | 'ingestedSourceCount'>
   reasoning?: string[]
   actions?: Array<{ type: string; description: string }>
+  model?: string
+  modelTier?: 'fast' | 'standard' | 'complex'
+  modelRoutingReason?: string
 }
 
 export type SendTaxgptChatPayload = {

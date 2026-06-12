@@ -8,6 +8,7 @@ import {
   parseTaxgptStructuredResponse
 } from './taxgptStructuredResponse.js'
 import { retrieveTaxgptChunks } from './taxgptRetrievalRepository.js'
+import { getTaxgptModelRoutingSummary, resolveTaxgptChatModel } from './taxgptModelRouter.js'
 
 const HIGH_RISK_KEYWORDS = [
   'gaar',
@@ -111,13 +112,14 @@ async function ensureChatTables (pool) {
   `)
 }
 
-async function resolveRetrievedChunks (pool, message, corpus) {
+async function resolveRetrievedChunks (pool, message, corpus, options = {}) {
+  const topK = options.topK || 5
   if (!corpus.retrievalReady) {
     return { chunks: [], mode: 'degraded', notice: 'CRA knowledge base is empty. Run TaxGPT ingestion to enable source-backed answers.' }
   }
 
   try {
-    const chunks = await retrieveTaxgptChunks(pool, message, { topK: 5, minSimilarity: 0.25 })
+    const chunks = await retrieveTaxgptChunks(pool, message, { topK, minSimilarity: 0.25 })
     if (chunks.length > 0) {
       return { chunks, mode: 'rag', notice: null }
     }
@@ -152,7 +154,6 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
   await ensureChatTables(pool)
 
   const openai = getOpenAIClient()
-  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
   const corpus = await getTaxgptCorpusStats(pool)
   let sessionId = payload.sessionId || null
 
@@ -188,8 +189,14 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
   )
 
   const riskLevel = detectHighRiskTopics(message) ? 'high' : 'low'
-  const retrieval = await resolveRetrievedChunks(pool, message, corpus)
+  const retrieval = await resolveRetrievedChunks(pool, message, corpus, { topK: 10 })
   const retrievalMode = retrieval.mode
+  const resolvedModelPlan = resolveTaxgptChatModel({
+    message,
+    retrievalMode,
+    riskLevel,
+    chunks: retrieval.chunks
+  })
   const annotatedChunks = annotateChunksWithBuckets(retrieval.chunks)
   const systemPrompt = buildTaxgptStructuredSystemPrompt(retrievalMode)
   const userPrompt = retrievalMode === 'rag'
@@ -199,12 +206,13 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
   let completion
   try {
     completion = await openai.chat.completions.create({
-      model,
+      model: resolvedModelPlan.model,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
       temperature: retrievalMode === 'rag' ? 0.3 : 0.5,
+      max_tokens: resolvedModelPlan.maxTokens,
       response_format: { type: 'json_object' }
     })
   } catch (error) {
@@ -212,7 +220,7 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
   }
 
   const rawResponse = completion.choices[0]?.message?.content ||
-    '{"directAnswer":"I apologize, but I could not generate a response.","sourceAnalysis":{"cra":[],"legislation":[],"caseLaw":[]},"complianceRisk":"","keyPoints":[],"whatThisMeansForYou":"","considerations":[],"suggestedNextSteps":[],"confidence":"low"}'
+    '{"directAnswer":"I apologize, but I could not generate a response.","sourceAnalysis":{"cra":[],"legislation":[],"caseLaw":[]},"complianceRisks":[],"keyPoints":[],"whatThisMeansForYou":"","considerations":[],"suggestedNextSteps":[],"confidence":"low"}'
 
   const parsed = parseTaxgptStructuredResponse(rawResponse, annotatedChunks, retrievalMode)
   const response = parsed.plainText
@@ -240,6 +248,9 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
     sessionId,
     retrievalMode,
     retrievalNotice: retrieval.notice,
+    model: resolvedModelPlan.model,
+    modelTier: resolvedModelPlan.tier,
+    modelRoutingReason: resolvedModelPlan.reason,
     corpus: {
       retrievalReady: corpus.retrievalReady,
       embeddingCount: corpus.embeddingCount,
@@ -258,9 +269,11 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
 
 export async function getTaxgptStatus (pool) {
   const corpus = await getTaxgptCorpusStats(pool)
+  const routing = getTaxgptModelRoutingSummary()
   return {
     configured: Boolean(process.env.OPENAI_API_KEY),
-    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    model: routing.models.standard,
+    modelRouting: routing,
     embedModel: process.env.OPENAI_EMBED_MODEL || 'text-embedding-3-small',
     corpus
   }

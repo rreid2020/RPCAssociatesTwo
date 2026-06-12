@@ -37,9 +37,6 @@ const SignUp: FC = () => {
   const [industry, setIndustry] = useState('')
   const [websiteUrl, setWebsiteUrl] = useState('')
   const [taxIdentifier, setTaxIdentifier] = useState('')
-  const [primaryContactName, setPrimaryContactName] = useState('')
-  const [primaryContactEmail, setPrimaryContactEmail] = useState('')
-  const [primaryContactPhone, setPrimaryContactPhone] = useState('')
   const postAuthQuery = new URLSearchParams()
   if (nextPath) {
     postAuthQuery.set('next', nextPath)
@@ -136,9 +133,8 @@ const SignUp: FC = () => {
         industry: industry.trim(),
         websiteUrl: websiteUrl.trim(),
         taxIdentifier: taxIdentifier.trim(),
-        primaryContactName: primaryContactName.trim(),
-        primaryContactEmail: primaryContactEmail.trim(),
-        primaryContactPhone: primaryContactPhone.trim(),
+        primaryContactName: fullName || undefined,
+        primaryContactEmail: email.trim() || undefined,
         onboardingCompleted: false
       }
     }
@@ -590,44 +586,6 @@ const SignUp: FC = () => {
                                 type="text"
                                 value={taxIdentifier}
                                 onChange={(e) => { setTaxIdentifier(e.target.value) }}
-                                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                              />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                              <label htmlFor="primaryContactName" className="block text-sm font-medium text-text mb-1">
-                                Primary contact name
-                              </label>
-                              <input
-                                id="primaryContactName"
-                                type="text"
-                                value={primaryContactName}
-                                onChange={(e) => { setPrimaryContactName(e.target.value) }}
-                                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                              />
-                            </div>
-                            <div>
-                              <label htmlFor="primaryContactEmail" className="block text-sm font-medium text-text mb-1">
-                                Primary contact email
-                              </label>
-                              <input
-                                id="primaryContactEmail"
-                                type="email"
-                                value={primaryContactEmail}
-                                onChange={(e) => { setPrimaryContactEmail(e.target.value) }}
-                                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                              />
-                            </div>
-                            <div>
-                              <label htmlFor="primaryContactPhone" className="block text-sm font-medium text-text mb-1">
-                                Primary contact phone
-                              </label>
-                              <input
-                                id="primaryContactPhone"
-                                type="text"
-                                value={primaryContactPhone}
-                                onChange={(e) => { setPrimaryContactPhone(e.target.value) }}
                                 className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                               />
                             </div>

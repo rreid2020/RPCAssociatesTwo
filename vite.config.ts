@@ -12,6 +12,7 @@ export default defineConfig({
   base: '/',
   plugins: [react()],
   resolve: {
+    dedupe: ['react', 'react-dom', 'react-router', 'react-router-dom'],
     alias: {
       '@': path.resolve(__dirname, 'src'),
       '@router': path.resolve(__dirname, 'src/router'),

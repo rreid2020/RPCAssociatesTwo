@@ -137,7 +137,7 @@ const DonationButton: FC = () => {
               <div className="mt-5 space-y-3">
                 {config.stripeCheckoutEnabled && (
                   <div className="grid grid-cols-2 gap-2">
-                    {config.amountsCents.map((amountCents) => (
+                    {(config.amountsCents ?? []).map((amountCents) => (
                       <button
                         key={amountCents}
                         type="button"

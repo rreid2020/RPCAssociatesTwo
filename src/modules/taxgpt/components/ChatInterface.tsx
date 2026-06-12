@@ -1,5 +1,5 @@
 import { FC, useEffect, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import { fetchTaxgptCorpus, sendTaxgptChatMessage } from '../../../domains/taxgpt'
 import type { TaxgptCorpusStats } from '../../../domains/taxgpt'
@@ -15,7 +15,6 @@ import RiskBanner from './RiskBanner'
 
 const ChatInterface: FC = () => {
   const { getToken } = useAuth()
-  const [searchParams, setSearchParams] = useSearchParams()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [riskLevel, setRiskLevel] = useState<RiskLevel>('low')
@@ -41,15 +40,23 @@ const ChatInterface: FC = () => {
   }, [messages, sending])
 
   useEffect(() => {
-    const donation = searchParams.get('donation')
+    const params = new URLSearchParams(window.location.search)
+    const donation = params.get('donation')
+    if (donation !== 'success' && donation !== 'cancelled') return
+
     if (donation === 'success') {
       setNotice('Thank you for supporting TaxGPT development.')
-      setSearchParams({}, { replace: true })
-    } else if (donation === 'cancelled') {
+    } else {
       setNotice('Donation checkout was cancelled.')
-      setSearchParams({}, { replace: true })
     }
-  }, [searchParams, setSearchParams])
+
+    params.delete('donation')
+    const nextSearch = params.toString()
+    const nextUrl = nextSearch
+      ? `${window.location.pathname}?${nextSearch}`
+      : window.location.pathname
+    window.history.replaceState({}, '', nextUrl)
+  }, [])
 
   useEffect(() => {
     let mounted = true

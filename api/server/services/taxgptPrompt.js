@@ -1,3 +1,5 @@
+import { isTableOfContentsExcerpt } from './taxgptRetrievalFilters.js'
+
 const SOURCE_ONLY_SYSTEM_PROMPT = `You are a helpful Canadian tax assistant. You provide information based on official CRA (Canada Revenue Agency) sources.
 
 CRITICAL RULES:
@@ -55,7 +57,11 @@ export function extractTaxgptCitations (response, chunks) {
     .map((citationIndex) => ({
       ...chunks[citationIndex - 1].citation,
       citationIndex,
-      excerpt: String(chunks[citationIndex - 1].content || '').replace(/\s+/g, ' ').trim().slice(0, 900)
+      excerpt: (() => {
+        const cleaned = String(chunks[citationIndex - 1].content || '').replace(/\s+/g, ' ').trim()
+        if (!cleaned || isTableOfContentsExcerpt(cleaned)) return ''
+        return cleaned.slice(0, 900)
+      })()
     }))
 }
 

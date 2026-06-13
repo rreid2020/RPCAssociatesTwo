@@ -1,5 +1,6 @@
 import { embedTaxgptQuery, formatEmbeddingVector } from './taxgptEmbeddingService.js'
 import { resolveDocumentDisplayTitle } from './taxgptSourceDisplay.js'
+import { filterRetrievedChunks } from './taxgptRetrievalFilters.js'
 
 const DEFAULT_TOP_K = 5
 const MAX_TOP_K = 20
@@ -35,7 +36,7 @@ export async function retrieveTaxgptChunks (pool, query, options = {}) {
   const queryEmbedding = await embedTaxgptQuery(query)
   const embeddingVector = formatEmbeddingVector(queryEmbedding)
   const sanitizedQuery = escapeLikePattern(query)
-  const vectorLimit = Math.min(topK * 3, 50)
+  const vectorLimit = Math.min(topK * 8, 80)
 
   const { rows } = await pool.query(
     `
@@ -59,7 +60,10 @@ export async function retrieveTaxgptChunks (pool, query, options = {}) {
           s.title AS "sourceTitle",
           s.category AS "sourceCategory",
           s.metadata AS "sourceMetadata",
+          s.parent_source_id AS "parentSourceId",
+          s.last_ingested_at AS "lastIngestedAt",
           parent.title AS "parentSourceTitle",
+          parent.metadata AS "parentSourceMetadata",
           d.metadata AS "documentMetadata",
           te.base_similarity,
           LEAST(
@@ -84,14 +88,15 @@ export async function retrieveTaxgptChunks (pool, query, options = {}) {
     [embeddingVector, vectorLimit, sanitizedQuery, topK]
   )
 
-  return rows
-    .filter((row) => (Number(row.similarity) || 0) >= minSimilarity)
-    .map((row, index) => ({
-      chunkId: row.chunkId,
-      content: row.content,
-      similarity: Number(row.similarity) || 0,
-      sourceCategory: row.sourceCategory,
-      sourceMetadata: row.sourceMetadata,
-      citation: buildCitation(row, index)
-    }))
+  return filterRetrievedChunks(
+    rows.filter((row) => (Number(row.similarity) || 0) >= minSimilarity),
+    topK
+  ).map((row, index) => ({
+    chunkId: row.chunkId,
+    content: row.content,
+    similarity: Number(row.similarity) || 0,
+    sourceCategory: row.sourceCategory,
+    sourceMetadata: row.sourceMetadata,
+    citation: buildCitation(row, index)
+  }))
 }

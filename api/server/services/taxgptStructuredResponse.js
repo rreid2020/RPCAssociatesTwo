@@ -5,6 +5,7 @@ import {
   TAXGPT_SOURCE_BUCKETS
 } from './taxgptSourceBuckets.js'
 import { extractTaxgptCitations } from './taxgptPrompt.js'
+import { isTableOfContentsExcerpt } from './taxgptRetrievalFilters.js'
 
 const STRUCTURED_RESPONSE_SCHEMA = `{
   "directAnswer": "2-3 sentence direct answer to the user question",
@@ -114,7 +115,7 @@ function isObject (value) {
  */
 function normalizeExcerpt (text, maxLength = 900) {
   const cleaned = String(text || '').replace(/\s+/g, ' ').trim()
-  if (!cleaned) return ''
+  if (!cleaned || isTableOfContentsExcerpt(cleaned)) return ''
   if (cleaned.length <= maxLength) return cleaned
   return `${cleaned.slice(0, maxLength).trim()}…`
 }
@@ -391,30 +392,32 @@ function buildGroupedSources (citations, sourceAnalysis, sourceReferences = [], 
     const key = bucket === 'case_law' ? 'caseLaw' : bucket
     const analysisEntries = sourceAnalysis[key] || []
     const entries = []
-    const seen = new Set()
+    const seenCitationIndices = new Set()
 
     for (const item of analysisEntries) {
       const citation = citationByIndex.get(item.citationIndex)
       if (!citation) continue
-      const dedupeKey = citation.sourceUrl || citation.chunkId
-      if (seen.has(dedupeKey)) continue
-      seen.add(dedupeKey)
+      if (seenCitationIndices.has(item.citationIndex)) continue
+      seenCitationIndices.add(item.citationIndex)
+      const excerpt = excerptByIndex.get(item.citationIndex) || citation.excerpt || ''
+      if (!excerpt && !item.summary) continue
       entries.push({
         ...citation,
         citationIndex: item.citationIndex,
-        excerpt: excerptByIndex.get(item.citationIndex) || citation.excerpt || '',
+        excerpt,
         summary: item.summary || ''
       })
     }
 
     for (const citation of citations) {
       if (citation.sourceBucket !== bucket) continue
-      const dedupeKey = `${citation.citationIndex || ''}:${citation.sourceUrl || citation.chunkId}`
-      if (seen.has(dedupeKey)) continue
-      seen.add(dedupeKey)
+      if (!citation.citationIndex || seenCitationIndices.has(citation.citationIndex)) continue
+      const excerpt = excerptByIndex.get(citation.citationIndex) || citation.excerpt || ''
+      if (!excerpt) continue
+      seenCitationIndices.add(citation.citationIndex)
       entries.push({
         ...citation,
-        excerpt: excerptByIndex.get(citation.citationIndex) || citation.excerpt || ''
+        excerpt
       })
     }
 

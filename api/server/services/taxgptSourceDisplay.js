@@ -27,7 +27,7 @@ function isGenericTitle (title) {
 /**
  * @param {string} title
  */
-function cleanPublicationTitle (title) {
+export function cleanPublicationTitle (title) {
   return String(title || '')
     .replace(/^\d{4}\s*[–-]\s*/i, '')
     .replace(/\s*\([^)]*\.pdf\)\s*$/i, '')

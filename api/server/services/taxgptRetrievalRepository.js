@@ -1,4 +1,5 @@
 import { embedTaxgptQuery, formatEmbeddingVector } from './taxgptEmbeddingService.js'
+import { resolveDocumentDisplayTitle } from './taxgptSourceDisplay.js'
 
 const DEFAULT_TOP_K = 5
 const MAX_TOP_K = 20
@@ -8,10 +9,18 @@ function escapeLikePattern (value) {
 }
 
 function buildCitation (row, index) {
+  const sourceTitle = resolveDocumentDisplayTitle({
+    sourceTitle: row.sourceTitle,
+    sourceUrl: row.sourceUrl,
+    sourceMetadata: row.sourceMetadata,
+    parentSourceTitle: row.parentSourceTitle,
+    documentMetadata: row.documentMetadata
+  })
+
   return {
     id: `citation-${index}`,
     chunkId: row.chunkId,
-    sourceTitle: row.sourceTitle || 'Unknown source',
+    sourceTitle,
     sourceUrl: row.sourceUrl || '',
     sectionHeading: row.sectionHeading || undefined,
     pageNumber: row.pageNumber ?? undefined,
@@ -50,6 +59,8 @@ export async function retrieveTaxgptChunks (pool, query, options = {}) {
           s.title AS "sourceTitle",
           s.category AS "sourceCategory",
           s.metadata AS "sourceMetadata",
+          parent.title AS "parentSourceTitle",
+          d.metadata AS "documentMetadata",
           te.base_similarity,
           LEAST(
             1.0,
@@ -63,6 +74,7 @@ export async function retrieveTaxgptChunks (pool, query, options = {}) {
         INNER JOIN taxgpt.chunks c ON te.chunk_id = c.id
         INNER JOIN taxgpt.documents d ON c.document_id = d.id
         LEFT JOIN taxgpt.sources s ON d.source_id = s.id
+        LEFT JOIN taxgpt.sources parent ON parent.id = s.parent_source_id
       )
       SELECT *
       FROM ranked_chunks

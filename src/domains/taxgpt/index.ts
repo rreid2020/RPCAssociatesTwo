@@ -20,6 +20,7 @@ export type Citation = {
   sourceBucket?: TaxgptSourceBucket
   citationIndex?: number
   summary?: string
+  excerpt?: string
 }
 
 export type TaxgptSourceReference = {
@@ -31,6 +32,7 @@ export type TaxgptSourceReference = {
   sectionHeading?: string
   pageNumber?: number
   sourceBucket?: TaxgptSourceBucket
+  excerpt?: string
 }
 
 export type TaxgptSourceAnalysisEntry = {

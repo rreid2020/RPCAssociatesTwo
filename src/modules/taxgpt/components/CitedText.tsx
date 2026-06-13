@@ -15,6 +15,10 @@ function buildReferenceMap (sourceReferences: TaxgptSourceReference[] = []) {
   return map
 }
 
+function referenceAnchorId (citationIndex: number) {
+  return `taxgpt-ref-${citationIndex}`
+}
+
 const CitedText: FC<CitedTextProps> = ({ text, sourceReferences = [], className = '' }) => {
   const referenceMap = buildReferenceMap(sourceReferences)
   const parts = text.split(/(\[\d+\])/g)
@@ -30,7 +34,7 @@ const CitedText: FC<CitedTextProps> = ({ text, sourceReferences = [], className 
 
     const citationIndex = Number(match[1])
     const reference = referenceMap.get(citationIndex)
-    if (!reference?.sourceUrl) {
+    if (!reference) {
       nodes.push(
         <span
           key={`cite-missing-${index}`}
@@ -46,9 +50,7 @@ const CitedText: FC<CitedTextProps> = ({ text, sourceReferences = [], className 
     nodes.push(
       <a
         key={`cite-${index}`}
-        href={reference.sourceUrl}
-        target="_blank"
-        rel="noopener noreferrer"
+        href={`#${referenceAnchorId(citationIndex)}`}
         className="font-medium text-primary hover:underline"
         title={reference.sourceTitle}
       >

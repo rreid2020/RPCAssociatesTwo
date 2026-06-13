@@ -54,7 +54,8 @@ export function extractTaxgptCitations (response, chunks) {
     .sort((a, b) => a - b)
     .map((citationIndex) => ({
       ...chunks[citationIndex - 1].citation,
-      citationIndex
+      citationIndex,
+      excerpt: String(chunks[citationIndex - 1].content || '').replace(/\s+/g, ' ').trim().slice(0, 900)
     }))
 }
 

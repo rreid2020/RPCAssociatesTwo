@@ -9,9 +9,9 @@ import { extractTaxgptCitations } from './taxgptPrompt.js'
 const STRUCTURED_RESPONSE_SCHEMA = `{
   "directAnswer": "2-3 sentence direct answer to the user question",
   "sourceAnalysis": {
-    "cra": [{ "citationIndex": 1, "summary": "One sentence on how this CRA source supports the answer" }],
-    "legislation": [{ "citationIndex": 2, "summary": "One sentence on how this legislative source supports the answer" }],
-    "caseLaw": [{ "citationIndex": 3, "summary": "One sentence on how this case supports the answer" }]
+    "cra": [{ "citationIndex": 1 }],
+    "legislation": [{ "citationIndex": 2 }],
+    "caseLaw": [{ "citationIndex": 3 }]
   },
   "complianceRisks": [
     {
@@ -44,17 +44,18 @@ ${STRUCTURED_RESPONSE_SCHEMA}
 
 RULES:
 1. Use numbered citations [1], [2], etc. that map to the provided source list indices.
-2. Populate sourceAnalysis.cra, sourceAnalysis.legislation, and sourceAnalysis.caseLaw separately.
+2. Populate sourceAnalysis.cra, sourceAnalysis.legislation, and sourceAnalysis.caseLaw with citationIndex values for sources you relied on in each bucket.
 3. Only include a bucket entry when that source type was actually provided in the source list.
-4. If no legislation or case law sources were provided, return empty arrays for those buckets.
-5. Never fabricate citations, statutes, or cases.
-6. complianceRisks must be an array. Include items ONLY when retrieved sources describe a concrete non-compliance consequence for THIS question (missed filing, incorrect reporting, denied claim, reassessment, penalties, interest, or similar).
-7. Each complianceRisks item must cite at least one retrieved source index in citationIndices and name the specific obligation, form, section, policy, or case principle from that source. Do not use generic boilerplate such as "if not reported correctly there may be penalties."
-8. If no source-backed compliance consequence applies to this question, return complianceRisks as an empty array [].
-9. When case law sources are retrieved, a compliance risk may reference the judicial principle or outcome described in that case.
-10. whatThisMeansForYou must be practical and user-focused, not legal advice.
-11. confidence: high = strong source support; medium = partial; low = limited or conflicting support.
-12. If sources are insufficient, say so in directAnswer and keep confidence low.`
+4. Do not write generic source summaries; the UI displays the retrieved excerpt text for each citation index.
+5. If no legislation or case law sources were provided, return empty arrays for those buckets.
+6. Never fabricate citations, statutes, or cases.
+7. complianceRisks must be an array. Include items ONLY when retrieved sources describe a concrete non-compliance consequence for THIS question (missed filing, incorrect reporting, denied claim, reassessment, penalties, interest, or similar).
+8. Each complianceRisks item must cite at least one retrieved source index in citationIndices and name the specific obligation, form, section, policy, or case principle from that source. Do not use generic boilerplate such as "if not reported correctly there may be penalties."
+9. If no source-backed compliance consequence applies to this question, return complianceRisks as an empty array [].
+10. When case law sources are retrieved, a compliance risk may reference the judicial principle or outcome described in that case.
+11. whatThisMeansForYou must be practical and user-focused, not legal advice.
+12. confidence: high = strong source support; medium = partial; low = limited or conflicting support.
+13. If sources are insufficient, say so in directAnswer and keep confidence low.`
 
 const DEGRADED_STRUCTURED_SYSTEM_PROMPT = `You are a helpful Canadian tax assistant. The curated knowledge base is not available for this question.
 
@@ -108,6 +109,28 @@ function isObject (value) {
 }
 
 /**
+ * @param {string} text
+ * @param {number} maxLength
+ */
+function normalizeExcerpt (text, maxLength = 900) {
+  const cleaned = String(text || '').replace(/\s+/g, ' ').trim()
+  if (!cleaned) return ''
+  if (cleaned.length <= maxLength) return cleaned
+  return `${cleaned.slice(0, maxLength).trim()}…`
+}
+
+/**
+ * @param {Array<{ content?: string }>} chunks
+ */
+function buildChunkExcerptMap (chunks) {
+  const map = new Map()
+  chunks.forEach((chunk, index) => {
+    map.set(index + 1, normalizeExcerpt(chunk.content))
+  })
+  return map
+}
+
+/**
  * @param {unknown} raw
  * @returns {Array<{ citationIndex: number, summary: string }>}
  */
@@ -117,8 +140,8 @@ function normalizeBucketEntries (raw) {
     .map((entry) => {
       if (!isObject(entry)) return null
       const citationIndex = Number(entry.citationIndex)
+      if (!Number.isFinite(citationIndex) || citationIndex < 1) return null
       const summary = String(entry.summary || '').trim()
-      if (!Number.isFinite(citationIndex) || citationIndex < 1 || !summary) return null
       return { citationIndex, summary }
     })
     .filter(Boolean)
@@ -298,7 +321,7 @@ export function parseTaxgptStructuredResponse (raw, chunks, mode) {
 
   const enrichedCitations = enrichCitationsWithBuckets(citations, chunks)
   const sourceReferences = buildSourceReferences(chunks)
-  const groupedSources = buildGroupedSources(enrichedCitations, sourceAnalysis, sourceReferences)
+  const groupedSources = buildGroupedSources(enrichedCitations, sourceAnalysis, sourceReferences, chunks)
 
   return {
     structured: {
@@ -307,7 +330,7 @@ export function parseTaxgptStructuredResponse (raw, chunks, mode) {
     },
     citations: enrichedCitations,
     groupedSources,
-    plainText: renderStructuredPlainText(structured, groupedSources, mode)
+    plainText: renderStructuredPlainText({ ...structured, sourceReferences }, groupedSources, mode)
   }
 }
 
@@ -322,7 +345,8 @@ function enrichCitationsWithBuckets (citations, chunks) {
     const sourceBucket = chunk?.sourceBucket || chunk?.citation?.sourceBucket || 'cra'
     return {
       ...citation,
-      sourceBucket
+      sourceBucket,
+      excerpt: normalizeExcerpt(chunk?.content)
     }
   })
 }
@@ -339,7 +363,8 @@ function buildSourceReferences (chunks) {
     sourceUrl: chunk.citation.sourceUrl || '',
     sectionHeading: chunk.citation.sectionHeading || undefined,
     pageNumber: chunk.citation.pageNumber ?? undefined,
-    sourceBucket: chunk.sourceBucket || chunk.citation?.sourceBucket || 'cra'
+    sourceBucket: chunk.sourceBucket || chunk.citation?.sourceBucket || 'cra',
+    excerpt: normalizeExcerpt(chunk.content)
   }))
 }
 
@@ -347,7 +372,8 @@ function buildSourceReferences (chunks) {
  * @param {Array<Record<string, unknown>>} citations
  * @param {Record<string, Array<{ citationIndex: number, summary: string }>>} sourceAnalysis
  */
-function buildGroupedSources (citations, sourceAnalysis, sourceReferences = []) {
+function buildGroupedSources (citations, sourceAnalysis, sourceReferences = [], chunks = []) {
+  const excerptByIndex = buildChunkExcerptMap(chunks)
   const citationByIndex = new Map()
   for (const reference of sourceReferences) {
     citationByIndex.set(reference.citationIndex, reference)
@@ -376,7 +402,8 @@ function buildGroupedSources (citations, sourceAnalysis, sourceReferences = []) 
       entries.push({
         ...citation,
         citationIndex: item.citationIndex,
-        summary: item.summary
+        excerpt: excerptByIndex.get(item.citationIndex) || citation.excerpt || '',
+        summary: item.summary || ''
       })
     }
 
@@ -385,7 +412,10 @@ function buildGroupedSources (citations, sourceAnalysis, sourceReferences = []) 
       const dedupeKey = `${citation.citationIndex || ''}:${citation.sourceUrl || citation.chunkId}`
       if (seen.has(dedupeKey)) continue
       seen.add(dedupeKey)
-      entries.push(citation)
+      entries.push({
+        ...citation,
+        excerpt: excerptByIndex.get(citation.citationIndex) || citation.excerpt || ''
+      })
     }
 
     grouped[bucket] = {
@@ -412,15 +442,6 @@ function renderStructuredPlainText (structured, groupedSources, mode) {
     '## Sources consulted'
   ]
 
-  if (Array.isArray(structured.sourceReferences) && structured.sourceReferences.length > 0) {
-    lines.push('### Reference index')
-    structured.sourceReferences.forEach((reference) => {
-      const heading = reference.sectionHeading ? ` — ${reference.sectionHeading}` : ''
-      lines.push(`[${reference.citationIndex}] ${reference.sourceTitle}${heading}`)
-    })
-    lines.push('')
-  }
-
   for (const bucket of TAXGPT_SOURCE_BUCKETS) {
     const group = groupedSources[bucket]
     lines.push(`### ${group.label}`)
@@ -428,9 +449,16 @@ function renderStructuredPlainText (structured, groupedSources, mode) {
       lines.push(group.emptyMessage)
     } else {
       group.entries.forEach((entry, index) => {
-        const summary = entry.summary ? ` — ${entry.summary}` : ''
         const prefix = entry.citationIndex ? `[${entry.citationIndex}] ` : ''
-        lines.push(`${index + 1}. ${prefix}${entry.sourceTitle}${summary}`)
+        lines.push(`${index + 1}. ${prefix}${entry.sourceTitle}`)
+        if (entry.sectionHeading) {
+          lines.push(`   ${entry.sectionHeading}`)
+        }
+        if (entry.excerpt) {
+          lines.push(`> ${entry.excerpt}`)
+        } else if (entry.summary) {
+          lines.push(`> ${entry.summary}`)
+        }
       })
     }
     lines.push('')
@@ -481,6 +509,16 @@ function renderStructuredPlainText (structured, groupedSources, mode) {
     lines.push('Mode: general guidance (not source-backed)')
   }
 
+  if (Array.isArray(structured.sourceReferences) && structured.sourceReferences.length > 0) {
+    lines.push('')
+    lines.push('## References')
+    structured.sourceReferences.forEach((reference) => {
+      const heading = reference.sectionHeading ? ` — ${reference.sectionHeading}` : ''
+      const url = reference.sourceUrl ? ` (${reference.sourceUrl})` : ''
+      lines.push(`[${reference.citationIndex}] ${reference.sourceTitle}${heading}${url}`)
+    })
+  }
+
   return lines.join('\n').trim()
 }
 
@@ -506,7 +544,7 @@ function buildFallbackStructuredResponse (raw, chunks, mode) {
   const citations = mode === 'rag' ? extractTaxgptCitations(raw, chunks) : []
   const enrichedCitations = enrichCitationsWithBuckets(citations, chunks)
   const sourceReferences = buildSourceReferences(chunks)
-  const groupedSources = buildGroupedSources(enrichedCitations, structured.sourceAnalysis, sourceReferences)
+  const groupedSources = buildGroupedSources(enrichedCitations, structured.sourceAnalysis, sourceReferences, chunks)
 
   return {
     structured: {
@@ -515,7 +553,7 @@ function buildFallbackStructuredResponse (raw, chunks, mode) {
     },
     citations: enrichedCitations,
     groupedSources,
-    plainText: renderStructuredPlainText(structured, groupedSources, mode)
+    plainText: renderStructuredPlainText({ ...structured, sourceReferences }, groupedSources, mode)
   }
 }
 

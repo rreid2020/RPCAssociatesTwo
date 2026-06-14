@@ -1,7 +1,7 @@
-const DEFAULT_FAST_MODEL = 'gpt-4o-mini'
-const DEFAULT_STANDARD_MODEL = 'gpt-4o'
+const DEFAULT_FAST_MODEL = 'gpt-5.4-mini'
+const DEFAULT_STANDARD_MODEL = 'gpt-5.5'
 /** Reasoning-oriented model for GAAR, residency, avoidance, and multi-step tax analysis. */
-const DEFAULT_COMPLEX_MODEL = 'o4-mini'
+const DEFAULT_COMPLEX_MODEL = 'gpt-5.5-pro'
 
 const COMPLEX_QUESTION_MIN_CHARS = 420
 const SIMPLE_QUESTION_MAX_CHARS = 140
@@ -44,14 +44,61 @@ export function usesMaxCompletionTokens (model) {
 }
 
 /**
+ * Reasoning-oriented GPT-5 and o-series models only support the default temperature.
+ * gpt-5-chat-* variants still accept custom temperature values.
+ * @param {string} model
+ */
+export function supportsCustomTemperature (model) {
+  const normalized = String(model || '').trim().toLowerCase()
+  if (/^gpt-5-chat/.test(normalized)) return true
+  if (/^gpt-5/.test(normalized)) return false
+  if (/^o\d/.test(normalized)) return false
+  return true
+}
+
+/**
  * @param {string} model
  * @param {number} maxTokens
  */
 export function buildChatCompletionTokenLimit (model, maxTokens) {
+  const adjustedMaxTokens = usesMaxCompletionTokens(model)
+    ? Math.min(Math.max(Math.round(maxTokens * 1.5), 6000), 16000)
+    : maxTokens
+
   if (usesMaxCompletionTokens(model)) {
-    return { max_completion_tokens: maxTokens }
+    return { max_completion_tokens: adjustedMaxTokens }
   }
-  return { max_tokens: maxTokens }
+  return { max_tokens: adjustedMaxTokens }
+}
+
+/**
+ * Build OpenAI Chat Completions params compatible with both legacy and GPT-5/o-series models.
+ * @param {{
+ *   model: string
+ *   maxTokens: number
+ *   temperature?: number
+ *   jsonResponse?: boolean
+ * }} input
+ */
+export function buildTaxgptChatCompletionOptions ({
+  model,
+  maxTokens,
+  temperature,
+  jsonResponse = true
+}) {
+  const options = {
+    ...buildChatCompletionTokenLimit(model, maxTokens)
+  }
+
+  if (supportsCustomTemperature(model) && typeof temperature === 'number') {
+    options.temperature = temperature
+  }
+
+  if (jsonResponse) {
+    options.response_format = { type: 'json_object' }
+  }
+
+  return options
 }
 
 /**

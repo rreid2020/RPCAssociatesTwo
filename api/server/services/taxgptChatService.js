@@ -8,7 +8,7 @@ import {
   parseTaxgptStructuredResponse
 } from './taxgptStructuredResponse.js'
 import { retrieveTaxgptChunks } from './taxgptRetrievalRepository.js'
-import { getTaxgptModelRoutingSummary, resolveTaxgptChatModel, buildChatCompletionTokenLimit } from './taxgptModelRouter.js'
+import { getTaxgptModelRoutingSummary, resolveTaxgptChatModel, buildTaxgptChatCompletionOptions } from './taxgptModelRouter.js'
 import { normalizeTaxgptLanguage, taxgptLanguageLabel } from './taxgptSourceLanguage.js'
 
 const HIGH_RISK_KEYWORDS = [
@@ -216,9 +216,12 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
-      temperature: retrievalMode === 'rag' ? 0.3 : 0.5,
-      ...buildChatCompletionTokenLimit(resolvedModelPlan.model, resolvedModelPlan.maxTokens),
-      response_format: { type: 'json_object' }
+      ...buildTaxgptChatCompletionOptions({
+        model: resolvedModelPlan.model,
+        maxTokens: resolvedModelPlan.maxTokens,
+        temperature: retrievalMode === 'rag' ? 0.3 : 0.5,
+        jsonResponse: true
+      })
     })
   } catch (error) {
     throw mapOpenAIError(error)

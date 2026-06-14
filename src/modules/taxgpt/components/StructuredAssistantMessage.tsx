@@ -1,5 +1,9 @@
 import { FC } from 'react'
-import type { TaxgptSourceBucket, TaxgptStructuredResponse } from '../../../domains/taxgpt'
+import type {
+  TaxgptComplianceRiskSource,
+  TaxgptSourceBucket,
+  TaxgptStructuredResponse
+} from '../../../domains/taxgpt'
 import CitedText from './CitedText'
 
 type StructuredAssistantMessageProps = {
@@ -56,6 +60,28 @@ function isGenericComplianceRisk (text: string): boolean {
   return GENERIC_COMPLIANCE_RISK_PATTERNS.some((pattern) => pattern.test(normalized))
 }
 
+function SourceBackedLinks ({ sources }: { sources: TaxgptComplianceRiskSource[] }) {
+  if (!sources.length) return null
+
+  return (
+    <ul className="mt-2 space-y-1">
+      {sources.map((source) => (
+        <li key={`${source.citationIndex}-${source.sourceUrl}`} className="text-xs">
+          <a
+            href={`#${referenceAnchorId(source.citationIndex)}`}
+            className="font-medium underline decoration-current/30 hover:decoration-current"
+          >
+            [{source.citationIndex}] {source.sourceTitle}
+          </a>
+          {source.sectionHeading && (
+            <span className="opacity-80"> — {source.sectionHeading}</span>
+          )}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({ structured }) => {
   const grouped = structured.groupedSources
   const sourceReferences = structured.sourceReferences ?? []
@@ -66,6 +92,10 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({ struc
   const legacyComplianceRisk = structured.complianceRisk && !isGenericComplianceRisk(structured.complianceRisk)
     ? structured.complianceRisk
     : null
+  const taxTips = structured.taxTips ?? []
+  const filingDeadlines = structured.filingDeadlines ?? []
+  const penaltiesAndInterest = (structured.penaltiesAndInterest ?? [])
+    .filter((entry) => !isGenericComplianceRisk(entry.description))
 
   return (
     <div className="space-y-5">
@@ -121,43 +151,6 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({ struc
         </div>
       </section>
 
-      {(complianceRisks.length > 0 || legacyComplianceRisk) && (
-        <section className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
-          <h3 className="text-sm font-semibold text-amber-900">Compliance risks</h3>
-          <p className="mt-1 text-xs text-amber-800">
-            Source-backed non-compliance consequences for this question. Not legal advice.
-          </p>
-          {complianceRisks.length > 0 ? (
-            <ul className="mt-3 space-y-3">
-              {complianceRisks.map((entry) => (
-                <li key={`${entry.risk}-${entry.citationIndices.join(',')}`} className="text-sm leading-relaxed text-amber-950">
-                  <p>{entry.risk}</p>
-                  {entry.sources && entry.sources.length > 0 && (
-                    <ul className="mt-2 space-y-1">
-                      {entry.sources.map((source) => (
-                        <li key={`${entry.risk}-${source.citationIndex}-${source.sourceUrl}`} className="text-xs text-amber-900">
-                          <a
-                            href={`#${referenceAnchorId(source.citationIndex)}`}
-                            className="font-medium underline decoration-amber-300 hover:decoration-amber-700"
-                          >
-                            [{source.citationIndex}] {source.sourceTitle}
-                          </a>
-                          {source.sectionHeading && (
-                            <span className="text-amber-800"> — {source.sectionHeading}</span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              ))}
-            </ul>
-          ) : legacyComplianceRisk ? (
-            <p className="mt-2 text-sm leading-relaxed text-amber-950">{legacyComplianceRisk}</p>
-          ) : null}
-        </section>
-      )}
-
       {(structured.whatThisMeansForYou ||
         keyPoints.length > 0 ||
         considerations.length > 0 ||
@@ -209,6 +202,97 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({ struc
               </ul>
             </div>
           )}
+        </section>
+      )}
+
+      {taxTips.length > 0 && (
+        <section className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3">
+          <h3 className="text-sm font-semibold text-emerald-900">Tax tips</h3>
+          <p className="mt-1 text-xs text-emerald-800">
+            Practical CRA-focused tips grounded in retrieved sources for this question.
+          </p>
+          <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-emerald-950">
+            {taxTips.map((tip) => (
+              <li key={tip}>
+                <CitedText text={tip} sourceReferences={sourceReferences} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {filingDeadlines.length > 0 && (
+        <section className="rounded-md border border-sky-200 bg-sky-50 px-4 py-3">
+          <h3 className="text-sm font-semibold text-sky-900">Filing dates and deadlines</h3>
+          <p className="mt-1 text-xs text-sky-800">
+            Source-backed filing, payment, or remittance dates relevant to this question.
+          </p>
+          <ul className="mt-3 space-y-3">
+            {filingDeadlines.map((entry) => (
+              <li key={`${entry.title}-${entry.deadline}-${entry.citationIndices.join(',')}`} className="text-sm text-sky-950">
+                <p className="font-medium">
+                  {entry.title}
+                  {entry.deadline && (
+                    <span className="font-semibold text-sky-900"> — {entry.deadline}</span>
+                  )}
+                </p>
+                {entry.note && (
+                  <p className="mt-1 leading-relaxed text-sky-900">{entry.note}</p>
+                )}
+                {entry.sources && entry.sources.length > 0 && (
+                  <div className="text-sky-900">
+                    <SourceBackedLinks sources={entry.sources} />
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {penaltiesAndInterest.length > 0 && (
+        <section className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3">
+          <h3 className="text-sm font-semibold text-rose-900">Penalties and interest for non-compliance</h3>
+          <p className="mt-1 text-xs text-rose-800">
+            Specific CRA penalty and interest rules from retrieved sources. Not legal advice.
+          </p>
+          <ul className="mt-3 space-y-3">
+            {penaltiesAndInterest.map((entry) => (
+              <li key={`${entry.description}-${entry.citationIndices.join(',')}`} className="text-sm leading-relaxed text-rose-950">
+                <p>{entry.description}</p>
+                {entry.sources && entry.sources.length > 0 && (
+                  <div className="text-rose-900">
+                    <SourceBackedLinks sources={entry.sources} />
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {(complianceRisks.length > 0 || legacyComplianceRisk) && (
+        <section className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
+          <h3 className="text-sm font-semibold text-amber-900">Compliance risks</h3>
+          <p className="mt-1 text-xs text-amber-800">
+            Source-backed non-compliance consequences for this question. Not legal advice.
+          </p>
+          {complianceRisks.length > 0 ? (
+            <ul className="mt-3 space-y-3">
+              {complianceRisks.map((entry) => (
+                <li key={`${entry.risk}-${entry.citationIndices.join(',')}`} className="text-sm leading-relaxed text-amber-950">
+                  <p>{entry.risk}</p>
+                  {entry.sources && entry.sources.length > 0 && (
+                    <div className="text-amber-900">
+                      <SourceBackedLinks sources={entry.sources} />
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : legacyComplianceRisk ? (
+            <p className="mt-2 text-sm leading-relaxed text-amber-950">{legacyComplianceRisk}</p>
+          ) : null}
         </section>
       )}
 

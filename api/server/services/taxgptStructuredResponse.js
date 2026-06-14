@@ -22,6 +22,21 @@ const STRUCTURED_RESPONSE_SCHEMA = `{
       "basis": "cra | legislation | case_law"
     }
   ],
+  "taxTips": ["Practical CRA-focused tip with [1] citation when source-backed"],
+  "filingDeadlines": [
+    {
+      "title": "Return or payment obligation",
+      "deadline": "April 30",
+      "note": "Short context such as tax year, extension, or who it applies to",
+      "citationIndices": [1]
+    }
+  ],
+  "penaltiesAndInterest": [
+    {
+      "description": "Specific CRA penalty or interest rule with amounts, rates, or calculation basis",
+      "citationIndices": [1]
+    }
+  ],
   "keyPoints": ["Bullet with supporting detail and [1] style citations"],
   "whatThisMeansForYou": "Practical plain-language implications for the user. Not legal advice.",
   "considerations": ["Caveats, provincial differences, timing, or when professional advice is needed"],
@@ -56,9 +71,12 @@ RULES:
 9. Each complianceRisks item must cite at least one retrieved source index in citationIndices and name the specific obligation, form, section, policy, or case principle from that source. Do not use generic boilerplate such as "if not reported correctly there may be penalties."
 10. If no source-backed compliance consequence applies to this question, return complianceRisks as an empty array [].
 11. When case law sources are retrieved, a compliance risk may reference the judicial principle or outcome described in that case.
-12. whatThisMeansForYou must be practical and user-focused, not legal advice.
-13. confidence: high = strong source support; medium = partial; low = limited or conflicting support.
-14. If sources are insufficient, say so in directAnswer and keep confidence low.`
+12. taxTips must be an array of 2-4 concise, practical CRA-focused tips for THIS question (record-keeping, elections, reporting mechanics, common mistakes). Include [n] citations when supported by retrieved sources. Return [] if no useful tips apply.
+13. filingDeadlines must be an array of deadline objects only when retrieved sources mention a filing, payment, or remittance date relevant to THIS question. Each item needs title, deadline (calendar date or rule), optional note, and citationIndices. Return [] if no source-backed deadlines apply.
+14. penaltiesAndInterest must be an array describing specific CRA penalty amounts, interest charges, late-filing penalties, or gross-negligence rules from retrieved sources. Each item needs description and citationIndices. Do not use generic boilerplate. Return [] if none apply.
+15. whatThisMeansForYou must be practical and user-focused, not legal advice.
+16. confidence: high = strong source support; medium = partial; low = limited or conflicting support.
+17. If sources are insufficient, say so in directAnswer and keep confidence low.`
 
 const DEGRADED_STRUCTURED_SYSTEM_PROMPT = `You are a helpful Canadian tax assistant. The curated knowledge base is not available for this question.
 
@@ -71,7 +89,8 @@ RULES:
 3. Be explicit in directAnswer that this is general guidance only.
 4. confidence must be "low".
 5. complianceRisks must be an empty array [] because no source-backed compliance analysis is available in degraded mode.
-6. whatThisMeansForYou must recommend consulting a qualified tax professional for case-specific advice.`
+6. taxTips, filingDeadlines, and penaltiesAndInterest must all be empty arrays [] in degraded mode.
+7. whatThisMeansForYou must recommend consulting a qualified tax professional for case-specific advice.`
 
 /**
  * @param {'rag' | 'degraded'} mode
@@ -81,7 +100,7 @@ export function buildTaxgptStructuredSystemPrompt (mode, language = 'en') {
   if (mode !== 'rag') return DEGRADED_STRUCTURED_SYSTEM_PROMPT
   const languageLabel = taxgptLanguageLabel(language)
   return `${RAG_STRUCTURED_SYSTEM_PROMPT_BASE}
-15. Write the entire JSON response in ${languageLabel}, including directAnswer, highlights, keyPoints, whatThisMeansForYou, considerations, suggestedNextSteps, and complianceRisks.
+15. Write the entire JSON response in ${languageLabel}, including directAnswer, highlights, keyPoints, taxTips, filingDeadlines, penaltiesAndInterest, whatThisMeansForYou, considerations, suggestedNextSteps, and complianceRisks.
 16. If a retrieved source excerpt is in another language, translate the substance into ${languageLabel} in your highlights and answer while preserving technical accuracy.`
 }
 
@@ -110,6 +129,7 @@ ${sourcesText}
 
 Populate sourceAnalysis buckets using the bucket label shown for each source index.
 For each cited source, write 2-4 highlights with enough detail for context but stay concise.
+Populate taxTips, filingDeadlines, and penaltiesAndInterest only when retrieved sources support them for this specific question.
 For complianceRisks, include only consequences that are supported by these retrieved excerpts for this specific question. Each item must cite source indices and avoid generic penalty boilerplate.`
 }
 
@@ -240,30 +260,128 @@ function normalizeLegacyComplianceRisk (legacyRisk, mode) {
 }
 
 /**
+ * @param {unknown} raw
+ */
+function normalizeStringList (raw) {
+  if (!Array.isArray(raw)) return []
+  return raw.map((item) => String(item || '').trim()).filter(Boolean)
+}
+
+/**
+ * @param {unknown} raw
+ * @param {'rag' | 'degraded'} mode
+ */
+function normalizeFilingDeadlineEntries (raw, mode) {
+  if (!Array.isArray(raw)) return []
+
+  return raw
+    .map((entry) => {
+      if (!isObject(entry)) {
+        const text = String(entry || '').trim()
+        if (!text || mode === 'rag') return null
+        return {
+          title: text,
+          deadline: '',
+          note: '',
+          citationIndices: []
+        }
+      }
+
+      const title = String(entry.title || entry.label || '').trim()
+      const deadline = String(entry.deadline || entry.date || '').trim()
+      const note = String(entry.note || entry.details || '').trim()
+      const citationIndices = Array.isArray(entry.citationIndices)
+        ? entry.citationIndices
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value) && value >= 1)
+        : []
+
+      if (!title && !deadline) return null
+      if (mode === 'rag' && citationIndices.length === 0) return null
+
+      return {
+        title: title || deadline,
+        deadline,
+        note,
+        citationIndices
+      }
+    })
+    .filter(Boolean)
+}
+
+/**
+ * @param {unknown} raw
+ * @param {'rag' | 'degraded'} mode
+ */
+function normalizePenaltyInterestEntries (raw, mode) {
+  if (!Array.isArray(raw)) return []
+
+  return raw
+    .map((entry) => {
+      if (!isObject(entry)) return null
+      const description = String(entry.description || entry.penalty || entry.risk || '').trim()
+      if (!description || isGenericComplianceRisk(description)) return null
+
+      const citationIndices = Array.isArray(entry.citationIndices)
+        ? entry.citationIndices
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value) && value >= 1)
+        : []
+
+      if (mode === 'rag' && citationIndices.length === 0) return null
+
+      return {
+        description,
+        citationIndices
+      }
+    })
+    .filter(Boolean)
+}
+
+/**
+ * @param {number[]} citationIndices
+ * @param {Array<{ citation: Record<string, unknown>, sourceBucket?: string }>} chunks
+ * @param {string | null} [basis]
+ */
+function enrichCitationIndicesWithSources (citationIndices, chunks, basis = null) {
+  return citationIndices
+    .map((index) => {
+      const chunk = chunks[index - 1]
+      if (!chunk?.citation) return null
+      return {
+        citationIndex: index,
+        sourceTitle: chunk.citation.sourceTitle || 'Unknown source',
+        sourceUrl: chunk.citation.sourceUrl || '',
+        sectionHeading: chunk.citation.sectionHeading || undefined,
+        sourceBucket: chunk.sourceBucket || chunk.citation.sourceBucket || basis || 'cra'
+      }
+    })
+    .filter(Boolean)
+}
+
+/**
+ * @param {Array<{ citationIndices: number[] }>} entries
+ * @param {Array<{ citation: Record<string, unknown>, sourceBucket?: string }>} chunks
+ * @param {'rag' | 'degraded'} mode
+ */
+function enrichEntriesWithSources (entries, chunks, mode) {
+  return entries
+    .map((entry) => ({
+      ...entry,
+      sources: enrichCitationIndicesWithSources(entry.citationIndices, chunks)
+    }))
+    .filter((entry) => mode !== 'rag' || entry.sources.length > 0)
+}
+
+/**
  * @param {Array<{ risk: string, citationIndices: number[], basis: string | null }>} complianceRisks
  * @param {Array<{ citation: Record<string, unknown>, sourceBucket?: string }>} chunks
  */
 function enrichComplianceRisksWithSources (complianceRisks, chunks) {
-  return complianceRisks.map((entry) => {
-    const sources = entry.citationIndices
-      .map((index) => {
-        const chunk = chunks[index - 1]
-        if (!chunk?.citation) return null
-        return {
-          citationIndex: index,
-          sourceTitle: chunk.citation.sourceTitle || 'Unknown source',
-          sourceUrl: chunk.citation.sourceUrl || '',
-          sectionHeading: chunk.citation.sectionHeading || undefined,
-          sourceBucket: chunk.sourceBucket || chunk.citation.sourceBucket || entry.basis || 'cra'
-        }
-      })
-      .filter(Boolean)
-
-    return {
-      ...entry,
-      sources
-    }
-  })
+  return complianceRisks.map((entry) => ({
+    ...entry,
+    sources: enrichCitationIndicesWithSources(entry.citationIndices, chunks, entry.basis)
+  }))
 }
 
 /**
@@ -303,13 +421,26 @@ export function parseTaxgptStructuredResponse (raw, chunks, mode) {
     chunks
   ).filter((entry) => mode !== 'rag' || entry.sources.length > 0)
 
+  const taxTips = normalizeStringList(parsed.taxTips)
+  const filingDeadlines = enrichEntriesWithSources(
+    normalizeFilingDeadlineEntries(parsed.filingDeadlines, mode),
+    chunks,
+    mode
+  )
+  const penaltiesAndInterest = enrichEntriesWithSources(
+    normalizePenaltyInterestEntries(parsed.penaltiesAndInterest, mode),
+    chunks,
+    mode
+  )
+
   const structured = {
     directAnswer: String(parsed.directAnswer || '').trim() || 'I could not generate a structured answer.',
     sourceAnalysis,
     complianceRisks: enrichedComplianceRisks,
-    keyPoints: Array.isArray(parsed.keyPoints)
-      ? parsed.keyPoints.map((item) => String(item || '').trim()).filter(Boolean)
-      : [],
+    taxTips,
+    filingDeadlines,
+    penaltiesAndInterest,
+    keyPoints: normalizeStringList(parsed.keyPoints),
     whatThisMeansForYou: String(parsed.whatThisMeansForYou || '').trim(),
     considerations: Array.isArray(parsed.considerations)
       ? parsed.considerations.map((item) => String(item || '').trim()).filter(Boolean)
@@ -323,6 +454,9 @@ export function parseTaxgptStructuredResponse (raw, chunks, mode) {
   const citationText = [
     structured.directAnswer,
     ...structured.complianceRisks.map((entry) => entry.risk),
+    ...structured.taxTips,
+    ...structured.filingDeadlines.map((entry) => [entry.title, entry.deadline, entry.note].filter(Boolean).join(' ')),
+    ...structured.penaltiesAndInterest.map((entry) => entry.description),
     ...structured.keyPoints,
     structured.whatThisMeansForYou,
     ...structured.considerations,
@@ -507,6 +641,38 @@ function renderStructuredPlainText (structured, groupedSources, mode) {
     lines.push('')
   }
 
+  if (structured.taxTips.length > 0) {
+    lines.push('## Tax tips')
+    structured.taxTips.forEach((tip) => lines.push(`- ${tip}`))
+    lines.push('')
+  }
+
+  if (structured.filingDeadlines.length > 0) {
+    lines.push('## Filing dates and deadlines')
+    structured.filingDeadlines.forEach((entry, index) => {
+      const deadline = entry.deadline ? ` — ${entry.deadline}` : ''
+      lines.push(`${index + 1}. ${entry.title}${deadline}`)
+      if (entry.note) lines.push(`   ${entry.note}`)
+      entry.sources.forEach((source) => {
+        const heading = source.sectionHeading ? ` — ${source.sectionHeading}` : ''
+        lines.push(`   Source [${source.citationIndex}]: ${source.sourceTitle}${heading}`)
+      })
+    })
+    lines.push('')
+  }
+
+  if (structured.penaltiesAndInterest.length > 0) {
+    lines.push('## Penalties and interest for non-compliance')
+    structured.penaltiesAndInterest.forEach((entry, index) => {
+      lines.push(`${index + 1}. ${entry.description}`)
+      entry.sources.forEach((source) => {
+        const heading = source.sectionHeading ? ` — ${source.sectionHeading}` : ''
+        lines.push(`   Source [${source.citationIndex}]: ${source.sourceTitle}${heading}`)
+      })
+    })
+    lines.push('')
+  }
+
   const hasPracticalSection = structured.whatThisMeansForYou ||
     structured.keyPoints.length > 0 ||
     structured.considerations.length > 0 ||
@@ -563,6 +729,9 @@ function buildFallbackStructuredResponse (raw, chunks, mode) {
     directAnswer: raw.trim() || 'I apologize, but I could not generate a response.',
     sourceAnalysis: { cra: [], legislation: [], caseLaw: [] },
     complianceRisks: [],
+    taxTips: [],
+    filingDeadlines: [],
+    penaltiesAndInterest: [],
     keyPoints: [],
     whatThisMeansForYou: mode === 'degraded'
       ? 'This answer is general guidance only. Consult a qualified tax professional for advice specific to your situation.'

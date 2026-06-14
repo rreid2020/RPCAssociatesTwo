@@ -59,6 +59,20 @@ export type TaxgptComplianceRisk = {
   sources?: TaxgptComplianceRiskSource[]
 }
 
+export type TaxgptFilingDeadline = {
+  title: string
+  deadline: string
+  note?: string
+  citationIndices: number[]
+  sources?: TaxgptComplianceRiskSource[]
+}
+
+export type TaxgptPenaltyInterest = {
+  description: string
+  citationIndices: number[]
+  sources?: TaxgptComplianceRiskSource[]
+}
+
 export type TaxgptSourceGroup = {
   bucket: TaxgptSourceBucket
   label: string
@@ -76,6 +90,9 @@ export type TaxgptStructuredResponse = {
   complianceRisks?: TaxgptComplianceRisk[]
   /** @deprecated Legacy single-string field from older responses */
   complianceRisk?: string
+  taxTips?: string[]
+  filingDeadlines?: TaxgptFilingDeadline[]
+  penaltiesAndInterest?: TaxgptPenaltyInterest[]
   keyPoints: string[]
   whatThisMeansForYou: string
   considerations: string[]

@@ -228,7 +228,7 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
   }
 
   const rawResponse = completion.choices[0]?.message?.content ||
-    '{"directAnswer":"I apologize, but I could not generate a response.","sourceAnalysis":{"cra":[],"legislation":[],"caseLaw":[]},"complianceRisks":[],"keyPoints":[],"whatThisMeansForYou":"","considerations":[],"suggestedNextSteps":[],"confidence":"low"}'
+    '{"directAnswer":"I apologize, but I could not generate a response.","sourceAnalysis":{"cra":[],"legislation":[],"caseLaw":[]},"complianceRisks":[],"taxTips":[],"filingDeadlines":[],"penaltiesAndInterest":[],"keyPoints":[],"whatThisMeansForYou":"","considerations":[],"suggestedNextSteps":[],"confidence":"low"}'
 
   const parsed = parseTaxgptStructuredResponse(rawResponse, annotatedChunks, retrievalMode)
   const response = parsed.plainText

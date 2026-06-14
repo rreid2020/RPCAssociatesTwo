@@ -8,7 +8,7 @@ import {
   parseTaxgptStructuredResponse
 } from './taxgptStructuredResponse.js'
 import { retrieveTaxgptChunks } from './taxgptRetrievalRepository.js'
-import { getTaxgptModelRoutingSummary, resolveTaxgptChatModel } from './taxgptModelRouter.js'
+import { getTaxgptModelRoutingSummary, resolveTaxgptChatModel, buildChatCompletionTokenLimit } from './taxgptModelRouter.js'
 import { normalizeTaxgptLanguage, taxgptLanguageLabel } from './taxgptSourceLanguage.js'
 
 const HIGH_RISK_KEYWORDS = [
@@ -217,7 +217,7 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
         { role: 'user', content: userPrompt }
       ],
       temperature: retrievalMode === 'rag' ? 0.3 : 0.5,
-      max_tokens: resolvedModelPlan.maxTokens,
+      ...buildChatCompletionTokenLimit(resolvedModelPlan.model, resolvedModelPlan.maxTokens),
       response_format: { type: 'json_object' }
     })
   } catch (error) {

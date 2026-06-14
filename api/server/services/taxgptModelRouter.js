@@ -33,6 +33,28 @@ export function getTaxgptModelCatalog () {
 }
 
 /**
+ * GPT-5 and o-series models require max_completion_tokens instead of max_tokens.
+ * @param {string} model
+ */
+export function usesMaxCompletionTokens (model) {
+  const normalized = String(model || '').trim().toLowerCase()
+  if (/^gpt-5/.test(normalized)) return true
+  if (/^o\d/.test(normalized)) return true
+  return false
+}
+
+/**
+ * @param {string} model
+ * @param {number} maxTokens
+ */
+export function buildChatCompletionTokenLimit (model, maxTokens) {
+  if (usesMaxCompletionTokens(model)) {
+    return { max_completion_tokens: maxTokens }
+  }
+  return { max_tokens: maxTokens }
+}
+
+/**
  * @param {string} message
  */
 function countQuestionMarks (message) {

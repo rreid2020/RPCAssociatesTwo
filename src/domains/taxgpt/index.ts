@@ -20,6 +20,7 @@ export type Citation = {
   sourceBucket?: TaxgptSourceBucket
   citationIndex?: number
   summary?: string
+  highlights?: string[]
   excerpt?: string
 }
 
@@ -35,9 +36,12 @@ export type TaxgptSourceReference = {
   excerpt?: string
 }
 
+export type TaxgptLanguage = 'en' | 'fr'
+
 export type TaxgptSourceAnalysisEntry = {
   citationIndex: number
-  summary: string
+  summary?: string
+  highlights?: string[]
 }
 
 export type TaxgptComplianceRiskSource = {
@@ -127,12 +131,14 @@ export type TaxgptChatResponse = {
   model?: string
   modelTier?: 'fast' | 'standard' | 'complex'
   modelRoutingReason?: string
+  language?: TaxgptLanguage
 }
 
 export type SendTaxgptChatPayload = {
   sessionId?: string | null
   message: string
   agentic?: boolean
+  language?: TaxgptLanguage
 }
 
 export async function sendTaxgptChatMessage (

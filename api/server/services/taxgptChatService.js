@@ -9,6 +9,7 @@ import {
 } from './taxgptStructuredResponse.js'
 import { retrieveTaxgptChunks } from './taxgptRetrievalRepository.js'
 import { getTaxgptModelRoutingSummary, resolveTaxgptChatModel } from './taxgptModelRouter.js'
+import { normalizeTaxgptLanguage, taxgptLanguageLabel } from './taxgptSourceLanguage.js'
 
 const HIGH_RISK_KEYWORDS = [
   'gaar',
@@ -114,19 +115,20 @@ async function ensureChatTables (pool) {
 
 async function resolveRetrievedChunks (pool, message, corpus, options = {}) {
   const topK = options.topK || 5
+  const language = normalizeTaxgptLanguage(options.language)
   if (!corpus.retrievalReady) {
     return { chunks: [], mode: 'degraded', notice: 'CRA knowledge base is empty. Run TaxGPT ingestion to enable source-backed answers.' }
   }
 
   try {
-    const chunks = await retrieveTaxgptChunks(pool, message, { topK, minSimilarity: 0.25 })
+    const chunks = await retrieveTaxgptChunks(pool, message, { topK, minSimilarity: 0.25, language })
     if (chunks.length > 0) {
       return { chunks, mode: 'rag', notice: null }
     }
     return {
       chunks: [],
       mode: 'degraded',
-      notice: 'No sufficiently relevant CRA sources were found for this question. The answer is general guidance only.'
+      notice: `No sufficiently relevant ${taxgptLanguageLabel(language)} CRA sources were found for this question. Try the other language or rephrase your question. The answer is general guidance only.`
     }
   } catch (error) {
     console.warn('[taxgpt] retrieval failed, falling back to degraded mode:', error)
@@ -150,6 +152,8 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
   if (message.length > 10000) {
     throw new Error('Message is too long')
   }
+
+  const language = normalizeTaxgptLanguage(payload.language)
 
   await ensureChatTables(pool)
 
@@ -190,7 +194,7 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
   )
 
   const riskLevel = detectHighRiskTopics(message) ? 'high' : 'low'
-  const retrieval = await resolveRetrievedChunks(pool, message, corpus, { topK: 10 })
+  const retrieval = await resolveRetrievedChunks(pool, message, corpus, { topK: 10, language })
   const retrievalMode = retrieval.mode
   const resolvedModelPlan = resolveTaxgptChatModel({
     message,
@@ -199,9 +203,9 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
     chunks: retrieval.chunks
   })
   const annotatedChunks = annotateChunksWithBuckets(retrieval.chunks)
-  const systemPrompt = buildTaxgptStructuredSystemPrompt(retrievalMode)
+  const systemPrompt = buildTaxgptStructuredSystemPrompt(retrievalMode, language)
   const userPrompt = retrievalMode === 'rag'
-    ? buildTaxgptStructuredUserPrompt(message, annotatedChunks)
+    ? buildTaxgptStructuredUserPrompt(message, annotatedChunks, language)
     : `User Question: ${message}\n\nNo retrieved sources are available. Return the degraded JSON schema.`
 
   let completion
@@ -252,6 +256,7 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
     model: resolvedModelPlan.model,
     modelTier: resolvedModelPlan.tier,
     modelRoutingReason: resolvedModelPlan.reason,
+    language,
     corpus: {
       retrievalReady: corpus.retrievalReady,
       embeddingCount: corpus.embeddingCount,

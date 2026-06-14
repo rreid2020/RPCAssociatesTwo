@@ -90,7 +90,8 @@ export async function retrieveTaxgptChunks (pool, query, options = {}) {
 
   return filterRetrievedChunks(
     rows.filter((row) => (Number(row.similarity) || 0) >= minSimilarity),
-    topK
+    topK,
+    { language: options.language }
   ).map((row, index) => ({
     chunkId: row.chunkId,
     content: row.content,

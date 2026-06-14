@@ -1,4 +1,5 @@
 import { cleanPublicationTitle } from './taxgptSourceDisplay.js'
+import { matchesSourceLanguage, normalizeTaxgptLanguage } from './taxgptSourceLanguage.js'
 
 /**
  * Detect table-of-contents style PDF extractions (leader dots + page numbers).
@@ -110,13 +111,20 @@ export function resolvePublicationVintage (row) {
 }
 
 /**
- * Drop TOC chunks and keep only the newest edition per publication family.
+ * Drop TOC chunks, enforce source language, and keep only the newest edition per publication family.
  * @param {Array<Record<string, unknown>>} rows
  * @param {number} topK
+ * @param {{ language?: string }} [options]
  */
-export function filterRetrievedChunks (rows, topK) {
+export function filterRetrievedChunks (rows, topK, options = {}) {
+  const language = normalizeTaxgptLanguage(options.language)
   const qualityRows = rows.filter((row) => !isTableOfContentsExcerpt(row.content))
-  const candidateRows = qualityRows.length > 0 ? qualityRows : rows
+  let candidateRows = qualityRows.length > 0 ? qualityRows : rows
+
+  const languageRows = candidateRows.filter((row) => matchesSourceLanguage(row.sourceUrl, language))
+  if (languageRows.length > 0) {
+    candidateRows = languageRows
+  }
 
   const familyMaxVintage = new Map()
   for (const row of candidateRows) {

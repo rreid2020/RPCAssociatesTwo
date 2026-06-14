@@ -11,6 +11,10 @@ import LoadingIndicator from './LoadingIndicator'
 import MessageInput from './MessageInput'
 import MessageList from './MessageList'
 import RiskBanner from './RiskBanner'
+import LanguageSelector from './LanguageSelector'
+import type { TaxgptLanguage } from '../../../domains/taxgpt'
+
+const TAXGPT_LANGUAGE_STORAGE_KEY = 'taxgpt-language'
 
 const DonationButton = lazy(async () => await import('./DonationButton'))
 
@@ -30,8 +34,16 @@ const ChatInterface: FC<ChatInterfaceProps> = ({ initialCorpus, corpusOverride =
   const [notice, setNotice] = useState<string | null>(null)
   const [corpus, setCorpus] = useState<TaxgptCorpusStats | null>(initialCorpus)
   const [retrievalNotice, setRetrievalNotice] = useState<string | null>(null)
+  const [language, setLanguage] = useState<TaxgptLanguage>(() => {
+    const stored = window.localStorage.getItem(TAXGPT_LANGUAGE_STORAGE_KEY)
+    return stored === 'fr' ? 'fr' : 'en'
+  })
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    window.localStorage.setItem(TAXGPT_LANGUAGE_STORAGE_KEY, language)
+  }, [language])
 
   useEffect(() => {
     if (corpusOverride) {
@@ -93,7 +105,8 @@ const ChatInterface: FC<ChatInterfaceProps> = ({ initialCorpus, corpusOverride =
     try {
       const data = await sendTaxgptChatMessage(getToken, {
         sessionId,
-        message
+        message,
+        language
       })
       setSessionId(data.sessionId)
       setMessages((prev) => [
@@ -214,7 +227,13 @@ const ChatInterface: FC<ChatInterfaceProps> = ({ initialCorpus, corpusOverride =
 
           <div className="border-t border-border bg-background">
             <div className="max-w-4xl mx-auto px-6 py-4 space-y-4">
-              <div className="flex flex-wrap items-center justify-end gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <LanguageSelector
+                  value={language}
+                  onChange={setLanguage}
+                  disabled={sending}
+                />
+                <div className="flex flex-wrap items-center justify-end gap-2">
                   <Suspense
                     fallback={(
                       <span className="inline-flex items-center gap-2 border border-border bg-white px-3 py-1.5 text-sm font-medium text-text-light shadow-sm">
@@ -248,6 +267,7 @@ const ChatInterface: FC<ChatInterfaceProps> = ({ initialCorpus, corpusOverride =
                     New chat
                   </button>
                   <ExportButton onExport={handleExport} />
+                </div>
               </div>
               <MessageInput onSend={(message) => { void handleSend(message) }} disabled={sending} />
             </div>

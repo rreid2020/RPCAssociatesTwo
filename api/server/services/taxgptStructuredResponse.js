@@ -6,13 +6,14 @@ import {
 } from './taxgptSourceBuckets.js'
 import { extractTaxgptCitations } from './taxgptPrompt.js'
 import { isTableOfContentsExcerpt } from './taxgptRetrievalFilters.js'
+import { taxgptLanguageLabel } from './taxgptSourceLanguage.js'
 
 const STRUCTURED_RESPONSE_SCHEMA = `{
   "directAnswer": "2-3 sentence direct answer to the user question",
   "sourceAnalysis": {
-    "cra": [{ "citationIndex": 1 }],
-    "legislation": [{ "citationIndex": 2 }],
-    "caseLaw": [{ "citationIndex": 3 }]
+    "cra": [{ "citationIndex": 1, "highlights": ["Specific fact or rule from the source", "Another key point with dates, thresholds, or obligations"] }],
+    "legislation": [{ "citationIndex": 2, "highlights": ["Key legislative point"] }],
+    "caseLaw": [{ "citationIndex": 3, "highlights": ["Key judicial principle"] }]
   },
   "complianceRisks": [
     {
@@ -38,7 +39,7 @@ const GENERIC_COMPLIANCE_RISK_PATTERNS = [
   /risks\s+of\s+reassessment,\s*penalties,\s*or\s+denied\s+claims/i
 ]
 
-const RAG_STRUCTURED_SYSTEM_PROMPT = `You are a helpful Canadian tax research assistant. Answer using ONLY the provided source material.
+const RAG_STRUCTURED_SYSTEM_PROMPT_BASE = `You are a helpful Canadian tax research assistant. Answer using ONLY the provided source material.
 
 Return a single JSON object matching this schema (no markdown fences):
 ${STRUCTURED_RESPONSE_SCHEMA}
@@ -46,17 +47,18 @@ ${STRUCTURED_RESPONSE_SCHEMA}
 RULES:
 1. Use numbered citations [1], [2], etc. that map to the provided source list indices.
 2. Populate sourceAnalysis.cra, sourceAnalysis.legislation, and sourceAnalysis.caseLaw with citationIndex values for sources you relied on in each bucket.
-3. Only include a bucket entry when that source type was actually provided in the source list.
-4. Do not write generic source summaries; the UI displays the retrieved excerpt text for each citation index.
-5. If no legislation or case law sources were provided, return empty arrays for those buckets.
-6. Never fabricate citations, statutes, or cases.
-7. complianceRisks must be an array. Include items ONLY when retrieved sources describe a concrete non-compliance consequence for THIS question (missed filing, incorrect reporting, denied claim, reassessment, penalties, interest, or similar).
-8. Each complianceRisks item must cite at least one retrieved source index in citationIndices and name the specific obligation, form, section, policy, or case principle from that source. Do not use generic boilerplate such as "if not reported correctly there may be penalties."
-9. If no source-backed compliance consequence applies to this question, return complianceRisks as an empty array [].
-10. When case law sources are retrieved, a compliance risk may reference the judicial principle or outcome described in that case.
-11. whatThisMeansForYou must be practical and user-focused, not legal advice.
-12. confidence: high = strong source support; medium = partial; low = limited or conflicting support.
-13. If sources are insufficient, say so in directAnswer and keep confidence low.`
+3. For each sourceAnalysis entry, include highlights: an array of 2-4 concise bullet points (1-2 sentences each) with the most relevant facts, rules, deadlines, thresholds, or obligations from that source for THIS question.
+4. Highlights must be specific and grounded in the retrieved excerpt. Do not paste raw markdown, table-of-contents text, or long verbatim passages.
+5. Only include a bucket entry when that source type was actually provided in the source list.
+6. If no legislation or case law sources were provided, return empty arrays for those buckets.
+7. Never fabricate citations, statutes, or cases.
+8. complianceRisks must be an array. Include items ONLY when retrieved sources describe a concrete non-compliance consequence for THIS question (missed filing, incorrect reporting, denied claim, reassessment, penalties, interest, or similar).
+9. Each complianceRisks item must cite at least one retrieved source index in citationIndices and name the specific obligation, form, section, policy, or case principle from that source. Do not use generic boilerplate such as "if not reported correctly there may be penalties."
+10. If no source-backed compliance consequence applies to this question, return complianceRisks as an empty array [].
+11. When case law sources are retrieved, a compliance risk may reference the judicial principle or outcome described in that case.
+12. whatThisMeansForYou must be practical and user-focused, not legal advice.
+13. confidence: high = strong source support; medium = partial; low = limited or conflicting support.
+14. If sources are insufficient, say so in directAnswer and keep confidence low.`
 
 const DEGRADED_STRUCTURED_SYSTEM_PROMPT = `You are a helpful Canadian tax assistant. The curated knowledge base is not available for this question.
 
@@ -72,17 +74,24 @@ RULES:
 6. whatThisMeansForYou must recommend consulting a qualified tax professional for case-specific advice.`
 
 /**
- * @param {string} mode
+ * @param {'rag' | 'degraded'} mode
+ * @param {'en' | 'fr'} language
  */
-export function buildTaxgptStructuredSystemPrompt (mode) {
-  return mode === 'rag' ? RAG_STRUCTURED_SYSTEM_PROMPT : DEGRADED_STRUCTURED_SYSTEM_PROMPT
+export function buildTaxgptStructuredSystemPrompt (mode, language = 'en') {
+  if (mode !== 'rag') return DEGRADED_STRUCTURED_SYSTEM_PROMPT
+  const languageLabel = taxgptLanguageLabel(language)
+  return `${RAG_STRUCTURED_SYSTEM_PROMPT_BASE}
+15. Write the entire JSON response in ${languageLabel}, including directAnswer, highlights, keyPoints, whatThisMeansForYou, considerations, suggestedNextSteps, and complianceRisks.
+16. If a retrieved source excerpt is in another language, translate the substance into ${languageLabel} in your highlights and answer while preserving technical accuracy.`
 }
 
 /**
  * @param {string} message
  * @param {Array<{ content: string, citation: Record<string, unknown>, sourceBucket?: string }>} chunks
+ * @param {'en' | 'fr'} [language]
  */
-export function buildTaxgptStructuredUserPrompt (message, chunks) {
+export function buildTaxgptStructuredUserPrompt (message, chunks, language = 'en') {
+  const languageLabel = taxgptLanguageLabel(language)
   const sourcesText = chunks
     .map((chunk, index) => {
       const heading = chunk.citation.sectionHeading ? ` - ${chunk.citation.sectionHeading}` : ''
@@ -94,10 +103,13 @@ export function buildTaxgptStructuredUserPrompt (message, chunks) {
 
   return `User Question: ${message}
 
+Response language: ${languageLabel}
+
 Retrieved Sources (index, bucket, title, excerpt):
 ${sourcesText}
 
 Populate sourceAnalysis buckets using the bucket label shown for each source index.
+For each cited source, write 2-4 highlights with enough detail for context but stay concise.
 For complianceRisks, include only consequences that are supported by these retrieved excerpts for this specific question. Each item must cite source indices and avoid generic penalty boilerplate.`
 }
 
@@ -133,7 +145,7 @@ function buildChunkExcerptMap (chunks) {
 
 /**
  * @param {unknown} raw
- * @returns {Array<{ citationIndex: number, summary: string }>}
+ * @returns {Array<{ citationIndex: number, summary: string, highlights: string[] }>}
  */
 function normalizeBucketEntries (raw) {
   if (!Array.isArray(raw)) return []
@@ -143,7 +155,11 @@ function normalizeBucketEntries (raw) {
       const citationIndex = Number(entry.citationIndex)
       if (!Number.isFinite(citationIndex) || citationIndex < 1) return null
       const summary = String(entry.summary || '').trim()
-      return { citationIndex, summary }
+      const highlights = Array.isArray(entry.highlights)
+        ? entry.highlights.map((item) => String(item || '').trim()).filter(Boolean).slice(0, 4)
+        : []
+      if (!summary && highlights.length === 0) return null
+      return { citationIndex, summary, highlights }
     })
     .filter(Boolean)
 }
@@ -394,17 +410,24 @@ function buildGroupedSources (citations, sourceAnalysis, sourceReferences = [], 
     const entries = []
     const seenCitationIndices = new Set()
 
+    const analysisByIndex = new Map()
+    for (const item of analysisEntries) {
+      analysisByIndex.set(item.citationIndex, item)
+    }
+
     for (const item of analysisEntries) {
       const citation = citationByIndex.get(item.citationIndex)
       if (!citation) continue
       if (seenCitationIndices.has(item.citationIndex)) continue
       seenCitationIndices.add(item.citationIndex)
       const excerpt = excerptByIndex.get(item.citationIndex) || citation.excerpt || ''
-      if (!excerpt && !item.summary) continue
+      const highlights = item.highlights || []
+      if (highlights.length === 0 && !excerpt && !item.summary) continue
       entries.push({
         ...citation,
         citationIndex: item.citationIndex,
         excerpt,
+        highlights,
         summary: item.summary || ''
       })
     }
@@ -412,12 +435,15 @@ function buildGroupedSources (citations, sourceAnalysis, sourceReferences = [], 
     for (const citation of citations) {
       if (citation.sourceBucket !== bucket) continue
       if (!citation.citationIndex || seenCitationIndices.has(citation.citationIndex)) continue
+      const analysisItem = analysisByIndex.get(citation.citationIndex)
       const excerpt = excerptByIndex.get(citation.citationIndex) || citation.excerpt || ''
-      if (!excerpt) continue
+      const highlights = analysisItem?.highlights || []
+      if (highlights.length === 0 && !excerpt) continue
       seenCitationIndices.add(citation.citationIndex)
       entries.push({
         ...citation,
-        excerpt
+        excerpt,
+        highlights
       })
     }
 
@@ -457,7 +483,9 @@ function renderStructuredPlainText (structured, groupedSources, mode) {
         if (entry.sectionHeading) {
           lines.push(`   ${entry.sectionHeading}`)
         }
-        if (entry.excerpt) {
+        if (Array.isArray(entry.highlights) && entry.highlights.length > 0) {
+          entry.highlights.forEach((highlight) => lines.push(`- ${highlight}`))
+        } else if (entry.excerpt) {
           lines.push(`> ${entry.excerpt}`)
         } else if (entry.summary) {
           lines.push(`> ${entry.summary}`)

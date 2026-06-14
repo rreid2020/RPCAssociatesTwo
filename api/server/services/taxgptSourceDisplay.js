@@ -11,6 +11,15 @@ const GENERIC_TITLE_PATTERNS = [
 ]
 
 const GENERIC_TITLE_WITH_PREFIX = /^\d{4}\s*[–-]\s*(standard\s+print\s+pdf|print\s+pdf|pdf|html)$/i
+const FILENAME_TITLE_PATTERN = /^(?:t|rc)\d{4}(?:[-_][a-z])?\.(?:html?|pdf)$/i
+
+/**
+ * @param {string} title
+ */
+function isFilenameTitle (title) {
+  const normalized = String(title || '').trim()
+  return FILENAME_TITLE_PATTERN.test(normalized) || /^[a-z0-9]+-f\.html$/i.test(normalized)
+}
 
 /**
  * @param {string} title
@@ -21,6 +30,7 @@ function isGenericTitle (title) {
   if (GENERIC_TITLE_WITH_PREFIX.test(normalized)) return true
   if (GENERIC_TITLE_PATTERNS.some((pattern) => pattern.test(normalized))) return true
   if (/standard\s+print\s+pdf/i.test(normalized) && normalized.length < 80) return true
+  if (isFilenameTitle(normalized)) return true
   return false
 }
 
@@ -40,7 +50,16 @@ export function cleanPublicationTitle (title) {
 function titleFromPublicationFilename (url) {
   const filename = String(url || '').split('/').pop()?.replace(/\.[^.]+$/, '') || ''
   const guideMatch = filename.match(/^(t\d{4})/i)
-  if (guideMatch) return `Guide ${guideMatch[1].toUpperCase()}`
+  if (guideMatch) {
+    const code = guideMatch[1].toUpperCase()
+    const knownTitles = {
+      T4040: 'RRSPs and Other Registered Plans for Retirement',
+      T4036: 'Rental Income',
+      T4032: 'Tax Guide — Personal Income Tax',
+      T4002: 'Self-employed Business, Professional, Commission, Farming, and Fishing Income'
+    }
+    return knownTitles[code] ? `Guide ${code}, ${knownTitles[code]}` : `Guide ${code}`
+  }
   const rcMatch = filename.match(/^(rc\d{4})/i)
   if (rcMatch) return rcMatch[1].toUpperCase()
   const icMatch = filename.match(/^(ic\d{2,3})/i)

@@ -3485,7 +3485,8 @@ export function createPortalRouter (pool) {
       const result = await handleTaxgptChat(pool, session.userId, {
         sessionId: req.body?.sessionId || null,
         message,
-        agentic: req.body?.agentic === true
+        agentic: req.body?.agentic === true,
+        language: req.body?.language || 'en'
       })
       res.json(result)
     } catch (e) {

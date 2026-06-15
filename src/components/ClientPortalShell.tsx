@@ -183,6 +183,13 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children, wideContent =
                       >
                         {iconForKey(item.iconKey, active)}
                         <span className="flex-1">{item.label}</span>
+                        {item.badge && (
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                            active ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'
+                          }`}>
+                            {item.badge}
+                          </span>
+                        )}
                         {isLocked(item) && (
                           <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">Premium</span>
                         )}
@@ -244,7 +251,11 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children, wideContent =
                 </svg>
               </button>
               <div className="flex items-center gap-2 sm:gap-3 border-l border-border pl-3 sm:pl-4">
-                <div className="flex items-center gap-2 min-w-0">
+                <Link
+                  to="/portal/profile"
+                  className="flex items-center gap-2 min-w-0 rounded-md px-1 py-1 hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
+                  aria-label="View your profile"
+                >
                   {user?.imageUrl ? (
                     <img
                       src={user.imageUrl}
@@ -256,10 +267,10 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children, wideContent =
                       {user?.firstName?.[0] || user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() || 'U'}
                     </div>
                   )}
-                  <span className="hidden md:block text-sm text-text truncate max-w-[14rem]">
+                  <span className="hidden md:block text-sm text-text truncate max-w-[14rem] hover:text-primary-dark">
                     {user?.fullName || user?.emailAddresses?.[0]?.emailAddress || 'User'}
                   </span>
-                </div>
+                </Link>
                 <button
                   type="button"
                   onClick={handleSignOut}

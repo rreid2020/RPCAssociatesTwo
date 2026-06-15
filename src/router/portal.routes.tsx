@@ -2,6 +2,7 @@ import { Fragment, lazy } from 'react'
 import { Navigate, Route } from 'react-router-dom'
 import Dashboard from '../pages/portal/Dashboard'
 import FileRepository from '../pages/portal/FileRepository'
+import Profile from '../pages/portal/Profile'
 import Subscription from '../pages/portal/Subscription'
 import { ProtectedRoute } from './route-guards'
 import RouteSuspense from './route-suspense'
@@ -45,6 +46,14 @@ export function getPortalRoutes () {
         element={
           <ProtectedRoute>
             <FileRepository />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/portal/profile"
+        element={
+          <ProtectedRoute>
+            <Profile />
           </ProtectedRoute>
         }
       />

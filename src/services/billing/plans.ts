@@ -32,8 +32,8 @@ export const BILLING_PLANS: Record<BillingPlanDefinition['id'], BillingPlanDefin
   PROFESSIONAL: {
     id: 'PROFESSIONAL',
     displayName: 'Professional',
-    monthlyPrice: 129,
-    annualPrice: 1290,
+    monthlyPrice: 199,
+    annualPrice: 1990,
     stripeProductId: getStripeId(env.VITE_STRIPE_PRODUCT_PROFESSIONAL, 'prod_professional'),
     stripePriceIds: {
       monthly: getStripeId(env.VITE_STRIPE_PRICE_PROFESSIONAL_MONTHLY, 'price_professional_monthly'),
@@ -53,8 +53,8 @@ export const BILLING_PLANS: Record<BillingPlanDefinition['id'], BillingPlanDefin
   TAX_INTELLIGENCE: {
     id: 'TAX_INTELLIGENCE',
     displayName: 'Tax Intelligence',
-    monthlyPrice: 79,
-    annualPrice: 790,
+    monthlyPrice: 59,
+    annualPrice: 590,
     stripeProductId: getStripeId(env.VITE_STRIPE_PRODUCT_TAX_INTELLIGENCE, 'prod_tax_intelligence'),
     stripePriceIds: {
       monthly: getStripeId(env.VITE_STRIPE_PRICE_TAX_INTELLIGENCE_MONTHLY, 'price_tax_intelligence_monthly'),
@@ -74,8 +74,8 @@ export const BILLING_PLANS: Record<BillingPlanDefinition['id'], BillingPlanDefin
   ENTERPRISE: {
     id: 'ENTERPRISE',
     displayName: 'Enterprise',
-    monthlyPrice: 499,
-    annualPrice: 4990,
+    monthlyPrice: 599,
+    annualPrice: 5990,
     stripeProductId: getStripeId(env.VITE_STRIPE_PRODUCT_ENTERPRISE, 'prod_enterprise'),
     stripePriceIds: {
       monthly: getStripeId(env.VITE_STRIPE_PRICE_ENTERPRISE_MONTHLY, 'price_enterprise_monthly'),

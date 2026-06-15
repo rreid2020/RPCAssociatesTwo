@@ -16,6 +16,7 @@ export type NavigationItem = {
   to: string
   label: string
   iconKey: string
+  badge?: string
   requiredFeature?: 'workingPapers' | 'integrations'
   requiredPermission?: string
   requiredWorkspaceRoles?: string[]
@@ -50,7 +51,7 @@ const SECTIONS: NavigationSection[] = [
     label: 'Tax Intelligence',
     depth: 1,
     items: [
-      { to: '/portal/taxgpt', label: 'Tax GPT', iconKey: 'sparkles' },
+      { to: '/portal/taxgpt', label: 'Tax GPT', iconKey: 'sparkles', badge: 'Active' },
       { to: '/app/tax-intelligence/returns', label: 'Tax Returns', iconKey: 'document' },
       { to: '/app/tax-intelligence/returns', label: 'Return Builder', iconKey: 'plus' },
       { to: '/app/tax-intelligence/documents', label: 'Document Processing', iconKey: 'exchange' },

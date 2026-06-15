@@ -37,7 +37,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, SubscriptionPlanConfig
   FREE: {
     id: 'FREE',
     name: 'Free',
-    description: 'Freemium workspace access with onboarding and dashboard included.',
+    description: 'Get started with Tax GPT, dashboard access, and workspace onboarding.',
     monthlyPrice: BILLING_PLANS.FREE.monthlyPrice,
     annualPrice: BILLING_PLANS.FREE.annualPrice,
     features: {
@@ -58,7 +58,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, SubscriptionPlanConfig
   PROFESSIONAL: {
     id: 'PROFESSIONAL',
     name: 'Professional',
-    description: 'Working papers and operational integrations for growing teams.',
+    description: 'Working papers, integrations, and team operations for growing firms.',
     monthlyPrice: BILLING_PLANS.PROFESSIONAL.monthlyPrice,
     annualPrice: BILLING_PLANS.PROFESSIONAL.annualPrice,
     features: {
@@ -79,7 +79,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, SubscriptionPlanConfig
   TAX_INTELLIGENCE: {
     id: 'TAX_INTELLIGENCE',
     name: 'Tax Intelligence',
-    description: 'Higher AI capacity and advanced tax intelligence workflows.',
+    description: 'AI-powered tax research, returns, scenarios, and document intelligence.',
     monthlyPrice: BILLING_PLANS.TAX_INTELLIGENCE.monthlyPrice,
     annualPrice: BILLING_PLANS.TAX_INTELLIGENCE.annualPrice,
     features: {
@@ -100,7 +100,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, SubscriptionPlanConfig
   ENTERPRISE: {
     id: 'ENTERPRISE',
     name: 'Enterprise',
-    description: 'Maximum limits, advanced controls, and enterprise readiness.',
+    description: 'Maximum scale, advanced controls, and enterprise-ready governance.',
     monthlyPrice: BILLING_PLANS.ENTERPRISE.monthlyPrice,
     annualPrice: BILLING_PLANS.ENTERPRISE.annualPrice,
     features: {

@@ -1,12 +1,14 @@
 import { count, eq, inArray, sql } from 'drizzle-orm'
 import { embeddings, getDb, ensureDbValidated, sources } from '@shared/types'
-import { CraFolioDiscoveryService, CraPublicationsDiscoveryService } from '../services/discovery'
+import { CraFolioDiscoveryService, CraFormsDiscoveryService, CraPublicationsDiscoveryService } from '../services/discovery'
 import {
   CRA_FOLIO_DISCOVERY_SEEDS,
+  CRA_FORMS_CATALOG_SEED,
   CRA_PUBLICATIONS_CATALOG_SEED,
   CRA_PUBLICATIONS_CATALOG_URL,
   CRA_TAX_REFERENCE_CONTENT_SEEDS
 } from './discoverySeeds'
+import { getFormRegistryStats } from './formRegistry'
 import {
   isArchivedOrCancelledTitle,
   isCatalogPublicationLandingUrl,
@@ -28,6 +30,36 @@ export type CorpusAuditReport = {
   byCategory: Array<{ category: string; count: number }>
   byIngestStatus: Array<{ ingestStatus: string; count: number }>
   byPageKind: Array<{ pageKind: string; count: number }>
+}
+
+async function ensureFormsCatalogSeedSource () {
+  const db = getDb()
+  const seed = CRA_FORMS_CATALOG_SEED
+  const existing = await db
+    .select({ id: sources.id })
+    .from(sources)
+    .where(eq(sources.url, seed.url))
+    .limit(1)
+
+  if (existing[0]?.id) {
+    return existing[0].id
+  }
+
+  const inserted = await db
+    .insert(sources)
+    .values({
+      url: seed.url,
+      title: seed.title,
+      sourceType: seed.sourceType,
+      category: seed.category,
+      ingestStatus: 'skipped',
+      pageKind: seed.pageKind,
+      priority: seed.priority,
+      metadata: { corpusSeed: seed.key, corpusRole: 'forms_catalog' }
+    })
+    .returning({ id: sources.id })
+
+  return inserted[0].id
 }
 
 async function ensureCatalogSeedSource () {
@@ -111,6 +143,26 @@ function isFolioDiscoveryCandidate (row: {
 function isPublicationLandingUrl (url: string): boolean {
   if (url === CRA_PUBLICATIONS_CATALOG_URL) return false
   return isCatalogPublicationLandingUrl(url)
+}
+
+/** Parse forms.html catalog table → taxgpt.form_registry metadata (no per-form RAG sources). */
+export async function discoverFormsCatalog (): Promise<{
+  registryInserted: number
+  registryUpdated: number
+  totalForms: number
+  registryStats: { total: number; active: number; archived: number }
+}> {
+  await ensureDbValidated()
+  const sourceId = await ensureFormsCatalogSeedSource()
+  const discovery = new CraFormsDiscoveryService()
+  const result = await discovery.discoverFromFormsDirectory(sourceId)
+  const registryStats = await getFormRegistryStats()
+  return {
+    registryInserted: result.registryInserted,
+    registryUpdated: result.registryUpdated,
+    totalForms: result.discoveredLinks.length,
+    registryStats
+  }
 }
 
 /** Phase 1: parse publications.html table → one source per publication number. */

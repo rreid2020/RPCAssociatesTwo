@@ -99,7 +99,8 @@ export async function retrieveTaxgptChunks (pool, query, options = {}) {
                 OR LOWER(s.url) LIKE '%adjustment-personal-income-tax-benefit%'
               ) THEN 0.30
               WHEN $8 = true AND s.url IS NOT NULL AND (
-                LOWER(s.url) LIKE '%5000-g%'
+                LOWER(s.url) LIKE '%tax-packages-years%'
+                OR LOWER(s.url) LIKE '%5000-g%'
                 OR LOWER(COALESCE(s.metadata->>'publicationNumber', '')) = '5000-g'
               ) THEN 0.35
               WHEN s.title IS NOT NULL AND LOWER(s.title) LIKE '%' || $3 || '%' THEN 0.15
@@ -307,7 +308,8 @@ async function retrieveScopedT1GuideChunks (pool, { embeddingVector, limit }) {
       LEFT JOIN taxgpt.sources parent ON parent.id = s.parent_source_id
       WHERE s.ingest_status = 'ingested'
         AND (
-          LOWER(s.url) LIKE '%5000-g%'
+          LOWER(s.url) LIKE '%tax-packages-years%'
+          OR LOWER(s.url) LIKE '%5000-g%'
           OR LOWER(COALESCE(s.metadata->>'publicationNumber', '')) = '5000-g'
         )
       ORDER BY e.embedding <=> $1::vector

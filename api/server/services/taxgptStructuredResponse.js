@@ -111,11 +111,14 @@ export function buildTaxgptStructuredSystemPrompt (mode, language = 'en') {
  * @param {string} message
  * @param {Array<{ content: string, citation: Record<string, unknown>, sourceBucket?: string }>} chunks
  * @param {'en' | 'fr'} [language]
- * @param {{ requestedPublicationsContext?: string }} [options]
+ * @param {{ requestedPublicationsContext?: string, requestedFormsContext?: string }} [options]
  */
 export function buildTaxgptStructuredUserPrompt (message, chunks, language = 'en', options = {}) {
   const languageLabel = taxgptLanguageLabel(language)
-  const requestedContext = String(options.requestedPublicationsContext || '').trim()
+  const requestedContext = [
+    String(options.requestedPublicationsContext || '').trim(),
+    String(options.requestedFormsContext || '').trim()
+  ].filter(Boolean).join('\n\n')
   const sourcesText = chunks
     .map((chunk, index) => {
       const heading = chunk.citation.sectionHeading ? ` - ${chunk.citation.sectionHeading}` : ''

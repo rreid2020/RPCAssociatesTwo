@@ -4,12 +4,14 @@
  *   retrievalMode: 'rag' | 'degraded',
  *   retrievalNotice?: string | null,
  *   requestedPublications?: Array<Record<string, unknown>>,
+ *   requestedForms?: Array<Record<string, unknown>>,
  *   confidence?: 'high' | 'medium' | 'low'
  * }} input
  */
 export function buildTaxgptFeedbackSuggestion (message, input = {}) {
   const retrievalMode = input.retrievalMode === 'degraded' ? 'degraded' : 'rag'
   const requestedPublications = Array.isArray(input.requestedPublications) ? input.requestedPublications : []
+  const requestedForms = Array.isArray(input.requestedForms) ? input.requestedForms : []
   const confidence = input.confidence || 'medium'
   const trimmedMessage = String(message || '').trim()
 
@@ -33,6 +35,31 @@ export function buildTaxgptFeedbackSuggestion (message, input = {}) {
       messageDraft: [
         'TaxGPT could not use the CRA source I expected for this question.',
         detail ? `Corpus status: ${detail}.` : '',
+        trimmedMessage ? `Question: ${trimmedMessage.slice(0, 1200)}` : ''
+      ].filter(Boolean).join('\n\n')
+    }
+  }
+
+  const unavailableForms = requestedForms.filter((item) =>
+    item.status === 'not_indexed' || item.status === 'archived'
+  )
+
+  if (unavailableForms.length > 0) {
+    const codes = unavailableForms.map((item) => item.code).filter(Boolean).join(', ')
+    const detail = unavailableForms
+      .map((item) => `${item.code}: ${item.reason || item.status}`)
+      .join('; ')
+
+    return {
+      show: true,
+      category: 'corpus_gap',
+      reason: codes
+        ? `The requested form(s) ${codes} are not available or are archived in the CRA forms catalog.`
+        : 'A form named in your question is not available in the CRA forms catalog.',
+      subject: codes ? `Missing or unavailable form: ${codes}` : 'Missing or unavailable CRA form',
+      messageDraft: [
+        'TaxGPT could not confirm the CRA form I expected for this question.',
+        detail ? `Forms catalog status: ${detail}.` : '',
         trimmedMessage ? `Question: ${trimmedMessage.slice(0, 1200)}` : ''
       ].filter(Boolean).join('\n\n')
     }

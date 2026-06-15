@@ -9,6 +9,10 @@ import {
 } from './taxgptStructuredResponse.js'
 import { retrieveTaxgptChunks } from './taxgptRetrievalRepository.js'
 import {
+  formatRequestedFormsContext,
+  resolveRequestedForms
+} from './taxgptFormResolver.js'
+import {
   formatRequestedPublicationsContext,
   resolveRequestedPublications
 } from './taxgptPublicationResolver.js'
@@ -200,6 +204,7 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
 
   const riskLevel = detectHighRiskTopics(message) ? 'high' : 'low'
   const requestedPublications = await resolveRequestedPublications(pool, message)
+  const requestedForms = await resolveRequestedForms(pool, message)
   const retrieval = await resolveRetrievedChunks(pool, message, corpus, { topK: 10, language })
   const retrievalMode = retrieval.mode
   const resolvedModelPlan = resolveTaxgptChatModel({
@@ -212,9 +217,10 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
   const systemPrompt = buildTaxgptStructuredSystemPrompt(retrievalMode, language)
   const userPrompt = retrievalMode === 'rag'
     ? buildTaxgptStructuredUserPrompt(message, annotatedChunks, language, {
-      requestedPublicationsContext: formatRequestedPublicationsContext(requestedPublications)
+      requestedPublicationsContext: formatRequestedPublicationsContext(requestedPublications),
+      requestedFormsContext: formatRequestedFormsContext(requestedForms)
     })
-    : `User Question: ${message}\n\n${formatRequestedPublicationsContext(requestedPublications)}\n\nNo retrieved sources are available. Return the degraded JSON schema.`
+    : `User Question: ${message}\n\n${formatRequestedPublicationsContext(requestedPublications)}\n\n${formatRequestedFormsContext(requestedForms)}\n\nNo retrieved sources are available. Return the degraded JSON schema.`
 
   let completion
   try {
@@ -249,6 +255,7 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
     retrievalMode,
     retrievalNotice: retrieval.notice,
     requestedPublications,
+    requestedForms,
     confidence: structuredResponse.confidence
   })
   const sources = retrievalMode === 'rag'

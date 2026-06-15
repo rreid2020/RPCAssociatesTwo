@@ -25,6 +25,20 @@ export const CRA_PUBLICATIONS_CATALOG_SEED: CorpusDiscoverySeed = {
   priority: 'high'
 }
 
+export const CRA_FORMS_CATALOG_URL =
+  'https://www.canada.ca/en/revenue-agency/services/forms-publications/forms.html'
+
+/** Authoritative CRA forms catalogue — metadata lands in taxgpt.form_registry, not per-form RAG sources. */
+export const CRA_FORMS_CATALOG_SEED: CorpusDiscoverySeed = {
+  key: 'forms_catalog',
+  url: CRA_FORMS_CATALOG_URL,
+  title: 'CRA Forms by Number',
+  sourceType: 'html',
+  category: 'form',
+  pageKind: 'directory',
+  priority: 'high'
+}
+
 export const CRA_TECHNICAL_INFORMATION_URL =
   'https://www.canada.ca/en/revenue-agency/services/tax/technical-information.html'
 
@@ -81,6 +95,10 @@ export const CRA_INDEXATION_ADJUSTMENT_URL =
 export const CRA_T1_GENERAL_PACKAGE_URL =
   'https://www.canada.ca/en/revenue-agency/services/forms-publications/tax-packages-years/general-income-tax-benefit-package/5000-g.html'
 
+/** Index of all personal income tax packages by year (links to current and prior T1 packages). */
+export const CRA_TAX_PACKAGES_YEARS_URL =
+  'https://www.canada.ca/en/revenue-agency/services/forms-publications/tax-packages-years.html'
+
 export const CRA_TAX_REFERENCE_CONTENT_SEEDS: CorpusDiscoverySeed[] = [
   {
     key: 'canadian_income_tax_rates',
@@ -104,6 +122,15 @@ export const CRA_TAX_REFERENCE_CONTENT_SEEDS: CorpusDiscoverySeed[] = [
     key: 't1_general_income_tax_package',
     url: CRA_T1_GENERAL_PACKAGE_URL,
     title: 'Federal Income Tax and Benefit Information - General Income Tax and Benefit Package (5000-G)',
+    sourceType: 'html',
+    category: 'guide',
+    pageKind: 'content',
+    priority: 'high'
+  },
+  {
+    key: 'tax_packages_years_index',
+    url: CRA_TAX_PACKAGES_YEARS_URL,
+    title: 'All personal income tax packages',
     sourceType: 'html',
     category: 'guide',
     pageKind: 'content',

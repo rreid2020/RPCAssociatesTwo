@@ -63,6 +63,37 @@ export function normalizePublicationCode (code) {
 }
 
 /**
+ * @param {string} code
+ */
+export function normalizeFormNumber (code) {
+  return String(code || '').trim().toUpperCase().replace(/\s+/g, '')
+}
+
+/**
+ * @param {string} query
+ */
+export function extractFormCodesFromQuery (query) {
+  const text = String(query || '')
+  const patterns = [
+    /\b(T\d{1,4}[A-Z0-9]*(?:SCH\d+[A-Z0-9]*)?)\b/gi,
+    /\b(RC\d{2,4}[A-Z0-9/-]*)\b/gi,
+    /\b(NR\d[A-Z0-9/-]*)\b/gi,
+    /\b(GST\d+[A-Z0-9/-]*)\b/gi,
+    /\b(B\d{2,4}[A-Z0-9/-]*)\b/gi,
+    /\b(UHT-\d+)\b/gi,
+    /\b(\d{2,3}-\d{3})\b/g
+  ]
+
+  const matches = []
+  for (const pattern of patterns) {
+    const found = text.match(pattern) || []
+    matches.push(...found)
+  }
+
+  return [...new Set(matches.map((code) => normalizeFormNumber(code)).filter(Boolean))]
+}
+
+/**
  * @param {string} query
  */
 export function extractPublicationCodesFromQuery (query) {
@@ -131,7 +162,8 @@ export function detectPersonalIncomeTaxFilingIntent (query) {
   return (
     /\b(deadline|due date|due dates|when.*file|filing date|file.*return)\b/.test(normalized) &&
     /\b(personal|individual|income tax return|t1|canada)\b/.test(normalized)
-  ) || /\b5000-g\b/i.test(query)
+  ) || /\b(income tax package|tax package|t1 package|general income tax)\b/.test(normalized)
+    || /\b5000-g\b/i.test(query)
 }
 
 /**

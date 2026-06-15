@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url'
 import {
   auditCorpus,
   discoverCanliiTaxCourtBatch,
+  discoverFormsCatalog,
   discoverFolioDirectories,
   discoverFullPublicationsCorpus,
   discoverPublicationsCatalog,
@@ -354,6 +355,9 @@ async function main () {
     case 'discover':
       console.log(JSON.stringify(await discoverPublicationsCatalog(), null, 2))
       break
+    case 'discover-forms':
+      console.log(JSON.stringify(await discoverFormsCatalog(), null, 2))
+      break
     case 'discover-folios':
       console.log(JSON.stringify(
         await discoverFolioDirectories({ limit: readLimit(argv, 10) }),
@@ -401,7 +405,7 @@ async function main () {
       break
     default:
       console.error(
-        'Usage: tsx src/scripts/taxgpt-corpus.ts <stats|audit|discover|discover-folios|expand|discover-all|discover-canlii|reconcile|ingest|run-pipeline|run-batch> [--limit=N] [--folio-limit=N] [--expand-limit=N] [--ingest-limit=N] [--canlii-discover-limit=N] [--phase=all|folios|expand|canlii|ingest] [--max-errors=N] [--no-reconcile]'
+        'Usage: tsx src/scripts/taxgpt-corpus.ts <stats|audit|discover|discover-forms|discover-folios|expand|discover-all|discover-canlii|reconcile|ingest|run-pipeline|run-batch> [--limit=N] [--folio-limit=N] [--expand-limit=N] [--ingest-limit=N] [--canlii-discover-limit=N] [--phase=all|folios|expand|canlii|ingest] [--max-errors=N] [--no-reconcile]'
       )
       process.exit(1)
   }

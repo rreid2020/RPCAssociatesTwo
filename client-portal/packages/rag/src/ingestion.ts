@@ -910,6 +910,7 @@ export class IngestionService {
     category?: string;
     type?: string;
     priority?: string;
+    corpusRole?: string;
     limit?: number;
   }): Promise<IngestSummary> {
     // Validate database setup before starting
@@ -930,12 +931,15 @@ export class IngestionService {
         if (filters.category && s.category !== filters.category) return false;
         if (filters.type && s.sourceType !== filters.type) return false;
         if (filters.priority && s.priority !== filters.priority) return false;
+        const metadata = (s.metadata || {}) as Record<string, unknown>;
+        if (filters.corpusRole && metadata.corpusRole !== filters.corpusRole) return false;
         if (s.ingestStatus !== 'pending') return false;
         if (isArchivedOrCancelledTitle(s.title)) return false;
         if (s.pageKind === 'directory') return false;
-        const metadata = (s.metadata || {}) as Record<string, unknown>;
         if (metadata.corpusRole === 'publication_landing') return false;
         if (metadata.corpusRole === 'folio_discovery') return false;
+        if (metadata.corpusRole === 'forms_catalog') return false;
+        if (metadata.corpusRole === 'taxes_hub' && s.pageKind === 'unknown') return false;
         // Catalog landing pages must be expanded first unless promoted to direct content.
         if (isPublicationLandingPendingExpand({
           url: s.url,

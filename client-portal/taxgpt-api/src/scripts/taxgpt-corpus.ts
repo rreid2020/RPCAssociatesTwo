@@ -7,8 +7,11 @@ import {
   discoverFormsCatalog,
   discoverFolioDirectories,
   discoverFullPublicationsCorpus,
+  discoverFullTaxesHubCorpus,
   discoverPublicationsCatalog,
+  discoverTaxesHub,
   expandPublicationLandingPages,
+  expandTaxesHubPages,
   reconcileArchivedPendingSources,
   reconcileEmbeddingFailedSources,
   reconcileTaxReferenceContentSources,
@@ -228,9 +231,111 @@ async function runExpandIngestPipeline (argv: string[]) {
 
 async function ingestBatch (argv: string[]) {
   const limit = readLimit(argv, 10)
+  const corpusRole = argv.find((arg) => arg.startsWith('--corpus-role='))?.split('=')[1]
   const ingestionService = new IngestionService()
-  const summary = await ingestionService.ingestBatch({ limit })
+  const summary = await ingestionService.ingestBatch({ limit, corpusRole })
   console.log(JSON.stringify(summary, null, 2))
+}
+
+async function runTaxesHubPipeline (argv: string[]) {
+  const expandLimit = readOption(argv, 'expand-limit', 100)
+  const ingestLimit = readOption(argv, 'ingest-limit', 20)
+  const maxRounds = readOption(argv, 'max-rounds', 100)
+  const log = (message: string, payload?: unknown) => {
+    const line = payload === undefined
+      ? `[taxes-hub] ${new Date().toISOString()} ${message}`
+      : `[taxes-hub] ${new Date().toISOString()} ${message} ${JSON.stringify(payload)}`
+    console.log(line)
+  }
+
+  log('Starting taxes hub discovery', { expandLimit, maxRounds })
+  const discovery = await discoverFullTaxesHubCorpus({ expandLimit, maxRounds })
+  log('Taxes hub discovery complete', discovery)
+
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('OPENAI_API_KEY is required for taxes hub ingest')
+  }
+
+  const ingestionService = new IngestionService()
+  let ingestCycles = 0
+  let totalSuccessful = 0
+  let totalFailed = 0
+
+  while (true) {
+    ingestCycles += 1
+    const summary = await ingestionService.ingestBatch({
+      corpusRole: 'taxes_hub',
+      limit: ingestLimit
+    })
+    totalSuccessful += summary.successful
+    totalFailed += summary.failed
+    log(`Ingest cycle ${ingestCycles} complete`, summary)
+    if (summary.total === 0) break
+  }
+
+  const totals = (await auditCorpus()).totals
+  const result = {
+    discovery,
+    ingestCycles,
+    totalSuccessful,
+    totalFailed,
+    corpus: totals
+  }
+  log('Taxes hub pipeline finished', result)
+  console.log(JSON.stringify(result, null, 2))
+}
+
+/** Finish taxes hub after discovery: drain expand queue, then ingest all promoted HTML pages. */
+async function runTaxesHubFinish (argv: string[]) {
+  const expandLimit = readOption(argv, 'expand-limit', 100)
+  const ingestLimit = readOption(argv, 'ingest-limit', 20)
+  const maxRounds = readOption(argv, 'max-rounds', 200)
+  const log = (message: string, payload?: unknown) => {
+    const line = payload === undefined
+      ? `[taxes-hub-finish] ${new Date().toISOString()} ${message}`
+      : `[taxes-hub-finish] ${new Date().toISOString()} ${message} ${JSON.stringify(payload)}`
+    console.log(line)
+  }
+
+  const expandRounds: Array<Record<string, number>> = []
+  for (let round = 0; round < maxRounds; round += 1) {
+    const expanded = await expandTaxesHubPages({ limit: expandLimit })
+    expandRounds.push(expanded)
+    log(`Expand round ${round + 1} complete`, expanded)
+    if (expanded.processed === 0) break
+  }
+
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('OPENAI_API_KEY is required for taxes hub ingest')
+  }
+
+  const ingestionService = new IngestionService()
+  let ingestCycles = 0
+  let totalSuccessful = 0
+  let totalFailed = 0
+
+  while (true) {
+    ingestCycles += 1
+    const summary = await ingestionService.ingestBatch({
+      corpusRole: 'taxes_hub',
+      limit: ingestLimit
+    })
+    totalSuccessful += summary.successful
+    totalFailed += summary.failed
+    log(`Ingest cycle ${ingestCycles} complete`, summary)
+    if (summary.total === 0) break
+  }
+
+  const totals = (await auditCorpus()).totals
+  const result = {
+    expandRounds,
+    ingestCycles,
+    totalSuccessful,
+    totalFailed,
+    corpus: totals
+  }
+  log('Taxes hub finish pipeline complete', result)
+  console.log(JSON.stringify(result, null, 2))
 }
 
 /** One expand batch + one ingest batch, then exit — safe for DigitalOcean scheduled jobs. */
@@ -358,6 +463,35 @@ async function main () {
     case 'discover-forms':
       console.log(JSON.stringify(await discoverFormsCatalog(), null, 2))
       break
+    case 'discover-taxes-hub':
+      console.log(JSON.stringify(await discoverTaxesHub(), null, 2))
+      break
+    case 'expand-taxes-hub':
+      console.log(JSON.stringify(
+        await expandTaxesHubPages({ limit: readLimit(argv, 50) }),
+        null,
+        2
+      ))
+      break
+    case 'discover-taxes-hub-all':
+      console.log(JSON.stringify(
+        await discoverFullTaxesHubCorpus({
+          expandLimit: readOption(argv, 'expand-limit', 100),
+          maxRounds: readOption(argv, 'max-rounds', 100)
+        }),
+        null,
+        2
+      ))
+      break
+    case 'ingest-taxes-hub':
+      await ingestBatch(['--corpus-role=taxes_hub', ...argv])
+      break
+    case 'run-taxes-hub-pipeline':
+      await runTaxesHubPipeline(argv)
+      break
+    case 'finish-taxes-hub':
+      await runTaxesHubFinish(argv)
+      break
     case 'discover-folios':
       console.log(JSON.stringify(
         await discoverFolioDirectories({ limit: readLimit(argv, 10) }),
@@ -405,7 +539,7 @@ async function main () {
       break
     default:
       console.error(
-        'Usage: tsx src/scripts/taxgpt-corpus.ts <stats|audit|discover|discover-forms|discover-folios|expand|discover-all|discover-canlii|reconcile|ingest|run-pipeline|run-batch> [--limit=N] [--folio-limit=N] [--expand-limit=N] [--ingest-limit=N] [--canlii-discover-limit=N] [--phase=all|folios|expand|canlii|ingest] [--max-errors=N] [--no-reconcile]'
+        'Usage: tsx src/scripts/taxgpt-corpus.ts <stats|audit|discover|discover-forms|discover-taxes-hub|expand-taxes-hub|discover-taxes-hub-all|ingest-taxes-hub|run-taxes-hub-pipeline|finish-taxes-hub|discover-folios|expand|discover-all|discover-canlii|reconcile|ingest|run-pipeline|run-batch> [--limit=N] [--folio-limit=N] [--expand-limit=N] [--ingest-limit=N] [--max-rounds=N] [--corpus-role=NAME] [--canlii-discover-limit=N] [--phase=all|folios|expand|canlii|ingest] [--max-errors=N] [--no-reconcile]'
       )
       process.exit(1)
   }

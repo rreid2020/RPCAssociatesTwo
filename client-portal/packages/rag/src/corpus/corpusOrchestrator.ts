@@ -1,7 +1,8 @@
 import { count, eq, inArray, sql } from 'drizzle-orm'
 import { embeddings, getDb, ensureDbValidated, sources } from '@shared/types'
-import { CraFolioDiscoveryService, CraFormsDiscoveryService, CraPublicationsDiscoveryService } from '../services/discovery'
+import { CraFolioDiscoveryService, CraFormsDiscoveryService, CraPublicationsDiscoveryService, CraTaxesHubDiscoveryService } from '../services/discovery'
 import {
+  CANADA_TAXES_HUB_SEED,
   CRA_FOLIO_DISCOVERY_SEEDS,
   CRA_FORMS_CATALOG_SEED,
   CRA_PUBLICATIONS_CATALOG_SEED,
@@ -13,7 +14,8 @@ import {
   isArchivedOrCancelledTitle,
   isCatalogPublicationLandingUrl,
   isFrenchCraPublicationUrl,
-  isPublicationLandingPendingExpand
+  isPublicationLandingPendingExpand,
+  isTaxesHubDirectoryCandidate
 } from './sourcePolicy'
 
 export type CorpusAuditReport = {
@@ -30,6 +32,36 @@ export type CorpusAuditReport = {
   byCategory: Array<{ category: string; count: number }>
   byIngestStatus: Array<{ ingestStatus: string; count: number }>
   byPageKind: Array<{ pageKind: string; count: number }>
+}
+
+async function ensureTaxesHubSeedSource () {
+  const db = getDb()
+  const seed = CANADA_TAXES_HUB_SEED
+  const existing = await db
+    .select({ id: sources.id })
+    .from(sources)
+    .where(eq(sources.url, seed.url))
+    .limit(1)
+
+  if (existing[0]?.id) {
+    return existing[0].id
+  }
+
+  const inserted = await db
+    .insert(sources)
+    .values({
+      url: seed.url,
+      title: seed.title,
+      sourceType: seed.sourceType,
+      category: seed.category,
+      ingestStatus: 'skipped',
+      pageKind: seed.pageKind,
+      priority: seed.priority,
+      metadata: { corpusSeed: seed.key, corpusRole: 'taxes_hub' }
+    })
+    .returning({ id: sources.id })
+
+  return inserted[0].id
 }
 
 async function ensureFormsCatalogSeedSource () {
@@ -163,6 +195,97 @@ export async function discoverFormsCatalog (): Promise<{
     totalForms: result.discoveredLinks.length,
     registryStats
   }
+}
+
+/** Phase 1: crawl Canada.ca taxes hub and create pending HTML topic sources. */
+export async function discoverTaxesHub (): Promise<{
+  newSourcesCreated: number
+  skippedDuplicates: number
+  discoveredLinks: number
+}> {
+  await ensureDbValidated()
+  const sourceId = await ensureTaxesHubSeedSource()
+  const discovery = new CraTaxesHubDiscoveryService()
+  const result = await discovery.discoverFromSource(sourceId)
+  return {
+    newSourcesCreated: result.newSourcesCreated,
+    skippedDuplicates: result.skippedDuplicates,
+    discoveredLinks: result.discoveredLinks.length
+  }
+}
+
+/** Phase 2: expand taxes hub directory pages to discover linked HTML topic trees. */
+export async function expandTaxesHubPages (options: { limit?: number } = {}): Promise<{
+  processed: number
+  expanded: number
+  contentSourcesCreated: number
+  skipped: number
+  errors: number
+}> {
+  await ensureDbValidated()
+  const db = getDb()
+  const discovery = new CraTaxesHubDiscoveryService()
+  const limit = options.limit ?? 50
+
+  const pending = await db
+    .select()
+    .from(sources)
+    .where(eq(sources.ingestStatus, 'pending'))
+
+  const candidates = pending
+    .filter((row) => isTaxesHubDirectoryCandidate(row))
+    .filter((row) => !isArchivedOrCancelledTitle(row.title))
+    .slice(0, limit)
+
+  const summary = {
+    processed: 0,
+    expanded: 0,
+    contentSourcesCreated: 0,
+    skipped: 0,
+    errors: 0
+  }
+
+  for (const row of candidates) {
+    summary.processed += 1
+    try {
+      const result = await discovery.discoverFromSource(row.id)
+      if (result.newSourcesCreated > 0) {
+        summary.expanded += 1
+        summary.contentSourcesCreated += result.newSourcesCreated
+      } else {
+        summary.skipped += 1
+      }
+    } catch {
+      summary.errors += 1
+    }
+  }
+
+  return summary
+}
+
+/** Full taxes hub discovery: hub crawl + recursive directory expansion. */
+export async function discoverFullTaxesHubCorpus (options: {
+  expandLimit?: number
+  maxRounds?: number
+} = {}) {
+  const catalog = await discoverTaxesHub()
+  const expandLimit = options.expandLimit ?? 100
+  const maxRounds = options.maxRounds ?? 100
+  const rounds: Array<{
+    processed: number
+    expanded: number
+    contentSourcesCreated: number
+    skipped: number
+    errors: number
+  }> = []
+
+  for (let round = 0; round < maxRounds; round += 1) {
+    const expanded = await expandTaxesHubPages({ limit: expandLimit })
+    rounds.push(expanded)
+    if (expanded.processed === 0) break
+  }
+
+  return { catalog, rounds }
 }
 
 /** Phase 1: parse publications.html table → one source per publication number. */

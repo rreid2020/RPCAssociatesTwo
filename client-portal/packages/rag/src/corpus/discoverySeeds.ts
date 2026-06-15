@@ -1,5 +1,6 @@
 import type { SourceCategory, SourceType } from '@shared/types'
 import type { PageKind } from '@shared/types'
+import { CANADA_TAXES_HUB_URL } from './sourcePolicy'
 
 export const CRA_PUBLICATIONS_CATALOG_URL =
   'https://www.canada.ca/en/revenue-agency/services/forms-publications/publications.html'
@@ -137,6 +138,20 @@ export const CRA_TAX_REFERENCE_CONTENT_SEEDS: CorpusDiscoverySeed[] = [
     priority: 'high'
   }
 ]
+
+/**
+ * Government of Canada taxes hub — discovery entry for consumer-facing CRA HTML topic trees.
+ * HTML topic pages are ingested; bulk PDF/forms/publications catalogs use separate pipelines.
+ */
+export const CANADA_TAXES_HUB_SEED: CorpusDiscoverySeed = {
+  key: 'canada_taxes_hub',
+  url: CANADA_TAXES_HUB_URL,
+  title: 'Canada.ca — Taxes',
+  sourceType: 'html',
+  category: 'guide',
+  pageKind: 'directory',
+  priority: 'high'
+}
 
 /** CanLII Tax Court seed — API metadata discovery only; ingest indexes metadata, not full text. */
 export const CANLII_TAX_COURT_SEED: CorpusDiscoverySeed = {

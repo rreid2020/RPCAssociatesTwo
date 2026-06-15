@@ -125,3 +125,92 @@ export function isPublicationIngestContentUrl (url: string): boolean {
     return false
   }
 }
+
+export const CANADA_TAXES_HUB_URL =
+  'https://www.canada.ca/en/services/taxes.html'
+
+/** English Canada.ca tax hub and CRA tax HTML trees reachable from the hub. */
+export function isTaxesHubInScopeUrl (url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    const host = parsed.hostname.toLowerCase()
+    if (host !== 'www.canada.ca' && host !== 'canada.ca') return false
+
+    const pathname = parsed.pathname.toLowerCase()
+    if (!pathname.startsWith('/en/')) return false
+
+    return (
+      pathname.startsWith('/en/services/taxes') ||
+      pathname.startsWith('/en/services/benefits') ||
+      pathname.startsWith('/en/revenue-agency/services/tax') ||
+      pathname.startsWith('/en/revenue-agency/services/charities') ||
+      pathname.startsWith('/en/revenue-agency/services/payment') ||
+      pathname.startsWith('/en/revenue-agency/services/forms-publications/tax-packages-years') ||
+      pathname.startsWith('/en/revenue-agency/services/child-care') ||
+      pathname.startsWith('/en/revenue-agency/programs')
+    )
+  } catch {
+    return false
+  }
+}
+
+/** URLs that should not be discovered from the taxes hub crawl. */
+export function shouldSkipTaxesHubDiscoveryUrl (url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    const pathname = parsed.pathname.toLowerCase()
+    const search = parsed.search.toLowerCase()
+
+    if (pathname.endsWith('.pdf')) return true
+    if (pathname.endsWith('.xml') || pathname.endsWith('.json')) return true
+    if (search.includes('redirect=') || search.includes('logout')) return true
+    if (/\/(sign-in|login|my-account|e-services\/)/.test(pathname)) return true
+    if (/\/(social-media|terms|privacy|about)/.test(pathname)) return true
+    if (pathname.endsWith('/publications.html') || pathname.endsWith('/forms.html')) return true
+    if (pathname === '/en/services/taxes.html') return true
+    if (isFrenchCraPublicationUrl(url)) return true
+    return false
+  } catch {
+    return true
+  }
+}
+
+export function classifyTaxesHubFamily (url: string): string {
+  try {
+    const pathname = new URL(url).pathname.toLowerCase()
+    if (pathname.includes('/gsthst') || pathname.includes('/gst/') || pathname.includes('/hst')) {
+      return 'gst_hst'
+    }
+    if (pathname.includes('/payroll')) return 'payroll'
+    if (pathname.includes('/individuals') || pathname.includes('/personal-income')) {
+      return 'personal'
+    }
+    if (pathname.includes('/businesses') || pathname.includes('/business/') || pathname.includes('/corporations')) {
+      return 'business'
+    }
+    if (pathname.includes('/charit')) return 'charity'
+    if (pathname.includes('/trusts')) return 'trust'
+    if (pathname.includes('/benefit') || pathname.includes('/credit')) return 'benefits'
+    if (pathname.includes('/savings') || pathname.includes('/rrsp') || pathname.includes('/tfsa') || pathname.includes('/pension')) {
+      return 'savings_plans'
+    }
+    if (pathname.includes('/compliance') || pathname.includes('/audit') || pathname.includes('/penalt')) {
+      return 'compliance'
+    }
+    if (pathname.startsWith('/en/services/taxes')) return 'taxes_hub'
+    return 'other'
+  } catch {
+    return 'other'
+  }
+}
+
+export function isTaxesHubDirectoryCandidate (row: {
+  pageKind?: string | null
+  metadata?: Record<string, unknown> | null
+  sourceType?: string | null
+}) {
+  const metadata = (row.metadata || {}) as Record<string, unknown>
+  if (metadata.corpusRole !== 'taxes_hub') return false
+  if (row.sourceType === 'taxes_hub_directory') return true
+  return row.pageKind === 'directory' || row.pageKind === 'unknown'
+}

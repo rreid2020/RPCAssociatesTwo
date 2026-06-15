@@ -79,6 +79,8 @@ export function publicationCodeFromUrl (url) {
   if (guideMatch) return guideMatch[1].toLowerCase()
   const icMatch = filename.match(/^(ic\d{2,3}(?:-\d+[a-z]?)?)/i)
   if (icMatch) return icMatch[1].toLowerCase()
+  const taxPackageMatch = filename.match(/^(\d{4}-[a-z])$/i)
+  if (taxPackageMatch) return taxPackageMatch[1].toLowerCase()
   return ''
 }
 
@@ -116,6 +118,29 @@ export function resolvePublicationFamilyKey (row) {
   if (title) return `title:${title.toLowerCase()}`
 
   return row.sourceUrl ? `url:${row.sourceUrl}` : ''
+}
+
+/**
+ * @param {string} query
+ */
+export function detectPersonalIncomeTaxFilingIntent (query) {
+  const normalized = String(query || '').toLowerCase()
+  if (/\b(non[- ]?resident|deemed resident|section 216|t4058|t4a-nr|5013-g)\b/.test(normalized)) {
+    return false
+  }
+  return (
+    /\b(deadline|due date|due dates|when.*file|filing date|file.*return)\b/.test(normalized) &&
+    /\b(personal|individual|income tax return|t1|canada)\b/.test(normalized)
+  ) || /\b5000-g\b/i.test(query)
+}
+
+/**
+ * @param {string} query
+ */
+export function detectTaxBracketQueryIntent (query) {
+  const normalized = String(query || '').toLowerCase()
+  return /\b(tax brackets?|income tax brackets?|federal tax rates?|marginal tax rates?|rate of tax|tax rate)\b/.test(normalized)
+    || /\bhow are (they|brackets) applied\b/.test(normalized)
 }
 
 /**

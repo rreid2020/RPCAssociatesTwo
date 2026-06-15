@@ -10,6 +10,7 @@ import {
   expandPublicationLandingPages,
   reconcileArchivedPendingSources,
   reconcileEmbeddingFailedSources,
+  reconcileTaxReferenceContentSources,
   reconcileTimeoutFailedSources
 } from '@rag/core'
 import { IngestionService } from '@rag/core'
@@ -69,6 +70,7 @@ async function runExpandIngestPipeline (argv: string[]) {
     log('Reconciling corpus before continuous run')
     const reconciled = {
       archived: await reconcileArchivedPendingSources(),
+      taxReference: await reconcileTaxReferenceContentSources(),
       timeouts: await reconcileTimeoutFailedSources(),
       embeddings: await reconcileEmbeddingFailedSources()
     }
@@ -376,6 +378,7 @@ async function main () {
     case 'reconcile':
       console.log(JSON.stringify({
         archived: await reconcileArchivedPendingSources(),
+        taxReference: await reconcileTaxReferenceContentSources(),
         timeouts: await reconcileTimeoutFailedSources(),
         embeddings: await reconcileEmbeddingFailedSources()
       }, null, 2))

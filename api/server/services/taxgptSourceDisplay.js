@@ -70,6 +70,7 @@ function titleFromPublicationFilename (url) {
   const code = formatPublicationCode(publicationCodeFromUrl(url))
   if (!code) return ''
   if (code.startsWith('IC')) return `Information Circular ${code}`
+  if (/^\d{4}-[A-Z]$/.test(code)) return `Guide ${code}`
   if (code.startsWith('T') || code.startsWith('RC')) return `Guide ${code}`
   return code
 }
@@ -81,6 +82,7 @@ function publicationLabel (code) {
   const normalized = formatPublicationCode(code)
   if (!normalized) return ''
   if (normalized.startsWith('IC')) return `Information Circular ${normalized}`
+  if (/^\d{4}-[A-Z]$/.test(normalized)) return `Guide ${normalized}`
   if (normalized.startsWith('T') || normalized.startsWith('RC')) return `Guide ${normalized}`
   return normalized
 }

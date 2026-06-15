@@ -70,6 +70,47 @@ export const CRA_FOLIO_DISCOVERY_SEEDS: CorpusDiscoverySeed[] = [
 
 export const CANLII_TAX_COURT_URL = 'https://www.canlii.org/en/ca/tcc/'
 
+/** Authoritative CRA pages for federal/provincial bracket tables and indexation amounts. */
+export const CRA_CANADIAN_INCOME_TAX_RATES_URL =
+  'https://www.canada.ca/en/revenue-agency/services/tax/individuals/frequently-asked-questions-individuals/canadian-income-tax-rates-individuals-current-previous-years.html'
+
+export const CRA_INDEXATION_ADJUSTMENT_URL =
+  'https://www.canada.ca/en/revenue-agency/services/tax/individuals/frequently-asked-questions-individuals/adjustment-personal-income-tax-benefit-amounts.html'
+
+/** T1 General Income Tax and Benefit Package — authoritative for filing deadlines and return completion. */
+export const CRA_T1_GENERAL_PACKAGE_URL =
+  'https://www.canada.ca/en/revenue-agency/services/forms-publications/tax-packages-years/general-income-tax-benefit-package/5000-g.html'
+
+export const CRA_TAX_REFERENCE_CONTENT_SEEDS: CorpusDiscoverySeed[] = [
+  {
+    key: 'canadian_income_tax_rates',
+    url: CRA_CANADIAN_INCOME_TAX_RATES_URL,
+    title: 'Canadian income tax rates for individuals - current and previous years',
+    sourceType: 'html',
+    category: 'guide',
+    pageKind: 'content',
+    priority: 'high'
+  },
+  {
+    key: 'indexation_adjustment_amounts',
+    url: CRA_INDEXATION_ADJUSTMENT_URL,
+    title: 'Indexation adjustment for personal income tax and benefit amounts',
+    sourceType: 'html',
+    category: 'guide',
+    pageKind: 'content',
+    priority: 'high'
+  },
+  {
+    key: 't1_general_income_tax_package',
+    url: CRA_T1_GENERAL_PACKAGE_URL,
+    title: 'Federal Income Tax and Benefit Information - General Income Tax and Benefit Package (5000-G)',
+    sourceType: 'html',
+    category: 'guide',
+    pageKind: 'content',
+    priority: 'high'
+  }
+]
+
 /** CanLII Tax Court seed — API metadata discovery only; ingest indexes metadata, not full text. */
 export const CANLII_TAX_COURT_SEED: CorpusDiscoverySeed = {
   key: 'canlii_tax_court',

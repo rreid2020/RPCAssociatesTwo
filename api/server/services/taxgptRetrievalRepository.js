@@ -4,6 +4,8 @@ import {
   extractFolioCodesFromQuery,
   extractPublicationCodesFromQuery,
   filterRetrievedChunks,
+  detectTaxBracketQueryIntent,
+  detectPersonalIncomeTaxFilingIntent,
   publicationCodeFromUrl,
   resolveFolioCode
 } from './taxgptRetrievalFilters.js'
@@ -47,6 +49,8 @@ export async function retrieveTaxgptChunks (pool, query, options = {}) {
   const publicationCodes = extractPublicationCodesFromQuery(query)
   const primaryFolioSlug = folioCodes[0]?.replace(/\s+/g, '') || ''
   const primaryPublicationCode = publicationCodes[0] || ''
+  const taxBracketIntent = detectTaxBracketQueryIntent(query)
+  const personalFilingIntent = detectPersonalIncomeTaxFilingIntent(query)
   const vectorLimit = Math.min(topK * 8, 80)
 
   const { rows } = await pool.query(
@@ -90,6 +94,14 @@ export async function retrieveTaxgptChunks (pool, query, options = {}) {
                 OR LOWER(COALESCE(s.metadata->>'publicationNumber', '')) = $6
                 OR LOWER(COALESCE(parent.metadata->>'publicationNumber', '')) = $6
               ) THEN 0.25
+              WHEN $7 = true AND s.url IS NOT NULL AND (
+                LOWER(s.url) LIKE '%canadian-income-tax-rates%'
+                OR LOWER(s.url) LIKE '%adjustment-personal-income-tax-benefit%'
+              ) THEN 0.30
+              WHEN $8 = true AND s.url IS NOT NULL AND (
+                LOWER(s.url) LIKE '%5000-g%'
+                OR LOWER(COALESCE(s.metadata->>'publicationNumber', '')) = '5000-g'
+              ) THEN 0.35
               WHEN s.title IS NOT NULL AND LOWER(s.title) LIKE '%' || $3 || '%' THEN 0.15
               WHEN s.url IS NOT NULL AND LOWER(s.url) LIKE '%' || $3 || '%' THEN 0.10
               ELSE 0
@@ -106,7 +118,7 @@ export async function retrieveTaxgptChunks (pool, query, options = {}) {
       ORDER BY similarity DESC
       LIMIT $4
     `,
-    [embeddingVector, vectorLimit, sanitizedQuery, topK, primaryFolioSlug, primaryPublicationCode]
+    [embeddingVector, vectorLimit, sanitizedQuery, topK, primaryFolioSlug, primaryPublicationCode, taxBracketIntent, personalFilingIntent]
   )
 
   let rankedRows = rows.map((row) => {
@@ -133,6 +145,22 @@ export async function retrieveTaxgptChunks (pool, query, options = {}) {
     const scoped = await retrieveScopedPublicationChunks(pool, {
       embeddingVector,
       publicationCode: primaryPublicationCode,
+      limit: topK
+    })
+    rankedRows = mergeRetrievedRows(scoped, rankedRows, topK * 2)
+  }
+
+  if (taxBracketIntent) {
+    const scoped = await retrieveScopedTaxReferenceChunks(pool, {
+      embeddingVector,
+      limit: topK
+    })
+    rankedRows = mergeRetrievedRows(scoped, rankedRows, topK * 2)
+  }
+
+  if (personalFilingIntent) {
+    const scoped = await retrieveScopedT1GuideChunks(pool, {
+      embeddingVector,
       limit: topK
     })
     rankedRows = mergeRetrievedRows(scoped, rankedRows, topK * 2)
@@ -208,6 +236,84 @@ async function retrieveScopedPublicationChunks (pool, { embeddingVector, publica
       LIMIT $3
     `,
     [embeddingVector, publicationCode, limit]
+  )
+
+  return rows
+}
+
+async function retrieveScopedTaxReferenceChunks (pool, { embeddingVector, limit }) {
+  const { rows } = await pool.query(
+    `
+      SELECT
+        c.id AS "chunkId",
+        c.content,
+        c.section_heading AS "sectionHeading",
+        c.page_number AS "pageNumber",
+        s.id AS "sourceId",
+        s.url AS "sourceUrl",
+        s.title AS "sourceTitle",
+        s.category AS "sourceCategory",
+        s.metadata AS "sourceMetadata",
+        s.parent_source_id AS "parentSourceId",
+        s.last_ingested_at AS "lastIngestedAt",
+        parent.title AS "parentSourceTitle",
+        parent.metadata AS "parentSourceMetadata",
+        d.metadata AS "documentMetadata",
+        1 - (e.embedding <=> $1::vector) AS base_similarity,
+        LEAST(1.0, 1 - (e.embedding <=> $1::vector) + 0.35) AS similarity
+      FROM taxgpt.embeddings e
+      INNER JOIN taxgpt.chunks c ON e.chunk_id = c.id
+      INNER JOIN taxgpt.documents d ON c.document_id = d.id
+      INNER JOIN taxgpt.sources s ON d.source_id = s.id
+      LEFT JOIN taxgpt.sources parent ON parent.id = s.parent_source_id
+      WHERE s.ingest_status = 'ingested'
+        AND (
+          LOWER(s.url) LIKE '%canadian-income-tax-rates%'
+          OR LOWER(s.url) LIKE '%adjustment-personal-income-tax-benefit%'
+        )
+      ORDER BY e.embedding <=> $1::vector
+      LIMIT $2
+    `,
+    [embeddingVector, limit]
+  )
+
+  return rows
+}
+
+async function retrieveScopedT1GuideChunks (pool, { embeddingVector, limit }) {
+  const { rows } = await pool.query(
+    `
+      SELECT
+        c.id AS "chunkId",
+        c.content,
+        c.section_heading AS "sectionHeading",
+        c.page_number AS "pageNumber",
+        s.id AS "sourceId",
+        s.url AS "sourceUrl",
+        s.title AS "sourceTitle",
+        s.category AS "sourceCategory",
+        s.metadata AS "sourceMetadata",
+        s.parent_source_id AS "parentSourceId",
+        s.last_ingested_at AS "lastIngestedAt",
+        parent.title AS "parentSourceTitle",
+        parent.metadata AS "parentSourceMetadata",
+        d.metadata AS "documentMetadata",
+        1 - (e.embedding <=> $1::vector) AS base_similarity,
+        LEAST(1.0, 1 - (e.embedding <=> $1::vector) + 0.40) AS similarity
+      FROM taxgpt.embeddings e
+      INNER JOIN taxgpt.chunks c ON e.chunk_id = c.id
+      INNER JOIN taxgpt.documents d ON c.document_id = d.id
+      INNER JOIN taxgpt.sources s ON d.source_id = s.id
+      LEFT JOIN taxgpt.sources parent ON parent.id = s.parent_source_id
+      WHERE s.ingest_status = 'ingested'
+        AND (
+          LOWER(s.url) LIKE '%5000-g%'
+          OR LOWER(COALESCE(s.metadata->>'publicationNumber', '')) = '5000-g'
+        )
+      ORDER BY e.embedding <=> $1::vector
+      LIMIT $2
+    `,
+    [embeddingVector, limit]
   )
 
   return rows

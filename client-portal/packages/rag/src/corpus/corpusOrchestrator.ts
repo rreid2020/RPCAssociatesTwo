@@ -4,7 +4,8 @@ import { CraFolioDiscoveryService, CraPublicationsDiscoveryService } from '../se
 import {
   CRA_FOLIO_DISCOVERY_SEEDS,
   CRA_PUBLICATIONS_CATALOG_SEED,
-  CRA_PUBLICATIONS_CATALOG_URL
+  CRA_PUBLICATIONS_CATALOG_URL,
+  CRA_TAX_REFERENCE_CONTENT_SEEDS
 } from './discoverySeeds'
 import {
   isArchivedOrCancelledTitle,
@@ -282,6 +283,48 @@ export async function discoverFullPublicationsCorpus (options: {
   const folios = await discoverFolioDirectories({ limit: options.folioLimit ?? 10 })
   const expanded = await expandPublicationLandingPages({ limit: options.expandLimit ?? 100 })
   return { catalog, folios, expanded }
+}
+
+export async function reconcileTaxReferenceContentSources (): Promise<{
+  created: number
+  existing: number
+}> {
+  await ensureDbValidated()
+  const db = getDb()
+  let created = 0
+  let existing = 0
+
+  for (const seed of CRA_TAX_REFERENCE_CONTENT_SEEDS) {
+    const row = await db
+      .select({ id: sources.id })
+      .from(sources)
+      .where(eq(sources.url, seed.url))
+      .limit(1)
+
+    if (row[0]?.id) {
+      existing += 1
+      continue
+    }
+
+    await db.insert(sources).values({
+      url: seed.url,
+      normalizedUrl: seed.url,
+      title: seed.title,
+      sourceType: seed.sourceType,
+      category: seed.category,
+      ingestStatus: 'pending',
+      pageKind: seed.pageKind,
+      priority: seed.priority,
+      metadata: {
+        corpusSeed: seed.key,
+        corpusRole: 'tax_reference',
+        ...(seed.key === 't1_general_income_tax_package' ? { publicationNumber: '5000-G' } : {})
+      }
+    })
+    created += 1
+  }
+
+  return { created, existing }
 }
 
 /** Reset embedding/API ingest failures so the job can retry after key or model fixes. */

@@ -154,6 +154,41 @@ export function resolvePublicationFamilyKey (row) {
 /**
  * @param {string} query
  */
+export function expandTaxgptRetrievalQuery (query) {
+  let expanded = String(query || '').trim()
+  if (!expanded) return expanded
+
+  const additions = []
+  if (/\bacb\b/i.test(expanded) && !/adjusted cost base/i.test(expanded)) {
+    additions.push('adjusted cost base')
+  }
+  if (/\b(adjusted cost base|acb|cost base)\b/i.test(expanded) && !/\bshares?\b/i.test(expanded)) {
+    additions.push('publicly traded shares identical properties')
+  }
+  if (/\b(adjusted cost base|acb|cost base|capital gains?)\b/i.test(expanded)) {
+    additions.push('capital gains guide schedule 3')
+  }
+
+  if (additions.length === 0) return expanded
+  return `${expanded} ${[...new Set(additions)].join(' ')}`.trim()
+}
+
+/**
+ * @param {string} query
+ */
+export function detectCapitalGainsAcbIntent (query) {
+  const normalized = String(query || '').toLowerCase()
+  return /\b(acb|adjusted cost base|cost base)\b/.test(normalized)
+    || /\bt4037\b/i.test(query)
+    || (
+      /\bcapital gains?\b/.test(normalized) &&
+      /\b(shares?|securities|identical properties|schedule 3|disposition|mutual fund|units?)\b/.test(normalized)
+    )
+}
+
+/**
+ * @param {string} query
+ */
 export function detectPersonalIncomeTaxFilingIntent (query) {
   const normalized = String(query || '').toLowerCase()
   if (/\b(non[- ]?resident|deemed resident|section 216|t4058|t4a-nr|5013-g)\b/.test(normalized)) {

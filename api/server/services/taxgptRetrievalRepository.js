@@ -3,7 +3,9 @@ import { resolveDocumentDisplayTitle } from './taxgptSourceDisplay.js'
 import {
   extractFolioCodesFromQuery,
   extractPublicationCodesFromQuery,
+  expandTaxgptRetrievalQuery,
   filterRetrievedChunks,
+  detectCapitalGainsAcbIntent,
   detectTaxBracketQueryIntent,
   detectPersonalIncomeTaxFilingIntent,
   publicationCodeFromUrl,
@@ -42,15 +44,17 @@ function buildCitation (row, index) {
 export async function retrieveTaxgptChunks (pool, query, options = {}) {
   const topK = Math.min(options.topK || DEFAULT_TOP_K, MAX_TOP_K)
   const minSimilarity = options.minSimilarity ?? 0.25
-  const queryEmbedding = await embedTaxgptQuery(query)
+  const retrievalQuery = expandTaxgptRetrievalQuery(query)
+  const queryEmbedding = await embedTaxgptQuery(retrievalQuery)
   const embeddingVector = formatEmbeddingVector(queryEmbedding)
-  const sanitizedQuery = escapeLikePattern(query)
+  const sanitizedQuery = escapeLikePattern(retrievalQuery)
   const folioCodes = extractFolioCodesFromQuery(query)
   const publicationCodes = extractPublicationCodesFromQuery(query)
   const primaryFolioSlug = folioCodes[0]?.replace(/\s+/g, '') || ''
   const primaryPublicationCode = publicationCodes[0] || ''
   const taxBracketIntent = detectTaxBracketQueryIntent(query)
   const personalFilingIntent = detectPersonalIncomeTaxFilingIntent(query)
+  const capitalGainsAcbIntent = detectCapitalGainsAcbIntent(query)
   const vectorLimit = Math.min(topK * 8, 80)
 
   const { rows } = await pool.query(
@@ -103,6 +107,12 @@ export async function retrieveTaxgptChunks (pool, query, options = {}) {
                 OR LOWER(s.url) LIKE '%5000-g%'
                 OR LOWER(COALESCE(s.metadata->>'publicationNumber', '')) = '5000-g'
               ) THEN 0.35
+              WHEN $9 = true AND s.url IS NOT NULL AND (
+                LOWER(s.url) LIKE '%t4037%'
+                OR LOWER(COALESCE(s.metadata->>'publicationNumber', '')) = 't4037'
+                OR LOWER(s.url) LIKE '%line-12700-capital-gains%'
+                OR LOWER(s.url) LIKE '%stock-splits-consolidations%'
+              ) THEN 0.35
               WHEN s.title IS NOT NULL AND LOWER(s.title) LIKE '%' || $3 || '%' THEN 0.15
               WHEN s.url IS NOT NULL AND LOWER(s.url) LIKE '%' || $3 || '%' THEN 0.10
               ELSE 0
@@ -119,7 +129,7 @@ export async function retrieveTaxgptChunks (pool, query, options = {}) {
       ORDER BY similarity DESC
       LIMIT $4
     `,
-    [embeddingVector, vectorLimit, sanitizedQuery, topK, primaryFolioSlug, primaryPublicationCode, taxBracketIntent, personalFilingIntent]
+    [embeddingVector, vectorLimit, sanitizedQuery, topK, primaryFolioSlug, primaryPublicationCode, taxBracketIntent, personalFilingIntent, capitalGainsAcbIntent]
   )
 
   let rankedRows = rows.map((row) => {
@@ -161,6 +171,14 @@ export async function retrieveTaxgptChunks (pool, query, options = {}) {
 
   if (personalFilingIntent) {
     const scoped = await retrieveScopedT1GuideChunks(pool, {
+      embeddingVector,
+      limit: topK
+    })
+    rankedRows = mergeRetrievedRows(scoped, rankedRows, topK * 2)
+  }
+
+  if (capitalGainsAcbIntent) {
+    const scoped = await retrieveScopedCapitalGainsChunks(pool, {
       embeddingVector,
       limit: topK
     })
@@ -311,6 +329,48 @@ async function retrieveScopedT1GuideChunks (pool, { embeddingVector, limit }) {
           LOWER(s.url) LIKE '%tax-packages-years%'
           OR LOWER(s.url) LIKE '%5000-g%'
           OR LOWER(COALESCE(s.metadata->>'publicationNumber', '')) = '5000-g'
+        )
+      ORDER BY e.embedding <=> $1::vector
+      LIMIT $2
+    `,
+    [embeddingVector, limit]
+  )
+
+  return rows
+}
+
+async function retrieveScopedCapitalGainsChunks (pool, { embeddingVector, limit }) {
+  const { rows } = await pool.query(
+    `
+      SELECT
+        c.id AS "chunkId",
+        c.content,
+        c.section_heading AS "sectionHeading",
+        c.page_number AS "pageNumber",
+        s.id AS "sourceId",
+        s.url AS "sourceUrl",
+        s.title AS "sourceTitle",
+        s.category AS "sourceCategory",
+        s.metadata AS "sourceMetadata",
+        s.parent_source_id AS "parentSourceId",
+        s.last_ingested_at AS "lastIngestedAt",
+        parent.title AS "parentSourceTitle",
+        parent.metadata AS "parentSourceMetadata",
+        d.metadata AS "documentMetadata",
+        1 - (e.embedding <=> $1::vector) AS base_similarity,
+        LEAST(1.0, 1 - (e.embedding <=> $1::vector) + 0.40) AS similarity
+      FROM taxgpt.embeddings e
+      INNER JOIN taxgpt.chunks c ON e.chunk_id = c.id
+      INNER JOIN taxgpt.documents d ON c.document_id = d.id
+      INNER JOIN taxgpt.sources s ON d.source_id = s.id
+      LEFT JOIN taxgpt.sources parent ON parent.id = s.parent_source_id
+      WHERE s.ingest_status = 'ingested'
+        AND (
+          LOWER(s.url) LIKE '%t4037%'
+          OR LOWER(COALESCE(s.metadata->>'publicationNumber', '')) = 't4037'
+          OR LOWER(COALESCE(parent.metadata->>'publicationNumber', '')) = 't4037'
+          OR LOWER(s.url) LIKE '%line-12700-capital-gains%'
+          OR LOWER(s.url) LIKE '%stock-splits-consolidations%'
         )
       ORDER BY e.embedding <=> $1::vector
       LIMIT $2

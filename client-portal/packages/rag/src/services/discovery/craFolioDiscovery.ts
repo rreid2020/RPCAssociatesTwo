@@ -34,7 +34,10 @@ export class CraFolioDiscoveryService {
     const hasIncomeTaxFolioHeading = $('h1, h2, h3').text().toLowerCase().includes('income tax folio');
     const hasLinkList = $('ul li a, ol li a').length > 10; // Directory pages typically have many links
     const hasTOC = $('[class*="table-of-contents"], [id*="toc"], [class*="toc"]').length > 0;
-    const hasFolioLinks = $('a[href*="/en/revenue-agency/services/tax/individuals/topics/about-canada-tax/income-tax-folios"]').length > 0;
+    const hasFolioLinks =
+      $('a[href*="/income-tax-folios-index"]').length > 0 ||
+      $('a[href*="/income-tax-folio-"]').length > 0 ||
+      $('a[href*="/en/revenue-agency/services/tax/individuals/topics/about-canada-tax/income-tax-folios"]').length > 0;
     
     // Check for content page indicators
     const hasArticleBody = $('article, [role="main"], main, [class*="content"], [id*="content"]').length > 0;
@@ -271,7 +274,9 @@ export class CraFolioDiscoveryService {
         // Import requestText dynamically to avoid circular dependency
         const { requestText } = await import('@shared/types');
         const result = await requestText(url, {
-          referer: 'https://www.canada.ca/en/revenue-agency/services/forms-publications.html',
+          referer: url.includes('/technical-information/')
+            ? 'https://www.canada.ca/en/revenue-agency/services/tax/technical-information.html'
+            : 'https://www.canada.ca/en/revenue-agency/services/forms-publications.html',
           timeout: 30000,
           retries: 2, // Fewer retries for faster failure
         });

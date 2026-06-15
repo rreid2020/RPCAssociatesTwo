@@ -58,7 +58,7 @@ Set **CANLII_API_KEY** on the same job when received. The CanLII API is **metada
 npm run taxgpt:batch
 ```
 
-That runs **5 expand + 5 ingest** per tick (defined in `taxgpt-api/package.json`).
+That runs **5 folio discover + 5 expand + 5 ingest** per tick (defined in `taxgpt-api/package.json`). Each command auto-builds `@rag/core` first via `pretaxgpt:*` hooks.
 
 Do **not** use bare `tsx ...` as the run command — `tsx` is not on the container `PATH` and DO will fail immediately with **Command Not Executable**.
 
@@ -111,7 +111,8 @@ Look for `embeddingCount > 0` and `retrievalReady: true`.
 
 | Command | Behavior |
 |---------|----------|
-| `npm run taxgpt:batch` | CRA expand + CanLII discover (if key set) + ingest batch, then exit |
+| `npm run taxgpt:discover-folios` | Crawl [CRA technical-information folio index](https://www.canada.ca/en/revenue-agency/services/tax/technical-information/income-tax/income-tax-folios-index.html) for S#-F#-C# chapters |
+| `npm run taxgpt:batch` | Folio discover + CRA expand + CanLII discover (if key set) + ingest batch, then exit |
 | `npm run taxgpt:discover-canlii` | Discover Tax Court metadata (2010–present) via CanLII API; ingest stores metadata only |
 | `npm run taxgpt:pipeline` | Loop until fully complete (long-running) |
 | `npm run taxgpt:stats` | Corpus snapshot |

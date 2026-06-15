@@ -19,6 +19,7 @@ import {
   isArchivedOrCancelledTitle,
   isCatalogPublicationLandingUrl,
   isFrenchCraPublicationUrl,
+  isIncomeTaxFolioContentUrl,
   isPublicationIngestContentUrl,
   publicationUrlDepth
 } from './corpus/sourcePolicy';
@@ -934,8 +935,10 @@ export class IngestionService {
         if (s.pageKind === 'directory') return false;
         const metadata = (s.metadata || {}) as Record<string, unknown>;
         if (metadata.corpusRole === 'publication_landing') return false;
+        if (metadata.corpusRole === 'folio_discovery') return false;
         // Catalog landing pages (step 2) must be expanded before ingest — not final content.
         if (isCatalogPublicationLandingUrl(s.url)) return false;
+        if (s.sourceType === 'cra_folio_directory') return false;
         return true;
       })
       .sort((a, b) => {
@@ -948,6 +951,9 @@ export class IngestionService {
         if (localeDelta !== 0) return localeDelta;
         const depthDelta = publicationUrlDepth(b.url) - publicationUrlDepth(a.url);
         if (depthDelta !== 0) return depthDelta;
+        const folioDelta =
+          Number(isIncomeTaxFolioContentUrl(b.url)) - Number(isIncomeTaxFolioContentUrl(a.url));
+        if (folioDelta !== 0) return folioDelta;
         return String(a.title || '').localeCompare(String(b.title || ''));
       });
 

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url'
 import {
   auditCorpus,
   discoverCanliiTaxCourtBatch,
+  discoverFolioDirectories,
   discoverFullPublicationsCorpus,
   discoverPublicationsCatalog,
   expandPublicationLandingPages,
@@ -50,6 +51,7 @@ function sleep (ms: number) {
 
 async function runExpandIngestPipeline (argv: string[]) {
   const expandLimit = readOption(argv, 'expand-limit', readLimit(argv, 50))
+  const folioLimit = readOption(argv, 'folio-limit', 5)
   const ingestLimit = readOption(argv, 'ingest-limit', 10)
   const maxConsecutiveErrors = readOption(argv, 'max-errors', 5)
   const retryDelayMs = readOption(argv, 'retry-delay-ms', 5000)
@@ -74,6 +76,7 @@ async function runExpandIngestPipeline (argv: string[]) {
   }
 
   const runExpand = phase === 'all' || phase === 'expand'
+  const runFolios = phase === 'all' || phase === 'folios'
   const runCanlii = phase === 'all' || phase === 'canlii'
   const runIngest = phase === 'all' || phase === 'ingest'
 
@@ -116,26 +119,55 @@ async function runExpandIngestPipeline (argv: string[]) {
     log('Skipping CanLII discovery — CANLII_API_KEY is not set')
   }
 
-  log('Starting continuous corpus run (expand + ingest until queue empty)', {
+  log('Starting continuous corpus run (folios + expand + ingest until queue empty)', {
+    folioLimit,
     expandLimit,
     ingestLimit,
     maxConsecutiveErrors,
+    runFolios,
     runExpand,
     runIngest
   })
 
   const ingestionService = runIngest ? new IngestionService() : null
   let cycle = 0
+  let folioConsecutiveErrors = 0
   let expandConsecutiveErrors = 0
   let ingestConsecutiveErrors = 0
+  let totalFolioDiscovered = 0
   let totalExpanded = 0
   let totalIngested = 0
+  let folioComplete = !runFolios
   let expandComplete = !runExpand
   let ingestComplete = !runIngest
 
-  while (!expandComplete || !ingestComplete) {
+  while (!folioComplete || !expandComplete || !ingestComplete) {
     cycle += 1
-    log(`Cycle ${cycle} starting`, { expandComplete, ingestComplete })
+    log(`Cycle ${cycle} starting`, { folioComplete, expandComplete, ingestComplete })
+
+    if (!folioComplete) {
+      try {
+        const result = await discoverFolioDirectories({ limit: folioLimit })
+        folioConsecutiveErrors = 0
+        totalFolioDiscovered += result.contentSourcesCreated
+        log(`Cycle ${cycle} folio discover complete`, result)
+
+        if (result.processed === 0) {
+          folioComplete = true
+          log('Folio discovery queue empty', { cycle, totalFolioDiscovered })
+        }
+      } catch (error) {
+        folioConsecutiveErrors += 1
+        const message = error instanceof Error ? error.message : String(error)
+        log(`Cycle ${cycle} folio discover failed (${folioConsecutiveErrors}/${maxConsecutiveErrors})`, { error: message })
+
+        if (folioConsecutiveErrors >= maxConsecutiveErrors) {
+          throw new Error(`Folio discovery pipeline stopped after ${maxConsecutiveErrors} consecutive failures: ${message}`)
+        }
+
+        await sleep(retryDelayMs)
+      }
+    }
 
     if (!expandComplete) {
       try {
@@ -187,7 +219,7 @@ async function runExpandIngestPipeline (argv: string[]) {
   }
 
   const totals = (await auditCorpus()).totals
-  log('Pipeline finished', { cycle, totalExpanded, totalIngested, totals })
+  log('Pipeline finished', { cycle, totalFolioDiscovered, totalExpanded, totalIngested, totals })
   console.log(JSON.stringify(totals, null, 2))
 }
 
@@ -201,6 +233,7 @@ async function ingestBatch (argv: string[]) {
 /** One expand batch + one ingest batch, then exit — safe for DigitalOcean scheduled jobs. */
 async function runScheduledBatch (argv: string[]) {
   const expandLimit = readOption(argv, 'expand-limit', 50)
+  const folioLimit = readOption(argv, 'folio-limit', 3)
   const ingestLimit = readOption(argv, 'ingest-limit', 20)
   const log = (message: string, payload?: unknown) => {
     const line = payload === undefined
@@ -209,7 +242,24 @@ async function runScheduledBatch (argv: string[]) {
     console.log(line)
   }
 
-  log('Starting scheduled corpus batch', { expandLimit, ingestLimit })
+  log('Starting scheduled corpus batch', { folioLimit, expandLimit, ingestLimit })
+
+  let folioResult = {
+    processed: 0,
+    discovered: 0,
+    contentSourcesCreated: 0,
+    skipped: 0,
+    errors: 0
+  }
+
+  try {
+    folioResult = await discoverFolioDirectories({ limit: folioLimit })
+    log('Folio discover step complete', folioResult)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    log('Folio discover step failed', { error: message })
+    throw error
+  }
 
   let expandResult = {
     processed: 0,
@@ -274,10 +324,12 @@ async function runScheduledBatch (argv: string[]) {
 
   const totals = (await auditCorpus()).totals
   const summary = {
+    folios: folioResult,
     expand: expandResult,
     canliiDiscover: canliiDiscoverResult,
     ingest: ingestResult,
     corpus: totals,
+    folioComplete: folioResult.processed === 0,
     expandComplete: expandResult.processed === 0,
     canliiDiscoverComplete: canliiDiscoverResult.complete,
     ingestComplete: ingestResult.total === 0,
@@ -299,6 +351,13 @@ async function main () {
       break
     case 'discover':
       console.log(JSON.stringify(await discoverPublicationsCatalog(), null, 2))
+      break
+    case 'discover-folios':
+      console.log(JSON.stringify(
+        await discoverFolioDirectories({ limit: readLimit(argv, 10) }),
+        null,
+        2
+      ))
       break
     case 'expand':
       console.log(JSON.stringify(
@@ -339,7 +398,7 @@ async function main () {
       break
     default:
       console.error(
-        'Usage: tsx src/scripts/taxgpt-corpus.ts <stats|audit|discover|expand|discover-all|discover-canlii|reconcile|ingest|run-pipeline|run-batch> [--limit=N] [--expand-limit=N] [--ingest-limit=N] [--canlii-discover-limit=N] [--phase=all|expand|canlii|ingest] [--max-errors=N] [--no-reconcile]'
+        'Usage: tsx src/scripts/taxgpt-corpus.ts <stats|audit|discover|discover-folios|expand|discover-all|discover-canlii|reconcile|ingest|run-pipeline|run-batch> [--limit=N] [--folio-limit=N] [--expand-limit=N] [--ingest-limit=N] [--canlii-discover-limit=N] [--phase=all|folios|expand|canlii|ingest] [--max-errors=N] [--no-reconcile]'
       )
       process.exit(1)
   }

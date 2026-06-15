@@ -52,10 +52,35 @@ export function isFrenchCraPublicationUrl (url: string): boolean {
   }
 }
 
+/** Income tax folio chapter URLs under CRA technical information. */
+export function isIncomeTaxFolioContentUrl (url: string): boolean {
+  try {
+    const pathname = new URL(url).pathname.toLowerCase()
+    return /income-tax-folio-[sS]\d+-[fF]\d+(-[cC]\d+)?/.test(pathname) ||
+      /\/income-tax-folios-index\/.+\/income-tax-folio-/.test(pathname)
+  } catch {
+    return false
+  }
+}
+
+/** Folio index / series pages used only for discovery, not direct ingest. */
+export function isIncomeTaxFolioDiscoveryUrl (url: string): boolean {
+  try {
+    const pathname = new URL(url).pathname.toLowerCase()
+    return pathname.includes('/technical-information/') &&
+      (pathname.includes('/income-tax-folios-index') || pathname.endsWith('/income-tax.html'))
+  } catch {
+    return false
+  }
+}
+
 /** Prefer ingesting deeper content URLs before shallow catalog landings. */
 export function publicationUrlDepth (url: string): number {
   try {
     const pathname = new URL(url).pathname
+    if (isIncomeTaxFolioContentUrl(url)) {
+      return pathname.split('/').filter(Boolean).length + 4
+    }
     const after = pathname.split('/forms-publications/publications/')[1] || pathname
     return after.split('/').filter(Boolean).length
   } catch {

@@ -1,7 +1,11 @@
 import { count, eq, inArray, sql } from 'drizzle-orm'
 import { embeddings, getDb, ensureDbValidated, sources } from '@shared/types'
-import { CraPublicationsDiscoveryService } from '../services/discovery'
-import { CRA_PUBLICATIONS_CATALOG_SEED, CRA_PUBLICATIONS_CATALOG_URL } from './discoverySeeds'
+import { CraFolioDiscoveryService, CraPublicationsDiscoveryService } from '../services/discovery'
+import {
+  CRA_FOLIO_DISCOVERY_SEEDS,
+  CRA_PUBLICATIONS_CATALOG_SEED,
+  CRA_PUBLICATIONS_CATALOG_URL
+} from './discoverySeeds'
 import { isArchivedOrCancelledTitle, isCatalogPublicationLandingUrl } from './sourcePolicy'
 
 export type CorpusAuditReport = {
@@ -48,6 +52,54 @@ async function ensureCatalogSeedSource () {
     .returning({ id: sources.id })
 
   return inserted[0].id
+}
+
+async function ensureFolioDiscoverySeedSources (): Promise<string[]> {
+  const db = getDb()
+  const ids: string[] = []
+
+  for (const seed of CRA_FOLIO_DISCOVERY_SEEDS) {
+    const existing = await db
+      .select({ id: sources.id })
+      .from(sources)
+      .where(eq(sources.url, seed.url))
+      .limit(1)
+
+    if (existing[0]?.id) {
+      ids.push(existing[0].id)
+      continue
+    }
+
+    const inserted = await db
+      .insert(sources)
+      .values({
+        url: seed.url,
+        normalizedUrl: seed.url,
+        title: seed.title,
+        sourceType: seed.sourceType,
+        category: seed.category,
+        ingestStatus: 'pending',
+        pageKind: seed.pageKind,
+        priority: seed.priority,
+        metadata: {
+          corpusSeed: seed.key,
+          corpusRole: 'folio_discovery'
+        }
+      })
+      .returning({ id: sources.id })
+
+    ids.push(inserted[0].id)
+  }
+
+  return ids
+}
+
+function isFolioDiscoveryCandidate (row: {
+  sourceType?: string | null
+  metadata?: Record<string, unknown> | null
+}) {
+  const metadata = (row.metadata || {}) as Record<string, unknown>
+  return row.sourceType === 'cra_folio_directory' || metadata.corpusRole === 'folio_discovery'
 }
 
 function isPublicationLandingUrl (url: string): boolean {
@@ -141,13 +193,76 @@ export async function expandPublicationLandingPages (options: { limit?: number }
   return summary
 }
 
-/** Full discovery: catalogue table, then expand landing pages to HTML/PDF targets. */
+/**
+ * Discover Income Tax Folio chapters from CRA technical-information pages.
+ * Folio S#-F#-C# chapters are not listed in publications.html.
+ */
+export async function discoverFolioDirectories (options: { limit?: number } = {}): Promise<{
+  processed: number
+  discovered: number
+  contentSourcesCreated: number
+  skipped: number
+  errors: number
+}> {
+  await ensureDbValidated()
+  const db = getDb()
+  await ensureFolioDiscoverySeedSources()
+
+  const limit = options.limit ?? 10
+  const pending = await db
+    .select()
+    .from(sources)
+    .where(eq(sources.ingestStatus, 'pending'))
+
+  const candidates = pending
+    .filter((row) => isFolioDiscoveryCandidate(row))
+    .filter((row) => !isArchivedOrCancelledTitle(row.title))
+    .slice(0, limit)
+
+  const discovery = new CraFolioDiscoveryService()
+  const summary = {
+    processed: 0,
+    discovered: 0,
+    contentSourcesCreated: 0,
+    skipped: 0,
+    errors: 0
+  }
+
+  try {
+    for (const row of candidates) {
+      summary.processed += 1
+      try {
+        const result = await discovery.discoverFromSource(row.id)
+        summary.discovered += 1
+        summary.contentSourcesCreated += result.newSourcesCreated
+        await db
+          .update(sources)
+          .set({
+            ingestStatus: 'skipped',
+            pageKind: result.pageKind || 'directory',
+            errorMessage: 'Folio directory — child sources discovered'
+          })
+          .where(eq(sources.id, row.id))
+      } catch {
+        summary.errors += 1
+      }
+    }
+  } finally {
+    await discovery.close()
+  }
+
+  return summary
+}
+
+/** Full discovery: catalogue table, folio technical-information tree, then expand publication landings. */
 export async function discoverFullPublicationsCorpus (options: {
   expandLimit?: number
+  folioLimit?: number
 } = {}) {
   const catalog = await discoverPublicationsCatalog()
+  const folios = await discoverFolioDirectories({ limit: options.folioLimit ?? 10 })
   const expanded = await expandPublicationLandingPages({ limit: options.expandLimit ?? 100 })
-  return { catalog, expanded }
+  return { catalog, folios, expanded }
 }
 
 /** Reset embedding/API ingest failures so the job can retry after key or model fixes. */

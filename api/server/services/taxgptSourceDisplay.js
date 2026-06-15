@@ -85,6 +85,34 @@ function publicationLabel (code) {
   return normalized
 }
 
+function escapeRegExp (value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function isFormattedFolioTitle (title, folioCode) {
+  const normalized = String(title || '').trim()
+  if (!normalized || !folioCode) return false
+  return new RegExp(`^Income Tax Folio ${escapeRegExp(folioCode)}\\s*[—–-]\\s+`, 'i').test(normalized)
+}
+
+function extractFolioChapterTitle (title, folioCode) {
+  let normalized = cleanPublicationTitle(title)
+  if (!normalized || !folioCode) return normalized || null
+
+  normalized = normalized
+    .replace(new RegExp(`^Income Tax Folio ${escapeRegExp(folioCode)}\\s*[—–-]\\s*`, 'ig'), '')
+    .replace(new RegExp(`^Income Tax Folio ${escapeRegExp(folioCode)}$`, 'i'), '')
+    .trim()
+
+  return normalized || null
+}
+
+function isFormattedPublicationTitle (title, publicationCode) {
+  const label = publicationLabel(publicationCode)
+  if (!label) return false
+  return String(title || '').trim().startsWith(label)
+}
+
 /**
  * @param {{
  *   sourceTitle?: string,
@@ -111,7 +139,15 @@ export function resolveDocumentDisplayTitle ({
   const folioSlug = docMeta.folioCode || meta.folioCode || folioCodeFromUrl(sourceUrl)
   if (folioSlug) {
     const folioCode = formatFolioCode(folioSlug)
-    const chapterTitle = !isGenericTitle(sourceTitle) ? cleanPublicationTitle(sourceTitle) : null
+    const normalizedSource = cleanPublicationTitle(sourceTitle || '')
+
+    if (isFormattedFolioTitle(normalizedSource, folioCode)) {
+      return normalizedSource
+    }
+
+    const chapterTitle = !isGenericTitle(sourceTitle)
+      ? extractFolioChapterTitle(sourceTitle, folioCode)
+      : null
     if (chapterTitle) return `Income Tax Folio ${folioCode} — ${chapterTitle}`
     return `Income Tax Folio ${folioCode}`
   }
@@ -119,6 +155,11 @@ export function resolveDocumentDisplayTitle ({
   const publicationCode = formatPublicationCode(
     parentMeta.publicationNumber || meta.publicationNumber || docMeta.publicationNumber || publicationCodeFromUrl(sourceUrl)
   )
+
+  const normalizedSource = cleanPublicationTitle(sourceTitle || '')
+  if (publicationCode && isFormattedPublicationTitle(normalizedSource, publicationCode)) {
+    return normalizedSource
+  }
 
   const humanTitleCandidates = [
     parentMeta.title,

@@ -148,6 +148,7 @@ export async function retrieveTaxgptChunks (pool, query, options = {}) {
     similarity: Number(row.similarity) || 0,
     sourceCategory: row.sourceCategory,
     sourceMetadata: row.sourceMetadata,
+    rawSourceTitle: row.sourceTitle,
     parentSourceTitle: row.parentSourceTitle,
     parentSourceMetadata: row.parentSourceMetadata,
     documentMetadata: row.documentMetadata,

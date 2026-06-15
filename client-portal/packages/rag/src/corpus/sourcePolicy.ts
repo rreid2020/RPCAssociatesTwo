@@ -42,6 +42,27 @@ export function isCatalogPublicationLandingUrl (url: string): boolean {
   }
 }
 
+/** Catalog landing still awaiting link expansion (not yet promoted to direct content). */
+export function isPublicationLandingPendingExpand (input: {
+  url: string
+  pageKind?: string | null
+  metadata?: Record<string, unknown> | null
+}): boolean {
+  if (!isCatalogPublicationLandingUrl(input.url)) return false
+  if (input.pageKind === 'content') return false
+  const metadata = input.metadata || {}
+  if (metadata.publicationExpanded === true) return false
+  return true
+}
+
+/** Catalog landing promoted to ingest after expand found no new child URLs. */
+export function isPublicationLandingReadyForIngest (input: {
+  url: string
+  pageKind?: string | null
+}): boolean {
+  return isCatalogPublicationLandingUrl(input.url) && input.pageKind === 'content'
+}
+
 /** French CRA paths are language toggles — deprioritize for English-first ingest. */
 export function isFrenchCraPublicationUrl (url: string): boolean {
   try {

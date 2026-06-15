@@ -131,7 +131,7 @@ export function buildCraDocumentGroups (entries, chunks = []) {
       chunks.find((item) => item.citation?.chunkId === entry.chunkId)
     const context = {
       sourceUrl: entry.sourceUrl || chunk?.citation?.sourceUrl,
-      sourceTitle: entry.sourceTitle || chunk?.citation?.sourceTitle,
+      sourceTitle: chunk?.rawSourceTitle || entry.sourceTitle || chunk?.citation?.sourceTitle,
       sourceCategory: chunk?.sourceCategory,
       sourceMetadata: chunk?.sourceMetadata,
       parentSourceTitle: chunk?.parentSourceTitle,

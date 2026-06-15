@@ -511,7 +511,7 @@ function enrichCitationsWithBuckets (citations, chunks) {
 
 function resolveChunkDisplayTitle (chunk) {
   return resolveDocumentDisplayTitle({
-    sourceTitle: chunk?.citation?.sourceTitle,
+    sourceTitle: chunk?.rawSourceTitle || chunk?.citation?.sourceTitle,
     sourceUrl: chunk?.citation?.sourceUrl,
     sourceMetadata: chunk?.sourceMetadata,
     parentSourceTitle: chunk?.parentSourceTitle,

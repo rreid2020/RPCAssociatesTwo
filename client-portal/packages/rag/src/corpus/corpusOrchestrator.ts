@@ -6,7 +6,12 @@ import {
   CRA_PUBLICATIONS_CATALOG_SEED,
   CRA_PUBLICATIONS_CATALOG_URL
 } from './discoverySeeds'
-import { isArchivedOrCancelledTitle, isCatalogPublicationLandingUrl } from './sourcePolicy'
+import {
+  isArchivedOrCancelledTitle,
+  isCatalogPublicationLandingUrl,
+  isFrenchCraPublicationUrl,
+  isPublicationLandingPendingExpand
+} from './sourcePolicy'
 
 export type CorpusAuditReport = {
   totals: {
@@ -143,7 +148,14 @@ export async function expandPublicationLandingPages (options: { limit?: number }
   const candidates = landingPages
     .filter((row) => {
       const metadata = (row.metadata || {}) as Record<string, unknown>
-      return metadata.corpusRole === 'publication_landing' || isPublicationLandingUrl(row.url)
+      return (
+        isPublicationLandingPendingExpand({
+          url: row.url,
+          pageKind: row.pageKind,
+          metadata
+        }) ||
+        metadata.corpusRole === 'publication_landing'
+      )
     })
     .filter((row) => isPublicationLandingUrl(row.url))
     .filter((row) => !isArchivedOrCancelledTitle(row.title))
@@ -173,14 +185,21 @@ export async function expandPublicationLandingPages (options: { limit?: number }
           })
           .where(eq(sources.id, landing.id))
       } else {
-        // No child links — the landing page itself is the content to ingest.
+        // No new child sources — ingest this page directly (common for French stubs).
         const existingMeta = (landing.metadata || {}) as Record<string, unknown>
         const { corpusRole: _removed, ...restMeta } = existingMeta
+        const promotedMeta: Record<string, unknown> = {
+          ...restMeta,
+          publicationExpanded: true
+        }
+        if (isFrenchCraPublicationUrl(landing.url)) {
+          promotedMeta.language = 'fr'
+        }
         await db
           .update(sources)
           .set({
             pageKind: 'content',
-            metadata: Object.keys(restMeta).length > 0 ? restMeta : null
+            metadata: promotedMeta
           })
           .where(eq(sources.id, landing.id))
         summary.skipped += 1

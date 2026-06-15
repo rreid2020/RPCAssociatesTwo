@@ -17,7 +17,7 @@ import {
 import { CraFolioChunker } from './services/chunking/craFolioChunker';
 import {
   isArchivedOrCancelledTitle,
-  isCatalogPublicationLandingUrl,
+  isPublicationLandingPendingExpand,
   isFrenchCraPublicationUrl,
   isIncomeTaxFolioContentUrl,
   isPublicationIngestContentUrl,
@@ -936,8 +936,12 @@ export class IngestionService {
         const metadata = (s.metadata || {}) as Record<string, unknown>;
         if (metadata.corpusRole === 'publication_landing') return false;
         if (metadata.corpusRole === 'folio_discovery') return false;
-        // Catalog landing pages (step 2) must be expanded before ingest — not final content.
-        if (isCatalogPublicationLandingUrl(s.url)) return false;
+        // Catalog landing pages must be expanded first unless promoted to direct content.
+        if (isPublicationLandingPendingExpand({
+          url: s.url,
+          pageKind: s.pageKind,
+          metadata: metadata as Record<string, unknown>
+        })) return false;
         if (s.sourceType === 'cra_folio_directory') return false;
         return true;
       })

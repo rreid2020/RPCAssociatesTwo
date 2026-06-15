@@ -5,6 +5,7 @@ import StructuredAssistantMessage from './StructuredAssistantMessage'
 
 type MessageListProps = {
   messages: ChatMessage[]
+  sessionId?: string | null
   onCopy?: (text: string) => void
   onSelectPrompt?: (prompt: string) => void
   promptsDisabled?: boolean
@@ -24,6 +25,7 @@ function formatRelativeTime (date: Date): string {
 
 const MessageList: FC<MessageListProps> = ({
   messages,
+  sessionId = null,
   onCopy,
   onSelectPrompt,
   promptsDisabled = false
@@ -88,7 +90,11 @@ const MessageList: FC<MessageListProps> = ({
                 </button>
               </div>
               {message.role === 'assistant' && message.structuredResponse ? (
-                <StructuredAssistantMessage structured={message.structuredResponse} />
+                <StructuredAssistantMessage
+                  structured={message.structuredResponse}
+                  feedbackSuggestion={message.feedbackSuggestion}
+                  sessionId={sessionId}
+                />
               ) : (
                 <div className={`whitespace-pre-wrap leading-relaxed ${
                   message.role === 'user' ? 'text-white' : 'text-text'

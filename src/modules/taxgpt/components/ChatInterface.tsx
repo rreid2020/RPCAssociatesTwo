@@ -116,6 +116,7 @@ const ChatInterface: FC<ChatInterfaceProps> = ({ initialCorpus, corpusOverride =
           role: 'assistant',
           content: data.response,
           structuredResponse: data.structuredResponse,
+          feedbackSuggestion: data.feedbackSuggestion ?? null,
           citations: data.citations,
           createdAt: new Date()
         }
@@ -202,6 +203,7 @@ const ChatInterface: FC<ChatInterfaceProps> = ({ initialCorpus, corpusOverride =
             <div className="mx-auto max-w-4xl px-6 py-6">
               <MessageList
                 messages={messages}
+                sessionId={sessionId}
                 onCopy={handleCopy}
                 onSelectPrompt={(prompt) => { void handleSend(prompt) }}
                 promptsDisabled={sending}

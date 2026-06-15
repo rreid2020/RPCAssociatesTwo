@@ -1,3 +1,5 @@
+import { folioCodeFromUrl } from './taxgptRetrievalFilters.js'
+
 const GENERIC_TITLE_PATTERNS = [
   /^standard\s+print\s+pdf$/i,
   /^print\s+pdf$/i,
@@ -12,6 +14,12 @@ const GENERIC_TITLE_PATTERNS = [
 
 const GENERIC_TITLE_WITH_PREFIX = /^\d{4}\s*[–-]\s*(standard\s+print\s+pdf|print\s+pdf|pdf|html)$/i
 const FILENAME_TITLE_PATTERN = /^(?:t|rc)\d{4}(?:[-_][a-z])?\.(?:html?|pdf)$/i
+
+function formatFolioCode (slug) {
+  const match = String(slug || '').match(/s(\d+)-f(\d+)-c(\d+)/i)
+  if (!match) return String(slug || '')
+  return `S${match[1]}-F${match[2]}-C${match[3]}`
+}
 
 /**
  * @param {string} title
@@ -86,6 +94,14 @@ export function resolveDocumentDisplayTitle ({
   const meta = sourceMetadata && typeof sourceMetadata === 'object' ? sourceMetadata : {}
   const docMeta = documentMetadata && typeof documentMetadata === 'object' ? documentMetadata : {}
   const pdfInfo = meta.pdfInfo && typeof meta.pdfInfo === 'object' ? meta.pdfInfo : {}
+
+  const folioSlug = docMeta.folioCode || meta.folioCode || folioCodeFromUrl(sourceUrl)
+  if (folioSlug) {
+    const folioCode = formatFolioCode(folioSlug)
+    const chapterTitle = !isGenericTitle(sourceTitle) ? cleanPublicationTitle(sourceTitle) : null
+    if (chapterTitle) return `Income Tax Folio ${folioCode}, ${chapterTitle}`
+    return `Income Tax Folio ${folioCode}`
+  }
 
   const candidates = [
     docMeta.title,

@@ -76,7 +76,8 @@ RULES:
 14. penaltiesAndInterest must be an array describing specific CRA penalty amounts, interest charges, late-filing penalties, or gross-negligence rules from retrieved sources. Each item needs description and citationIndices. Do not use generic boilerplate. Return [] if none apply.
 15. whatThisMeansForYou must be practical and user-focused, not legal advice.
 16. confidence: high = strong source support; medium = partial; low = limited or conflicting support.
-17. If sources are insufficient, say so in directAnswer and keep confidence low.`
+17. If sources are insufficient, say so in directAnswer and keep confidence low.
+18. If a "Requested publications" section is provided, treat it as authoritative corpus status. When a named guide is skipped, cancelled, pending, or not indexed, say that explicitly in directAnswer before relying on related sources.`
 
 const DEGRADED_STRUCTURED_SYSTEM_PROMPT = `You are a helpful Canadian tax assistant. The curated knowledge base is not available for this question.
 
@@ -108,9 +109,11 @@ export function buildTaxgptStructuredSystemPrompt (mode, language = 'en') {
  * @param {string} message
  * @param {Array<{ content: string, citation: Record<string, unknown>, sourceBucket?: string }>} chunks
  * @param {'en' | 'fr'} [language]
+ * @param {{ requestedPublicationsContext?: string }} [options]
  */
-export function buildTaxgptStructuredUserPrompt (message, chunks, language = 'en') {
+export function buildTaxgptStructuredUserPrompt (message, chunks, language = 'en', options = {}) {
   const languageLabel = taxgptLanguageLabel(language)
+  const requestedContext = String(options.requestedPublicationsContext || '').trim()
   const sourcesText = chunks
     .map((chunk, index) => {
       const heading = chunk.citation.sectionHeading ? ` - ${chunk.citation.sectionHeading}` : ''
@@ -123,7 +126,7 @@ export function buildTaxgptStructuredUserPrompt (message, chunks, language = 'en
   return `User Question: ${message}
 
 Response language: ${languageLabel}
-
+${requestedContext ? `\n${requestedContext}\n` : ''}
 Retrieved Sources (index, bucket, title, excerpt):
 ${sourcesText}
 

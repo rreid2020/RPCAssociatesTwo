@@ -26,7 +26,54 @@ export function isTableOfContentsExcerpt (content) {
 /**
  * @param {string} url
  */
-function publicationCodeFromUrl (url) {
+export function folioCodeFromUrl (url) {
+  const match = String(url || '').match(/folio-(s\d+-f\d+-c\d+)/i)
+  return match ? match[1].toLowerCase() : ''
+}
+
+/**
+ * @param {Record<string, unknown>} row
+ */
+export function resolveFolioCode (row) {
+  const docMeta = row.documentMetadata && typeof row.documentMetadata === 'object' ? row.documentMetadata : {}
+  const sourceMeta = row.sourceMetadata && typeof row.sourceMetadata === 'object' ? row.sourceMetadata : {}
+
+  const docCode = docMeta.folioCode ? String(docMeta.folioCode).toLowerCase() : ''
+  if (docCode) return docCode
+
+  const sourceCode = sourceMeta.folioCode ? String(sourceMeta.folioCode).toLowerCase() : ''
+  if (sourceCode) return sourceCode
+
+  return folioCodeFromUrl(row.sourceUrl)
+}
+
+/**
+ * @param {string} query
+ */
+export function extractFolioCodesFromQuery (query) {
+  const matches = String(query || '').match(/\bS\d+-F\d+(?:-C\d+)?\b/gi) || []
+  return [...new Set(matches.map((code) => code.toLowerCase()))]
+}
+
+/**
+ * @param {string} code
+ */
+export function normalizePublicationCode (code) {
+  return String(code || '').toLowerCase().replace(/\s+/g, '')
+}
+
+/**
+ * @param {string} query
+ */
+export function extractPublicationCodesFromQuery (query) {
+  const matches = String(query || '').match(/\b((?:RC|T|IC)\s*\d{2,4}(?:-\d+[A-Z]?)?)\b/gi) || []
+  return [...new Set(matches.map((code) => normalizePublicationCode(code)))]
+}
+
+/**
+ * @param {string} url
+ */
+export function publicationCodeFromUrl (url) {
   const filename = String(url || '').split('/').pop()?.replace(/\.[^.]+$/, '') || ''
   const guideMatch = filename.match(/^((?:t|rc)\d{4})/i)
   if (guideMatch) return guideMatch[1].toLowerCase()
@@ -40,6 +87,11 @@ function publicationCodeFromUrl (url) {
  * @param {Record<string, unknown>} row
  */
 export function resolvePublicationFamilyKey (row) {
+  const folioCode = resolveFolioCode(row)
+  if (folioCode) {
+    return `folio:${folioCode}`
+  }
+
   const meta = row.sourceMetadata && typeof row.sourceMetadata === 'object' ? row.sourceMetadata : {}
   const parentMeta = row.parentSourceMetadata && typeof row.parentSourceMetadata === 'object'
     ? row.parentSourceMetadata

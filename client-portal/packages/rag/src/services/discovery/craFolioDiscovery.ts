@@ -24,6 +24,56 @@ export class CraFolioDiscoveryService {
     this.maxDiscoveryDepth = maxDepth;
   }
 
+  private folioDiscoveryReferer (url: string): string {
+    return url.includes('/technical-information/')
+      ? 'https://www.canada.ca/en/revenue-agency/services/tax/technical-information.html'
+      : 'https://www.canada.ca/en/revenue-agency/services/forms-publications.html';
+  }
+
+  /** Browser-first fetch — same strategy as CRA publications discovery. */
+  private async fetchDiscoveryHtml (url: string): Promise<string> {
+    const referer = this.folioDiscoveryReferer(url);
+
+    try {
+      const browserResponse = await this.browserClient.fetch(url, {
+        timeout: 45_000,
+        retries: 1,
+      });
+      if (browserResponse.html.length >= 500) {
+        logger.crawl('Browser fetch successful for folio discovery', {
+          url,
+          status: browserResponse.status,
+          textLength: browserResponse.html.length,
+        });
+        return browserResponse.html;
+      }
+      throw new Error(`Browser fetch content too short (${browserResponse.html.length} bytes)`);
+    } catch (error) {
+      logger.crawlWarn('Browser fetch failed for folio discovery, trying HTTP fallback', {
+        url,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    const { requestText } = await import('@shared/types');
+    const response = await requestText(url, {
+      referer,
+      timeout: 20_000,
+      retries: 0,
+    });
+
+    if (response.status === 200 && response.text.length >= 500) {
+      logger.crawl('HTTP fallback successful for folio discovery', {
+        url,
+        status: response.status,
+        textLength: response.text.length,
+      });
+      return response.text;
+    }
+
+    throw new Error(`HTTP fallback content too short or non-200 (${response.status})`);
+  }
+
   /**
    * Classify a page as directory, content, or unknown
    */
@@ -264,33 +314,11 @@ export class CraFolioDiscoveryService {
         return result;
       }
 
-      // For discovery, skip browser client and go straight to Excel-like HTTP client
-      // Browser client is too slow (30+ seconds of retries) and gets blocked anyway
-      // Excel-like HTTP client works reliably for CRA pages
-      logger.crawl('Fetching page for discovery (using Excel-like HTTP client)', { url });
-      
+      logger.crawl('Fetching page for folio discovery', { url });
+
       let html: string;
       try {
-        // Import requestText dynamically to avoid circular dependency
-        const { requestText } = await import('@shared/types');
-        const result = await requestText(url, {
-          referer: url.includes('/technical-information/')
-            ? 'https://www.canada.ca/en/revenue-agency/services/tax/technical-information.html'
-            : 'https://www.canada.ca/en/revenue-agency/services/forms-publications.html',
-          timeout: 30000,
-          retries: 2, // Fewer retries for faster failure
-        });
-        
-        if (result.status === 200 && result.text.length > 500) {
-          logger.crawl('Page fetched successfully for discovery', {
-            url,
-            status: result.status,
-            textLength: result.text.length,
-          });
-          html = result.text;
-        } else {
-          throw new Error(`HTTP ${result.status}: Content too short (${result.text.length} bytes)`);
-        }
+        html = await this.fetchDiscoveryHtml(url);
       } catch (error) {
         logger.crawlError('Failed to fetch page for discovery', {
           url,

@@ -8,6 +8,11 @@ import {
   parseTaxgptStructuredResponse
 } from './taxgptStructuredResponse.js'
 import { retrieveTaxgptChunks } from './taxgptRetrievalRepository.js'
+import {
+  formatRequestedPublicationsContext,
+  resolveRequestedPublications
+} from './taxgptPublicationResolver.js'
+import { buildTaxgptFeedbackSuggestion } from './taxgptFeedbackSuggestion.js'
 import { getTaxgptModelRoutingSummary, resolveTaxgptChatModel, buildTaxgptChatCompletionOptions } from './taxgptModelRouter.js'
 import { normalizeTaxgptLanguage, taxgptLanguageLabel } from './taxgptSourceLanguage.js'
 
@@ -194,6 +199,7 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
   )
 
   const riskLevel = detectHighRiskTopics(message) ? 'high' : 'low'
+  const requestedPublications = await resolveRequestedPublications(pool, message)
   const retrieval = await resolveRetrievedChunks(pool, message, corpus, { topK: 10, language })
   const retrievalMode = retrieval.mode
   const resolvedModelPlan = resolveTaxgptChatModel({
@@ -205,8 +211,10 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
   const annotatedChunks = annotateChunksWithBuckets(retrieval.chunks)
   const systemPrompt = buildTaxgptStructuredSystemPrompt(retrievalMode, language)
   const userPrompt = retrievalMode === 'rag'
-    ? buildTaxgptStructuredUserPrompt(message, annotatedChunks, language)
-    : `User Question: ${message}\n\nNo retrieved sources are available. Return the degraded JSON schema.`
+    ? buildTaxgptStructuredUserPrompt(message, annotatedChunks, language, {
+      requestedPublicationsContext: formatRequestedPublicationsContext(requestedPublications)
+    })
+    : `User Question: ${message}\n\n${formatRequestedPublicationsContext(requestedPublications)}\n\nNo retrieved sources are available. Return the degraded JSON schema.`
 
   let completion
   try {
@@ -237,6 +245,12 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
     ...parsed.structured,
     groupedSources: parsed.groupedSources
   }
+  const feedbackSuggestion = buildTaxgptFeedbackSuggestion(message, {
+    retrievalMode,
+    retrievalNotice: retrieval.notice,
+    requestedPublications,
+    confidence: structuredResponse.confidence
+  })
   const sources = retrievalMode === 'rag'
     ? buildTaxgptSources(annotatedChunks)
     : []
@@ -256,6 +270,7 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
     sessionId,
     retrievalMode,
     retrievalNotice: retrieval.notice,
+    feedbackSuggestion,
     model: resolvedModelPlan.model,
     modelTier: resolvedModelPlan.tier,
     modelRoutingReason: resolvedModelPlan.reason,

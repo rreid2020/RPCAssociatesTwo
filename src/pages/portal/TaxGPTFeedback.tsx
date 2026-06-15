@@ -15,17 +15,32 @@ import { useFeatureAccess } from '../../lib/subscriptions/hooks'
 
 const RATING_OPTIONS = [1, 2, 3, 4, 5]
 
+const FEEDBACK_CATEGORIES = new Set<TaxgptFeedbackCategory>([
+  'feedback',
+  'suggestion',
+  'answer_quality',
+  'corpus_gap'
+])
+
 const TaxGPTFeedback: FC = () => {
   const { getToken } = useAuth()
   const hasAccess = useFeatureAccess('taxgpt')
   const [searchParams] = useSearchParams()
   const sessionId = searchParams.get('sessionId')
+  const prefilledCategory = searchParams.get('category')
+  const prefilledSubject = searchParams.get('subject')
+  const prefilledMessage = searchParams.get('message')
 
   const [categories, setCategories] = useState<Array<{ id: TaxgptFeedbackCategory; label: string }>>([])
   const [history, setHistory] = useState<TaxgptFeedbackItem[]>([])
-  const [category, setCategory] = useState<TaxgptFeedbackCategory>('feedback')
-  const [subject, setSubject] = useState('')
-  const [message, setMessage] = useState('')
+  const [category, setCategory] = useState<TaxgptFeedbackCategory>(() => {
+    if (prefilledCategory && FEEDBACK_CATEGORIES.has(prefilledCategory as TaxgptFeedbackCategory)) {
+      return prefilledCategory as TaxgptFeedbackCategory
+    }
+    return 'feedback'
+  })
+  const [subject, setSubject] = useState(() => prefilledSubject?.trim() || '')
+  const [message, setMessage] = useState(() => prefilledMessage?.trim() || '')
   const [rating, setRating] = useState<number | ''>('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -49,7 +64,7 @@ const TaxGPTFeedback: FC = () => {
         if (!mounted) return
         setCategories(categoryRows)
         setHistory(historyRows)
-        if (categoryRows[0]?.id) setCategory(categoryRows[0].id)
+        if (!prefilledCategory && categoryRows[0]?.id) setCategory(categoryRows[0].id)
       } catch (e) {
         if (mounted) {
           setError(e instanceof Error ? e.message : 'Could not load feedback form')
@@ -128,6 +143,12 @@ const TaxGPTFeedback: FC = () => {
                 {sessionId && (
                   <p className="mt-3 text-xs text-text-light">
                     Linked to your current TaxGPT chat session for context.
+                  </p>
+                )}
+
+                {(prefilledSubject || prefilledMessage) && (
+                  <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                    This form was pre-filled from a TaxGPT answer that may be missing sources or had low confidence. Edit anything below before submitting.
                   </p>
                 )}
 

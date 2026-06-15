@@ -12,7 +12,7 @@ export class CraFolioExtractor {
     const metadata: Record<string, unknown> = {};
     
     // Extract folio-specific metadata
-    const folioCode = this.extractFolioCode($);
+    const folioCode = this.extractFolioCode($, url);
     const effectiveDate = this.extractEffectiveDate($);
     const revisedDate = this.extractRevisedDate($);
     
@@ -57,11 +57,13 @@ export class CraFolioExtractor {
     return { text: markdown, title: $('title').text().trim() || '', metadata };
   }
 
-  private extractFolioCode($: cheerio.CheerioAPI): string | null {
-    // Look for folio code patterns like "S1-F1-C1", "S1-F2-C2", etc.
+  private extractFolioCode($: cheerio.CheerioAPI, url: string): string | null {
     const h1Text = $('h1').first().text();
-    const match = h1Text.match(/(S\d+-F\d+-C\d+)/i);
-    return match ? match[1] : null;
+    const h1Match = h1Text.match(/(S\d+-F\d+-C\d+)/i);
+    if (h1Match) return h1Match[1];
+
+    const urlMatch = String(url || '').match(/folio-(s\d+-f\d+-c\d+)/i);
+    return urlMatch ? urlMatch[1].toUpperCase().replace(/s(\d+)-f(\d+)-c(\d+)/i, 'S$1-F$2-C$3') : null;
   }
 
   private extractEffectiveDate($: cheerio.CheerioAPI): string | null {

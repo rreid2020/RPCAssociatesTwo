@@ -142,6 +142,7 @@ export type TaxgptChatResponse = {
   sessionId: string
   retrievalMode: TaxgptRetrievalMode
   retrievalNotice: string | null
+  feedbackSuggestion?: TaxgptFeedbackSuggestion | null
   corpus: Pick<TaxgptCorpusStats, 'retrievalReady' | 'embeddingCount' | 'ingestedSourceCount'>
   reasoning?: string[]
   actions?: Array<{ type: string; description: string }>
@@ -191,6 +192,14 @@ export {
 
 export type TaxgptFeedbackCategory = 'feedback' | 'suggestion' | 'answer_quality' | 'corpus_gap'
 
+export type TaxgptFeedbackSuggestion = {
+  show: boolean
+  category: TaxgptFeedbackCategory | null
+  reason: string | null
+  subject: string | null
+  messageDraft: string | null
+}
+
 export type TaxgptFeedbackItem = {
   id: string
   category: TaxgptFeedbackCategory
@@ -209,6 +218,23 @@ export type SubmitTaxgptFeedbackPayload = {
   rating?: number | null
   sessionId?: string | null
   sourcePage?: string
+}
+
+export type BuildTaxgptFeedbackLinkInput = {
+  sessionId?: string | null
+  category?: TaxgptFeedbackCategory
+  subject?: string
+  message?: string
+}
+
+export function buildTaxgptFeedbackLink (input: BuildTaxgptFeedbackLinkInput = {}): string {
+  const params = new URLSearchParams()
+  if (input.sessionId) params.set('sessionId', input.sessionId)
+  if (input.category) params.set('category', input.category)
+  if (input.subject) params.set('subject', input.subject)
+  if (input.message) params.set('message', input.message)
+  const query = params.toString()
+  return query ? `/portal/taxgpt/feedback?${query}` : '/portal/taxgpt/feedback'
 }
 
 export async function fetchTaxgptFeedbackCategories (

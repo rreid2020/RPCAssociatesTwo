@@ -1,13 +1,17 @@
 import { FC } from 'react'
 import type {
   TaxgptComplianceRiskSource,
+  TaxgptFeedbackSuggestion,
   TaxgptSourceBucket,
   TaxgptStructuredResponse
 } from '../../../domains/taxgpt'
 import CitedText from './CitedText'
+import FeedbackSuggestionBanner from './FeedbackSuggestionBanner'
 
 type StructuredAssistantMessageProps = {
   structured: TaxgptStructuredResponse
+  feedbackSuggestion?: TaxgptFeedbackSuggestion | null
+  sessionId?: string | null
 }
 
 function SourceHighlights ({ highlights }: { highlights: string[] }) {
@@ -82,7 +86,11 @@ function SourceBackedLinks ({ sources }: { sources: TaxgptComplianceRiskSource[]
   )
 }
 
-const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({ structured }) => {
+const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({
+  structured,
+  feedbackSuggestion = null,
+  sessionId = null
+}) => {
   const grouped = structured.groupedSources
   const sourceReferences = structured.sourceReferences ?? []
   const keyPoints = structured.keyPoints ?? []
@@ -104,6 +112,10 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({ struc
           {confidenceLabel(structured.confidence)}
         </span>
       </div>
+
+      {feedbackSuggestion?.show && (
+        <FeedbackSuggestionBanner suggestion={feedbackSuggestion} sessionId={sessionId} />
+      )}
 
       <section>
         <h3 className="text-sm font-semibold text-primary-dark">Direct answer</h3>

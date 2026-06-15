@@ -73,11 +73,29 @@ export type TaxgptPenaltyInterest = {
   sources?: TaxgptComplianceRiskSource[]
 }
 
+export type TaxgptGroupedDocument = {
+  documentKey: string
+  documentType: string
+  publicationCode?: string
+  sourceTitle: string
+  sourceUrl: string
+  citationIndices: number[]
+  highlights: string[]
+  sectionHeadings?: string[]
+}
+
+export type TaxgptSourceDocumentGroup = {
+  documentType: string
+  label: string
+  documents: TaxgptGroupedDocument[]
+}
+
 export type TaxgptSourceGroup = {
   bucket: TaxgptSourceBucket
   label: string
   entries: Citation[]
   emptyMessage: string
+  documentGroups?: TaxgptSourceDocumentGroup[]
 }
 
 export type TaxgptStructuredResponse = {
@@ -99,6 +117,7 @@ export type TaxgptStructuredResponse = {
   suggestedNextSteps: string[]
   confidence: TaxgptConfidence
   sourceReferences?: TaxgptSourceReference[]
+  documentReferences?: TaxgptSourceDocumentGroup[]
   groupedSources?: Record<TaxgptSourceBucket, TaxgptSourceGroup>
 }
 

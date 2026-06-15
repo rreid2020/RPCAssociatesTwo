@@ -2,7 +2,9 @@ import { FC } from 'react'
 import type {
   TaxgptComplianceRiskSource,
   TaxgptFeedbackSuggestion,
+  TaxgptGroupedDocument,
   TaxgptSourceBucket,
+  TaxgptSourceDocumentGroup,
   TaxgptStructuredResponse
 } from '../../../domains/taxgpt'
 import CitedText from './CitedText'
@@ -86,6 +88,46 @@ function SourceBackedLinks ({ sources }: { sources: TaxgptComplianceRiskSource[]
   )
 }
 
+function DocumentHighlights ({ document }: { document: TaxgptGroupedDocument }) {
+  return (
+    <li className="rounded-md border border-border/70 bg-white px-3 py-3">
+      <p className="text-sm font-medium text-text">
+        {document.citationIndices.length > 0 && (
+          <span className="text-text-light">
+            [{document.citationIndices.join(', ')}]{' '}
+          </span>
+        )}
+        {document.sourceTitle}
+      </p>
+      {document.sectionHeadings && document.sectionHeadings.length > 0 && (
+        <p className="mt-1 text-xs text-text-light">
+          {document.sectionHeadings.join(' · ')}
+        </p>
+      )}
+      {document.highlights.length > 0 && (
+        <SourceHighlights highlights={document.highlights} />
+      )}
+    </li>
+  )
+}
+
+function CraDocumentGroups ({ documentGroups }: { documentGroups: TaxgptSourceDocumentGroup[] }) {
+  return (
+    <div className="mt-2 space-y-4">
+      {documentGroups.map((group) => (
+        <div key={group.documentType}>
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary-dark/80">{group.label}</p>
+          <ul className="mt-2 space-y-3">
+            {group.documents.map((document) => (
+              <DocumentHighlights key={document.documentKey} document={document} />
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({
   structured,
   feedbackSuggestion = null,
@@ -104,6 +146,12 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({
   const filingDeadlines = structured.filingDeadlines ?? []
   const penaltiesAndInterest = (structured.penaltiesAndInterest ?? [])
     .filter((entry) => !isGenericComplianceRisk(entry.description))
+
+  const craDocumentGroups = grouped?.cra?.documentGroups ?? []
+  const documentReferences = structured.documentReferences ?? []
+  const groupedReferenceDocuments = documentReferences.length > 0
+    ? documentReferences.flatMap((group) => group.documents)
+    : craDocumentGroups.flatMap((group) => group.documents)
 
   return (
     <div className="space-y-5">
@@ -138,6 +186,8 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({
                 <p className="text-xs font-semibold uppercase tracking-wide text-text-light">{group.label}</p>
                 {group.entries.length === 0 ? (
                   <p className="mt-2 text-sm text-text-light">{group.emptyMessage}</p>
+                ) : bucket === 'cra' && group.documentGroups && group.documentGroups.length > 0 ? (
+                  <CraDocumentGroups documentGroups={group.documentGroups} />
                 ) : (
                   <ul className="mt-2 space-y-4">
                     {group.entries.map((entry) => (
@@ -308,38 +358,76 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({
         </section>
       )}
 
-      {sourceReferences.length > 0 && (
+      {(groupedReferenceDocuments.length > 0 || sourceReferences.length > 0) && (
         <section className="rounded-md border border-border bg-background px-4 py-3">
           <h3 className="text-sm font-semibold text-primary-dark">References</h3>
           <p className="mt-1 text-xs text-text-light">
             Source documents cited in this answer.
           </p>
           <ul className="mt-3 space-y-2">
-            {sourceReferences.map((reference) => (
-              <li
-                key={`ref-${reference.citationIndex}-${reference.chunkId}`}
-                id={referenceAnchorId(reference.citationIndex)}
-                className="text-sm scroll-mt-4"
-              >
-                <span className="font-medium text-text">[{reference.citationIndex}] </span>
-                {reference.sourceUrl ? (
-                  <a
-                    href={reference.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-medium text-primary hover:underline"
-                  >
-                    {reference.sourceTitle}
-                  </a>
-                ) : (
-                  <span className="font-medium text-text">{reference.sourceTitle}</span>
-                )}
-                {reference.sectionHeading && (
-                  <span className="text-xs text-text-light"> — {reference.sectionHeading}</span>
-                )}
-              </li>
-            ))}
+            {groupedReferenceDocuments.length > 0
+              ? groupedReferenceDocuments.map((document) => (
+                <li key={document.documentKey} className="text-sm">
+                  <span className="font-medium text-text">
+                    {document.citationIndices.map((citationIndex, index) => (
+                      <span key={citationIndex}>
+                        {index > 0 ? ', ' : ''}
+                        <a
+                          href={`#${referenceAnchorId(citationIndex)}`}
+                          className="text-primary hover:underline"
+                        >
+                          [{citationIndex}]
+                        </a>
+                      </span>
+                    ))}
+                    {' '}
+                  </span>
+                  {document.sourceUrl ? (
+                    <a
+                      href={document.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-primary hover:underline"
+                    >
+                      {document.sourceTitle}
+                    </a>
+                  ) : (
+                    <span className="font-medium text-text">{document.sourceTitle}</span>
+                  )}
+                </li>
+              ))
+              : sourceReferences.map((reference) => (
+                <li
+                  key={`ref-${reference.citationIndex}-${reference.chunkId}`}
+                  id={referenceAnchorId(reference.citationIndex)}
+                  className="text-sm scroll-mt-4"
+                >
+                  <span className="font-medium text-text">[{reference.citationIndex}] </span>
+                  {reference.sourceUrl ? (
+                    <a
+                      href={reference.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-primary hover:underline"
+                    >
+                      {reference.sourceTitle}
+                    </a>
+                  ) : (
+                    <span className="font-medium text-text">{reference.sourceTitle}</span>
+                  )}
+                  {reference.sectionHeading && (
+                    <span className="text-xs text-text-light"> — {reference.sectionHeading}</span>
+                  )}
+                </li>
+              ))}
           </ul>
+          {groupedReferenceDocuments.length > 0 && sourceReferences.map((reference) => (
+            <span
+              key={`anchor-${reference.citationIndex}-${reference.chunkId}`}
+              id={referenceAnchorId(reference.citationIndex)}
+              className="sr-only"
+            />
+          ))}
         </section>
       )}
     </div>

@@ -1,9 +1,11 @@
+import { buildCraDocumentGroups, buildCraDocumentGroupsFromChunks } from './taxgptSourceGrouping.js'
 import {
   emptyBucketMessage,
   resolveSourceBucket,
   sourceBucketLabel,
   TAXGPT_SOURCE_BUCKETS
 } from './taxgptSourceBuckets.js'
+import { resolveDocumentDisplayTitle } from './taxgptSourceDisplay.js'
 import { extractTaxgptCitations } from './taxgptPrompt.js'
 import { isTableOfContentsExcerpt } from './taxgptRetrievalFilters.js'
 import { taxgptLanguageLabel } from './taxgptSourceLanguage.js'
@@ -353,7 +355,7 @@ function enrichCitationIndicesWithSources (citationIndices, chunks, basis = null
       if (!chunk?.citation) return null
       return {
         citationIndex: index,
-        sourceTitle: chunk.citation.sourceTitle || 'Unknown source',
+        sourceTitle: resolveChunkDisplayTitle(chunk),
         sourceUrl: chunk.citation.sourceUrl || '',
         sectionHeading: chunk.citation.sectionHeading || undefined,
         sourceBucket: chunk.sourceBucket || chunk.citation.sourceBucket || basis || 'cra'
@@ -476,11 +478,13 @@ export function parseTaxgptStructuredResponse (raw, chunks, mode) {
   const enrichedCitations = enrichCitationsWithBuckets(citations, chunks)
   const sourceReferences = buildSourceReferences(chunks)
   const groupedSources = buildGroupedSources(enrichedCitations, sourceAnalysis, sourceReferences, chunks)
+  const documentReferences = buildCraDocumentGroupsFromChunks(chunks)
 
   return {
     structured: {
       ...structured,
-      sourceReferences
+      sourceReferences,
+      documentReferences
     },
     citations: enrichedCitations,
     groupedSources,
@@ -505,6 +509,17 @@ function enrichCitationsWithBuckets (citations, chunks) {
   })
 }
 
+function resolveChunkDisplayTitle (chunk) {
+  return resolveDocumentDisplayTitle({
+    sourceTitle: chunk?.citation?.sourceTitle,
+    sourceUrl: chunk?.citation?.sourceUrl,
+    sourceMetadata: chunk?.sourceMetadata,
+    parentSourceTitle: chunk?.parentSourceTitle,
+    parentSourceMetadata: chunk?.parentSourceMetadata,
+    documentMetadata: chunk?.documentMetadata
+  })
+}
+
 /**
  * @param {Array<{ citation: Record<string, unknown>, sourceBucket?: string }>} chunks
  */
@@ -513,7 +528,7 @@ function buildSourceReferences (chunks) {
     citationIndex: index + 1,
     id: chunk.citation.id,
     chunkId: chunk.citation.chunkId,
-    sourceTitle: chunk.citation.sourceTitle || 'Unknown source',
+    sourceTitle: resolveChunkDisplayTitle(chunk),
     sourceUrl: chunk.citation.sourceUrl || '',
     sectionHeading: chunk.citation.sectionHeading || undefined,
     pageNumber: chunk.citation.pageNumber ?? undefined,
@@ -562,6 +577,7 @@ function buildGroupedSources (citations, sourceAnalysis, sourceReferences = [], 
       if (highlights.length === 0 && !excerpt && !item.summary) continue
       entries.push({
         ...citation,
+        sourceTitle: resolveChunkDisplayTitle(chunks[item.citationIndex - 1]) || citation.sourceTitle,
         citationIndex: item.citationIndex,
         excerpt,
         highlights,
@@ -579,17 +595,24 @@ function buildGroupedSources (citations, sourceAnalysis, sourceReferences = [], 
       seenCitationIndices.add(citation.citationIndex)
       entries.push({
         ...citation,
+        sourceTitle: resolveChunkDisplayTitle(chunks[citation.citationIndex - 1]) || citation.sourceTitle,
         excerpt,
         highlights
       })
     }
 
-    grouped[bucket] = {
+    const group = {
       bucket,
       label: sourceBucketLabel(bucket),
       entries,
       emptyMessage: emptyBucketMessage(bucket)
     }
+
+    if (bucket === 'cra' && entries.length > 0) {
+      group.documentGroups = buildCraDocumentGroups(entries, chunks)
+    }
+
+    grouped[bucket] = group
   }
 
   return grouped
@@ -613,6 +636,19 @@ function renderStructuredPlainText (structured, groupedSources, mode) {
     lines.push(`### ${group.label}`)
     if (group.entries.length === 0) {
       lines.push(group.emptyMessage)
+    } else if (bucket === 'cra' && Array.isArray(group.documentGroups) && group.documentGroups.length > 0) {
+      group.documentGroups.forEach((typeGroup) => {
+        lines.push(`#### ${typeGroup.label}`)
+        typeGroup.documents.forEach((document) => {
+          const citationLabel = document.citationIndices?.length
+            ? `[${document.citationIndices.join(', ')}] `
+            : ''
+          lines.push(`- ${citationLabel}${document.sourceTitle}`)
+          if (Array.isArray(document.highlights) && document.highlights.length > 0) {
+            document.highlights.forEach((highlight) => lines.push(`  - ${highlight}`))
+          }
+        })
+      })
     } else {
       group.entries.forEach((entry, index) => {
         const prefix = entry.citationIndex ? `[${entry.citationIndex}] ` : ''
@@ -748,11 +784,13 @@ function buildFallbackStructuredResponse (raw, chunks, mode) {
   const enrichedCitations = enrichCitationsWithBuckets(citations, chunks)
   const sourceReferences = buildSourceReferences(chunks)
   const groupedSources = buildGroupedSources(enrichedCitations, structured.sourceAnalysis, sourceReferences, chunks)
+  const documentReferences = buildCraDocumentGroupsFromChunks(chunks)
 
   return {
     structured: {
       ...structured,
-      sourceReferences
+      sourceReferences,
+      documentReferences
     },
     citations: enrichedCitations,
     groupedSources,

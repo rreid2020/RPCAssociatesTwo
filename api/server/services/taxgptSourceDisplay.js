@@ -1,4 +1,4 @@
-import { folioCodeFromUrl } from './taxgptRetrievalFilters.js'
+import { folioCodeFromUrl, publicationCodeFromUrl } from './taxgptRetrievalFilters.js'
 
 const GENERIC_TITLE_PATTERNS = [
   /^standard\s+print\s+pdf$/i,
@@ -9,11 +9,13 @@ const GENERIC_TITLE_PATTERNS = [
   /^large\s+print(\s+pdf)?$/i,
   /^epub$/i,
   /^download\s+pdf$/i,
-  /^untitled$/i
+  /^untitled$/i,
+  /^pdf en .+$/i
 ]
 
-const GENERIC_TITLE_WITH_PREFIX = /^\d{4}\s*[–-]\s*(standard\s+print\s+pdf|print\s+pdf|pdf|html)$/i
-const FILENAME_TITLE_PATTERN = /^(?:t|rc)\d{4}(?:[-_][a-z])?\.(?:html?|pdf)$/i
+const GENERIC_TITLE_WITH_PREFIX = /^\d{4}\s*[–-]\s*(standard\s+print\s+pdf|print\s+pdf|pdf|html)/i
+const FILENAME_TITLE_PATTERN = /^(?:t|rc)\d{4}(?:[-_.][a-z0-9]+)*\.(?:html?|pdf)$/i
+const EDITION_FILENAME_PATTERN = /^(?:t|rc)\d{4}(?:[-_.][a-z0-9]+)*$/i
 
 function formatFolioCode (slug) {
   const match = String(slug || '').match(/s(\d+)-f(\d+)-c(\d+)/i)
@@ -21,12 +23,21 @@ function formatFolioCode (slug) {
   return `S${match[1]}-F${match[2]}-C${match[3]}`
 }
 
+function formatPublicationCode (code) {
+  const normalized = String(code || '').trim().toLowerCase()
+  if (!normalized) return ''
+  if (normalized.startsWith('ic')) return normalized.toUpperCase()
+  return normalized.toUpperCase()
+}
+
 /**
  * @param {string} title
  */
 function isFilenameTitle (title) {
   const normalized = String(title || '').trim()
-  return FILENAME_TITLE_PATTERN.test(normalized) || /^[a-z0-9]+-f\.html$/i.test(normalized)
+  return FILENAME_TITLE_PATTERN.test(normalized) ||
+    EDITION_FILENAME_PATTERN.test(normalized) ||
+    /^[a-z0-9]+-f\.html$/i.test(normalized)
 }
 
 /**
@@ -56,23 +67,22 @@ export function cleanPublicationTitle (title) {
  * @param {string} url
  */
 function titleFromPublicationFilename (url) {
-  const filename = String(url || '').split('/').pop()?.replace(/\.[^.]+$/, '') || ''
-  const guideMatch = filename.match(/^(t\d{4})/i)
-  if (guideMatch) {
-    const code = guideMatch[1].toUpperCase()
-    const knownTitles = {
-      T4040: 'RRSPs and Other Registered Plans for Retirement',
-      T4036: 'Rental Income',
-      T4032: 'Tax Guide — Personal Income Tax',
-      T4002: 'Self-employed Business, Professional, Commission, Farming, and Fishing Income'
-    }
-    return knownTitles[code] ? `Guide ${code}, ${knownTitles[code]}` : `Guide ${code}`
-  }
-  const rcMatch = filename.match(/^(rc\d{4})/i)
-  if (rcMatch) return rcMatch[1].toUpperCase()
-  const icMatch = filename.match(/^(ic\d{2,3})/i)
-  if (icMatch) return `Information Circular ${icMatch[1].toUpperCase()}`
-  return ''
+  const code = formatPublicationCode(publicationCodeFromUrl(url))
+  if (!code) return ''
+  if (code.startsWith('IC')) return `Information Circular ${code}`
+  if (code.startsWith('T') || code.startsWith('RC')) return `Guide ${code}`
+  return code
+}
+
+/**
+ * @param {string} code
+ */
+function publicationLabel (code) {
+  const normalized = formatPublicationCode(code)
+  if (!normalized) return ''
+  if (normalized.startsWith('IC')) return `Information Circular ${normalized}`
+  if (normalized.startsWith('T') || normalized.startsWith('RC')) return `Guide ${normalized}`
+  return normalized
 }
 
 /**
@@ -81,6 +91,7 @@ function titleFromPublicationFilename (url) {
  *   sourceUrl?: string,
  *   sourceMetadata?: Record<string, unknown>,
  *   parentSourceTitle?: string,
+ *   parentSourceMetadata?: Record<string, unknown>,
  *   documentMetadata?: Record<string, unknown>
  * }} input
  */
@@ -89,9 +100,11 @@ export function resolveDocumentDisplayTitle ({
   sourceUrl,
   sourceMetadata = {},
   parentSourceTitle,
+  parentSourceMetadata = {},
   documentMetadata = {}
 }) {
   const meta = sourceMetadata && typeof sourceMetadata === 'object' ? sourceMetadata : {}
+  const parentMeta = parentSourceMetadata && typeof parentSourceMetadata === 'object' ? parentSourceMetadata : {}
   const docMeta = documentMetadata && typeof documentMetadata === 'object' ? documentMetadata : {}
   const pdfInfo = meta.pdfInfo && typeof meta.pdfInfo === 'object' ? meta.pdfInfo : {}
 
@@ -99,25 +112,32 @@ export function resolveDocumentDisplayTitle ({
   if (folioSlug) {
     const folioCode = formatFolioCode(folioSlug)
     const chapterTitle = !isGenericTitle(sourceTitle) ? cleanPublicationTitle(sourceTitle) : null
-    if (chapterTitle) return `Income Tax Folio ${folioCode}, ${chapterTitle}`
+    if (chapterTitle) return `Income Tax Folio ${folioCode} — ${chapterTitle}`
     return `Income Tax Folio ${folioCode}`
   }
 
-  const candidates = [
+  const publicationCode = formatPublicationCode(
+    parentMeta.publicationNumber || meta.publicationNumber || docMeta.publicationNumber || publicationCodeFromUrl(sourceUrl)
+  )
+
+  const humanTitleCandidates = [
+    parentMeta.title,
+    parentSourceTitle,
     docMeta.title,
     meta.title,
     pdfInfo.Title,
-    !isGenericTitle(sourceTitle) ? cleanPublicationTitle(sourceTitle) : null,
-    parentSourceTitle ? cleanPublicationTitle(parentSourceTitle) : null,
-    titleFromPublicationFilename(sourceUrl)
+    !isGenericTitle(sourceTitle) ? cleanPublicationTitle(sourceTitle) : null
   ]
     .map((value) => cleanPublicationTitle(String(value || '')))
     .filter((value) => value && !isGenericTitle(value))
 
-  if (candidates.length > 0) return candidates[0]
+  const humanTitle = humanTitleCandidates[0] || ''
 
-  const cleanedSourceTitle = cleanPublicationTitle(sourceTitle)
-  if (cleanedSourceTitle && !isGenericTitle(cleanedSourceTitle)) return cleanedSourceTitle
+  if (publicationCode && humanTitle) {
+    return `${publicationLabel(publicationCode)} — ${humanTitle}`
+  }
+  if (publicationCode) return publicationLabel(publicationCode)
+  if (humanTitle) return humanTitle
 
-  return titleFromPublicationFilename(sourceUrl) || cleanedSourceTitle || 'CRA publication'
+  return titleFromPublicationFilename(sourceUrl) || cleanPublicationTitle(sourceTitle) || 'CRA publication'
 }

@@ -21,6 +21,7 @@ function buildCitation (row, index) {
     sourceUrl: row.sourceUrl,
     sourceMetadata: row.sourceMetadata,
     parentSourceTitle: row.parentSourceTitle,
+    parentSourceMetadata: row.parentSourceMetadata,
     documentMetadata: row.documentMetadata
   })
 
@@ -147,6 +148,9 @@ export async function retrieveTaxgptChunks (pool, query, options = {}) {
     similarity: Number(row.similarity) || 0,
     sourceCategory: row.sourceCategory,
     sourceMetadata: row.sourceMetadata,
+    parentSourceTitle: row.parentSourceTitle,
+    parentSourceMetadata: row.parentSourceMetadata,
+    documentMetadata: row.documentMetadata,
     citation: buildCitation(row, index)
   }))
 }

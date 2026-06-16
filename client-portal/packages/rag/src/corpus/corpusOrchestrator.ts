@@ -18,6 +18,26 @@ import {
   isTaxesHubDirectoryCandidate
 } from './sourcePolicy'
 
+const TAXES_HUB_DISCOVER_SOURCE_TIMEOUT_MS = 90_000
+
+function withTimeout<T> (promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${ms}ms`))
+    }, ms)
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        clearTimeout(timer)
+        reject(error)
+      }
+    )
+  })
+}
+
 export type CorpusAuditReport = {
   totals: {
     sourceCount: number
@@ -248,7 +268,11 @@ export async function expandTaxesHubPages (options: { limit?: number } = {}): Pr
   for (const row of candidates) {
     summary.processed += 1
     try {
-      const result = await discovery.discoverFromSource(row.id)
+      const result = await withTimeout(
+        discovery.discoverFromSource(row.id),
+        TAXES_HUB_DISCOVER_SOURCE_TIMEOUT_MS,
+        `Taxes hub discovery for ${row.url}`
+      )
       if (result.newSourcesCreated > 0) {
         summary.expanded += 1
         summary.contentSourcesCreated += result.newSourcesCreated
@@ -257,6 +281,24 @@ export async function expandTaxesHubPages (options: { limit?: number } = {}): Pr
       }
     } catch {
       summary.errors += 1
+      const existingMeta = (row.metadata || {}) as Record<string, unknown>
+      try {
+        await db
+          .update(sources)
+          .set({
+            ingestStatus: 'pending',
+            pageKind: 'content',
+            errorMessage: 'Taxes hub expand timed out — queued for direct ingest',
+            metadata: {
+              ...existingMeta,
+              taxesHubExpanded: true,
+              taxesHubExpandTimedOut: true
+            }
+          })
+          .where(eq(sources.id, row.id))
+      } catch {
+        // Best-effort: continue batch even if timeout recovery update fails.
+      }
     }
   }
 

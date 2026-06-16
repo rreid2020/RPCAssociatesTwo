@@ -212,7 +212,18 @@ export class CraTaxesHubDiscoveryService {
             errorMessage: 'Taxes hub directory — child sources discovered'
           })
           .where(eq(sources.id, sourceId))
-      } else if (result.newSourcesCreated === 0 && (pageKind === 'directory' || pageKind === 'unknown')) {
+      } else if (result.newSourcesCreated === 0 && existingMeta.corpusSeed === 'canada_taxes_hub') {
+        await this.db
+          .update(sources)
+          .set({
+            ingestStatus: 'skipped',
+            pageKind: 'directory',
+            errorMessage: 'Taxes hub root — child sources discovered'
+          })
+          .where(eq(sources.id, sourceId))
+      } else if (result.newSourcesCreated === 0) {
+        // Promote leaf/duplicate-expanded pages so expand does not re-process them forever.
+        // classifyPageKind often returns "content" while DB row is still "unknown".
         await this.db
           .update(sources)
           .set({
@@ -220,17 +231,9 @@ export class CraTaxesHubDiscoveryService {
             pageKind: 'content',
             metadata: {
               ...existingMeta,
-              taxesHubExpanded: true
+              taxesHubExpanded: true,
+              classifiedPageKind: pageKind
             }
-          })
-          .where(eq(sources.id, sourceId))
-      } else if (source[0].metadata && (existingMeta.corpusSeed === 'canada_taxes_hub')) {
-        await this.db
-          .update(sources)
-          .set({
-            ingestStatus: 'skipped',
-            pageKind: 'directory',
-            errorMessage: 'Taxes hub root — child sources discovered'
           })
           .where(eq(sources.id, sourceId))
       }

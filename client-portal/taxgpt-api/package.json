@@ -29,7 +29,7 @@
     "pretaxgpt:run-taxes-hub": "npm run taxgpt:build-deps",
     "taxgpt:run-taxes-hub": "tsx src/scripts/taxgpt-corpus.ts run-taxes-hub-pipeline --expand-limit=100 --ingest-limit=20",
     "pretaxgpt:finish-taxes-hub": "npm run taxgpt:build-deps",
-    "taxgpt:finish-taxes-hub": "tsx src/scripts/taxgpt-corpus.ts finish-taxes-hub --expand-limit=100 --ingest-limit=20",
+    "taxgpt:finish-taxes-hub": "tsx src/scripts/taxgpt-corpus.ts finish-taxes-hub --expand-limit=25 --ingest-limit=20 --max-rounds=300",
     "pretaxgpt:discover-folios": "npm run taxgpt:build-deps",
     "taxgpt:discover-folios": "tsx src/scripts/taxgpt-corpus.ts discover-folios --limit=10",
     "pretaxgpt:expand": "npm run taxgpt:build-deps",

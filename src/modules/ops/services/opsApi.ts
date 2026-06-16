@@ -70,7 +70,7 @@ export type OpsPortalUserStats = {
   totals: {
     total: number
     withWorkspace: number
-    withProfile: number
+    withUsersRecord: number
   }
   byUserType: OpsCountRow[]
   tableMissing?: boolean
@@ -83,6 +83,7 @@ export type OpsPortalUserListItem = {
   imageUrl: string | null
   userType: string | null
   employeeCount: string | null
+  hasUsersRecord: boolean
   workspaceCount: number
   workspaceNames: string[]
   signedUpAt: string | null

@@ -18,11 +18,6 @@ function formatDate (value: string | null) {
   return date.toLocaleString()
 }
 
-function truncateId (value: string) {
-  if (value.length <= 16) return value
-  return `${value.slice(0, 10)}…${value.slice(-4)}`
-}
-
 const UsersOpsPage: FC = () => {
   const { getToken } = useAuth()
   const [loading, setLoading] = useState(true)
@@ -73,7 +68,7 @@ const UsersOpsPage: FC = () => {
             <div>
               <h1 className="text-3xl font-bold text-primary-dark">Portal Users</h1>
               <p className="text-sm text-text-light mt-1">
-                Clerk-authenticated users with portal activity — profile records and workspace memberships.
+                Portal sign-ups from taxgpt.users and active workspace memberships.
               </p>
             </div>
             <Link to="/portal/ops" className="text-sm text-accent font-medium hover:underline">Back to ops home</Link>
@@ -83,7 +78,7 @@ const UsersOpsPage: FC = () => {
             <section className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
               <div className="border border-border rounded-md p-3"><strong>Total users</strong><p>{stats.totals.total}</p></div>
               <div className="border border-border rounded-md p-3"><strong>With workspace</strong><p>{stats.totals.withWorkspace}</p></div>
-              <div className="border border-border rounded-md p-3"><strong>With onboarding profile</strong><p>{stats.totals.withProfile}</p></div>
+              <div className="border border-border rounded-md p-3"><strong>In users table</strong><p>{stats.totals.withUsersRecord}</p></div>
             </section>
           )}
 
@@ -98,7 +93,7 @@ const UsersOpsPage: FC = () => {
                 className="w-full border border-border rounded-md px-3 py-2"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Email or Clerk user ID"
+                placeholder="Clerk user ID"
               />
             </label>
             <button type="submit" className="px-4 py-2 rounded-md bg-primary text-white text-sm font-medium hover:opacity-90">
@@ -126,32 +121,28 @@ const UsersOpsPage: FC = () => {
               <table className="min-w-full text-sm">
                 <thead className="bg-background text-left text-text-light">
                   <tr>
-                    <th className="px-4 py-3 font-medium">User</th>
                     <th className="px-4 py-3 font-medium">Clerk ID</th>
+                    <th className="px-4 py-3 font-medium">Users row</th>
                     <th className="px-4 py-3 font-medium">Type</th>
                     <th className="px-4 py-3 font-medium">Workspaces</th>
                     <th className="px-4 py-3 font-medium">Signed up</th>
                     <th className="px-4 py-3 font-medium">Last active</th>
-                    <th className="px-4 py-3 font-medium">Last sign-in</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-text-light">
+                      <td colSpan={6} className="px-4 py-8 text-center text-text-light">
                         {query ? 'No users matched your search.' : 'No portal users found yet.'}
                       </td>
                     </tr>
                   ) : (
                     items.map((user) => (
                       <tr key={user.clerkUserId} className="border-t border-border align-top">
-                        <td className="px-4 py-3">
-                          <div className="font-medium text-text">{user.displayName}</div>
-                          <div className="text-text-light">{user.email || 'No email on file'}</div>
+                        <td className="px-4 py-3 font-mono text-xs text-text" title={user.clerkUserId}>
+                          {user.clerkUserId}
                         </td>
-                        <td className="px-4 py-3 font-mono text-xs text-text-light" title={user.clerkUserId}>
-                          {truncateId(user.clerkUserId)}
-                        </td>
+                        <td className="px-4 py-3">{user.hasUsersRecord ? 'Yes' : 'No'}</td>
                         <td className="px-4 py-3">
                           {user.userType || '—'}
                           {user.employeeCount ? <div className="text-xs text-text-light">{user.employeeCount} employees</div> : null}
@@ -166,7 +157,6 @@ const UsersOpsPage: FC = () => {
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">{formatDate(user.signedUpAt)}</td>
                         <td className="px-4 py-3 whitespace-nowrap">{formatDate(user.lastActiveAt)}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{formatDate(user.lastSignInAt)}</td>
                       </tr>
                     ))
                   )}

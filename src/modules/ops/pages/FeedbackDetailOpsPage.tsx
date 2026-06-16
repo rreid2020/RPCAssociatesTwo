@@ -179,7 +179,7 @@ const FeedbackDetailOpsPage: FC = () => {
                           <span className="text-xs text-text-light">{new Date(message.createdAt).toLocaleString()}</span>
                         </div>
                         <p className="whitespace-pre-wrap">{message.content}</p>
-                        {message.structuredResponse?.confidence && (
+                        {message.structuredResponse?.confidence != null && (
                           <p className="mt-2 text-xs text-text-light">
                             Confidence: {String(message.structuredResponse.confidence)}
                             {message.riskLevel ? ` · Risk: ${message.riskLevel}` : ''}

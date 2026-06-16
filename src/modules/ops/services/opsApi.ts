@@ -28,6 +28,12 @@ export type OpsOverview = {
     active: number
     archived: number
   }
+  feedback?: {
+    total: number
+    submitted: number
+    underReview: number
+    stagedForApproval: number
+  }
 }
 
 export type OpsCountRow = { key: string; count: number }
@@ -87,4 +93,148 @@ export async function getOpsFormRegistryStats (getToken: TokenProvider): Promise
 export async function getOpsExternalLinks (getToken: TokenProvider): Promise<OpsExternalLink[]> {
   const data = await callPortalApi<{ links: OpsExternalLink[] }>('/v1/ops/links', getToken)
   return data.links
+}
+
+export type OpsFeedbackStatus =
+  | 'submitted'
+  | 'under_review'
+  | 'staged_for_approval'
+  | 'approved'
+  | 'rejected'
+  | 'implemented'
+
+export type OpsFeedbackCategory = 'feedback' | 'suggestion' | 'answer_quality' | 'corpus_gap'
+
+export type OpsFeedbackListItem = {
+  id: string
+  userId: string
+  workspaceId: string | null
+  category: OpsFeedbackCategory
+  subject: string
+  message: string
+  rating: number | null
+  sessionId: string | null
+  status: OpsFeedbackStatus
+  operatorNotes: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type OpsFeedbackDetail = OpsFeedbackListItem & {
+  stagedEnhancement: Record<string, unknown> | null
+  trainingSignal: Record<string, unknown> | null
+  metadata: Record<string, unknown> | null
+}
+
+export type OpsFeedbackSessionMessage = {
+  id: string
+  role: string
+  content: string
+  citations: unknown
+  riskLevel: string | null
+  structuredResponse: Record<string, unknown> | null
+  createdAt: string
+}
+
+export type OpsFeedbackStats = {
+  totals: {
+    total: number
+    submitted: number
+    underReview: number
+    stagedForApproval: number
+  }
+  byStatus: OpsCountRow[]
+  byCategory: OpsCountRow[]
+}
+
+export type OpsFeedbackListResponse = {
+  items: OpsFeedbackListItem[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export type OpsFeedbackActionResult = {
+  feedback: OpsFeedbackDetail
+  queuedSources: Array<{
+    id: string
+    url: string
+    title: string
+    ingestStatus: string
+  }>
+}
+
+export async function getOpsFeedbackStats (getToken: TokenProvider): Promise<OpsFeedbackStats> {
+  const data = await callPortalApi<{ stats: OpsFeedbackStats }>('/v1/ops/feedback/stats', getToken)
+  return data.stats
+}
+
+export async function listOpsFeedback (
+  getToken: TokenProvider,
+  params: {
+    status?: OpsFeedbackStatus
+    category?: OpsFeedbackCategory
+    q?: string
+    limit?: number
+    offset?: number
+  } = {}
+): Promise<OpsFeedbackListResponse> {
+  const search = new URLSearchParams()
+  if (params.status) search.set('status', params.status)
+  if (params.category) search.set('category', params.category)
+  if (params.q) search.set('q', params.q)
+  if (params.limit) search.set('limit', String(params.limit))
+  if (params.offset) search.set('offset', String(params.offset))
+  const suffix = search.toString() ? `?${search.toString()}` : ''
+  return await callPortalApi<OpsFeedbackListResponse>(`/v1/ops/feedback${suffix}`, getToken)
+}
+
+export async function getOpsFeedbackDetail (
+  getToken: TokenProvider,
+  id: string
+): Promise<{
+  feedback: OpsFeedbackDetail
+  sessionMessages: OpsFeedbackSessionMessage[]
+  categories: Array<{ id: OpsFeedbackCategory; label: string }>
+  statuses: OpsFeedbackStatus[]
+}> {
+  return await callPortalApi(`/v1/ops/feedback/${id}`, getToken)
+}
+
+export async function updateOpsFeedback (
+  getToken: TokenProvider,
+  id: string,
+  payload: { status?: OpsFeedbackStatus; operatorNotes?: string | null }
+): Promise<OpsFeedbackDetail> {
+  const data = await callPortalApi<{ feedback: OpsFeedbackDetail }>(`/v1/ops/feedback/${id}`, getToken, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  })
+  return data.feedback
+}
+
+export async function actionOpsFeedback (
+  getToken: TokenProvider,
+  id: string,
+  payload: {
+    sourceUrls?: string[] | string
+    status?: OpsFeedbackStatus
+    operatorNotes?: string | null
+    operatorSummary?: string | null
+    actionType?: string
+  }
+): Promise<OpsFeedbackActionResult> {
+  return await callPortalApi<OpsFeedbackActionResult>(`/v1/ops/feedback/${id}/action`, getToken, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}
+
+export async function deleteOpsFeedback (
+  getToken: TokenProvider,
+  id: string
+): Promise<{ deleted: boolean }> {
+  return await callPortalApi<{ deleted: boolean }>(`/v1/ops/feedback/${id}`, getToken, {
+    method: 'DELETE'
+  })
 }

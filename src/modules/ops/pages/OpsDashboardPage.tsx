@@ -21,6 +21,7 @@ const OpsDashboardPage: FC = () => {
           <nav className="flex flex-wrap gap-2 text-sm">
             <Link to="/portal/ops/corpus" className="px-3 py-1.5 rounded-md border border-border bg-white hover:bg-background">Corpus</Link>
             <Link to="/portal/ops/forms-registry" className="px-3 py-1.5 rounded-md border border-border bg-white hover:bg-background">Forms registry</Link>
+            <Link to="/portal/ops/feedback" className="px-3 py-1.5 rounded-md border border-border bg-white hover:bg-background">TaxGPT feedback</Link>
             <Link to="/portal/ops/links" className="px-3 py-1.5 rounded-md border border-border bg-white hover:bg-background">External links</Link>
           </nav>
 
@@ -33,6 +34,9 @@ const OpsDashboardPage: FC = () => {
                 <p><strong>Retrieval ready:</strong> {overview.corpus.retrievalReady ? 'Yes' : 'No'}</p>
                 <p className="mt-1"><strong>Embeddings:</strong> {overview.corpus.embeddingCount.toLocaleString()}</p>
                 <p className="mt-1"><strong>Taxes hub pending:</strong> {overview.taxesHub.pending} ({overview.taxesHub.unknown} still expanding)</p>
+                {overview.feedback && (
+                  <p className="mt-1"><strong>TaxGPT feedback queue:</strong> {overview.feedback.submitted} submitted · {overview.feedback.underReview} under review</p>
+                )}
                 <p className="mt-1 text-xs text-text-light">Last refreshed {new Date(overview.generatedAt).toLocaleString()}</p>
               </section>
             </>

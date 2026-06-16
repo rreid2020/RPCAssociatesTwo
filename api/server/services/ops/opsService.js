@@ -1,3 +1,5 @@
+import { getTaxgptFeedbackStats } from './taxgptFeedbackOpsService.js'
+
 function mapCountRows (rows, keyField, countField = 'count') {
   return (rows || []).map((row) => ({
     key: String(row[keyField] ?? 'unknown'),
@@ -151,16 +153,18 @@ export async function getFormRegistryStats (pool) {
 }
 
 export async function getOpsOverview (pool) {
-  const [corpus, taxesHub, formRegistry] = await Promise.all([
+  const [corpus, taxesHub, formRegistry, feedback] = await Promise.all([
     getCorpusAudit(pool),
     getTaxesHubStats(pool),
-    getFormRegistryStats(pool)
+    getFormRegistryStats(pool),
+    getTaxgptFeedbackStats(pool)
   ])
   return {
     generatedAt: new Date().toISOString(),
     corpus: corpus.totals,
     taxesHub,
-    formRegistry: formRegistry.totals
+    formRegistry: formRegistry.totals,
+    feedback: feedback.totals
   }
 }
 

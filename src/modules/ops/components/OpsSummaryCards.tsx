@@ -53,11 +53,16 @@ type Props = {
 }
 
 const OpsSummaryCards: FC<Props> = ({ overview }) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
     <MetricCard label="Corpus sources" value={overview.corpus.sourceCount} hint={`${overview.corpus.ingestedSourceCount} ingested`} />
     <MetricCard label="Pending ingest" value={overview.corpus.pendingSourceCount} hint={`${overview.corpus.failedSourceCount} failed`} />
     <MetricCard label="Taxes hub sources" value={overview.taxesHub.total} hint={`${overview.taxesHub.content} ready for ingest`} />
     <MetricCard label="Forms registry" value={overview.formRegistry.total} hint={`${overview.formRegistry.active} active`} />
+    <MetricCard
+      label="TaxGPT feedback"
+      value={overview.feedback?.total ?? 0}
+      hint={overview.feedback ? `${overview.feedback.submitted} submitted` : 'No feedback yet'}
+    />
   </div>
 )
 

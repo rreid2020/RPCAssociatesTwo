@@ -14,6 +14,7 @@ import { logPortalObjectStorageConfig } from './services/portalS3.js'
 import { createPortalRouter } from './routes/portalRoutes.js'
 import { createTaxIntelligenceRouter } from './routes/taxIntelligenceRoutes.js'
 import { createBillingRouter } from './routes/billingRoutes.js'
+import { createOpsRouter } from './routes/opsRoutes.js'
 import { createClerkWebhookRouter } from './routes/clerkWebhookRoutes.js'
 import { logServerEnvSummary } from './config/env.js'
 import { getNotificationInbox } from './config/mail.js'
@@ -266,6 +267,7 @@ app.post('/api/contact', async (req, res) => {
 // Client Portal API (Clerk JWT; data in taxgpt.*)
 app.use('/api/portal', createPortalRouter(pool))
 app.use('/api/portal', createBillingRouter(pool))
+app.use('/api/portal', createOpsRouter(pool))
 app.use('/api/webhooks', createClerkWebhookRouter(pool))
 app.use('/api', createTaxIntelligenceRouter(pool))
 app.use('/api/portal/tax-intelligence', createTaxIntelligenceRouter(pool))

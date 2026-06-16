@@ -7,6 +7,7 @@ import { useAccountAuthorization } from '../platform/permissions/AccountAuthoriz
 import { useAccountContext } from '../platform/account/AccountContextProvider'
 import { buildNavigationSections, type NavigationItem } from '../platform/navigation/navigationRegistry'
 import { getOnboardingStatus } from '../lib/onboarding/state'
+import { useOpsAccess } from '../modules/ops/hooks/useOpsAccess'
 
 interface ClientPortalShellProps {
   children: ReactNode
@@ -21,6 +22,7 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children, wideContent =
   const { getToken, isLoaded, isSignedIn } = useAuth()
   const { signOut } = useClerk()
   const { permissions } = useAccountAuthorization()
+  const { isStaff } = useOpsAccess()
   const { account } = useAccountContext()
   const [onboardingComplete, setOnboardingComplete] = useState(false)
   const handleSignOut = useCallback(() => {
@@ -71,9 +73,10 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children, wideContent =
       workspaceRole: account?.role || null,
       onboardingComplete,
       features: { workingPapers, integrations },
-      permissions
+      permissions,
+      isStaff
     })
-  ), [account?.profileBusinessType, account?.role, integrations, onboardingComplete, permissions, workspaceType, workingPapers])
+  ), [account?.profileBusinessType, account?.role, integrations, isStaff, onboardingComplete, permissions, workspaceType, workingPapers])
 
   const iconForKey = (iconKey: string, active: boolean) => {
     const iconClass = active ? 'text-white' : 'text-text-light'

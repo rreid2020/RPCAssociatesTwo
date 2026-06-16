@@ -10,6 +10,7 @@ export type NavigationContext = {
     integrations: boolean
   }
   permissions: string[]
+  isStaff?: boolean
 }
 
 export type NavigationItem = {
@@ -20,6 +21,7 @@ export type NavigationItem = {
   requiredFeature?: 'workingPapers' | 'integrations'
   requiredPermission?: string
   requiredWorkspaceRoles?: string[]
+  requiredStaff?: boolean
 }
 
 export type NavigationSection = {
@@ -98,7 +100,8 @@ const SECTIONS: NavigationSection[] = [
     items: [
       { to: '/portal/files', label: 'Documents', iconKey: 'folder' },
       { to: '/portal/subscription', label: 'Subscription', iconKey: 'shield' },
-      { to: '/portal/billing/subscription', label: 'Billing', iconKey: 'lock', requiredPermission: 'billing.read' }
+      { to: '/portal/billing/subscription', label: 'Billing', iconKey: 'lock', requiredPermission: 'billing.read' },
+      { to: '/portal/ops', label: 'Ops Portal', iconKey: 'terminal', requiredStaff: true }
     ]
   }
 ]
@@ -112,6 +115,7 @@ function isItemVisible (item: NavigationItem, context: NavigationContext) {
   if (!context.onboardingComplete && item.to.startsWith('/portal/accounting/working-papers')) return false
   if (item.requiredFeature && !context.features[item.requiredFeature]) return false
   if (item.requiredPermission && !context.permissions.includes(item.requiredPermission)) return false
+  if (item.requiredStaff && !context.isStaff) return false
   if (item.requiredWorkspaceRoles?.length) {
     const role = String(context.workspaceRole || '').trim().toLowerCase()
     if (!item.requiredWorkspaceRoles.includes(role)) return false

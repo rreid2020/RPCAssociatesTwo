@@ -19,6 +19,7 @@ import { createScenario, listScenarios } from '../services/tax-intelligence/scen
 import { listAuditFlags, runAuditRules } from '../services/tax-intelligence/audit.service.js'
 import { getAdvisorySummary } from '../services/tax-intelligence/aiAdvisory.service.js'
 import { mapExtractedSlipToEntries, upsertDocumentMappedEntries } from '../services/tax-intelligence/slipMapping.service.js'
+import { inferRequiredFormsForReturn } from '../services/tax-intelligence/requiredForms.service.js'
 
 function parseUuid (v) {
   return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
@@ -337,6 +338,21 @@ export function createTaxIntelligenceRouter (pool) {
     } catch (e) {
       console.error('POST /audit/run', e)
       res.status(500).json({ error: 'Could not run audit engine' })
+    }
+  })
+
+  r.get('/tax-returns/:id/required-forms', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const id = parseUuid(req.params.id)
+    if (!id) return res.status(400).json({ error: 'Invalid id' })
+    try {
+      const result = await inferRequiredFormsForReturn(pool, session.userId, id)
+      if (!result) return res.status(404).json({ error: 'Not found' })
+      res.json(result)
+    } catch (e) {
+      console.error('GET /tax-returns/:id/required-forms', e)
+      res.status(500).json({ error: 'Could not infer required forms' })
     }
   })
 

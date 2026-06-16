@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
-import { taxFetch, type TaxReturnSummary } from '../../../lib/taxIntelligenceApi'
+import { taxFetch, type RequiredFormsResponse, type TaxReturnSummary } from '../../../lib/taxIntelligenceApi'
 import { getTaxBasePath } from './path'
 
 type ReturnDetailPayload = {
@@ -97,6 +97,20 @@ function round2 (n: number): number {
   return Math.round((Number(n || 0) + Number.EPSILON) * 100) / 100
 }
 
+function registryStatusLabel (status: string): string {
+  if (status === 'active') return 'Active'
+  if (status === 'archived') return 'Archived'
+  if (status === 'not_indexed') return 'Not in catalog'
+  if (status === 'registry_unavailable') return 'Registry unavailable'
+  return status
+}
+
+function registryStatusClass (status: string): string {
+  if (status === 'active') return 'bg-green-50 text-green-800 border-green-200'
+  if (status === 'archived') return 'bg-amber-50 text-amber-800 border-amber-200'
+  return 'bg-gray-50 text-gray-700 border-border'
+}
+
 const FormsSchedules: FC = () => {
   const { getToken } = useAuth()
   const basePath = useMemo(() => getTaxBasePath(), [])
@@ -107,6 +121,8 @@ const FormsSchedules: FC = () => {
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [summaryRole, setSummaryRole] = useState<'household' | 'self' | 'spouse'>('household')
+  const [requiredForms, setRequiredForms] = useState<RequiredFormsResponse | null>(null)
+  const [loadingRequiredForms, setLoadingRequiredForms] = useState(false)
 
   const loadReturns = async () => {
     setLoading(true)
@@ -140,6 +156,23 @@ const FormsSchedules: FC = () => {
     }
   }
 
+  const loadRequiredForms = async (returnId: string) => {
+    if (!returnId) {
+      setRequiredForms(null)
+      return
+    }
+    setLoadingRequiredForms(true)
+    try {
+      const data = await taxFetch<RequiredFormsResponse>(`/tax-returns/${returnId}/required-forms`, getToken)
+      setRequiredForms(data)
+    } catch (e) {
+      setRequiredForms(null)
+      setErr((prev) => prev || (e instanceof Error ? e.message : 'Could not load required forms'))
+    } finally {
+      setLoadingRequiredForms(false)
+    }
+  }
+
   useEffect(() => {
     void loadReturns()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -147,6 +180,7 @@ const FormsSchedules: FC = () => {
 
   useEffect(() => {
     void loadDetail(selectedReturnId)
+    void loadRequiredForms(selectedReturnId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedReturnId])
 
@@ -274,6 +308,61 @@ const FormsSchedules: FC = () => {
 
           {!loadingDetail && detail && (
             <>
+              <section className="bg-white p-4 border border-border rounded-lg shadow-sm">
+                <h2 className="text-lg font-semibold text-primary-dark mb-2">Required CRA forms &amp; schedules</h2>
+                <p className="text-xs text-text-light mb-3">
+                  Inferred from return setup flags, income categories, and slip mappings, resolved against the CRA forms catalog.
+                </p>
+                {loadingRequiredForms && <p className="text-sm text-text-light">Analyzing required forms...</p>}
+                {!loadingRequiredForms && (requiredForms?.forms?.length || 0) === 0 && (
+                  <p className="text-sm text-text-light">No additional CRA forms inferred yet for this return.</p>
+                )}
+                {!loadingRequiredForms && (requiredForms?.forms?.length || 0) > 0 && (
+                  <div className="overflow-x-auto border border-border rounded-md">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-background/70">
+                        <tr>
+                          <th className="text-left px-3 py-2">Form</th>
+                          <th className="text-left px-3 py-2">Title</th>
+                          <th className="text-left px-3 py-2">Status</th>
+                          <th className="text-left px-3 py-2">Why required</th>
+                          <th className="text-left px-3 py-2">CRA link</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {requiredForms?.forms.map((form) => (
+                          <tr key={form.normalizedFormCode} className="border-t border-border align-top">
+                            <td className="px-3 py-2 font-medium">{form.formCode}</td>
+                            <td className="px-3 py-2">{form.registry.title || '—'}</td>
+                            <td className="px-3 py-2">
+                              <span className={`inline-flex px-2 py-0.5 rounded border text-xs ${registryStatusClass(form.registry.registryStatus)}`}>
+                                {registryStatusLabel(form.registry.registryStatus)}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-text-light">
+                              <ul className="list-disc pl-4 space-y-1">
+                                {form.reasons.map((reason) => (
+                                  <li key={reason}>{reason}</li>
+                                ))}
+                              </ul>
+                            </td>
+                            <td className="px-3 py-2">
+                              {form.registry.landingUrl ? (
+                                <a href={form.registry.landingUrl} target="_blank" rel="noreferrer" className="text-accent hover:underline">
+                                  View on Canada.ca
+                                </a>
+                              ) : (
+                                <span className="text-text-light">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+
               <section className="bg-white p-4 border border-border rounded-lg shadow-sm">
                 <h2 className="text-lg font-semibold text-primary-dark mb-3">
                   T1 General Summary - {detail.taxReturn.taxpayer_name} ({detail.taxReturn.tax_year})

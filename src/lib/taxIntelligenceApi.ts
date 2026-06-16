@@ -35,6 +35,33 @@ export async function taxFetch<T> (
   return JSON.parse(text) as T
 }
 
+export type RequiredFormRegistryInfo = {
+  formNumber: string
+  title: string | null
+  landingUrl: string | null
+  status: string | null
+  formFamily: string | null
+  lastUpdate: string | null
+  registryStatus: 'active' | 'archived' | 'not_indexed' | 'registry_unavailable'
+}
+
+export type RequiredFormItem = {
+  formCode: string
+  normalizedFormCode: string
+  sources: string[]
+  reasons: string[]
+  requirementStatus: 'required'
+  registry: RequiredFormRegistryInfo
+}
+
+export type RequiredFormsResponse = {
+  taxReturnId: string
+  taxYear: number
+  taxpayerName: string
+  generatedAt: string
+  forms: RequiredFormItem[]
+}
+
 export type TaxReturnSummary = {
   id: string
   tax_year: number

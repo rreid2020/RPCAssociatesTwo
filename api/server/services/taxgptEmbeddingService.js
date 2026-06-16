@@ -13,17 +13,31 @@ function getOpenAIClient () {
 }
 
 export async function embedTaxgptQuery (text) {
+  const embeddings = await embedTaxgptTexts([text])
+  return embeddings[0]
+}
+
+export async function embedTaxgptTexts (texts) {
+  const inputs = (texts || []).map((value) => String(value || '').trim()).filter(Boolean)
+  if (inputs.length === 0) {
+    throw new Error('At least one text input is required for embedding')
+  }
   const client = getOpenAIClient()
   const model = getEmbedModel()
   const response = await client.embeddings.create({
     model,
-    input: text
+    input: inputs
   })
-  const embedding = response.data?.[0]?.embedding
-  if (!Array.isArray(embedding) || embedding.length === 0) {
-    throw new Error('OpenAI returned an empty embedding')
+  const rows = (response.data || []).slice().sort((a, b) => a.index - b.index)
+  if (rows.length !== inputs.length) {
+    throw new Error('OpenAI returned an unexpected embedding count')
   }
-  return embedding
+  return rows.map((row) => {
+    if (!Array.isArray(row.embedding) || row.embedding.length === 0) {
+      throw new Error('OpenAI returned an empty embedding')
+    }
+    return row.embedding
+  })
 }
 
 export function formatEmbeddingVector (values) {

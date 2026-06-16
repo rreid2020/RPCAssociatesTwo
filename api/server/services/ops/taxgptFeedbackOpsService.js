@@ -4,6 +4,8 @@ import {
   FEEDBACK_STATUSES,
   getTaxgptFeedbackCategories
 } from '../taxgptFeedbackService.js'
+import { resolveRequestedPublications } from '../taxgptPublicationResolver.js'
+import { ingestFeedbackSources } from './taxgptFeedbackIngestService.js'
 
 const ALLOWED_SOURCE_HOSTS = [
   'canada.ca',
@@ -126,6 +128,91 @@ async function queueCorpusSource (pool, url, feedbackId, staffUserId) {
   )
 
   return rows[0]
+}
+
+function extractUrlsFromText (text) {
+  const matches = String(text || '').match(/https:\/\/[^\s)\]"']+/gi) || []
+  return [...new Set(matches.map((value) => value.replace(/[.,;]+$/, '')))]
+}
+
+function extractCitationUrls (sessionMessages = []) {
+  const urls = new Set()
+  for (const message of sessionMessages) {
+    const citations = Array.isArray(message.citations) ? message.citations : []
+    for (const citation of citations) {
+      if (citation?.sourceUrl) urls.add(citation.sourceUrl)
+    }
+    const groupedSources = message.structuredResponse?.groupedSources
+    if (Array.isArray(groupedSources)) {
+      for (const group of groupedSources) {
+        if (group?.sourceUrl) urls.add(group.sourceUrl)
+        for (const document of group?.documents || []) {
+          if (document?.sourceUrl) urls.add(document.sourceUrl)
+        }
+      }
+    }
+  }
+  return [...urls]
+}
+
+function safeNormalizeSourceUrls (urls = []) {
+  const normalized = []
+  for (const url of urls) {
+    try {
+      normalized.push(normalizeSourceUrl(url))
+    } catch {
+      // Ignore URLs outside the allowed corpus host list.
+    }
+  }
+  return [...new Set(normalized)]
+}
+
+export async function discoverFeedbackFixSourceUrls (pool, detail) {
+  const { feedback, sessionMessages } = detail
+  const discovered = new Set()
+
+  for (const url of safeNormalizeSourceUrls(extractCitationUrls(sessionMessages))) {
+    discovered.add(url)
+  }
+
+  const queryText = [
+    feedback.message,
+    ...sessionMessages.filter((message) => message.role === 'user').map((message) => message.content)
+  ].join('\n')
+
+  for (const url of safeNormalizeSourceUrls(extractUrlsFromText(queryText))) {
+    discovered.add(url)
+  }
+
+  const publications = await resolveRequestedPublications(pool, queryText)
+  for (const publication of publications) {
+    if (publication.url) {
+      try {
+        discovered.add(normalizeSourceUrl(publication.url))
+      } catch {
+        // Ignore publication URLs outside the allowed host list.
+      }
+    }
+  }
+
+  return {
+    sourceUrls: [...discovered],
+    publications
+  }
+}
+
+async function reprioritizePublicationSources (pool, publications = [], feedbackId, staffUserId) {
+  const reprioritized = []
+  for (const publication of publications) {
+    if (!publication.url || publication.status === 'ingested') continue
+    const queued = await queueCorpusSource(pool, publication.url, feedbackId, staffUserId)
+    reprioritized.push({
+      ...queued,
+      publicationCode: publication.code,
+      publicationStatus: publication.status
+    })
+  }
+  return reprioritized
 }
 
 export async function getTaxgptFeedbackStats (pool) {
@@ -287,7 +374,8 @@ export async function getTaxgptFeedbackDetailForOps (pool, feedbackId) {
     feedback,
     sessionMessages,
     categories: getTaxgptFeedbackCategories(),
-    statuses: Array.from(FEEDBACK_STATUSES)
+    statuses: Array.from(FEEDBACK_STATUSES),
+    fixSuggestions: await discoverFeedbackFixSourceUrls(pool, { feedback, sessionMessages })
   }
 }
 
@@ -459,5 +547,82 @@ export async function actionTaxgptFeedbackForOps (pool, feedbackId, staffUserId,
   return {
     feedback: mapFeedbackRow(rows[0]),
     queuedSources
+  }
+}
+
+/**
+ * Discover likely corpus fixes from linked chat context, queue sources, and ingest them.
+ */
+export async function kickoffTaxgptFeedbackFix (pool, feedbackId, staffUserId, payload = {}) {
+  const detail = await getTaxgptFeedbackDetailForOps(pool, feedbackId)
+  if (!detail) {
+    throw new Error('Feedback not found')
+  }
+
+  const discovered = await discoverFeedbackFixSourceUrls(pool, detail)
+  const manualUrls = Array.isArray(payload.sourceUrls)
+    ? payload.sourceUrls
+    : String(payload.sourceUrls || '')
+      .split(/[\n,]+/)
+      .map((value) => value.trim())
+      .filter(Boolean)
+  const sourceUrls = [...new Set([
+    ...discovered.sourceUrls,
+    ...safeNormalizeSourceUrls(manualUrls)
+  ])]
+
+  if (sourceUrls.length === 0) {
+    await updateTaxgptFeedbackForOps(pool, feedbackId, staffUserId, {
+      status: 'under_review',
+      operatorNotes: payload.operatorNotes ?? detail.feedback.operatorNotes
+    })
+    throw new Error('No fixable CRA or CanLII source URLs were discovered. Open the feedback detail to add URLs manually.')
+  }
+
+  const actionResult = await actionTaxgptFeedbackForOps(pool, feedbackId, staffUserId, {
+    sourceUrls,
+    status: 'under_review',
+    operatorNotes: payload.operatorNotes,
+    operatorSummary: payload.operatorSummary || `Kickoff fix discovered ${discovered.sourceUrls.length} source URL(s)`,
+    actionType: 'kickoff_fix'
+  })
+
+  const reprioritized = await reprioritizePublicationSources(
+    pool,
+    discovered.publications,
+    feedbackId,
+    staffUserId
+  )
+
+  const queuedIds = [...new Set([
+    ...actionResult.queuedSources.map((source) => source.id),
+    ...reprioritized.map((source) => source.id)
+  ])]
+
+  let ingestResult = { ingested: 0, failed: 0, skipped: 0, results: [] }
+  if (payload.runIngest !== false && queuedIds.length > 0) {
+    ingestResult = await ingestFeedbackSources(pool, queuedIds, {
+      limit: payload.ingestLimit || 5
+    })
+  }
+
+  let finalStatus = 'staged_for_approval'
+  if (ingestResult.ingested > 0 && ingestResult.failed === 0) {
+    finalStatus = 'implemented'
+  } else if (ingestResult.ingested > 0) {
+    finalStatus = 'approved'
+  }
+
+  const feedback = await updateTaxgptFeedbackForOps(pool, feedbackId, staffUserId, {
+    status: finalStatus,
+    operatorNotes: payload.operatorNotes ?? actionResult.feedback.operatorNotes
+  })
+
+  return {
+    feedback,
+    discovered,
+    queuedSources: actionResult.queuedSources,
+    reprioritized,
+    ingestResult
   }
 }

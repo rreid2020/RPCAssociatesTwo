@@ -164,6 +164,33 @@ export type OpsFeedbackActionResult = {
   }>
 }
 
+export type OpsFeedbackFixSuggestions = {
+  sourceUrls: string[]
+  publications: Array<{
+    code: string
+    status: string
+    reason: string | null
+    title: string | null
+    url: string | null
+  }>
+}
+
+export type OpsFeedbackFixResult = {
+  feedback: OpsFeedbackDetail
+  discovered: OpsFeedbackFixSuggestions
+  queuedSources: OpsFeedbackActionResult['queuedSources']
+  reprioritized: Array<OpsFeedbackActionResult['queuedSources'][number] & {
+    publicationCode?: string
+    publicationStatus?: string
+  }>
+  ingestResult: {
+    ingested: number
+    failed: number
+    skipped: number
+    results: Array<Record<string, unknown>>
+  }
+}
+
 export async function getOpsFeedbackStats (getToken: TokenProvider): Promise<OpsFeedbackStats> {
   const data = await callPortalApi<{ stats: OpsFeedbackStats }>('/v1/ops/feedback/stats', getToken)
   return data.stats
@@ -197,6 +224,7 @@ export async function getOpsFeedbackDetail (
   sessionMessages: OpsFeedbackSessionMessage[]
   categories: Array<{ id: OpsFeedbackCategory; label: string }>
   statuses: OpsFeedbackStatus[]
+  fixSuggestions: OpsFeedbackFixSuggestions
 }> {
   return await callPortalApi(`/v1/ops/feedback/${id}`, getToken)
 }
@@ -225,6 +253,23 @@ export async function actionOpsFeedback (
   }
 ): Promise<OpsFeedbackActionResult> {
   return await callPortalApi<OpsFeedbackActionResult>(`/v1/ops/feedback/${id}/action`, getToken, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}
+
+export async function kickoffOpsFeedbackFix (
+  getToken: TokenProvider,
+  id: string,
+  payload: {
+    sourceUrls?: string[] | string
+    operatorNotes?: string | null
+    operatorSummary?: string | null
+    runIngest?: boolean
+    ingestLimit?: number
+  } = {}
+): Promise<OpsFeedbackFixResult> {
+  return await callPortalApi<OpsFeedbackFixResult>(`/v1/ops/feedback/${id}/fix`, getToken, {
     method: 'POST',
     body: JSON.stringify(payload)
   })

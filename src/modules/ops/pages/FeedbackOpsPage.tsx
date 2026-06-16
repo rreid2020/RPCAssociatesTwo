@@ -6,12 +6,23 @@ import SEO from '../../../components/SEO'
 import { CountTable } from '../components/OpsSummaryCards'
 import {
   getOpsFeedbackStats,
+  kickoffOpsFeedbackFix,
   listOpsFeedback,
+  updateOpsFeedback,
   type OpsFeedbackCategory,
   type OpsFeedbackListItem,
   type OpsFeedbackStats,
   type OpsFeedbackStatus
 } from '../services'
+
+const EDITABLE_STATUS_OPTIONS: OpsFeedbackStatus[] = [
+  'submitted',
+  'under_review',
+  'staged_for_approval',
+  'approved',
+  'rejected',
+  'implemented'
+]
 
 const STATUS_OPTIONS: Array<{ value: '' | OpsFeedbackStatus; label: string }> = [
   { value: '', label: 'All statuses' },
@@ -50,6 +61,8 @@ const FeedbackOpsPage: FC = () => {
   const [category, setCategory] = useState<'' | OpsFeedbackCategory>('')
   const [query, setQuery] = useState('')
   const [searchInput, setSearchInput] = useState('')
+  const [rowActionId, setRowActionId] = useState<string | null>(null)
+  const [rowMessage, setRowMessage] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -81,6 +94,48 @@ const FeedbackOpsPage: FC = () => {
   const handleSearch = (event: FormEvent) => {
     event.preventDefault()
     setQuery(searchInput.trim())
+  }
+
+  const handleStatusChange = async (item: OpsFeedbackListItem, nextStatus: OpsFeedbackStatus) => {
+    setRowActionId(item.id)
+    setRowMessage(null)
+    setError(null)
+    try {
+      const updated = await updateOpsFeedback(getToken, item.id, { status: nextStatus })
+      setItems((current) => current.map((row) => (
+        row.id === item.id ? { ...row, status: updated.status, updatedAt: updated.updatedAt } : row
+      )))
+      setRowMessage(`Updated status for "${item.subject}".`)
+      const statsResult = await getOpsFeedbackStats(getToken)
+      setStats(statsResult)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not update feedback status')
+    } finally {
+      setRowActionId(null)
+    }
+  }
+
+  const handleKickoffFix = async (item: OpsFeedbackListItem) => {
+    setRowActionId(item.id)
+    setRowMessage(null)
+    setError(null)
+    try {
+      const result = await kickoffOpsFeedbackFix(getToken, item.id)
+      setItems((current) => current.map((row) => (
+        row.id === item.id ? { ...row, status: result.feedback.status, updatedAt: result.feedback.updatedAt } : row
+      )))
+      setRowMessage(
+        result.ingestResult.ingested > 0
+          ? `Kickoff fix ingested ${result.ingestResult.ingested} source(s) for "${item.subject}".`
+          : `Kickoff fix queued ${result.queuedSources.length} source(s) for "${item.subject}".`
+      )
+      const statsResult = await getOpsFeedbackStats(getToken)
+      setStats(statsResult)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not kick off feedback fix')
+    } finally {
+      setRowActionId(null)
+    }
   }
 
   return (
@@ -148,6 +203,7 @@ const FeedbackOpsPage: FC = () => {
 
           {loading && <p className="text-sm text-text-light">Loading feedback...</p>}
           {error && <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md p-3">{error}</p>}
+          {rowMessage && <p className="text-sm text-green-800 bg-green-50 border border-green-200 rounded-md p-3">{rowMessage}</p>}
 
           {!loading && !error && (
             <>
@@ -163,12 +219,13 @@ const FeedbackOpsPage: FC = () => {
                         <th className="text-left px-3 py-2">Status</th>
                         <th className="text-left px-3 py-2">Rating</th>
                         <th className="text-left px-3 py-2">Session</th>
+                        <th className="text-left px-3 py-2">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {items.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="px-3 py-6 text-center text-text-light">No feedback matches the current filters.</td>
+                          <td colSpan={7} className="px-3 py-6 text-center text-text-light">No feedback matches the current filters.</td>
                         </tr>
                       ) : items.map((item) => (
                         <tr key={item.id} className="border-t border-border hover:bg-background/40">
@@ -180,9 +237,30 @@ const FeedbackOpsPage: FC = () => {
                             </Link>
                             <p className="text-xs text-text-light mt-1 line-clamp-2">{item.message}</p>
                           </td>
-                          <td className="px-3 py-2">{formatStatus(item.status)}</td>
+                          <td className="px-3 py-2">
+                            <select
+                              className="border border-border rounded-md px-2 py-1 bg-white text-xs min-w-[150px]"
+                              value={item.status}
+                              disabled={rowActionId === item.id}
+                              onChange={(e) => { void handleStatusChange(item, e.target.value as OpsFeedbackStatus) }}
+                            >
+                              {EDITABLE_STATUS_OPTIONS.map((option) => (
+                                <option key={option} value={option}>{formatStatus(option)}</option>
+                              ))}
+                            </select>
+                          </td>
                           <td className="px-3 py-2">{item.rating ?? '—'}</td>
                           <td className="px-3 py-2">{item.sessionId ? 'Linked' : '—'}</td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <button
+                              type="button"
+                              disabled={rowActionId === item.id}
+                              onClick={() => { void handleKickoffFix(item) }}
+                              className="px-3 py-1.5 rounded-md bg-accent text-white text-xs disabled:opacity-60"
+                            >
+                              {rowActionId === item.id ? 'Working...' : 'Kick off fix'}
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>

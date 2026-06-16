@@ -12,6 +12,7 @@ import {
   deleteTaxgptFeedbackForOps,
   getTaxgptFeedbackDetailForOps,
   getTaxgptFeedbackStats,
+  kickoffTaxgptFeedbackFix,
   listTaxgptFeedbackForOps,
   updateTaxgptFeedbackForOps
 } from '../services/ops/taxgptFeedbackOpsService.js'
@@ -170,6 +171,28 @@ export function createOpsRouter (pool) {
       const message = e instanceof Error ? e.message : 'Could not action feedback'
       const status = message.includes('not found') ? 404
         : message.includes('Invalid') || message.includes('required') || message.includes('URL') ? 400
+          : 500
+      res.status(status).json({ error: message })
+    }
+  })
+
+  r.post('/v1/ops/feedback/:id/fix', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    if (!requireStaff(session, res)) return
+    try {
+      const result = await kickoffTaxgptFeedbackFix(pool, req.params.id, session.userId, {
+        sourceUrls: req.body?.sourceUrls,
+        operatorNotes: req.body?.operatorNotes,
+        operatorSummary: req.body?.operatorSummary,
+        runIngest: req.body?.runIngest,
+        ingestLimit: req.body?.ingestLimit
+      })
+      res.json(result)
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Could not kick off feedback fix'
+      const status = message.includes('not found') ? 404
+        : message.includes('No fixable') || message.includes('OPENAI_API_KEY') ? 400
           : 500
       res.status(status).json({ error: message })
     }

@@ -7,8 +7,10 @@ import {
   actionOpsFeedback,
   deleteOpsFeedback,
   getOpsFeedbackDetail,
+  kickoffOpsFeedbackFix,
   updateOpsFeedback,
   type OpsFeedbackDetail,
+  type OpsFeedbackFixSuggestions,
   type OpsFeedbackSessionMessage,
   type OpsFeedbackStatus
 } from '../services'
@@ -33,6 +35,7 @@ const FeedbackDetailOpsPage: FC = () => {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [actioning, setActioning] = useState(false)
+  const [fixing, setFixing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<OpsFeedbackDetail | null>(null)
@@ -41,6 +44,7 @@ const FeedbackDetailOpsPage: FC = () => {
   const [operatorNotes, setOperatorNotes] = useState('')
   const [sourceUrls, setSourceUrls] = useState('')
   const [operatorSummary, setOperatorSummary] = useState('')
+  const [fixSuggestions, setFixSuggestions] = useState<OpsFeedbackFixSuggestions | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -55,10 +59,12 @@ const FeedbackDetailOpsPage: FC = () => {
         setSessionMessages(detail.sessionMessages)
         setStatus(detail.feedback.status)
         setOperatorNotes(detail.feedback.operatorNotes || '')
+        setFixSuggestions(detail.fixSuggestions)
         const stagedUrls = Array.isArray(detail.feedback.stagedEnhancement?.sourceUrls)
           ? detail.feedback.stagedEnhancement?.sourceUrls as string[]
           : []
-        setSourceUrls(stagedUrls.join('\n'))
+        const suggestedUrls = detail.fixSuggestions?.sourceUrls || []
+        setSourceUrls([...new Set([...stagedUrls, ...suggestedUrls])].join('\n'))
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Could not load feedback detail')
       } finally {
@@ -113,6 +119,31 @@ const FeedbackDetailOpsPage: FC = () => {
       setError(e instanceof Error ? e.message : 'Could not action feedback')
     } finally {
       setActioning(false)
+    }
+  }
+
+  const handleKickoffFix = async () => {
+    if (!id) return
+    setFixing(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const result = await kickoffOpsFeedbackFix(getToken, id, {
+        sourceUrls,
+        operatorNotes,
+        operatorSummary: operatorSummary.trim() || null
+      })
+      setFeedback(result.feedback)
+      setStatus(result.feedback.status)
+      setSuccess(
+        result.ingestResult.ingested > 0
+          ? `Kickoff fix discovered ${result.discovered.sourceUrls.length} source(s), queued ${result.queuedSources.length}, and ingested ${result.ingestResult.ingested}.`
+          : `Kickoff fix queued ${result.queuedSources.length} source(s) for TaxGPT corpus ingest.`
+      )
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not kick off feedback fix')
+    } finally {
+      setFixing(false)
     }
   }
 
@@ -191,6 +222,44 @@ const FeedbackDetailOpsPage: FC = () => {
                 </section>
               )}
 
+              {fixSuggestions && (fixSuggestions.sourceUrls.length > 0 || fixSuggestions.publications.length > 0) && (
+                <section className="rounded-lg border border-border bg-white p-4 shadow-sm">
+                  <h2 className="text-base font-semibold text-primary-dark mb-3">Suggested fix sources</h2>
+                  {fixSuggestions.sourceUrls.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-sm text-text-light mb-2">Discovered from linked chat context and publication references:</p>
+                      <ul className="text-xs font-mono space-y-1">
+                        {fixSuggestions.sourceUrls.map((url) => (
+                          <li key={url} className="break-all">{url}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {fixSuggestions.publications.length > 0 && (
+                    <div className="overflow-x-auto border border-border rounded-md">
+                      <table className="min-w-full text-sm">
+                        <thead className="bg-background/70">
+                          <tr>
+                            <th className="text-left px-3 py-2">Publication</th>
+                            <th className="text-left px-3 py-2">Corpus status</th>
+                            <th className="text-left px-3 py-2">Title</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {fixSuggestions.publications.map((publication) => (
+                            <tr key={publication.code} className="border-t border-border">
+                              <td className="px-3 py-2 font-medium">{publication.code}</td>
+                              <td className="px-3 py-2">{publication.status}</td>
+                              <td className="px-3 py-2">{publication.title || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
+              )}
+
               <form onSubmit={handleSave} className="rounded-lg border border-border bg-white p-4 shadow-sm space-y-4">
                 <h2 className="text-base font-semibold text-primary-dark">Operator workflow</h2>
                 <label className="block text-sm">
@@ -234,23 +303,31 @@ const FeedbackDetailOpsPage: FC = () => {
                 </label>
                 <div className="flex flex-wrap gap-2">
                   <button
+                    type="button"
+                    disabled={saving || actioning || fixing}
+                    onClick={() => { void handleKickoffFix() }}
+                    className="px-4 py-2 rounded-md bg-accent text-white text-sm disabled:opacity-60"
+                  >
+                    {fixing ? 'Kicking off fix...' : 'Kick off fix'}
+                  </button>
+                  <button
                     type="submit"
-                    disabled={saving || actioning}
+                    disabled={saving || actioning || fixing}
                     className="px-4 py-2 rounded-md bg-primary-dark text-white text-sm disabled:opacity-60"
                   >
                     {saving ? 'Saving...' : 'Save changes'}
                   </button>
                   <button
                     type="button"
-                    disabled={saving || actioning}
+                    disabled={saving || actioning || fixing}
                     onClick={() => { void handleAction() }}
-                    className="px-4 py-2 rounded-md bg-accent text-white text-sm disabled:opacity-60"
+                    className="px-4 py-2 rounded-md border border-accent text-accent text-sm disabled:opacity-60"
                   >
-                    {actioning ? 'Actioning...' : 'Action into TaxGPT'}
+                    {actioning ? 'Queueing...' : 'Queue listed sources'}
                   </button>
                   <button
                     type="button"
-                    disabled={saving || actioning}
+                    disabled={saving || actioning || fixing}
                     onClick={() => { void handleDelete() }}
                     className="px-4 py-2 rounded-md border border-red-300 text-red-700 text-sm disabled:opacity-60"
                   >
@@ -258,8 +335,8 @@ const FeedbackDetailOpsPage: FC = () => {
                   </button>
                 </div>
                 <p className="text-xs text-text-light">
-                  Action into TaxGPT queues approved HTTPS sources into `taxgpt.sources` as high-priority pending ingest.
-                  Run the corpus ingest job to embed them for retrieval.
+                  Kick off fix auto-discovers CRA/CanLII sources from the linked chat session, queues them into `taxgpt.sources`,
+                  and ingests up to 5 HTML sources immediately when `OPENAI_API_KEY` is configured.
                 </p>
               </form>
 

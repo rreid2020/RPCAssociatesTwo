@@ -107,6 +107,7 @@ const SECTIONS: NavigationSection[] = [
 ]
 
 function isItemVisible (item: NavigationItem, context: NavigationContext) {
+  if (item.requiredStaff && !context.isStaff) return false
   if (ROLLOUT_BYPASS_ENABLED) return true
   if (item.to === '/portal/billing/subscription') return true
   if (context.workspaceType === 'individual' && item.to === '/portal/accounting/company-profile/employees') {

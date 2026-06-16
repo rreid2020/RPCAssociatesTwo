@@ -21,6 +21,7 @@ const OpsDashboardPage: FC = () => {
           <nav className="flex flex-wrap gap-2 text-sm">
             <Link to="/portal/ops/corpus" className="px-3 py-1.5 rounded-md border border-border bg-white hover:bg-background">Corpus</Link>
             <Link to="/portal/ops/forms-registry" className="px-3 py-1.5 rounded-md border border-border bg-white hover:bg-background">Forms registry</Link>
+            <Link to="/portal/ops/users" className="px-3 py-1.5 rounded-md border border-border bg-white hover:bg-background">Portal users</Link>
             <Link to="/portal/ops/feedback" className="px-3 py-1.5 rounded-md border border-border bg-white hover:bg-background">TaxGPT feedback</Link>
             <Link to="/portal/ops/links" className="px-3 py-1.5 rounded-md border border-border bg-white hover:bg-background">External links</Link>
           </nav>

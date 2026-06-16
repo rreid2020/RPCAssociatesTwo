@@ -8,6 +8,10 @@ import {
   getTaxesHubStats
 } from '../services/ops/opsService.js'
 import {
+  getPortalUserStats,
+  listPortalUsersForOps
+} from '../services/ops/portalUsersOpsService.js'
+import {
   actionTaxgptFeedbackForOps,
   deleteTaxgptFeedbackForOps,
   getTaxgptFeedbackDetailForOps,
@@ -78,6 +82,33 @@ export function createOpsRouter (pool) {
       res.json({ formRegistry: await getFormRegistryStats(pool) })
     } catch (e) {
       res.status(500).json({ error: e instanceof Error ? e.message : 'Could not load form registry stats' })
+    }
+  })
+
+  r.get('/v1/ops/users/stats', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    if (!requireStaff(session, res)) return
+    try {
+      res.json({ stats: await getPortalUserStats(pool) })
+    } catch (e) {
+      res.status(500).json({ error: e instanceof Error ? e.message : 'Could not load portal user stats' })
+    }
+  })
+
+  r.get('/v1/ops/users', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    if (!requireStaff(session, res)) return
+    try {
+      const result = await listPortalUsersForOps(pool, {
+        q: req.query?.q,
+        limit: req.query?.limit,
+        offset: req.query?.offset
+      })
+      res.json(result)
+    } catch (e) {
+      res.status(500).json({ error: e instanceof Error ? e.message : 'Could not load portal users' })
     }
   })
 

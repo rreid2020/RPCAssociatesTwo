@@ -66,6 +66,54 @@ export type OpsExternalLink = {
   category: string
 }
 
+export type OpsPortalUserStats = {
+  totals: {
+    total: number
+    withWorkspace: number
+    withProfile: number
+  }
+  byUserType: OpsCountRow[]
+  tableMissing?: boolean
+}
+
+export type OpsPortalUserListItem = {
+  clerkUserId: string
+  displayName: string
+  email: string | null
+  imageUrl: string | null
+  userType: string | null
+  employeeCount: string | null
+  workspaceCount: number
+  workspaceNames: string[]
+  signedUpAt: string | null
+  lastActiveAt: string | null
+  lastSignInAt: string | null
+}
+
+export type OpsPortalUserListResponse = {
+  items: OpsPortalUserListItem[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export async function getOpsPortalUserStats (getToken: TokenProvider): Promise<OpsPortalUserStats> {
+  const data = await callPortalApi<{ stats: OpsPortalUserStats }>('/v1/ops/users/stats', getToken)
+  return data.stats
+}
+
+export async function listOpsPortalUsers (
+  getToken: TokenProvider,
+  params: { q?: string; limit?: number; offset?: number } = {}
+): Promise<OpsPortalUserListResponse> {
+  const search = new URLSearchParams()
+  if (params.q) search.set('q', params.q)
+  if (params.limit) search.set('limit', String(params.limit))
+  if (params.offset) search.set('offset', String(params.offset))
+  const suffix = search.toString() ? `?${search.toString()}` : ''
+  return await callPortalApi<OpsPortalUserListResponse>(`/v1/ops/users${suffix}`, getToken)
+}
+
 export async function getOpsAccess (getToken: TokenProvider): Promise<{ isStaff: boolean }> {
   return await callPortalApi<{ isStaff: boolean }>('/v1/ops/me', getToken)
 }

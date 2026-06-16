@@ -10,6 +10,7 @@ const FormRegistryOpsPage = lazy(async () => await import('../modules/ops/pages/
 const ExternalLinksPage = lazy(async () => await import('../modules/ops/pages/ExternalLinksPage'))
 const FeedbackOpsPage = lazy(async () => await import('../modules/ops/pages/FeedbackOpsPage'))
 const FeedbackDetailOpsPage = lazy(async () => await import('../modules/ops/pages/FeedbackDetailOpsPage'))
+const UsersOpsPage = lazy(async () => await import('../modules/ops/pages/UsersOpsPage'))
 
 function opsRoute (path: string, element: JSX.Element) {
   return (
@@ -35,6 +36,7 @@ export function getOpsRoutes () {
       {opsRoute('/portal/ops/forms-registry', <FormRegistryOpsPage />)}
       {opsRoute('/portal/ops/feedback', <FeedbackOpsPage />)}
       {opsRoute('/portal/ops/feedback/:id', <FeedbackDetailOpsPage />)}
+      {opsRoute('/portal/ops/users', <UsersOpsPage />)}
       {opsRoute('/portal/ops/links', <ExternalLinksPage />)}
     </Fragment>
   )

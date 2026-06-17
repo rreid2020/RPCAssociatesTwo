@@ -40,9 +40,31 @@ const MessageList: FC<MessageListProps> = ({
   if (messages.length === 0) {
     return (
       <div className="py-4">
-        <p className="text-sm font-semibold text-primary-dark">Popular questions Canadians ask</p>
+        <p className="text-sm font-semibold text-primary-dark">Popular tax strategies Canadians search for</p>
         <p className="mt-1 text-sm text-text-light">
-          Select a starter prompt to begin, or type your own question below.
+          Top planning themes from common Canadian tax searches. Select one to explore strategies with source-backed answers.
+        </p>
+        {playbooksLoading ? (
+          <p className="mt-4 text-sm text-text-light">Loading strategy starters…</p>
+        ) : (
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {playbooks.slice(0, 10).map((playbook) => (
+              <button
+                key={playbook.id}
+                type="button"
+                onClick={() => onSelectPlaybook?.(playbook)}
+                disabled={promptsDisabled || !onSelectPlaybook}
+                className="rounded-md border border-border bg-background px-3 py-2.5 text-left text-sm text-text transition-colors hover:border-primary/40 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {playbook.title}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <p className="mt-8 text-sm font-semibold text-primary-dark">Popular questions Canadians ask</p>
+        <p className="mt-1 text-sm text-text-light">
+          CRA-focused compliance and filing questions. Select a starter prompt or type your own below.
         </p>
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           {TAXGPT_STARTER_PROMPTS.map((prompt) => (
@@ -57,28 +79,6 @@ const MessageList: FC<MessageListProps> = ({
             </button>
           ))}
         </div>
-
-        <p className="mt-8 text-sm font-semibold text-primary-dark">Popular strategy playbooks</p>
-        <p className="mt-1 text-sm text-text-light">
-          Explore common Canadian tax planning themes with a guided starter question.
-        </p>
-        {playbooksLoading ? (
-          <p className="mt-4 text-sm text-text-light">Loading playbooks…</p>
-        ) : (
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            {playbooks.map((playbook) => (
-              <button
-                key={playbook.id}
-                type="button"
-                onClick={() => onSelectPlaybook?.(playbook)}
-                disabled={promptsDisabled || !onSelectPlaybook}
-                className="rounded-md border border-border bg-background px-3 py-2.5 text-left text-sm text-text transition-colors hover:border-primary/40 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {playbook.title}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
     )
   }

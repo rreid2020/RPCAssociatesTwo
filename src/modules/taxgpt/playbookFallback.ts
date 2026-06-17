@@ -1,6 +1,18 @@
-import type { TaxgptPlaybook } from '../../../domains/taxgpt'
+import type { TaxgptPlaybook } from '../../domains/taxgpt'
 
 export const TAXGPT_PLAYBOOK_FALLBACK: TaxgptPlaybook[] = [
+  {
+    id: 'rrsp-tfsa-mix',
+    title: 'RRSP vs TFSA',
+    prompt: 'How should I decide between RRSP and TFSA contributions for Canadian tax planning?',
+    usageCount: 0
+  },
+  {
+    id: 'fhsa-first-home',
+    title: 'FHSA for first home',
+    prompt: 'How does the First Home Savings Account (FHSA) work for tax planning compared with RRSP and TFSA?',
+    usageCount: 0
+  },
   {
     id: 'ccpc-salary-dividend',
     title: 'CCPC: salary vs dividend',
@@ -8,45 +20,45 @@ export const TAXGPT_PLAYBOOK_FALLBACK: TaxgptPlaybook[] = [
     usageCount: 0
   },
   {
-    id: 'lifetime-cge',
-    title: 'Lifetime capital gains exemption',
-    prompt: 'How does the lifetime capital gains exemption work for selling a qualified small business corporation share?',
+    id: 'income-splitting',
+    title: 'Income splitting',
+    prompt: 'What are CRA-compliant income-splitting strategies for a Canadian family or small business?',
     usageCount: 0
   },
   {
-    id: 'income-splitting',
-    title: 'Income splitting',
-    prompt: 'What are CRA-compliant income-splitting strategies for a family business?',
+    id: 'home-office-deduction',
+    title: 'Home office deduction',
+    prompt: 'What tax strategies and deductions apply when working from home in Canada?',
     usageCount: 0
   },
   {
     id: 'incorporation-timing',
     title: 'When to incorporate',
-    prompt: 'What are the tax implications and planning considerations when incorporating a sole proprietorship?',
+    prompt: 'What are the tax implications and planning considerations when incorporating a sole proprietorship in Canada?',
     usageCount: 0
   },
   {
-    id: 'rrsp-tfsa-mix',
-    title: 'RRSP vs TFSA mix',
-    prompt: 'How should I think about RRSP versus TFSA contributions for tax planning?',
+    id: 'rental-property-tax',
+    title: 'Rental property taxes',
+    prompt: 'What tax strategies and deductions should a Canadian rental property owner consider?',
     usageCount: 0
   },
   {
-    id: 'rental-holdco',
-    title: 'Rental / holdco structure',
-    prompt: 'What are common tax structuring considerations for rental property or a holdco?',
+    id: 'tax-loss-selling',
+    title: 'Tax-loss selling',
+    prompt: 'How does tax-loss selling work in Canada and what capital gains planning strategies should I know?',
     usageCount: 0
   },
   {
-    id: 'estate-succession',
-    title: 'Estate / succession planning',
-    prompt: 'What tax strategies should a Canadian business owner consider for succession or estate planning?',
+    id: 'self-employed-tax-savings',
+    title: 'Self-employed tax savings',
+    prompt: 'What are the most effective legal tax strategies for self-employed Canadians to reduce taxes?',
     usageCount: 0
   },
   {
-    id: 'stock-options',
-    title: 'Stock options / equity comp',
-    prompt: 'How are stock options taxed in Canada and what planning considerations apply?',
+    id: 'lifetime-cge',
+    title: 'Lifetime capital gains exemption',
+    prompt: 'How does the lifetime capital gains exemption work when selling shares of a qualified small business corporation?',
     usageCount: 0
   }
 ]

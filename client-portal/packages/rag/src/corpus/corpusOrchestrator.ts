@@ -17,26 +17,10 @@ import {
   isPublicationLandingPendingExpand,
   isTaxesHubDirectoryCandidate
 } from './sourcePolicy'
-
-const TAXES_HUB_DISCOVER_SOURCE_TIMEOUT_MS = 90_000
-
-function withTimeout<T> (promise: Promise<T>, ms: number, label: string): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error(`${label} timed out after ${ms}ms`))
-    }, ms)
-    promise.then(
-      (value) => {
-        clearTimeout(timer)
-        resolve(value)
-      },
-      (error) => {
-        clearTimeout(timer)
-        reject(error)
-      }
-    )
-  })
-}
+import {
+  runTaxesHubExpandInSubprocess,
+  TAXES_HUB_DISCOVER_SOURCE_TIMEOUT_MS
+} from './taxesHubExpandSubprocess.js'
 
 export type CorpusAuditReport = {
   totals: {
@@ -234,18 +218,83 @@ export async function discoverTaxesHub (): Promise<{
   }
 }
 
+const TAXES_HUB_EXPAND_CONCURRENCY = 2
+
+export async function resetHttpBypassedExpandCandidates (): Promise<number> {
+  await ensureDbValidated()
+  const db = getDb()
+  const pending = await db
+    .select()
+    .from(sources)
+    .where(eq(sources.ingestStatus, 'pending'))
+
+  let reset = 0
+  for (const row of pending) {
+    const meta = (row.metadata || {}) as Record<string, unknown>
+    if (meta.corpusRole !== 'taxes_hub' || !meta.taxesHubExpandHttpSkipped) continue
+
+    const { taxesHubExpanded: _expanded, taxesHubExpandHttpSkipped: _skipped, ...rest } = meta
+    await db
+      .update(sources)
+      .set({
+        pageKind: 'unknown',
+        errorMessage: null,
+        metadata: rest
+      })
+      .where(eq(sources.id, row.id))
+    reset += 1
+  }
+
+  if (reset > 0) {
+    const { logger } = await import('@shared/types')
+    logger.crawl('Reset HTTP-bypassed taxes hub sources for real expand retry', { reset })
+  }
+
+  return reset
+}
+
+async function mapWithConcurrency<T, R> (
+  items: T[],
+  concurrency: number,
+  handler: (item: T) => Promise<R>
+): Promise<R[]> {
+  if (items.length === 0) return []
+  const results = new Array<R>(items.length)
+  let nextIndex = 0
+
+  async function worker (): Promise<void> {
+    while (true) {
+      const index = nextIndex
+      nextIndex += 1
+      if (index >= items.length) return
+      results[index] = await handler(items[index])
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker())
+  )
+  return results
+}
+
 /** Phase 2: expand taxes hub directory pages to discover linked HTML topic trees. */
-export async function expandTaxesHubPages (options: { limit?: number } = {}): Promise<{
+export async function expandTaxesHubPages (options: {
+  limit?: number
+  concurrency?: number
+} = {}): Promise<{
   processed: number
   expanded: number
+  promoted: number
   contentSourcesCreated: number
-  skipped: number
+  deadLinks: number
   errors: number
+  /** @deprecated Use promoted — kept for script compatibility */
+  skipped: number
 }> {
   await ensureDbValidated()
   const db = getDb()
-  const discovery = new CraTaxesHubDiscoveryService()
   const limit = options.limit ?? 50
+  const concurrency = options.concurrency ?? TAXES_HUB_EXPAND_CONCURRENCY
 
   const pending = await db
     .select()
@@ -257,30 +306,67 @@ export async function expandTaxesHubPages (options: { limit?: number } = {}): Pr
     .filter((row) => !isArchivedOrCancelledTitle(row.title))
     .slice(0, limit)
 
-  const summary = {
-    processed: 0,
-    expanded: 0,
-    contentSourcesCreated: 0,
-    skipped: 0,
-    errors: 0
-  }
-
-  for (const row of candidates) {
-    summary.processed += 1
+  const roundResults = await mapWithConcurrency(candidates, concurrency, async (row) => {
     try {
-      const result = await withTimeout(
-        discovery.discoverFromSource(row.id),
-        TAXES_HUB_DISCOVER_SOURCE_TIMEOUT_MS,
-        `Taxes hub discovery for ${row.url}`
-      )
+      const result = await runTaxesHubExpandInSubprocess(row.id, {
+        timeoutMs: TAXES_HUB_DISCOVER_SOURCE_TIMEOUT_MS,
+        url: row.url,
+        httpFirst: false
+      })
+
       if (result.newSourcesCreated > 0) {
-        summary.expanded += 1
-        summary.contentSourcesCreated += result.newSourcesCreated
-      } else {
-        summary.skipped += 1
+        return {
+          processed: 1,
+          expanded: 1,
+          promoted: 0,
+          contentSourcesCreated: result.newSourcesCreated,
+          deadLinks: 0,
+          skipped: 0,
+          errors: 0
+        }
       }
-    } catch {
-      summary.errors += 1
+
+      return {
+        processed: 1,
+        expanded: 0,
+        promoted: 1,
+        contentSourcesCreated: 0,
+        deadLinks: 0,
+        skipped: 1,
+        errors: 0
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      if (/HTTP (404|410)\b/.test(errorMsg)) {
+        const existingMeta = (row.metadata || {}) as Record<string, unknown>
+        try {
+          await db
+            .update(sources)
+            .set({
+              ingestStatus: 'skipped',
+              pageKind: 'content',
+              errorMessage: `Taxes hub page not found (${errorMsg.slice(0, 80)})`,
+              metadata: {
+                ...existingMeta,
+                taxesHubExpanded: true,
+                taxesHubDeadLink: true
+              }
+            })
+            .where(eq(sources.id, row.id))
+        } catch {
+          // Best-effort dead-link marking.
+        }
+        return {
+          processed: 1,
+          expanded: 0,
+          promoted: 0,
+          contentSourcesCreated: 0,
+          deadLinks: 1,
+          skipped: 0,
+          errors: 0
+        }
+      }
+
       const existingMeta = (row.metadata || {}) as Record<string, unknown>
       try {
         await db
@@ -299,10 +385,36 @@ export async function expandTaxesHubPages (options: { limit?: number } = {}): Pr
       } catch {
         // Best-effort: continue batch even if timeout recovery update fails.
       }
-    }
-  }
 
-  return summary
+      return {
+        processed: 1,
+        expanded: 0,
+        promoted: 0,
+        contentSourcesCreated: 0,
+        deadLinks: 0,
+        skipped: 0,
+        errors: 1
+      }
+    }
+  })
+
+  return roundResults.reduce((summary, row) => ({
+    processed: summary.processed + row.processed,
+    expanded: summary.expanded + row.expanded,
+    promoted: summary.promoted + row.promoted,
+    contentSourcesCreated: summary.contentSourcesCreated + row.contentSourcesCreated,
+    deadLinks: summary.deadLinks + row.deadLinks,
+    skipped: summary.skipped + row.skipped,
+    errors: summary.errors + row.errors
+  }), {
+    processed: 0,
+    expanded: 0,
+    promoted: 0,
+    contentSourcesCreated: 0,
+    deadLinks: 0,
+    skipped: 0,
+    errors: 0
+  })
 }
 
 /** Full taxes hub discovery: hub crawl + recursive directory expansion. */

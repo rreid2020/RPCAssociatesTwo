@@ -25,6 +25,13 @@ const STRUCTURED_RESPONSE_SCHEMA = `{
     }
   ],
   "taxTips": ["Practical CRA-focused tip with [1] citation when source-backed"],
+  "taxStrategies": [
+    {
+      "title": "Short strategy name",
+      "description": "1-3 sentences on the planning approach, grounded in STRATEGY WEB SOURCES only",
+      "citationIndices": [1]
+    }
+  ],
   "filingDeadlines": [
     {
       "title": "Return or payment obligation",
@@ -79,7 +86,12 @@ RULES:
 15. whatThisMeansForYou must be practical and user-focused, not legal advice.
 16. confidence: high = strong source support; medium = partial; low = limited or conflicting support.
 17. If sources are insufficient, say so in directAnswer and keep confidence low.
-18. If a "Requested publications" section is provided, treat it as authoritative corpus status. When a named guide is skipped, cancelled, pending, or not indexed, say that explicitly in directAnswer before relying on related sources.`
+18. If a "Requested publications" section is provided, treat it as authoritative corpus status. When a named guide is skipped, cancelled, pending, or not indexed, say that explicitly in directAnswer before relying on related sources.
+19. taxStrategies must be an array of planning/structuring ideas for THIS question (entity choice, timing, income splitting, registered accounts, corp vs personal, etc.). Populate ONLY from STRATEGY WEB SOURCES when that list is provided — never from CORPUS SOURCES.
+20. Each taxStrategies item needs title, description, and citationIndices referencing STRATEGY WEB SOURCE indices only. Return [] when no STRATEGY WEB SOURCES are provided or none support planning ideas for this question.
+21. taxStrategies are distinct from taxTips: tips = CRA operational mechanics from CORPUS SOURCES; strategies = planning ideas from STRATEGY WEB SOURCES only.
+22. Never cite STRATEGY WEB SOURCE indices in directAnswer, sourceAnalysis, taxTips, complianceRisks, filingDeadlines, penaltiesAndInterest, keyPoints, whatThisMeansForYou, considerations, or suggestedNextSteps.
+23. If a web strategy conflicts with CORPUS SOURCES, omit the conflicting strategy or qualify it in the strategy description while keeping the main answer aligned with CORPUS SOURCES.`
 
 const DEGRADED_STRUCTURED_SYSTEM_PROMPT = `You are a helpful Canadian tax assistant. The curated knowledge base is not available for this question.
 
@@ -93,7 +105,9 @@ RULES:
 4. confidence must be "low".
 5. complianceRisks must be an empty array [] because no source-backed compliance analysis is available in degraded mode.
 6. taxTips, filingDeadlines, and penaltiesAndInterest must all be empty arrays [] in degraded mode.
-7. whatThisMeansForYou must recommend consulting a qualified tax professional for case-specific advice.`
+7. whatThisMeansForYou must recommend consulting a qualified tax professional for case-specific advice.
+8. taxStrategies may be populated ONLY from STRATEGY WEB SOURCES when provided. Each item must cite STRATEGY WEB SOURCE indices. Return [] when no STRATEGY WEB SOURCES are provided.
+9. Never cite STRATEGY WEB SOURCE indices outside taxStrategies.`
 
 /**
  * @param {'rag' | 'degraded'} mode
@@ -103,7 +117,7 @@ export function buildTaxgptStructuredSystemPrompt (mode, language = 'en') {
   if (mode !== 'rag') return DEGRADED_STRUCTURED_SYSTEM_PROMPT
   const languageLabel = taxgptLanguageLabel(language)
   return `${RAG_STRUCTURED_SYSTEM_PROMPT_BASE}
-15. Write the entire JSON response in ${languageLabel}, including directAnswer, highlights, keyPoints, taxTips, filingDeadlines, penaltiesAndInterest, whatThisMeansForYou, considerations, suggestedNextSteps, and complianceRisks.
+15. Write the entire JSON response in ${languageLabel}, including directAnswer, highlights, keyPoints, taxTips, taxStrategies, filingDeadlines, penaltiesAndInterest, whatThisMeansForYou, considerations, suggestedNextSteps, and complianceRisks.
 16. If a retrieved source excerpt is in another language, translate the substance into ${languageLabel} in your highlights and answer while preserving technical accuracy.`
 }
 
@@ -111,7 +125,7 @@ export function buildTaxgptStructuredSystemPrompt (mode, language = 'en') {
  * @param {string} message
  * @param {Array<{ content: string, citation: Record<string, unknown>, sourceBucket?: string }>} chunks
  * @param {'en' | 'fr'} [language]
- * @param {{ requestedPublicationsContext?: string, requestedFormsContext?: string }} [options]
+ * @param {{ requestedPublicationsContext?: string, requestedFormsContext?: string, strategyWebChunks?: Array<{ content: string, citation: Record<string, unknown> }> }} [options]
  */
 export function buildTaxgptStructuredUserPrompt (message, chunks, language = 'en', options = {}) {
   const languageLabel = taxgptLanguageLabel(language)
@@ -119,6 +133,7 @@ export function buildTaxgptStructuredUserPrompt (message, chunks, language = 'en
     String(options.requestedPublicationsContext || '').trim(),
     String(options.requestedFormsContext || '').trim()
   ].filter(Boolean).join('\n\n')
+  const strategyWebChunks = Array.isArray(options.strategyWebChunks) ? options.strategyWebChunks : []
   const sourcesText = chunks
     .map((chunk, index) => {
       const heading = chunk.citation.sectionHeading ? ` - ${chunk.citation.sectionHeading}` : ''
@@ -128,17 +143,31 @@ export function buildTaxgptStructuredUserPrompt (message, chunks, language = 'en
     })
     .join('\n\n')
 
+  const strategySourcesText = strategyWebChunks.length > 0
+    ? strategyWebChunks
+      .map((chunk, index) => {
+        const publisher = chunk.publisher || chunk.citation?.publisher || ''
+        const publisherLabel = publisher ? ` (${publisher})` : ''
+        return `[${index + 1}] (web) ${chunk.citation.sourceTitle}${publisherLabel}\n${chunk.content}`
+      })
+      .join('\n\n')
+    : 'None provided.'
+
   return `User Question: ${message}
 
 Response language: ${languageLabel}
 ${requestedContext ? `\n${requestedContext}\n` : ''}
-Retrieved Sources (index, bucket, title, excerpt):
-${sourcesText}
+CORPUS SOURCES (use ONLY for all fields except taxStrategies):
+${sourcesText || 'None provided.'}
 
-Populate sourceAnalysis buckets using the bucket label shown for each source index.
+STRATEGY WEB SOURCES (use ONLY for taxStrategies):
+${strategySourcesText}
+
+Populate sourceAnalysis buckets using the bucket label shown for each CORPUS SOURCE index.
 For each cited source, write 2-4 highlights with enough detail for context but stay concise.
-Populate taxTips, filingDeadlines, and penaltiesAndInterest only when retrieved sources support them for this specific question.
-For complianceRisks, include only consequences that are supported by these retrieved excerpts for this specific question. Each item must cite source indices and avoid generic penalty boilerplate.`
+Populate taxTips, filingDeadlines, and penaltiesAndInterest only when CORPUS SOURCES support them for this specific question.
+Populate taxStrategies only when STRATEGY WEB SOURCES support planning ideas for this question.
+For complianceRisks, include only consequences that are supported by CORPUS SOURCE excerpts for this specific question. Each item must cite CORPUS SOURCE indices and avoid generic penalty boilerplate.`
 }
 
 /**
@@ -347,6 +376,82 @@ function normalizePenaltyInterestEntries (raw, mode) {
 }
 
 /**
+ * @param {unknown} raw
+ * @param {number} maxStrategySources
+ */
+function normalizeTaxStrategyEntries (raw, maxStrategySources) {
+  if (!Array.isArray(raw) || maxStrategySources <= 0) return []
+
+  return raw
+    .map((entry) => {
+      if (!isObject(entry)) return null
+      const title = String(entry.title || '').trim()
+      const description = String(entry.description || '').trim()
+      if (!title || !description) return null
+
+      const citationIndices = Array.isArray(entry.citationIndices)
+        ? [...new Set(entry.citationIndices
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value) && value >= 1 && value <= maxStrategySources))]
+        : []
+
+      if (citationIndices.length === 0) return null
+
+      return {
+        title,
+        description,
+        citationIndices
+      }
+    })
+    .filter(Boolean)
+}
+
+/**
+ * @param {number[]} citationIndices
+ * @param {Array<{ citation?: Record<string, unknown>, content?: string, publisher?: string }>} strategyWebChunks
+ */
+function enrichStrategyCitationIndicesWithSources (citationIndices, strategyWebChunks) {
+  return citationIndices
+    .map((index) => {
+      const chunk = strategyWebChunks[index - 1]
+      if (!chunk?.citation) return null
+      return {
+        citationIndex: index,
+        sourceTitle: String(chunk.citation.sourceTitle || '').trim() || 'Web source',
+        sourceUrl: String(chunk.citation.sourceUrl || '').trim(),
+        sourceBucket: 'web'
+      }
+    })
+    .filter(Boolean)
+}
+
+/**
+ * @param {Array<{ citationIndices: number[] }>} entries
+ * @param {Array<{ citation?: Record<string, unknown>, content?: string, publisher?: string }>} strategyWebChunks
+ */
+function enrichStrategyEntriesWithSources (entries, strategyWebChunks) {
+  return entries
+    .map((entry) => ({
+      ...entry,
+      sources: enrichStrategyCitationIndicesWithSources(entry.citationIndices, strategyWebChunks)
+    }))
+    .filter((entry) => entry.sources.length > 0)
+}
+
+/**
+ * @param {Array<{ citation?: Record<string, unknown>, content?: string, publisher?: string }>} strategyWebChunks
+ */
+function buildStrategySourceReferences (strategyWebChunks) {
+  return strategyWebChunks.map((chunk, index) => ({
+    citationIndex: index + 1,
+    sourceTitle: String(chunk.citation?.sourceTitle || '').trim() || 'Web source',
+    sourceUrl: String(chunk.citation?.sourceUrl || '').trim(),
+    sourceBucket: 'web',
+    excerpt: normalizeExcerpt(chunk.content)
+  }))
+}
+
+/**
  * @param {number[]} citationIndices
  * @param {Array<{ citation: Record<string, unknown>, sourceBucket?: string }>} chunks
  * @param {string | null} [basis]
@@ -396,8 +501,9 @@ function enrichComplianceRisksWithSources (complianceRisks, chunks) {
  * @param {string} raw
  * @param {Array<{ citation: Record<string, unknown> }>} chunks
  * @param {'rag' | 'degraded'} mode
+ * @param {Array<{ citation?: Record<string, unknown>, content?: string, publisher?: string }>} [strategyWebChunks]
  */
-export function parseTaxgptStructuredResponse (raw, chunks, mode) {
+export function parseTaxgptStructuredResponse (raw, chunks, mode, strategyWebChunks = []) {
   let parsed = null
   try {
     const cleaned = String(raw || '').trim()
@@ -410,7 +516,7 @@ export function parseTaxgptStructuredResponse (raw, chunks, mode) {
   }
 
   if (!isObject(parsed)) {
-    return buildFallbackStructuredResponse(String(raw || ''), chunks, mode)
+    return buildFallbackStructuredResponse(String(raw || ''), chunks, mode, strategyWebChunks)
   }
 
   const sourceAnalysisRaw = isObject(parsed.sourceAnalysis) ? parsed.sourceAnalysis : {}
@@ -440,12 +546,18 @@ export function parseTaxgptStructuredResponse (raw, chunks, mode) {
     chunks,
     mode
   )
+  const taxStrategies = enrichStrategyEntriesWithSources(
+    normalizeTaxStrategyEntries(parsed.taxStrategies, strategyWebChunks.length),
+    strategyWebChunks
+  )
+  const strategySourceReferences = buildStrategySourceReferences(strategyWebChunks)
 
   const structured = {
     directAnswer: String(parsed.directAnswer || '').trim() || 'I could not generate a structured answer.',
     sourceAnalysis,
     complianceRisks: enrichedComplianceRisks,
     taxTips,
+    taxStrategies,
     filingDeadlines,
     penaltiesAndInterest,
     keyPoints: normalizeStringList(parsed.keyPoints),
@@ -463,6 +575,7 @@ export function parseTaxgptStructuredResponse (raw, chunks, mode) {
     structured.directAnswer,
     ...structured.complianceRisks.map((entry) => entry.risk),
     ...structured.taxTips,
+    ...structured.taxStrategies.map((entry) => `${entry.title} ${entry.description}`),
     ...structured.filingDeadlines.map((entry) => [entry.title, entry.deadline, entry.note].filter(Boolean).join(' ')),
     ...structured.penaltiesAndInterest.map((entry) => entry.description),
     ...structured.keyPoints,
@@ -487,11 +600,13 @@ export function parseTaxgptStructuredResponse (raw, chunks, mode) {
     structured: {
       ...structured,
       sourceReferences,
+      strategySourceReferences,
       documentReferences
     },
     citations: enrichedCitations,
+    strategyCitations: strategySourceReferences,
     groupedSources,
-    plainText: renderStructuredPlainText({ ...structured, sourceReferences }, groupedSources, mode)
+    plainText: renderStructuredPlainText({ ...structured, sourceReferences, strategySourceReferences }, groupedSources, mode)
   }
 }
 
@@ -689,6 +804,19 @@ function renderStructuredPlainText (structured, groupedSources, mode) {
     lines.push('')
   }
 
+  if (structured.taxStrategies?.length > 0) {
+    lines.push('## Tax strategies')
+    structured.taxStrategies.forEach((entry, index) => {
+      lines.push(`${index + 1}. ${entry.title}`)
+      lines.push(`   ${entry.description}`)
+      entry.sources?.forEach((source) => {
+        const url = source.sourceUrl ? ` (${source.sourceUrl})` : ''
+        lines.push(`   Source [${source.citationIndex}]: ${source.sourceTitle}${url}`)
+      })
+    })
+    lines.push('')
+  }
+
   if (structured.filingDeadlines.length > 0) {
     lines.push('## Filing dates and deadlines')
     structured.filingDeadlines.forEach((entry, index) => {
@@ -758,6 +886,15 @@ function renderStructuredPlainText (structured, groupedSources, mode) {
     })
   }
 
+  if (Array.isArray(structured.strategySourceReferences) && structured.strategySourceReferences.length > 0) {
+    lines.push('')
+    lines.push('## Strategy references')
+    structured.strategySourceReferences.forEach((reference) => {
+      const url = reference.sourceUrl ? ` (${reference.sourceUrl})` : ''
+      lines.push(`[${reference.citationIndex}] ${reference.sourceTitle}${url}`)
+    })
+  }
+
   return lines.join('\n').trim()
 }
 
@@ -766,12 +903,13 @@ function renderStructuredPlainText (structured, groupedSources, mode) {
  * @param {Array<{ citation: Record<string, unknown> }>} chunks
  * @param {'rag' | 'degraded'} mode
  */
-function buildFallbackStructuredResponse (raw, chunks, mode) {
+function buildFallbackStructuredResponse (raw, chunks, mode, strategyWebChunks = []) {
   const structured = {
     directAnswer: raw.trim() || 'I apologize, but I could not generate a response.',
     sourceAnalysis: { cra: [], legislation: [], caseLaw: [] },
     complianceRisks: [],
     taxTips: [],
+    taxStrategies: [],
     filingDeadlines: [],
     penaltiesAndInterest: [],
     keyPoints: [],
@@ -786,6 +924,7 @@ function buildFallbackStructuredResponse (raw, chunks, mode) {
   const citations = mode === 'rag' ? extractTaxgptCitations(raw, chunks) : []
   const enrichedCitations = enrichCitationsWithBuckets(citations, chunks)
   const sourceReferences = buildSourceReferences(chunks)
+  const strategySourceReferences = buildStrategySourceReferences(strategyWebChunks)
   const groupedSources = buildGroupedSources(enrichedCitations, structured.sourceAnalysis, sourceReferences, chunks)
   const documentReferences = buildCraDocumentGroupsFromChunks(chunks)
 
@@ -793,11 +932,13 @@ function buildFallbackStructuredResponse (raw, chunks, mode) {
     structured: {
       ...structured,
       sourceReferences,
+      strategySourceReferences,
       documentReferences
     },
     citations: enrichedCitations,
+    strategyCitations: strategySourceReferences,
     groupedSources,
-    plainText: renderStructuredPlainText({ ...structured, sourceReferences }, groupedSources, mode)
+    plainText: renderStructuredPlainText({ ...structured, sourceReferences, strategySourceReferences }, groupedSources, mode)
   }
 }
 

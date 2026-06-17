@@ -3,23 +3,33 @@ import type { TaxgptSourceReference } from '../../../domains/taxgpt'
 
 type CitedTextProps = {
   text: string
-  sourceReferences?: TaxgptSourceReference[]
+  sourceReferences?: Array<Pick<TaxgptSourceReference, 'citationIndex' | 'sourceTitle' | 'sourceUrl'>>
   className?: string
+  anchorNamespace?: 'corpus' | 'strategy'
 }
 
-function buildReferenceMap (sourceReferences: TaxgptSourceReference[] = []) {
-  const map = new Map<number, TaxgptSourceReference>()
+function buildReferenceMap (
+  sourceReferences: Array<Pick<TaxgptSourceReference, 'citationIndex' | 'sourceTitle' | 'sourceUrl'>> = []
+) {
+  const map = new Map<number, Pick<TaxgptSourceReference, 'citationIndex' | 'sourceTitle' | 'sourceUrl'>>()
   for (const reference of sourceReferences) {
     map.set(reference.citationIndex, reference)
   }
   return map
 }
 
-function referenceAnchorId (citationIndex: number) {
-  return `taxgpt-ref-${citationIndex}`
+function referenceAnchorId (citationIndex: number, anchorNamespace: 'corpus' | 'strategy' = 'corpus') {
+  return anchorNamespace === 'strategy'
+    ? `taxgpt-strategy-ref-${citationIndex}`
+    : `taxgpt-ref-${citationIndex}`
 }
 
-const CitedText: FC<CitedTextProps> = ({ text, sourceReferences = [], className = '' }) => {
+const CitedText: FC<CitedTextProps> = ({
+  text,
+  sourceReferences = [],
+  className = '',
+  anchorNamespace = 'corpus'
+}) => {
   const referenceMap = buildReferenceMap(sourceReferences)
   const parts = text.split(/(\[\d+\])/g)
   const nodes: ReactNode[] = []
@@ -50,7 +60,7 @@ const CitedText: FC<CitedTextProps> = ({ text, sourceReferences = [], className 
     nodes.push(
       <a
         key={`cite-${index}`}
-        href={`#${referenceAnchorId(citationIndex)}`}
+        href={`#${referenceAnchorId(citationIndex, anchorNamespace)}`}
         className="font-medium text-primary hover:underline"
         title={reference.sourceTitle}
       >

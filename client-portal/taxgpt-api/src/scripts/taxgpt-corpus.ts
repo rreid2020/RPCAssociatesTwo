@@ -12,6 +12,7 @@ import {
   discoverTaxesHub,
   expandPublicationLandingPages,
   expandTaxesHubPages,
+  resetHttpBypassedExpandCandidates,
   reconcileArchivedPendingSources,
   reconcileEmbeddingFailedSources,
   reconcileTaxReferenceContentSources,
@@ -298,10 +299,21 @@ async function runTaxesHubFinish (argv: string[]) {
   }
 
   const expandRounds: Array<Record<string, number>> = []
+  const resetCount = await resetHttpBypassedExpandCandidates()
+  if (resetCount > 0) {
+    log(`Reset ${resetCount} HTTP-bypassed sources back to expand queue`)
+  }
+
   for (let round = 0; round < maxRounds; round += 1) {
     const expanded = await expandTaxesHubPages({ limit: expandLimit })
     expandRounds.push(expanded)
-    log(`Expand round ${round + 1} complete`, expanded)
+    log(
+      `Expand round ${round + 1} complete — ` +
+      `${expanded.processed} touched, ${expanded.expanded} expanded ` +
+      `(+${expanded.contentSourcesCreated} sources), ${expanded.promoted} leaf, ` +
+      `${expanded.deadLinks} dead links, ${expanded.errors} errors`,
+      expanded
+    )
     if (expanded.processed === 0) break
   }
 

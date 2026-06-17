@@ -19,6 +19,7 @@ import {
 import { buildTaxgptFeedbackSuggestion } from './taxgptFeedbackSuggestion.js'
 import { getTaxgptModelRoutingSummary, resolveTaxgptChatModel, buildTaxgptChatCompletionOptions } from './taxgptModelRouter.js'
 import { normalizeTaxgptLanguage, taxgptLanguageLabel } from './taxgptSourceLanguage.js'
+import { retrieveTaxgptStrategyWebSources } from './taxgptStrategyWebRetrieval.js'
 
 const HIGH_RISK_KEYWORDS = [
   'gaar',
@@ -207,6 +208,10 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
   const requestedForms = await resolveRequestedForms(pool, message)
   const retrieval = await resolveRetrievedChunks(pool, message, corpus, { topK: 10, language })
   const retrievalMode = retrieval.mode
+  const strategyWebRetrieval = riskLevel === 'high'
+    ? { chunks: [], citations: [], skipped: true, reason: 'high_risk' }
+    : await retrieveTaxgptStrategyWebSources(message, { language })
+  const strategyWebChunks = strategyWebRetrieval.chunks
   const resolvedModelPlan = resolveTaxgptChatModel({
     message,
     retrievalMode,
@@ -215,12 +220,14 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
   })
   const annotatedChunks = annotateChunksWithBuckets(retrieval.chunks)
   const systemPrompt = buildTaxgptStructuredSystemPrompt(retrievalMode, language)
+  const promptOptions = {
+    requestedPublicationsContext: formatRequestedPublicationsContext(requestedPublications),
+    requestedFormsContext: formatRequestedFormsContext(requestedForms),
+    strategyWebChunks
+  }
   const userPrompt = retrievalMode === 'rag'
-    ? buildTaxgptStructuredUserPrompt(message, annotatedChunks, language, {
-      requestedPublicationsContext: formatRequestedPublicationsContext(requestedPublications),
-      requestedFormsContext: formatRequestedFormsContext(requestedForms)
-    })
-    : `User Question: ${message}\n\n${formatRequestedPublicationsContext(requestedPublications)}\n\n${formatRequestedFormsContext(requestedForms)}\n\nNo retrieved sources are available. Return the degraded JSON schema.`
+    ? buildTaxgptStructuredUserPrompt(message, annotatedChunks, language, promptOptions)
+    : buildTaxgptStructuredUserPrompt(message, [], language, promptOptions)
 
   let completion
   try {
@@ -242,9 +249,9 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
   }
 
   const rawResponse = completion.choices[0]?.message?.content ||
-    '{"directAnswer":"I apologize, but I could not generate a response.","sourceAnalysis":{"cra":[],"legislation":[],"caseLaw":[]},"complianceRisks":[],"taxTips":[],"filingDeadlines":[],"penaltiesAndInterest":[],"keyPoints":[],"whatThisMeansForYou":"","considerations":[],"suggestedNextSteps":[],"confidence":"low"}'
+    '{"directAnswer":"I apologize, but I could not generate a response.","sourceAnalysis":{"cra":[],"legislation":[],"caseLaw":[]},"complianceRisks":[],"taxTips":[],"taxStrategies":[],"filingDeadlines":[],"penaltiesAndInterest":[],"keyPoints":[],"whatThisMeansForYou":"","considerations":[],"suggestedNextSteps":[],"confidence":"low"}'
 
-  const parsed = parseTaxgptStructuredResponse(rawResponse, annotatedChunks, retrievalMode)
+  const parsed = parseTaxgptStructuredResponse(rawResponse, annotatedChunks, retrievalMode, strategyWebChunks)
   const response = parsed.plainText
   const citations = parsed.citations
   const structuredResponse = {
@@ -272,6 +279,7 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
     response,
     structuredResponse,
     citations,
+    strategyCitations: parsed.strategyCitations || [],
     sources,
     riskLevel,
     sessionId,

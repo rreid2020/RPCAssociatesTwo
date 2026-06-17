@@ -166,6 +166,10 @@ import {
   listUserTaxgptFeedback,
   submitTaxgptFeedback
 } from '../services/taxgptFeedbackService.js'
+import {
+  listTaxgptPlaybooks,
+  recordTaxgptPlaybookSelection
+} from '../services/taxgptPlaybookService.js'
 
 const MAX_UPLOAD_BYTES = parseInt(process.env.PORTAL_MAX_UPLOAD_BYTES || String(100 * 1024 * 1024), 10)
 
@@ -3494,6 +3498,35 @@ export function createPortalRouter (pool) {
       let status = 500
       if (messageText.includes('not configured')) status = 503
       else if (messageText.includes('quota is exceeded')) status = 429
+      res.status(status).json({ error: messageText })
+    }
+  })
+
+  r.get('/v1/taxgpt/playbooks', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const access = await resolveTaxgptAccess(req, res, session)
+    if (!access) return
+    try {
+      const items = await listTaxgptPlaybooks(pool)
+      res.json({ items })
+    } catch (e) {
+      res.status(500).json({ error: e instanceof Error ? e.message : 'Could not load TaxGPT playbooks' })
+    }
+  })
+
+  r.post('/v1/taxgpt/playbooks/:id/select', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const access = await resolveTaxgptAccess(req, res, session)
+    if (!access) return
+    try {
+      const workspaceId = access.bypassed ? null : access.workspace?.id || null
+      const result = await recordTaxgptPlaybookSelection(pool, session.userId, req.params.id, workspaceId)
+      res.json(result)
+    } catch (e) {
+      const messageText = e instanceof Error ? e.message : 'Could not record playbook selection'
+      const status = messageText.includes('not found') ? 404 : 500
       res.status(status).json({ error: messageText })
     }
   })

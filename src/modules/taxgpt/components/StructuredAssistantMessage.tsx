@@ -5,6 +5,7 @@ import type {
   TaxgptGroupedDocument,
   TaxgptSourceBucket,
   TaxgptSourceDocumentGroup,
+  TaxgptStrategySourceReference,
   TaxgptStructuredResponse
 } from '../../../domains/taxgpt'
 import CitedText from './CitedText'
@@ -30,7 +31,39 @@ function referenceAnchorId (citationIndex: number) {
   return `taxgpt-ref-${citationIndex}`
 }
 
-const BUCKET_ORDER: TaxgptSourceBucket[] = ['cra', 'legislation', 'case_law']
+function strategyReferenceAnchorId (citationIndex: number) {
+  return `taxgpt-strategy-ref-${citationIndex}`
+}
+
+function SourceBackedLinks ({
+  sources,
+  anchorNamespace = 'corpus'
+}: {
+  sources: TaxgptComplianceRiskSource[]
+  anchorNamespace?: 'corpus' | 'strategy'
+}) {
+  if (!sources.length) return null
+
+  const anchorFor = anchorNamespace === 'strategy' ? strategyReferenceAnchorId : referenceAnchorId
+
+  return (
+    <ul className="mt-2 space-y-1">
+      {sources.map((source) => (
+        <li key={`${source.citationIndex}-${source.sourceUrl}`} className="text-xs">
+          <a
+            href={`#${anchorFor(source.citationIndex)}`}
+            className="font-medium underline decoration-current/30 hover:decoration-current"
+          >
+            [{source.citationIndex}] {source.sourceTitle}
+          </a>
+          {source.sectionHeading && (
+            <span className="opacity-80"> — {source.sectionHeading}</span>
+          )}
+        </li>
+      ))}
+    </ul>
+  )
+}
 
 function confidenceClasses (confidence: TaxgptStructuredResponse['confidence']) {
   switch (confidence) {
@@ -66,27 +99,7 @@ function isGenericComplianceRisk (text: string): boolean {
   return GENERIC_COMPLIANCE_RISK_PATTERNS.some((pattern) => pattern.test(normalized))
 }
 
-function SourceBackedLinks ({ sources }: { sources: TaxgptComplianceRiskSource[] }) {
-  if (!sources.length) return null
-
-  return (
-    <ul className="mt-2 space-y-1">
-      {sources.map((source) => (
-        <li key={`${source.citationIndex}-${source.sourceUrl}`} className="text-xs">
-          <a
-            href={`#${referenceAnchorId(source.citationIndex)}`}
-            className="font-medium underline decoration-current/30 hover:decoration-current"
-          >
-            [{source.citationIndex}] {source.sourceTitle}
-          </a>
-          {source.sectionHeading && (
-            <span className="opacity-80"> — {source.sectionHeading}</span>
-          )}
-        </li>
-      ))}
-    </ul>
-  )
-}
+const BUCKET_ORDER: TaxgptSourceBucket[] = ['cra', 'legislation', 'case_law']
 
 function DocumentHighlights ({ document }: { document: TaxgptGroupedDocument }) {
   return (
@@ -143,6 +156,8 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({
     ? structured.complianceRisk
     : null
   const taxTips = structured.taxTips ?? []
+  const taxStrategies = structured.taxStrategies ?? []
+  const strategySourceReferences = structured.strategySourceReferences ?? []
   const filingDeadlines = structured.filingDeadlines ?? []
   const penaltiesAndInterest = (structured.penaltiesAndInterest ?? [])
     .filter((entry) => !isGenericComplianceRisk(entry.description))
@@ -283,6 +298,34 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({
         </section>
       )}
 
+      {taxStrategies.length > 0 && (
+        <section className="rounded-md border border-violet-200 bg-violet-50 px-4 py-3">
+          <h3 className="text-sm font-semibold text-violet-900">Tax strategies</h3>
+          <p className="mt-1 text-xs text-violet-800">
+            Planning ideas from third-party web sources. Not CRA guidance. Not legal advice.
+          </p>
+          <ul className="mt-3 space-y-3">
+            {taxStrategies.map((entry) => (
+              <li key={`${entry.title}-${entry.citationIndices.join(',')}`} className="text-sm leading-relaxed text-violet-950">
+                <p className="font-medium">{entry.title}</p>
+                <p className="mt-1">
+                  <CitedText
+                    text={entry.description}
+                    sourceReferences={strategySourceReferences}
+                    anchorNamespace="strategy"
+                  />
+                </p>
+                {entry.sources && entry.sources.length > 0 && (
+                  <div className="text-violet-900">
+                    <SourceBackedLinks sources={entry.sources} anchorNamespace="strategy" />
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {filingDeadlines.length > 0 && (
         <section className="rounded-md border border-sky-200 bg-sky-50 px-4 py-3">
           <h3 className="text-sm font-semibold text-sky-900">Filing dates and deadlines</h3>
@@ -358,69 +401,71 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({
         </section>
       )}
 
-      {(groupedReferenceDocuments.length > 0 || sourceReferences.length > 0) && (
+      {(groupedReferenceDocuments.length > 0 || sourceReferences.length > 0 || strategySourceReferences.length > 0) && (
         <section className="rounded-md border border-border bg-background px-4 py-3">
           <h3 className="text-sm font-semibold text-primary-dark">References</h3>
           <p className="mt-1 text-xs text-text-light">
             Source documents cited in this answer.
           </p>
-          <ul className="mt-3 space-y-2">
-            {groupedReferenceDocuments.length > 0
-              ? groupedReferenceDocuments.map((document) => (
-                <li key={document.documentKey} className="text-sm">
-                  <span className="font-medium text-text">
-                    {document.citationIndices.map((citationIndex, index) => (
-                      <span key={citationIndex}>
-                        {index > 0 ? ', ' : ''}
-                        <a
-                          href={`#${referenceAnchorId(citationIndex)}`}
-                          className="text-primary hover:underline"
-                        >
-                          [{citationIndex}]
-                        </a>
-                      </span>
-                    ))}
-                    {' '}
-                  </span>
-                  {document.sourceUrl ? (
-                    <a
-                      href={document.sourceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium text-primary hover:underline"
-                    >
-                      {document.sourceTitle}
-                    </a>
-                  ) : (
-                    <span className="font-medium text-text">{document.sourceTitle}</span>
-                  )}
-                </li>
-              ))
-              : sourceReferences.map((reference) => (
-                <li
-                  key={`ref-${reference.citationIndex}-${reference.chunkId}`}
-                  id={referenceAnchorId(reference.citationIndex)}
-                  className="text-sm scroll-mt-4"
-                >
-                  <span className="font-medium text-text">[{reference.citationIndex}] </span>
-                  {reference.sourceUrl ? (
-                    <a
-                      href={reference.sourceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium text-primary hover:underline"
-                    >
-                      {reference.sourceTitle}
-                    </a>
-                  ) : (
-                    <span className="font-medium text-text">{reference.sourceTitle}</span>
-                  )}
-                  {reference.sectionHeading && (
-                    <span className="text-xs text-text-light"> — {reference.sectionHeading}</span>
-                  )}
-                </li>
-              ))}
-          </ul>
+          {(groupedReferenceDocuments.length > 0 || sourceReferences.length > 0) && (
+            <ul className="mt-3 space-y-2">
+              {groupedReferenceDocuments.length > 0
+                ? groupedReferenceDocuments.map((document) => (
+                  <li key={document.documentKey} className="text-sm">
+                    <span className="font-medium text-text">
+                      {document.citationIndices.map((citationIndex, index) => (
+                        <span key={citationIndex}>
+                          {index > 0 ? ', ' : ''}
+                          <a
+                            href={`#${referenceAnchorId(citationIndex)}`}
+                            className="text-primary hover:underline"
+                          >
+                            [{citationIndex}]
+                          </a>
+                        </span>
+                      ))}
+                      {' '}
+                    </span>
+                    {document.sourceUrl ? (
+                      <a
+                        href={document.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {document.sourceTitle}
+                      </a>
+                    ) : (
+                      <span className="font-medium text-text">{document.sourceTitle}</span>
+                    )}
+                  </li>
+                ))
+                : sourceReferences.map((reference) => (
+                  <li
+                    key={`ref-${reference.citationIndex}-${reference.chunkId}`}
+                    id={referenceAnchorId(reference.citationIndex)}
+                    className="text-sm scroll-mt-4"
+                  >
+                    <span className="font-medium text-text">[{reference.citationIndex}] </span>
+                    {reference.sourceUrl ? (
+                      <a
+                        href={reference.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {reference.sourceTitle}
+                      </a>
+                    ) : (
+                      <span className="font-medium text-text">{reference.sourceTitle}</span>
+                    )}
+                    {reference.sectionHeading && (
+                      <span className="text-xs text-text-light"> — {reference.sectionHeading}</span>
+                    )}
+                  </li>
+                ))}
+            </ul>
+          )}
           {groupedReferenceDocuments.length > 0 && sourceReferences.map((reference) => (
             <span
               key={`anchor-${reference.citationIndex}-${reference.chunkId}`}
@@ -428,6 +473,37 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({
               className="sr-only"
             />
           ))}
+
+          {strategySourceReferences.length > 0 && (
+            <>
+              <h4 className="mt-4 text-xs font-semibold uppercase tracking-wide text-text-light">
+                Strategy sources
+              </h4>
+              <ul className="mt-2 space-y-2">
+                {strategySourceReferences.map((reference: TaxgptStrategySourceReference) => (
+                  <li
+                    key={`strategy-ref-${reference.citationIndex}-${reference.sourceUrl}`}
+                    id={strategyReferenceAnchorId(reference.citationIndex)}
+                    className="text-sm scroll-mt-4"
+                  >
+                    <span className="font-medium text-text">[{reference.citationIndex}] </span>
+                    {reference.sourceUrl ? (
+                      <a
+                        href={reference.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {reference.sourceTitle}
+                      </a>
+                    ) : (
+                      <span className="font-medium text-text">{reference.sourceTitle}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </section>
       )}
     </div>

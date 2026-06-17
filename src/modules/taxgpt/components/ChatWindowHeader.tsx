@@ -11,6 +11,7 @@ const ChatWindowHeader: FC<ChatWindowHeaderProps> = ({ corpus }) => (
     <AxiomTaxGptLogo size="md" className="mx-auto" />
     <p className="mx-auto mt-3 max-w-2xl text-sm text-text-light">
       AI tax research grounded in CRA publications when the knowledge base is indexed, with citations and source links.
+      Tax strategies may cite third-party web planning sources.
     </p>
     {corpus && (
       <p className={`mx-auto mt-2 max-w-2xl text-xs ${corpus.retrievalReady ? 'text-emerald-800' : 'text-amber-800'}`}>

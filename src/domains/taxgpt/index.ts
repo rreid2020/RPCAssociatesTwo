@@ -49,7 +49,29 @@ export type TaxgptComplianceRiskSource = {
   sourceTitle: string
   sourceUrl: string
   sectionHeading?: string
-  sourceBucket?: TaxgptSourceBucket
+  sourceBucket?: TaxgptSourceBucket | 'web'
+}
+
+export type TaxgptTaxStrategy = {
+  title: string
+  description: string
+  citationIndices: number[]
+  sources?: TaxgptComplianceRiskSource[]
+}
+
+export type TaxgptStrategySourceReference = {
+  citationIndex: number
+  sourceTitle: string
+  sourceUrl: string
+  sourceBucket?: 'web'
+  excerpt?: string
+}
+
+export type TaxgptPlaybook = {
+  id: string
+  title: string
+  prompt: string
+  usageCount: number
 }
 
 export type TaxgptComplianceRisk = {
@@ -109,6 +131,7 @@ export type TaxgptStructuredResponse = {
   /** @deprecated Legacy single-string field from older responses */
   complianceRisk?: string
   taxTips?: string[]
+  taxStrategies?: TaxgptTaxStrategy[]
   filingDeadlines?: TaxgptFilingDeadline[]
   penaltiesAndInterest?: TaxgptPenaltyInterest[]
   keyPoints: string[]
@@ -117,6 +140,7 @@ export type TaxgptStructuredResponse = {
   suggestedNextSteps: string[]
   confidence: TaxgptConfidence
   sourceReferences?: TaxgptSourceReference[]
+  strategySourceReferences?: TaxgptStrategySourceReference[]
   documentReferences?: TaxgptSourceDocumentGroup[]
   groupedSources?: Record<TaxgptSourceBucket, TaxgptSourceGroup>
 }
@@ -156,6 +180,7 @@ export type TaxgptChatResponse = {
   response: string
   structuredResponse?: TaxgptStructuredResponse
   citations: Citation[]
+  strategyCitations?: TaxgptStrategySourceReference[]
   sources: Array<{ id: string; title: string; url: string }>
   riskLevel: RiskLevel
   sessionId: string
@@ -197,6 +222,22 @@ export async function fetchTaxgptStatus (
 
 export async function fetchTaxgptCorpus (getToken: () => Promise<string | null>): Promise<TaxgptCorpusStats> {
   return portalFetch<TaxgptCorpusStats>('/v1/taxgpt/corpus', getToken)
+}
+
+export async function fetchTaxgptPlaybooks (
+  getToken: () => Promise<string | null>
+): Promise<TaxgptPlaybook[]> {
+  const data = await portalFetch<{ items: TaxgptPlaybook[] }>('/v1/taxgpt/playbooks', getToken)
+  return data.items
+}
+
+export async function recordTaxgptPlaybookSelection (
+  getToken: () => Promise<string | null>,
+  playbookId: string
+): Promise<void> {
+  await portalFetch<{ ok: boolean }>(`/v1/taxgpt/playbooks/${encodeURIComponent(playbookId)}/select`, getToken, {
+    method: 'POST'
+  })
 }
 
 export type {

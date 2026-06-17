@@ -1,5 +1,6 @@
 import { FC } from 'react'
 import { TAXGPT_STARTER_PROMPTS } from '../starterPrompts'
+import type { TaxgptPlaybook } from '../../../domains/taxgpt'
 import type { ChatMessage } from '../types'
 import StructuredAssistantMessage from './StructuredAssistantMessage'
 
@@ -8,6 +9,9 @@ type MessageListProps = {
   sessionId?: string | null
   onCopy?: (text: string) => void
   onSelectPrompt?: (prompt: string) => void
+  onSelectPlaybook?: (playbook: TaxgptPlaybook) => void
+  playbooks?: TaxgptPlaybook[]
+  playbooksLoading?: boolean
   promptsDisabled?: boolean
 }
 
@@ -28,6 +32,9 @@ const MessageList: FC<MessageListProps> = ({
   sessionId = null,
   onCopy,
   onSelectPrompt,
+  onSelectPlaybook,
+  playbooks = [],
+  playbooksLoading = false,
   promptsDisabled = false
 }) => {
   if (messages.length === 0) {
@@ -50,6 +57,28 @@ const MessageList: FC<MessageListProps> = ({
             </button>
           ))}
         </div>
+
+        <p className="mt-8 text-sm font-semibold text-primary-dark">Popular strategy playbooks</p>
+        <p className="mt-1 text-sm text-text-light">
+          Explore common Canadian tax planning themes with a guided starter question.
+        </p>
+        {playbooksLoading ? (
+          <p className="mt-4 text-sm text-text-light">Loading playbooks…</p>
+        ) : (
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {playbooks.map((playbook) => (
+              <button
+                key={playbook.id}
+                type="button"
+                onClick={() => onSelectPlaybook?.(playbook)}
+                disabled={promptsDisabled || !onSelectPlaybook}
+                className="rounded-md border border-border bg-background px-3 py-2.5 text-left text-sm text-text transition-colors hover:border-primary/40 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {playbook.title}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     )
   }

@@ -55,6 +55,74 @@ export async function getClerkPrimaryEmail (userId) {
   return primary?.emailAddress || null
 }
 
+export function mapClerkUserProfile (user) {
+  if (!user?.id) return null
+  const primaryId = user.primaryEmailAddressId || null
+  const primary = Array.isArray(user.emailAddresses)
+    ? user.emailAddresses.find((entry) => entry.id === primaryId) || user.emailAddresses[0] || null
+    : null
+  const email = primary?.emailAddress || null
+  const firstName = String(user.firstName || '').trim()
+  const lastName = String(user.lastName || '').trim()
+  const fullName = [firstName, lastName].filter(Boolean).join(' ')
+  const displayName = fullName || String(user.username || '').trim() || email || user.id
+  const lastSignInAt = user.lastSignInAt ? new Date(user.lastSignInAt).toISOString() : null
+
+  return {
+    clerkUserId: user.id,
+    displayName,
+    email,
+    imageUrl: user.imageUrl || null,
+    lastSignInAt
+  }
+}
+
+export async function getClerkUserProfilesByIds (userIds = []) {
+  const ids = [...new Set(
+    userIds
+      .map((id) => String(id || '').trim())
+      .filter((id) => id && !id.startsWith('invite:'))
+  )]
+  if (ids.length === 0) return new Map()
+
+  const client = getClerkBackendClient()
+  const profiles = new Map()
+  const chunkSize = 100
+
+  for (let index = 0; index < ids.length; index += chunkSize) {
+    const chunk = ids.slice(index, index + chunkSize)
+    const result = await client.users.getUserList({
+      userId: chunk,
+      limit: chunk.length
+    })
+    const users = Array.isArray(result?.data) ? result.data : []
+    for (const user of users) {
+      const profile = mapClerkUserProfile(user)
+      if (profile) profiles.set(profile.clerkUserId, profile)
+    }
+  }
+
+  return profiles
+}
+
+export async function searchClerkUserIds (query) {
+  const normalized = String(query || '').trim()
+  if (!normalized) return []
+
+  if (normalized.includes('@')) {
+    const userId = await resolveClerkUserIdByEmail(normalized)
+    return userId ? [userId] : []
+  }
+
+  const client = getClerkBackendClient()
+  const result = await client.users.getUserList({
+    query: normalized,
+    limit: 100
+  })
+  const users = Array.isArray(result?.data) ? result.data : []
+  return users.map((user) => user.id).filter(Boolean)
+}
+
 export async function createClerkEmailInvite ({ emailAddress, redirectUrl, publicMetadata = {} }) {
   const client = getClerkBackendClient()
   return await client.invitations.createInvitation({

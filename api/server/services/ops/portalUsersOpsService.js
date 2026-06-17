@@ -1,3 +1,8 @@
+import {
+  getClerkUserProfilesByIds,
+  searchClerkUserIds
+} from '../clerkAdminService.js'
+
 let usersTableColumnsCache = null
 
 function normalizeLimit (value, fallback = 25, max = 100) {
@@ -67,13 +72,16 @@ async function buildPortalUsersBaseSql (pool) {
   `
 }
 
-function mapPortalUserRow (row) {
+function mapPortalUserRow (row, clerkProfile = null) {
   const clerkUserId = String(row.clerkUserId || '')
+  const displayName = clerkProfile?.displayName || null
+  const email = clerkProfile?.email || null
+
   return {
     clerkUserId,
-    displayName: clerkUserId,
-    email: null,
-    imageUrl: null,
+    displayName: displayName || email || clerkUserId,
+    email,
+    imageUrl: clerkProfile?.imageUrl || null,
     userType: row.userType || null,
     employeeCount: row.employeeCount || null,
     hasUsersRecord: Boolean(row.hasUsersRecord),
@@ -81,7 +89,19 @@ function mapPortalUserRow (row) {
     workspaceNames: Array.isArray(row.workspaceNames) ? row.workspaceNames : [],
     signedUpAt: row.signedUpAt,
     lastActiveAt: row.lastActiveAt,
-    lastSignInAt: null
+    lastSignInAt: clerkProfile?.lastSignInAt || null
+  }
+}
+
+async function enrichPortalUsersWithClerk (items) {
+  if (!process.env.CLERK_SECRET_KEY || items.length === 0) return items
+
+  try {
+    const profiles = await getClerkUserProfilesByIds(items.map((item) => item.clerkUserId))
+    return items.map((item) => mapPortalUserRow(item, profiles.get(item.clerkUserId) || null))
+  } catch (error) {
+    console.warn('Clerk profile enrichment failed for portal users:', error)
+    return items.map((item) => mapPortalUserRow(item))
   }
 }
 
@@ -143,8 +163,25 @@ export async function listPortalUsersForOps (pool, options = {}) {
   const baseSql = await buildPortalUsersBaseSql(pool)
 
   if (query) {
-    params.push(`%${query}%`)
-    where.push(`clerk_user_id ILIKE $${params.length}`)
+    let clerkMatchedIds = null
+    if (process.env.CLERK_SECRET_KEY) {
+      try {
+        clerkMatchedIds = await searchClerkUserIds(query)
+      } catch (error) {
+        console.warn('Clerk user search failed for portal users:', error)
+      }
+    }
+
+    if (Array.isArray(clerkMatchedIds)) {
+      if (clerkMatchedIds.length === 0) {
+        return { items: [], total: 0, limit, offset }
+      }
+      params.push(clerkMatchedIds)
+      where.push(`clerk_user_id = ANY($${params.length}::text[])`)
+    } else {
+      params.push(`%${query}%`)
+      where.push(`clerk_user_id ILIKE $${params.length}`)
+    }
   }
 
   const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : ''
@@ -178,8 +215,19 @@ export async function listPortalUsersForOps (pool, options = {}) {
     countParams
   )
 
+  const rawItems = rows.map((row) => ({
+    clerkUserId: row.clerkUserId,
+    userType: row.userType,
+    employeeCount: row.employeeCount,
+    signedUpAt: row.signedUpAt,
+    lastActiveAt: row.lastActiveAt,
+    workspaceCount: row.workspaceCount,
+    workspaceNames: row.workspaceNames,
+    hasUsersRecord: row.hasUsersRecord
+  }))
+
   return {
-    items: rows.map((row) => mapPortalUserRow(row)),
+    items: await enrichPortalUsersWithClerk(rawItems),
     total: Number(countRows[0]?.total || 0),
     limit,
     offset

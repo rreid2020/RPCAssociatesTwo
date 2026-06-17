@@ -1,8 +1,8 @@
 import { FC, lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
-import { sendTaxgptChatMessage } from '../../../domains/taxgpt'
-import type { TaxgptCorpusStats } from '../../../domains/taxgpt'
+import { sendTaxgptChatMessage, fetchTaxgptPlaybooks, recordTaxgptPlaybookSelection } from '../../../domains/taxgpt'
+import type { TaxgptCorpusStats, TaxgptPlaybook } from '../../../domains/taxgpt'
 import type { ChatMessage, RiskLevel } from '../types'
 import ChatWindowHeader from './ChatWindowHeader'
 import DisclaimerBanner from './DisclaimerBanner'
@@ -13,6 +13,7 @@ import MessageList from './MessageList'
 import RiskBanner from './RiskBanner'
 import LanguageSelector from './LanguageSelector'
 import type { TaxgptLanguage } from '../../../domains/taxgpt'
+import { TAXGPT_PLAYBOOK_FALLBACK } from '../playbookFallback'
 
 const TAXGPT_LANGUAGE_STORAGE_KEY = 'taxgpt-language'
 
@@ -38,12 +39,32 @@ const ChatInterface: FC<ChatInterfaceProps> = ({ initialCorpus, corpusOverride =
     const stored = window.localStorage.getItem(TAXGPT_LANGUAGE_STORAGE_KEY)
     return stored === 'fr' ? 'fr' : 'en'
   })
+  const [playbooks, setPlaybooks] = useState<TaxgptPlaybook[]>(TAXGPT_PLAYBOOK_FALLBACK)
+  const [playbooksLoading, setPlaybooksLoading] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     window.localStorage.setItem(TAXGPT_LANGUAGE_STORAGE_KEY, language)
   }, [language])
+
+  useEffect(() => {
+    let cancelled = false
+    setPlaybooksLoading(true)
+    void fetchTaxgptPlaybooks(getToken)
+      .then((items) => {
+        if (!cancelled && items.length > 0) setPlaybooks(items)
+      })
+      .catch(() => {
+        if (!cancelled) setPlaybooks(TAXGPT_PLAYBOOK_FALLBACK)
+      })
+      .finally(() => {
+        if (!cancelled) setPlaybooksLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [getToken])
 
   useEffect(() => {
     if (corpusOverride) {
@@ -158,6 +179,11 @@ const ChatInterface: FC<ChatInterfaceProps> = ({ initialCorpus, corpusOverride =
     messagesContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const handlePlaybookSelect = (playbook: TaxgptPlaybook) => {
+    void recordTaxgptPlaybookSelection(getToken, playbook.id).catch(() => undefined)
+    void handleSend(playbook.prompt)
+  }
+
   const handleExport = () => {
     if (messages.length === 0) {
       setError('No messages to export.')
@@ -206,6 +232,9 @@ const ChatInterface: FC<ChatInterfaceProps> = ({ initialCorpus, corpusOverride =
                 sessionId={sessionId}
                 onCopy={handleCopy}
                 onSelectPrompt={(prompt) => { void handleSend(prompt) }}
+                onSelectPlaybook={handlePlaybookSelect}
+                playbooks={playbooks}
+                playbooksLoading={playbooksLoading}
                 promptsDisabled={sending}
               />
               {sending && (

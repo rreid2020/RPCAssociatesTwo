@@ -27,32 +27,68 @@ export class CraTaxesHubDiscoveryService {
     this.config = config || getCrawlerConfig()
   }
 
-  private async fetchDiscoveryHtml (url: string): Promise<string> {
+  private async fetchDiscoveryHtml (
+    url: string,
+    options: { fetchMode?: 'browser-first' | 'http-first'; httpOnly?: boolean } = {}
+  ): Promise<string> {
+    const fetchMode = options.fetchMode ?? 'browser-first'
     const referer = 'https://www.canada.ca/en/services/taxes.html'
-    const browser = new BrowserClient(this.config)
+
+    const fetchHttp = async (): Promise<string> => {
+      const { requestText } = await import('@shared/types')
+      const isExpandHttpFirst = fetchMode === 'http-first'
+      const response = await requestText(url, {
+        headers: { Referer: referer },
+        timeout: isExpandHttpFirst ? 12_000 : 30_000,
+        retries: isExpandHttpFirst ? 0 : 2
+      })
+      if (response.text.length < 500) {
+        throw new Error(`HTTP fetch content too short (${response.text.length} bytes)`)
+      }
+      return response.text
+    }
+
+    const fetchBrowser = async (): Promise<string> => {
+      const browser = new BrowserClient(this.config)
+      try {
+        const browserResponse = await browser.fetch(url, { timeout: 45_000, retries: 1 })
+        if (browserResponse.html.length >= 500) {
+          return browserResponse.html
+        }
+        throw new Error(`Browser fetch content too short (${browserResponse.html.length} bytes)`)
+      } finally {
+        await browser.close().catch(() => undefined)
+      }
+    }
+
+    if (fetchMode === 'http-first') {
+      try {
+        return await fetchHttp()
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error)
+        if (/HTTP (404|410)\b/.test(errorMsg)) {
+          throw error
+        }
+        if (options.httpOnly) {
+          throw error
+        }
+        logger.crawlWarn('HTTP fetch failed for taxes hub discovery, trying browser fallback', {
+          url,
+          error: errorMsg
+        })
+        return await fetchBrowser()
+      }
+    }
 
     try {
-      const browserResponse = await browser.fetch(url, { timeout: 45_000, retries: 1 })
-      if (browserResponse.html.length >= 500) {
-        return browserResponse.html
-      }
-      throw new Error(`Browser fetch content too short (${browserResponse.html.length} bytes)`)
+      return await fetchBrowser()
     } catch (error) {
       logger.crawlWarn('Browser fetch failed for taxes hub discovery, trying HTTP fallback', {
         url,
         error: error instanceof Error ? error.message : String(error)
       })
-    } finally {
-      await browser.close().catch(() => undefined)
+      return await fetchHttp()
     }
-
-    const { requestText } = await import('@shared/types')
-    const response = await requestText(url, {
-      headers: { Referer: referer },
-      timeout: 30_000,
-      retries: 2
-    })
-    return response.text
   }
 
   classifyPageKind (html: string, url: string, linkCount: number): PageKind {
@@ -120,7 +156,10 @@ export class CraTaxesHubDiscoveryService {
     return links
   }
 
-  async discoverFromSource (sourceId: string): Promise<DiscoveryResult> {
+  async discoverFromSource (
+    sourceId: string,
+    options: { fetchMode?: 'browser-first' | 'http-first'; httpOnly?: boolean } = {}
+  ): Promise<DiscoveryResult> {
     const result: DiscoveryResult = {
       sourceId,
       pageKind: 'directory',
@@ -146,7 +185,10 @@ export class CraTaxesHubDiscoveryService {
       url = source[0].url
       logger.crawl('Starting taxes hub discovery', { sourceId, url })
 
-      const html = await this.fetchDiscoveryHtml(url)
+      const html = await this.fetchDiscoveryHtml(url, {
+        fetchMode: options.fetchMode,
+        httpOnly: options.httpOnly
+      })
       const discoveredLinks = this.discoverLinks(html, url)
       const pageKind = this.classifyPageKind(html, url, discoveredLinks.length)
 
@@ -249,7 +291,11 @@ export class CraTaxesHubDiscoveryService {
       return result
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error)
-      logger.crawlError('Taxes hub discovery failed', { sourceId, url, error: errorMsg })
+      if (options.httpOnly) {
+        logger.crawlWarn('Taxes hub HTTP-only discovery unavailable', { sourceId, url, error: errorMsg })
+      } else {
+        logger.crawlError('Taxes hub discovery failed', { sourceId, url, error: errorMsg })
+      }
       throw error
     }
   }

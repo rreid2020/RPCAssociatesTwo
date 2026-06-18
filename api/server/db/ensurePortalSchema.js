@@ -1671,11 +1671,71 @@ const STATEMENTS = [
   updated_at TIMESTAMP NOT NULL DEFAULT now(),
   deleted_at TIMESTAMP
 )`,
-  'CREATE INDEX IF NOT EXISTS workspace_dataset_import_templates_workspace_idx ON taxgpt.workspace_dataset_import_templates(workspace_id) WHERE deleted_at IS NULL'
+  'CREATE INDEX IF NOT EXISTS workspace_dataset_import_templates_workspace_idx ON taxgpt.workspace_dataset_import_templates(workspace_id) WHERE deleted_at IS NULL',
+
+  `CREATE TABLE IF NOT EXISTS taxgpt.slip_schemas (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  form_number VARCHAR(64) NOT NULL,
+  title TEXT NOT NULL,
+  payer_label TEXT NOT NULL DEFAULT 'Issuer name',
+  slip_kind VARCHAR(32) NOT NULL DEFAULT 'information_slip',
+  schema_status VARCHAR(32) NOT NULL DEFAULT 'catalog_only',
+  tax_years_supported JSONB NOT NULL DEFAULT '[]'::jsonb,
+  catalog_title TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now(),
+  CONSTRAINT slip_schemas_form_number_key UNIQUE (form_number)
+)`,
+  'CREATE INDEX IF NOT EXISTS slip_schemas_status_idx ON taxgpt.slip_schemas(schema_status, form_number)',
+
+  `CREATE TABLE IF NOT EXISTS taxgpt.slip_box_schemas (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slip_schema_id UUID NOT NULL REFERENCES taxgpt.slip_schemas(id) ON DELETE CASCADE,
+  box_code VARCHAR(16) NOT NULL,
+  label TEXT NOT NULL,
+  field_type VARCHAR(16) NOT NULL DEFAULT 'currency',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  targets JSONB NOT NULL DEFAULT '[]'::jsonb,
+  extraction_hints JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now(),
+  CONSTRAINT slip_box_schemas_slip_box_key UNIQUE (slip_schema_id, box_code)
+)`,
+  'CREATE INDEX IF NOT EXISTS slip_box_schemas_slip_idx ON taxgpt.slip_box_schemas(slip_schema_id, sort_order)'
 ]
 
 // Idempotent migrations applied on every ensurePortalSchema call (including existing databases).
 const EVOLUTIONARY_STATEMENTS = [
+  `CREATE TABLE IF NOT EXISTS taxgpt.slip_schemas (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  form_number VARCHAR(64) NOT NULL,
+  title TEXT NOT NULL,
+  payer_label TEXT NOT NULL DEFAULT 'Issuer name',
+  slip_kind VARCHAR(32) NOT NULL DEFAULT 'information_slip',
+  schema_status VARCHAR(32) NOT NULL DEFAULT 'catalog_only',
+  tax_years_supported JSONB NOT NULL DEFAULT '[]'::jsonb,
+  catalog_title TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now(),
+  CONSTRAINT slip_schemas_form_number_key UNIQUE (form_number)
+)`,
+  'CREATE INDEX IF NOT EXISTS slip_schemas_status_idx ON taxgpt.slip_schemas(schema_status, form_number)',
+  `CREATE TABLE IF NOT EXISTS taxgpt.slip_box_schemas (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slip_schema_id UUID NOT NULL REFERENCES taxgpt.slip_schemas(id) ON DELETE CASCADE,
+  box_code VARCHAR(16) NOT NULL,
+  label TEXT NOT NULL,
+  field_type VARCHAR(16) NOT NULL DEFAULT 'currency',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  targets JSONB NOT NULL DEFAULT '[]'::jsonb,
+  extraction_hints JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now(),
+  CONSTRAINT slip_box_schemas_slip_box_key UNIQUE (slip_schema_id, box_code)
+)`,
+  'CREATE INDEX IF NOT EXISTS slip_box_schemas_slip_idx ON taxgpt.slip_box_schemas(slip_schema_id, sort_order)',
   `ALTER TABLE taxgpt.accounting_workspaces
    DROP CONSTRAINT IF EXISTS accounting_workspaces_workspace_type_chk`,
   `ALTER TABLE taxgpt.accounting_workspaces

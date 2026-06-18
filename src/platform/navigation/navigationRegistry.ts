@@ -18,6 +18,8 @@ export type NavigationItem = {
   label: string
   iconKey: string
   badge?: string
+  /** exact = pathname must match `to`; child = active only on nested routes under `to` */
+  activeWhen?: 'exact' | 'child'
   requiredFeature?: 'workingPapers' | 'integrations'
   requiredPermission?: string
   requiredWorkspaceRoles?: string[]
@@ -54,8 +56,8 @@ const SECTIONS: NavigationSection[] = [
     depth: 1,
     items: [
       { to: '/portal/taxgpt', label: 'Tax GPT', iconKey: 'sparkles', badge: 'Active' },
-      { to: '/app/tax-intelligence/returns', label: 'Tax Returns', iconKey: 'document' },
-      { to: '/app/tax-intelligence/returns', label: 'Return Builder', iconKey: 'plus' },
+      { to: '/app/tax-intelligence/returns', label: 'Tax Returns', iconKey: 'document', activeWhen: 'exact' },
+      { to: '/app/tax-intelligence/returns', label: 'Return Builder', iconKey: 'plus', activeWhen: 'child' },
       { to: '/app/tax-intelligence/documents', label: 'Document Processing', iconKey: 'exchange' },
       { to: '/app/tax-intelligence/optimization', label: 'Optimization', iconKey: 'magic' },
       { to: '/app/tax-intelligence/scenarios', label: 'Scenarios', iconKey: 'trend' },

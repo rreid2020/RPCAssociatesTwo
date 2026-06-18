@@ -10,6 +10,7 @@ import { createPool, getDatabaseConnectionSummary, getDatabasePoolSummary } from
 import { sendEmail } from './utils/email.js'
 import { createLeadsTable, createContactsTable } from './db/migrations.js'
 import { ensurePortalSchema } from './db/ensurePortalSchema.js'
+import { ensureSlipSchemasSeeded } from './services/tax-intelligence/slipSchema.service.js'
 import { logPortalObjectStorageConfig } from './services/portalS3.js'
 import { createPortalRouter } from './routes/portalRoutes.js'
 import { createTaxIntelligenceRouter } from './routes/taxIntelligenceRoutes.js'
@@ -404,6 +405,7 @@ async function startServer () {
   await initializeDatabase()
   try {
     await ensurePortalSchema(pool)
+    await ensureSlipSchemasSeeded(pool)
     console.log('Portal schema bootstrap complete')
   } catch (error) {
     console.error('Portal schema bootstrap failed:', error)

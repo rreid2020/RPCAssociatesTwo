@@ -245,13 +245,32 @@ export class CraTaxesHubDiscoveryService {
       }
 
       const existingMeta = (source[0].metadata || {}) as Record<string, unknown>
+      const expandedMetadata = {
+        ...existingMeta,
+        taxesHubExpanded: true,
+        classifiedPageKind: pageKind
+      }
+
       if (result.newSourcesCreated > 0 && pageKind === 'directory') {
         await this.db
           .update(sources)
           .set({
             ingestStatus: 'skipped',
             pageKind: 'directory',
+            metadata: expandedMetadata,
             errorMessage: 'Taxes hub directory — child sources discovered'
+          })
+          .where(eq(sources.id, sourceId))
+      } else if (result.newSourcesCreated > 0) {
+        // Content-classified hub pages can still surface new child URLs — mark expanded so
+        // expand does not re-fetch them every round while they queue for ingest.
+        await this.db
+          .update(sources)
+          .set({
+            ingestStatus: 'pending',
+            pageKind: pageKind === 'unknown' ? 'content' : pageKind,
+            metadata: expandedMetadata,
+            errorMessage: null
           })
           .where(eq(sources.id, sourceId))
       } else if (result.newSourcesCreated === 0 && existingMeta.corpusSeed === 'canada_taxes_hub') {
@@ -260,6 +279,7 @@ export class CraTaxesHubDiscoveryService {
           .set({
             ingestStatus: 'skipped',
             pageKind: 'directory',
+            metadata: expandedMetadata,
             errorMessage: 'Taxes hub root — child sources discovered'
           })
           .where(eq(sources.id, sourceId))
@@ -271,11 +291,7 @@ export class CraTaxesHubDiscoveryService {
           .set({
             ingestStatus: 'pending',
             pageKind: 'content',
-            metadata: {
-              ...existingMeta,
-              taxesHubExpanded: true,
-              classifiedPageKind: pageKind
-            }
+            metadata: expandedMetadata
           })
           .where(eq(sources.id, sourceId))
       }

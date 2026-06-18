@@ -20,6 +20,8 @@ import { listAuditFlags, runAuditRules } from '../services/tax-intelligence/audi
 import { getAdvisorySummary } from '../services/tax-intelligence/aiAdvisory.service.js'
 import { mapExtractedSlipToEntries, upsertDocumentMappedEntries } from '../services/tax-intelligence/slipMapping.service.js'
 import { inferRequiredFormsForReturn } from '../services/tax-intelligence/requiredForms.service.js'
+import { listSlipSchemasForReturnBuilder, getSlipSchema } from '../services/tax-intelligence/slipSchema.service.js'
+import { saveReturnSlipsAndIncome } from '../services/tax-intelligence/slipEntry.service.js'
 
 function parseUuid (v) {
   return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
@@ -115,6 +117,51 @@ export function createTaxIntelligenceRouter (pool) {
     } catch (e) {
       console.error('PUT /tax-returns/:id/income', e)
       res.status(500).json({ error: 'Could not save income entries' })
+    }
+  })
+
+  r.get('/slip-schemas', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const schemas = await listSlipSchemasForReturnBuilder(pool)
+      res.json({ schemas })
+    } catch (e) {
+      console.error('GET /slip-schemas', e)
+      res.status(500).json({ error: 'Could not load slip schemas' })
+    }
+  })
+
+  r.get('/slip-schemas/:formNumber', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const formNumber = String(req.params.formNumber || '').trim()
+    if (!formNumber) return res.status(400).json({ error: 'formNumber is required' })
+    try {
+      const schema = await getSlipSchema(pool, formNumber)
+      if (!schema) return res.status(404).json({ error: 'Slip schema not found' })
+      res.json({ schema })
+    } catch (e) {
+      console.error('GET /slip-schemas/:formNumber', e)
+      res.status(500).json({ error: 'Could not load slip schema' })
+    }
+  })
+
+  r.post('/tax-returns/:id/slips', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const id = parseUuid(req.params.id)
+    if (!id) return res.status(400).json({ error: 'Invalid id' })
+    try {
+      const result = await saveReturnSlipsAndIncome(pool, session.userId, id, {
+        manualIncomeRows: Array.isArray(req.body?.manualIncomeRows) ? req.body.manualIncomeRows : [],
+        slips: Array.isArray(req.body?.slips) ? req.body.slips : []
+      })
+      if (!result) return res.status(404).json({ error: 'Not found' })
+      res.json(result)
+    } catch (e) {
+      console.error('POST /tax-returns/:id/slips', e)
+      res.status(500).json({ error: 'Could not save slips and income' })
     }
   })
 

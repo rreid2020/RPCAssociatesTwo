@@ -3,9 +3,8 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
-import { taxFetch, type TaxReturnSummary } from '../../../lib/taxIntelligenceApi'
+import { taxFetch, type SlipSchema, type SlipSchemasResponse, type TaxReturnSummary } from '../../../lib/taxIntelligenceApi'
 import { getTaxBasePath } from './path'
-import { SLIP_DEFINITIONS, SLIP_DEFINITIONS_BY_CODE } from '../../../lib/taxSlips/definitions'
 
 type TaxReturnPayload = {
   taxReturn: {
@@ -196,6 +195,69 @@ type SlipRow = {
   taxYear: number
   taxpayerRole: 'self' | 'spouse'
   boxes: Record<string, number>
+  manualSlipId?: string
+}
+
+function buildDefaultBoxes (schema?: SlipSchema): Record<string, number> {
+  if (!schema?.boxes?.length) return {}
+  return Object.fromEntries(schema.boxes.map((box) => [box.code, 0]))
+}
+
+function buildSlipRowsFromReturnData (
+  incomeEntries: TaxReturnPayload['incomeEntries'],
+  deductions: TaxReturnPayload['deductions'],
+  schemasByCode: Record<string, SlipSchema>
+): SlipRow[] {
+  const grouped = new Map<string, SlipRow>()
+
+  const absorbEntry = (entry: { id: string; amount: number; metadata?: Record<string, unknown> }) => {
+    const meta = (entry.metadata || {}) as Record<string, unknown>
+    const slipType = String(meta.slipType || '')
+    if (!slipType) return
+    const manualSlipId = String(meta.manualSlipId || `${slipType}-${entry.id}`)
+    const boxCode = String(meta.boxCode || '')
+    const boxValue = Number(meta.boxValue ?? entry.amount ?? 0)
+    if (!grouped.has(manualSlipId)) {
+      const schema = schemasByCode[slipType.toUpperCase()]
+      grouped.set(manualSlipId, {
+        slipCode: slipType,
+        payerName: String(meta.payerName || ''),
+        taxYear: Number(meta.taxYear || new Date().getFullYear()),
+        taxpayerRole: String(meta.taxpayerRole || 'self') === 'spouse' ? 'spouse' : 'self',
+        manualSlipId,
+        boxes: buildDefaultBoxes(schema)
+      })
+    }
+    const row = grouped.get(manualSlipId)
+    if (!row || !boxCode) return
+    row.boxes[boxCode] = Number.isFinite(boxValue) ? boxValue : 0
+  }
+
+  for (const entry of incomeEntries) {
+    if (entry.source_type === 'manual_slip' || entry.source_type === 'manual_t4' || String(entry.metadata?.slipType || '').length > 0) {
+      absorbEntry(entry)
+    }
+  }
+  for (const entry of deductions) {
+    if (String(entry.metadata?.source || '') === 'manual_slip' || String(entry.metadata?.manualSlipId || '').length > 0) {
+      absorbEntry(entry)
+    }
+  }
+
+  return Array.from(grouped.values())
+}
+
+function slipBoxEntriesForRow (row: SlipRow, schema?: SlipSchema): Array<{ code: string; label: string; type: 'currency' | 'number' }> {
+  const fromSchema = (schema?.boxes || []).map((box) => ({
+    code: box.code,
+    label: box.label,
+    type: box.type
+  }))
+  const extraCodes = Object.keys(row.boxes).filter((code) => !fromSchema.some((box) => box.code === code))
+  return [
+    ...fromSchema,
+    ...extraCodes.map((code) => ({ code, label: `Box ${code}`, type: 'currency' as const }))
+  ]
 }
 
 type LineMappingRow = {
@@ -370,6 +432,9 @@ const ReturnBuilder: FC = () => {
   const [documents, setDocuments] = useState<Array<{ id: string; file_name: string }>>([])
   const [selectedDocumentId, setSelectedDocumentId] = useState('')
   const [newSlipCode, setNewSlipCode] = useState('T4')
+  const [slipSchemas, setSlipSchemas] = useState<SlipSchema[]>([])
+  const [loadingSlipSchemas, setLoadingSlipSchemas] = useState(true)
+  const [slipSearch, setSlipSearch] = useState('')
   const [setupIssueFilter, setSetupIssueFilter] = useState<'all' | 'required'>('all')
   const [showAllSetupIssues, setShowAllSetupIssues] = useState(false)
   const [creatingDependentIdx, setCreatingDependentIdx] = useState<number | null>(null)
@@ -399,13 +464,29 @@ const ReturnBuilder: FC = () => {
     return String(value || '').toLowerCase() === 'required' ? 'required' : 'all'
   }, [location.search])
 
-  const createSlipRow = (slipCode: string): SlipRow => ({
-    slipCode,
-    payerName: '',
-    taxYear: data?.taxReturn?.tax_year || new Date().getFullYear(),
-    taxpayerRole: 'self',
-    boxes: Object.fromEntries((SLIP_DEFINITIONS_BY_CODE[slipCode]?.boxes || []).map((b) => [b.code, 0]))
-  })
+  const slipSchemasByCode = useMemo(
+    () => Object.fromEntries(slipSchemas.map((schema) => [schema.code.toUpperCase(), schema])) as Record<string, SlipSchema>,
+    [slipSchemas]
+  )
+  const filteredSlipSchemas = useMemo(() => {
+    const query = slipSearch.trim().toLowerCase()
+    if (!query) return slipSchemas
+    return slipSchemas.filter((schema) =>
+      schema.code.toLowerCase().includes(query) ||
+      schema.name.toLowerCase().includes(query) ||
+      String(schema.catalogTitle || '').toLowerCase().includes(query)
+    )
+  }, [slipSchemas, slipSearch])
+  const createSlipRow = (slipCode: string): SlipRow => {
+    const schema = slipSchemasByCode[slipCode.toUpperCase()]
+    return {
+      slipCode,
+      payerName: '',
+      taxYear: data?.taxReturn?.tax_year || new Date().getFullYear(),
+      taxpayerRole: 'self',
+      boxes: buildDefaultBoxes(schema)
+    }
+  }
   const hasSpouseReturnMode =
     (taxpayerProfile.maritalStatus === 'married' || taxpayerProfile.maritalStatus === 'common_law') &&
     taxpayerProfile.spouseReturnMode === 'full'
@@ -715,9 +796,6 @@ const ReturnBuilder: FC = () => {
           }
         })
       })
-      const manualSlipEntries = (returnData.incomeEntries || []).filter(
-        (r) => r.source_type === 'manual_slip' || r.source_type === 'manual_t4' || String(r?.metadata?.slipType || '').length > 0
-      )
       const nonSlipEntries = (returnData.incomeEntries || []).filter(
         (r) => !(r.source_type === 'manual_slip' || r.source_type === 'manual_t4' || String(r?.metadata?.slipType || '').length > 0)
       )
@@ -727,27 +805,11 @@ const ReturnBuilder: FC = () => {
         amount: Number(r.amount || 0),
         taxpayerRole: String((r.metadata || {}).taxpayerRole || 'self') === 'spouse' ? 'spouse' : 'self'
       })))
-      const grouped = new Map<string, SlipRow>()
-      for (const entry of manualSlipEntries) {
-        const meta = (entry.metadata || {}) as Record<string, unknown>
-        const slipType = String(meta.slipType || 'T4')
-        const manualSlipId = String(meta.manualSlipId || `${slipType}-${entry.id}`)
-        const boxCode = String(meta.boxCode || '')
-        const boxValue = Number(meta.boxValue || 0)
-        if (!grouped.has(manualSlipId)) {
-          grouped.set(manualSlipId, {
-            slipCode: slipType,
-            payerName: String(meta.payerName || ''),
-            taxYear: Number(meta.taxYear || returnData.taxReturn.tax_year || new Date().getFullYear()),
-            taxpayerRole: String(meta.taxpayerRole || 'self') === 'spouse' ? 'spouse' : 'self',
-            boxes: Object.fromEntries((SLIP_DEFINITIONS_BY_CODE[slipType]?.boxes || []).map((b) => [b.code, 0]))
-          })
-        }
-        const row = grouped.get(manualSlipId)
-        if (!row) continue
-        if (boxCode) row.boxes[boxCode] = Number.isFinite(boxValue) ? boxValue : 0
-      }
-      setManualSlipRows(Array.from(grouped.values()))
+      setManualSlipRows(buildSlipRowsFromReturnData(
+        returnData.incomeEntries || [],
+        returnData.deductions || [],
+        slipSchemasByCode
+      ))
       const structuredCategories: Set<string> = new Set(T1_DEDUCTION_FIELDS.map((f) => f.category))
       setDeductionRows(
         (returnData.deductions || [])
@@ -784,9 +846,38 @@ const ReturnBuilder: FC = () => {
   }
 
   useEffect(() => {
+    const loadSlipSchemas = async () => {
+      setLoadingSlipSchemas(true)
+      try {
+        const response = await taxFetch<SlipSchemasResponse>('/slip-schemas', getToken)
+        const schemas = response.schemas || []
+        setSlipSchemas(schemas)
+        if (schemas.length > 0 && !schemas.some((schema) => schema.code === newSlipCode)) {
+          setNewSlipCode(schemas[0].code)
+        }
+      } catch (e) {
+        setErr((prev) => prev || (e instanceof Error ? e.message : 'Could not load slip schemas'))
+      } finally {
+        setLoadingSlipSchemas(false)
+      }
+    }
+    void loadSlipSchemas()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
+
+  useEffect(() => {
+    if (!data || slipSchemas.length === 0) return
+    setManualSlipRows(buildSlipRowsFromReturnData(
+      data.incomeEntries || [],
+      data.deductions || [],
+      slipSchemasByCode
+    ))
+  }, [data, slipSchemas, slipSchemasByCode])
 
   useEffect(() => {
     if (!hasSpouseReturnMode && returnRole === 'spouse') setReturnRole('self')
@@ -801,6 +892,20 @@ const ReturnBuilder: FC = () => {
 
   const addIncomeRow = (role: 'self' | 'spouse') => setIncomeRows((prev) => [...prev, { category: 'employment_income', description: '', amount: 0, taxpayerRole: role }])
   const addSlipRow = (role: 'self' | 'spouse') => setManualSlipRows((prev) => [...prev, { ...createSlipRow(newSlipCode), taxpayerRole: role }])
+  const addCustomBoxToSlip = (idx: number) => {
+    const nextCode = window.prompt('Enter CRA box code (for example 14 or 16A)')
+    if (!nextCode?.trim()) return
+    setManualSlipRows((prev) => {
+      const next = [...prev]
+      const row = next[idx]
+      if (!row) return prev
+      next[idx] = {
+        ...row,
+        boxes: { ...row.boxes, [nextCode.trim().toUpperCase()]: row.boxes[nextCode.trim().toUpperCase()] ?? 0 }
+      }
+      return next
+    })
+  }
   const addDeductionRow = (role: 'self' | 'spouse') => setDeductionRows((prev) => [...prev, { category: 'rrsp', description: '', amount: 0, isCredit: false, taxpayerRole: role }])
   const lineMappingRows = useMemo<LineMappingRow[]>(() => {
     const rows: LineMappingRow[] = []
@@ -811,7 +916,7 @@ const ReturnBuilder: FC = () => {
       const lineRef = String(meta.lineRef || '')
       const scheduleRef = String(meta.scheduleRef || '')
       if (!slipType || !lineRef) continue
-      const def = SLIP_DEFINITIONS_BY_CODE[slipType]
+      const def = slipSchemasByCode[slipType.toUpperCase()]
       const boxDef = def?.boxes.find((b) => b.code === boxCode)
       const expectedCategories = (boxDef?.targets || []).map((t) => t.category)
       const expectedLineRefs = (boxDef?.targets || []).map((t) => String(t.lineRef || '')).filter(Boolean)
@@ -849,58 +954,16 @@ const ReturnBuilder: FC = () => {
       })
     }
     return rows
-  }, [data?.incomeEntries])
+  }, [data?.incomeEntries, slipSchemasByCode])
 
   const saveIncome = async () => {
     setSaving(true)
     try {
-      const manualEntries = incomeRows.map((r) => ({
-        category: r.category,
-        description: r.description,
-        amount: Number(r.amount || 0),
-        sourceType: 'manual',
-        isManual: true,
-        metadata: {
-          taxpayerRole: r.taxpayerRole || 'self'
-        }
-      }))
-      const slipEntries = manualSlipRows.flatMap((slip) => {
-        const def = SLIP_DEFINITIONS_BY_CODE[slip.slipCode]
-        if (!def) return []
-        const manualSlipId = crypto.randomUUID()
-        const entries: Array<Record<string, unknown>> = []
-        for (const boxDef of def.boxes) {
-          const boxValue = Number(slip.boxes[boxDef.code] || 0)
-          if (!Number.isFinite(boxValue) || boxValue === 0) continue
-          for (const target of boxDef.targets) {
-            entries.push({
-              category: target.category,
-              description: `${def.code} box ${boxDef.code}: ${target.description}`,
-              amount: boxValue,
-              sourceType: 'manual_slip',
-              isManual: true,
-              metadata: {
-                slipType: def.code,
-                payerName: slip.payerName || null,
-                taxYear: Number(slip.taxYear || (data?.taxReturn?.tax_year || new Date().getFullYear())),
-                taxpayerRole: slip.taxpayerRole || 'self',
-                boxCode: boxDef.code,
-                boxValue,
-                lineRef: target.lineRef || null,
-                scheduleRef: target.scheduleRef || null,
-                asWithholding: Boolean(target.asWithholding),
-                incomeTaxDeducted: target.asWithholding ? boxValue : 0,
-                manualSlipId
-              }
-            })
-          }
-        }
-        return entries
-      })
-      await taxFetch(`/tax-returns/${id}/income`, getToken, {
-        method: 'PUT',
+      await taxFetch(`/tax-returns/${id}/slips`, getToken, {
+        method: 'POST',
         body: JSON.stringify({
-          entries: [...manualEntries, ...slipEntries]
+          manualIncomeRows: incomeRows,
+          slips: manualSlipRows
         })
       })
       await load()
@@ -924,11 +987,22 @@ const ReturnBuilder: FC = () => {
         })))
         .filter((row) => Number.isFinite(row.amount) && row.amount > 0)
 
+      const slipDeductionEntries = (data?.deductions || [])
+        .filter((d) => String((d.metadata || {}).source || '') === 'manual_slip')
+        .map((d) => ({
+          category: d.category,
+          description: d.description || '',
+          amount: Number(d.amount || 0),
+          isCredit: Boolean(d.is_credit),
+          metadata: d.metadata || {}
+        }))
+
       await taxFetch(`/tax-returns/${id}/deductions`, getToken, {
         method: 'PUT',
         body: JSON.stringify({
           entries: [
             ...structuredEntries,
+            ...slipDeductionEntries,
             ...deductionRows
               .map((r) => ({
                 category: r.category,
@@ -2098,25 +2172,41 @@ const ReturnBuilder: FC = () => {
                   </p>
                 </div>
                 <div className="flex flex-col md:flex-row gap-2">
+                  <input
+                    className="border border-border rounded-md px-3 py-2 text-sm flex-1"
+                    placeholder="Search slips by code or name"
+                    value={slipSearch}
+                    onChange={(e) => setSlipSearch(e.target.value)}
+                  />
                   <select
                     className="border border-border rounded-md px-3 py-2 text-sm flex-1"
                     value={newSlipCode}
                     onChange={(e) => setNewSlipCode(e.target.value)}
+                    disabled={loadingSlipSchemas || filteredSlipSchemas.length === 0}
                   >
-                    {SLIP_DEFINITIONS.map((def) => (
-                      <option key={def.code} value={def.code}>{def.code} - {def.name}</option>
+                    {filteredSlipSchemas.map((def) => (
+                      <option key={def.code} value={def.code}>
+                        {def.code} - {def.name}{def.schemaStatus === 'catalog_only' ? ' (add boxes manually)' : ''}
+                      </option>
                     ))}
                   </select>
-                  <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={() => addSlipRow(returnRole)}>
+                  <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={() => addSlipRow(returnRole)} disabled={loadingSlipSchemas || !newSlipCode}>
                     Add slip
                   </button>
                 </div>
+                {loadingSlipSchemas && (
+                  <p className="text-xs text-text-light">Loading CRA slip catalog…</p>
+                )}
+                {!loadingSlipSchemas && slipSchemas.length === 0 && (
+                  <p className="text-xs text-amber-700">No slip schemas are available yet. Try refreshing the page.</p>
+                )}
                 {manualSlipRows.map((row, idx) => {
                   if (row.taxpayerRole !== returnRole) return null
-                  const def = SLIP_DEFINITIONS_BY_CODE[row.slipCode]
+                  const def = slipSchemasByCode[row.slipCode.toUpperCase()]
                   if (!def) return null
+                  const boxFields = slipBoxEntriesForRow(row, def)
                   return (
-                  <div key={`t4-${idx}`} className="border border-border rounded-md p-3 bg-white space-y-2">
+                  <div key={`slip-${row.manualSlipId || idx}`} className="border border-border rounded-md p-3 bg-white space-y-2">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                       <input
                         className="border border-border rounded-md px-3 py-2 text-sm"
@@ -2152,9 +2242,19 @@ const ReturnBuilder: FC = () => {
                         <option value="spouse">Spouse</option>
                       </select>
                     </div>
-                    <p className="text-xs text-text-light font-medium">{def.code} - {def.name}</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs text-text-light font-medium">{def.code} - {def.name}</p>
+                      {def.schemaStatus === 'catalog_only' && (
+                        <button type="button" className="text-xs text-primary-dark underline" onClick={() => addCustomBoxToSlip(idx)}>
+                          Add box
+                        </button>
+                      )}
+                    </div>
+                    {def.schemaStatus === 'catalog_only' && boxFields.length === 0 && (
+                      <p className="text-xs text-amber-700">This slip is in the catalog but does not have predefined boxes yet. Use Add box to enter values from your slip.</p>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                      {def.boxes.map((box) => (
+                      {boxFields.map((box) => (
                         <label key={`${row.slipCode}-${idx}-${box.code}`} className="text-xs text-text-light">
                           Box {box.code} {box.label}
                           <input

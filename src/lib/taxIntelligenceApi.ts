@@ -62,6 +62,37 @@ export type RequiredFormsResponse = {
   forms: RequiredFormItem[]
 }
 
+export type SlipSchemaTarget = {
+  kind: 'income' | 'deduction'
+  category: string
+  description: string
+  lineRef?: string
+  scheduleRef?: string
+  asWithholding?: boolean
+}
+
+export type SlipBoxSchema = {
+  code: string
+  label: string
+  type: 'currency' | 'number'
+  targets: SlipSchemaTarget[]
+}
+
+export type SlipSchema = {
+  code: string
+  name: string
+  payerLabel: string
+  slipKind: string
+  schemaStatus: 'complete' | 'catalog_only' | 'partial'
+  catalogTitle?: string
+  taxYearsSupported?: number[]
+  boxes: SlipBoxSchema[]
+}
+
+export type SlipSchemasResponse = {
+  schemas: SlipSchema[]
+}
+
 export type TaxReturnSummary = {
   id: string
   tax_year: number

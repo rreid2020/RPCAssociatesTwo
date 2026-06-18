@@ -204,13 +204,26 @@ export function classifyTaxesHubFamily (url: string): string {
   }
 }
 
+/** Taxes hub row already expanded (leaf promote, directory children, timeout, or dead link). */
+export function isTaxesHubAlreadyExpanded (
+  metadata?: Record<string, unknown> | null
+): boolean {
+  if (!metadata) return false
+  const flag = metadata.taxesHubExpanded
+  return flag === true || flag === 'true'
+}
+
 export function isTaxesHubDirectoryCandidate (row: {
   pageKind?: string | null
   metadata?: Record<string, unknown> | null
   sourceType?: string | null
+  ingestStatus?: string | null
 }) {
   const metadata = (row.metadata || {}) as Record<string, unknown>
   if (metadata.corpusRole !== 'taxes_hub') return false
+  if (isTaxesHubAlreadyExpanded(metadata)) return false
+  if (row.ingestStatus === 'skipped') return false
+  if (row.pageKind === 'content') return false
   if (row.sourceType === 'taxes_hub_directory') return true
   return row.pageKind === 'directory' || row.pageKind === 'unknown'
 }

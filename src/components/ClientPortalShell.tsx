@@ -106,13 +106,17 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children, wideContent =
     return false
   }
 
-  const isActive = (path: string) => {
-    const [normalizedPath, queryString = ''] = path.split('?')
+  const isActive = (item: NavigationItem) => {
+    const [normalizedPath, queryString = ''] = item.to.split('?')
     if (normalizedPath === '/portal/dashboard') {
       return location.pathname === '/portal/dashboard'
     }
     let pathMatches = false
-    if (normalizedPath === '/portal/accounting/company-profile') {
+    if (item.activeWhen === 'exact') {
+      pathMatches = location.pathname === normalizedPath
+    } else if (item.activeWhen === 'child') {
+      pathMatches = location.pathname.startsWith(`${normalizedPath}/`)
+    } else if (normalizedPath === '/portal/accounting/company-profile') {
       pathMatches = location.pathname === '/portal/accounting/company-profile'
     } else {
       pathMatches = location.pathname === normalizedPath || location.pathname.startsWith(`${normalizedPath}/`)
@@ -169,10 +173,10 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children, wideContent =
                 )}
                 <div className="space-y-1">
                   {section.items.map((item) => {
-                    const active = isActive(item.to)
+                    const active = isActive(item)
                     return (
                       <Link
-                        key={item.to}
+                        key={`${section.id}-${item.label}-${item.to}`}
                         to={item.to}
                         onClick={() => setSidebarOpen(false)}
                         className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors ${

@@ -1,3 +1,5 @@
+import { EXCLUDED_SLIP_FORM_NUMBERS } from '../../lib/taxSlips/slipDefinitions.seed.js'
+
 const SCHEDULE_FORM_NUMBERS = new Set([
   'T2125', 'T776', 'T777', 'T2042', 'T2121', 'T1163', 'T1164', 'T1273', 'T1274',
   'T101', 'T1229', 'RC376', '5013-SA', 'TD1X', 'T5003', 'E638A'
@@ -34,17 +36,34 @@ export function inferPayerLabel (formNumber) {
   return 'Issuer name'
 }
 
+const EXCLUDED_SLIP_TITLE_PATTERNS = [
+  /notice of objection/i,
+  /taxpayer relief request/i,
+  /authorization or cancellation/i,
+  /electronic filer/i,
+  /income tax package/i,
+  /guide for/i
+]
+
+export function isExcludedSlipForm (formNumber, title = '') {
+  const code = normalizeFormNumber(formNumber)
+  if (EXCLUDED_SLIP_FORM_NUMBERS.has(code)) return true
+  const normalizedTitle = String(title || '').trim()
+  return EXCLUDED_SLIP_TITLE_PATTERNS.some((pattern) => pattern.test(normalizedTitle))
+}
+
 export function isInformationSlipCandidate (formNumber, title) {
   const code = normalizeFormNumber(formNumber)
   const normalizedTitle = String(title || '').trim()
   if (!code || !normalizedTitle) return false
+  if (isExcludedSlipForm(code, normalizedTitle)) return false
   if (SCHEDULE_FORM_NUMBERS.has(code)) return false
   if (SCHEDULE_TITLE_PATTERNS.some((pattern) => pattern.test(normalizedTitle))) return false
   if (/\(slip\)/i.test(normalizedTitle)) return true
   if (/^T4/.test(code) && !/-SUM$/.test(code) && !/SUM$/.test(code)) return true
   if (/^T5/.test(code)) return true
   if (code === 'T3') return true
-  if (['T2202', 'T5007', 'T5008', 'T5013', 'T5018', 'T4FHSA', 'NR4', 'NR4OAS', 'RC62', 'AGR-1', 'T1198', 'T1212', 'T737-RCA', 'T4A-RCA', 'T4A-NR', 'T4EQ', 'T5003'].includes(code)) return true
+  if (['T2202', 'T5007', 'T5008', 'T5013', 'T5018', 'T4FHSA', 'NR4', 'NR4OAS', 'T4AOAS', 'T4AP', 'RC62', 'AGR-1', 'T1198', 'T1212', 'T737-RCA', 'T4A-RCA', 'T4A-NR', 'T4EQ', 'T5003'].includes(code)) return true
   if (/^statement of /i.test(normalizedTitle) && !/summary/i.test(normalizedTitle)) return true
   return false
 }

@@ -209,6 +209,18 @@ type ExtractionPreviewState = {
   ocrWarning?: string | null
 }
 
+function slipSchemaSortRank (schema: SlipSchema): number {
+  if (schema.schemaStatus === 'complete') return 0
+  if (schema.schemaStatus === 'partial') return 1
+  return 2
+}
+
+function compareSlipSchemas (a: SlipSchema, b: SlipSchema): number {
+  const rank = slipSchemaSortRank(a) - slipSchemaSortRank(b)
+  if (rank !== 0) return rank
+  return a.code.localeCompare(b.code)
+}
+
 function buildDefaultBoxes (schema?: SlipSchema): Record<string, number> {
   if (!schema?.boxes?.length) return {}
   return Object.fromEntries(schema.boxes.map((box) => [box.code, 0]))
@@ -498,13 +510,23 @@ const ReturnBuilder: FC = () => {
   )
   const filteredSlipSchemas = useMemo(() => {
     const query = slipSearch.trim().toLowerCase()
-    if (!query) return slipSchemas
-    return slipSchemas.filter((schema) =>
-      schema.code.toLowerCase().includes(query) ||
-      schema.name.toLowerCase().includes(query) ||
-      String(schema.catalogTitle || '').toLowerCase().includes(query)
-    )
+    const base = query
+      ? slipSchemas.filter((schema) =>
+        schema.code.toLowerCase().includes(query) ||
+        schema.name.toLowerCase().includes(query) ||
+        String(schema.catalogTitle || '').toLowerCase().includes(query)
+      )
+      : slipSchemas
+    return [...base].sort(compareSlipSchemas)
   }, [slipSchemas, slipSearch])
+  const completeSlipSchemas = useMemo(
+    () => filteredSlipSchemas.filter((schema) => schema.schemaStatus === 'complete'),
+    [filteredSlipSchemas]
+  )
+  const catalogOnlySlipSchemas = useMemo(
+    () => filteredSlipSchemas.filter((schema) => schema.schemaStatus !== 'complete'),
+    [filteredSlipSchemas]
+  )
   const createSlipRow = (slipCode: string): SlipRow => {
     const schema = slipSchemasByCode[slipCode.toUpperCase()]
     return {
@@ -880,8 +902,10 @@ const ReturnBuilder: FC = () => {
         const response = await taxFetch<SlipSchemasResponse>('/slip-schemas', getToken)
         const schemas = response.schemas || []
         setSlipSchemas(schemas)
-        if (schemas.length > 0 && !schemas.some((schema) => schema.code === newSlipCode)) {
-          setNewSlipCode(schemas[0].code)
+        const sorted = [...schemas].sort(compareSlipSchemas)
+        const preferred = sorted.find((schema) => schema.schemaStatus === 'complete') || sorted[0]
+        if (preferred && !schemas.some((schema) => schema.code === newSlipCode && schema.schemaStatus === 'complete')) {
+          setNewSlipCode(preferred.code)
         }
       } catch (e) {
         setErr((prev) => prev || (e instanceof Error ? e.message : 'Could not load slip schemas'))
@@ -2347,9 +2371,9 @@ const ReturnBuilder: FC = () => {
               })()}
               <div id="rb-income-slips" className="border border-border rounded-md p-3 bg-background/50 space-y-3">
                 <div>
-                  <h3 className="text-sm font-semibold text-primary-dark">Manual CRA slip entry (box format)</h3>
+                  <h3 className="text-sm font-semibold text-primary-dark">CRA slip entry</h3>
                   <p className="text-xs text-text-light mt-1">
-                    Select a slip type, then enter box values exactly as shown on the CRA slip.
+                    Choose a slip with predefined boxes when available, or add a catalog slip and enter box codes manually.
                   </p>
                 </div>
                 <div className="flex flex-col md:flex-row gap-2">
@@ -2365,11 +2389,24 @@ const ReturnBuilder: FC = () => {
                     onChange={(e) => setNewSlipCode(e.target.value)}
                     disabled={loadingSlipSchemas || filteredSlipSchemas.length === 0}
                   >
-                    {filteredSlipSchemas.map((def) => (
-                      <option key={def.code} value={def.code}>
-                        {def.code} - {def.name}{def.schemaStatus === 'catalog_only' ? ' (add boxes manually)' : ''}
-                      </option>
-                    ))}
+                    {completeSlipSchemas.length > 0 && (
+                      <optgroup label="Ready — predefined boxes">
+                        {completeSlipSchemas.map((def) => (
+                          <option key={def.code} value={def.code}>
+                            {def.code} - {def.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {catalogOnlySlipSchemas.length > 0 && (
+                      <optgroup label="Catalog only — add boxes manually">
+                        {catalogOnlySlipSchemas.map((def) => (
+                          <option key={def.code} value={def.code}>
+                            {def.code} - {def.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
                   </select>
                   <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={() => addSlipRow(returnRole)} disabled={loadingSlipSchemas || !newSlipCode}>
                     Add slip
@@ -2425,6 +2462,9 @@ const ReturnBuilder: FC = () => {
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs text-text-light font-medium">{def.code} - {def.name}</p>
+                      {def.schemaStatus === 'complete' && (
+                        <span className="text-xs text-green-700">Predefined boxes</span>
+                      )}
                       {def.schemaStatus === 'catalog_only' && (
                         <button type="button" className="text-xs text-primary-dark underline" onClick={() => addCustomBoxToSlip(idx)}>
                           Add box

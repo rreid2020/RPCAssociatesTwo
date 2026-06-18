@@ -3,13 +3,14 @@ import {
   countSlipSchemas,
   getSlipSchemaByFormNumber,
   inferPayerLabel,
+  isExcludedSlipForm,
   listCatalogSlipCandidates,
   listSlipSchemasWithBoxes,
   replaceSlipBoxSchemas,
   upsertSlipSchema
 } from './slipSchema.repository.js'
 
-let slipSchemaSeedPromise = null
+let catalogSlipSeedPromise = null
 
 function mapSchemaRow (row) {
   if (!row) return null
@@ -26,16 +27,17 @@ function mapSchemaRow (row) {
 }
 
 export async function ensureSlipSchemasSeeded (pool) {
-  if (!slipSchemaSeedPromise) {
-    slipSchemaSeedPromise = seedSlipSchemas(pool).catch((error) => {
-      slipSchemaSeedPromise = null
+  await seedCompleteSlipSchemas(pool)
+  if (!catalogSlipSeedPromise) {
+    catalogSlipSeedPromise = seedCatalogSlipSchemas(pool).catch((error) => {
+      catalogSlipSeedPromise = null
       throw error
     })
   }
-  return slipSchemaSeedPromise
+  return catalogSlipSeedPromise
 }
 
-export async function seedSlipSchemas (pool) {
+export async function seedCompleteSlipSchemas (pool) {
   for (const definition of COMPLETE_SLIP_DEFINITIONS) {
     const schema = await upsertSlipSchema(pool, {
       formNumber: definition.code,
@@ -44,11 +46,13 @@ export async function seedSlipSchemas (pool) {
       slipKind: 'information_slip',
       schemaStatus: 'complete',
       catalogTitle: definition.name,
-      metadata: { seededFrom: 'complete_definitions_v2' }
+      metadata: { seededFrom: 'complete_definitions_v3' }
     })
     await replaceSlipBoxSchemas(pool, schema.id, definition.boxes)
   }
+}
 
+export async function seedCatalogSlipSchemas (pool) {
   let catalogCandidates = []
   try {
     catalogCandidates = await listCatalogSlipCandidates(pool)
@@ -75,10 +79,17 @@ export async function seedSlipSchemas (pool) {
   return { total: await countSlipSchemas(pool) }
 }
 
+export async function seedSlipSchemas (pool) {
+  await seedCompleteSlipSchemas(pool)
+  return seedCatalogSlipSchemas(pool)
+}
+
 export async function listSlipSchemasForReturnBuilder (pool) {
   await ensureSlipSchemasSeeded(pool)
   const rows = await listSlipSchemasWithBoxes(pool)
-  return rows.map(mapSchemaRow)
+  return rows
+    .filter((row) => !isExcludedSlipForm(row.formNumber, row.title || row.catalogTitle))
+    .map(mapSchemaRow)
 }
 
 export async function getSlipSchema (pool, formNumber) {

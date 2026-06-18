@@ -1,5 +1,18 @@
 const noTarget = []
 
+/** Forms in form_registry that are not taxpayer information slips for box entry. */
+export const EXCLUDED_SLIP_FORM_NUMBERS = new Set([
+  'T400A',
+  'T4004',
+  'T183',
+  'T183R',
+  'T1013',
+  'T2201',
+  'T2209',
+  'T2033',
+  'T2036'
+])
+
 /** Authoritative complete slip box schemas — seeded into taxgpt.slip_schemas / slip_box_schemas. */
 export const COMPLETE_SLIP_DEFINITIONS = [
   {
@@ -7,12 +20,24 @@ export const COMPLETE_SLIP_DEFINITIONS = [
     name: 'Statement of Remuneration Paid',
     payerLabel: 'Employer name',
     boxes: [
+      { code: '10', label: 'Province of employment', type: 'number', targets: noTarget },
       { code: '14', label: 'Employment income', type: 'currency', targets: [{ kind: 'income', category: 'employment_income', description: 'T4 box 14 employment income', lineRef: '10100' }] },
       { code: '16', label: 'Employee CPP contributions', type: 'currency', targets: [{ kind: 'deduction', category: 'cpp_contributions', description: 'T4 box 16 CPP contributions', lineRef: '30800' }] },
       { code: '16A', label: 'Employee second CPP contributions', type: 'currency', targets: [{ kind: 'deduction', category: 'cpp2_contributions', description: 'T4 box 16A CPP2 contributions', lineRef: '22215' }] },
+      { code: '17', label: 'Employee QPP contributions', type: 'currency', targets: [{ kind: 'deduction', category: 'qpp_contributions', description: 'T4 box 17 QPP contributions', lineRef: '30800' }] },
+      { code: '17A', label: 'Employee second QPP contributions', type: 'currency', targets: [{ kind: 'deduction', category: 'qpp2_contributions', description: 'T4 box 17A QPP2 contributions', lineRef: '22300' }] },
       { code: '18', label: 'Employee EI premiums', type: 'currency', targets: [{ kind: 'deduction', category: 'ei_premiums', description: 'T4 box 18 EI premiums', lineRef: '31200' }] },
       { code: '22', label: 'Income tax deducted', type: 'currency', targets: [{ kind: 'income', category: 'tax_withheld', description: 'T4 box 22 tax withheld', lineRef: '43700', asWithholding: true }] },
-      { code: '44', label: 'Union dues', type: 'currency', targets: [{ kind: 'deduction', category: 'union_dues', description: 'T4 box 44 union dues', lineRef: '21200' }] }
+      { code: '24', label: 'EI insurable earnings', type: 'currency', targets: noTarget },
+      { code: '26', label: 'CPP/QPP pensionable earnings', type: 'currency', targets: noTarget },
+      { code: '40', label: 'Other taxable allowances and benefits', type: 'currency', targets: [{ kind: 'income', category: 'other_taxable_benefits', description: 'T4 code 40 taxable benefits', lineRef: '10100' }] },
+      { code: '42', label: 'Employment commissions', type: 'currency', targets: [{ kind: 'income', category: 'employment_commissions', description: 'T4 code 42 commissions', lineRef: '10120' }] },
+      { code: '44', label: 'Union dues', type: 'currency', targets: [{ kind: 'deduction', category: 'union_dues', description: 'T4 box 44 union dues', lineRef: '21200' }] },
+      { code: '52', label: 'Pension adjustment', type: 'currency', targets: noTarget },
+      { code: '55', label: 'Employee PPIP premiums', type: 'currency', targets: [{ kind: 'deduction', category: 'ppip_premiums', description: 'T4 box 55 PPIP premiums', lineRef: '31205' }] },
+      { code: '56', label: 'PPIP insurable earnings', type: 'currency', targets: noTarget },
+      { code: '85', label: 'Employee-paid PHSP premiums', type: 'currency', targets: [{ kind: 'deduction', category: 'phsp_premiums', description: 'T4 code 85 PHSP premiums', lineRef: '33099' }] },
+      { code: '90', label: 'Security options benefits', type: 'currency', targets: [{ kind: 'income', category: 'security_option_benefits', description: 'T4 code 90 security options', lineRef: '10100' }] }
     ]
   },
   {
@@ -20,11 +45,17 @@ export const COMPLETE_SLIP_DEFINITIONS = [
     name: 'Statement of Investment Income',
     payerLabel: 'Payer name',
     boxes: [
+      { code: '10', label: 'Actual amount of dividends (eligible)', type: 'currency', targets: noTarget },
+      { code: '11', label: 'Taxable amount of dividends (eligible)', type: 'currency', targets: noTarget },
+      { code: '12', label: 'Dividend tax credit (eligible)', type: 'currency', targets: noTarget },
       { code: '13', label: 'Interest from Canadian sources', type: 'currency', targets: [{ kind: 'income', category: 'interest_income', description: 'T5 box 13 interest income', lineRef: '12100' }] },
       { code: '15', label: 'Eligible dividends', type: 'currency', targets: [{ kind: 'income', category: 'eligible_dividends', description: 'T5 box 15 eligible dividends', lineRef: '12000' }] },
       { code: '16', label: 'Taxable amount of eligible dividends', type: 'currency', targets: [{ kind: 'income', category: 'taxable_eligible_dividends', description: 'T5 box 16 taxable eligible dividends', lineRef: '12000' }] },
+      { code: '18', label: 'Capital gains dividends', type: 'currency', targets: [{ kind: 'income', category: 'capital_gains_dividends', description: 'T5 box 18 capital gains dividends', lineRef: '12700', scheduleRef: 'Schedule 3' }] },
+      { code: '23', label: 'Recipient type code', type: 'number', targets: noTarget },
       { code: '24', label: 'Actual amount of dividends (other than eligible)', type: 'currency', targets: [{ kind: 'income', category: 'other_dividends', description: 'T5 box 24 other dividends', lineRef: '12010' }] },
-      { code: '25', label: 'Taxable amount of dividends (other than eligible)', type: 'currency', targets: [{ kind: 'income', category: 'taxable_other_dividends', description: 'T5 box 25 taxable other dividends', lineRef: '12010' }] }
+      { code: '25', label: 'Taxable amount of dividends (other than eligible)', type: 'currency', targets: [{ kind: 'income', category: 'taxable_other_dividends', description: 'T5 box 25 taxable other dividends', lineRef: '12010' }] },
+      { code: '34', label: 'Foreign income tax paid', type: 'currency', targets: noTarget }
     ]
   },
   {
@@ -47,7 +78,12 @@ export const COMPLETE_SLIP_DEFINITIONS = [
       { code: '18', label: 'Lump-sum payments', type: 'currency', targets: [{ kind: 'income', category: 'lump_sum_income', description: 'T4A box 18 lump-sum payments', lineRef: '13000' }] },
       { code: '20', label: 'Self-employed commissions', type: 'currency', targets: [{ kind: 'income', category: 'self_employed_commissions', description: 'T4A box 20 commissions', lineRef: '13499', scheduleRef: 'T2125' }] },
       { code: '22', label: 'Income tax deducted', type: 'currency', targets: [{ kind: 'income', category: 'tax_withheld', description: 'T4A box 22 tax withheld', lineRef: '43700', asWithholding: true }] },
-      { code: '48', label: 'Fees for services', type: 'currency', targets: [{ kind: 'income', category: 'professional_fees', description: 'T4A box 48 fees for services', lineRef: '13499', scheduleRef: 'T2125' }] }
+      { code: '28', label: 'Other income', type: 'currency', targets: [{ kind: 'income', category: 'other_income', description: 'T4A box 28 other income', lineRef: '13000' }] },
+      { code: '48', label: 'Fees for services', type: 'currency', targets: [{ kind: 'income', category: 'professional_fees', description: 'T4A box 48 fees for services', lineRef: '13499', scheduleRef: 'T2125' }] },
+      { code: '104', label: 'Research grants', type: 'currency', targets: [{ kind: 'income', category: 'research_grants', description: 'T4A box 104 research grants', lineRef: '13000' }] },
+      { code: '105', label: 'Scholarships, bursaries, fellowships', type: 'currency', targets: [{ kind: 'income', category: 'scholarship_income', description: 'T4A box 105 scholarships', lineRef: '13010' }] },
+      { code: '119', label: 'Premiums paid to a group term life insurance plan', type: 'currency', targets: noTarget },
+      { code: '135', label: 'Registered disability savings plan income', type: 'currency', targets: [{ kind: 'income', category: 'rdsp_income', description: 'T4A box 135 RDSP income', lineRef: '12500' }] }
     ]
   },
   {
@@ -93,7 +129,9 @@ export const COMPLETE_SLIP_DEFINITIONS = [
     name: 'Tuition and Enrolment Certificate',
     payerLabel: 'Educational institution',
     boxes: [
-      { code: 'A', label: 'Eligible tuition fees', type: 'currency', targets: [{ kind: 'deduction', category: 'tuition_amount', description: 'T2202 eligible tuition amount', lineRef: '32300' }] }
+      { code: 'A', label: 'Part-time months', type: 'number', targets: noTarget },
+      { code: 'B', label: 'Full-time months', type: 'number', targets: noTarget },
+      { code: '11', label: 'Eligible tuition fees', type: 'currency', targets: [{ kind: 'deduction', category: 'tuition_amount', description: 'T2202 eligible tuition amount', lineRef: '32300' }] }
     ]
   },
   {
@@ -203,6 +241,34 @@ export const COMPLETE_SLIP_DEFINITIONS = [
     boxes: [
       { code: '38', label: 'Security options benefits', type: 'currency', targets: [{ kind: 'income', category: 'security_option_benefits', description: 'T1212 box 38 security options benefits', lineRef: '10100' }], extractionHints: { legacyFieldKey: 'security_options_benefits', labelPatterns: ['security[_\\s-]*options?[_\\s-]*benefits?'] } },
       { code: '12', label: 'Security options deduction', type: 'currency', targets: [{ kind: 'deduction', category: 'security_options_deduction', description: 'T1212 box 12 security options deduction', lineRef: '24900' }], extractionHints: { legacyFieldKey: 'security_options_deduction', labelPatterns: ['security[_\\s-]*options?[_\\s-]*deduction'] } }
+    ]
+  },
+  {
+    code: 'NR4OAS',
+    name: 'Statement of Old Age Security Pension Paid or Credited to Non-Residents of Canada',
+    payerLabel: 'Issuer name',
+    boxes: [
+      { code: '16', label: 'Gross Old Age Security pension', type: 'currency', targets: [{ kind: 'income', category: 'oas_pension', description: 'NR4OAS box 16 OAS pension', lineRef: '11300' }], extractionHints: { legacyFieldKey: 'gross_oas_pension', labelPatterns: ['gross[_\\s-]*old[_\\s-]*age[_\\s-]*security', 'box[_\\s-]*16'] } },
+      { code: '17', label: 'Non-resident tax withheld', type: 'currency', targets: [{ kind: 'income', category: 'tax_withheld', description: 'NR4OAS box 17 tax withheld', lineRef: '43700', asWithholding: true }], extractionHints: { legacyFieldKey: 'non_resident_tax_withheld', labelPatterns: ['non[_\\s-]*resident[_\\s-]*tax[_\\s-]*withheld'] } },
+      { code: '27', label: 'Recovery tax withheld', type: 'currency', targets: [{ kind: 'income', category: 'tax_withheld', description: 'NR4OAS box 27 recovery tax withheld', lineRef: '43700', asWithholding: true }], extractionHints: { legacyFieldKey: 'recovery_tax_withheld', labelPatterns: ['recovery[_\\s-]*tax[_\\s-]*withheld'] } }
+    ]
+  },
+  {
+    code: 'T4AOAS',
+    name: 'Statement of Old Age Security',
+    payerLabel: 'Issuer name',
+    boxes: [
+      { code: '18', label: 'Taxable pension paid', type: 'currency', targets: [{ kind: 'income', category: 'oas_pension', description: 'T4A(OAS) box 18 taxable pension', lineRef: '11300' }], extractionHints: { legacyFieldKey: 'taxable_pension_paid', labelPatterns: ['taxable[_\\s-]*pension[_\\s-]*paid'] } },
+      { code: '22', label: 'Income tax deducted', type: 'currency', targets: [{ kind: 'income', category: 'tax_withheld', description: 'T4A(OAS) box 22 tax withheld', lineRef: '43700', asWithholding: true }], extractionHints: { legacyFieldKey: 'income_tax_deducted', labelPatterns: ['income[_\\s-]*tax[_\\s-]*deducted'] } }
+    ]
+  },
+  {
+    code: 'T4AP',
+    name: 'Statement of Canada Pension Plan Benefits',
+    payerLabel: 'Issuer name',
+    boxes: [
+      { code: '20', label: 'Taxable CPP benefits', type: 'currency', targets: [{ kind: 'income', category: 'cpp_benefits', description: 'T4A(P) box 20 CPP benefits', lineRef: '11400' }], extractionHints: { legacyFieldKey: 'taxable_cpp_benefits', labelPatterns: ['taxable[_\\s-]*cpp[_\\s-]*benefits?'] } },
+      { code: '22', label: 'Income tax deducted', type: 'currency', targets: [{ kind: 'income', category: 'tax_withheld', description: 'T4A(P) box 22 tax withheld', lineRef: '43700', asWithholding: true }], extractionHints: { legacyFieldKey: 'income_tax_deducted', labelPatterns: ['income[_\\s-]*tax[_\\s-]*deducted'] } }
     ]
   }
 ]

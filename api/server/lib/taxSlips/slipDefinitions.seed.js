@@ -136,8 +136,73 @@ export const COMPLETE_SLIP_DEFINITIONS = [
     name: 'Statement of Employee Profit-Sharing Plan Allocations and Payments',
     payerLabel: 'Plan administrator',
     boxes: [
-      { code: '35', label: 'Amount allocated by trustee', type: 'currency', targets: [{ kind: 'income', category: 'dpsp_allocation', description: 'T4PS box 35 DPSP allocation', lineRef: '13000' }] },
-      { code: '36', label: 'Amount paid out of plan', type: 'currency', targets: [{ kind: 'income', category: 'dpsp_payout', description: 'T4PS box 36 DPSP payout', lineRef: '13000' }] }
+      { code: '35', label: 'Amount allocated by trustee', type: 'currency', targets: [{ kind: 'income', category: 'dpsp_allocation', description: 'T4PS box 35 DPSP allocation', lineRef: '13000' }], extractionHints: { legacyFieldKey: 'amount_allocated_by_trustee', labelPatterns: ['amount[_\\s-]*allocated[_\\s-]*by[_\\s-]*trustee'] } },
+      { code: '36', label: 'Amount paid out of plan', type: 'currency', targets: [{ kind: 'income', category: 'dpsp_payout', description: 'T4PS box 36 DPSP payout', lineRef: '13000' }], extractionHints: { legacyFieldKey: 'amount_paid_out_of_plan', labelPatterns: ['amount[_\\s-]*paid[_\\s-]*out[_\\s-]*of[_\\s-]*plan'] } }
+    ]
+  },
+  {
+    code: 'T4FHSA',
+    name: 'First Home Savings Account Statement',
+    payerLabel: 'Issuer name',
+    boxes: [
+      { code: '20', label: 'Taxable withdrawals', type: 'currency', targets: [{ kind: 'income', category: 'fhsa_taxable_withdrawal', description: 'T4FHSA box 20 taxable withdrawals', lineRef: '13000' }], extractionHints: { legacyFieldKey: 'taxable_withdrawals', labelPatterns: ['taxable[_\\s-]*withdrawals?'] } },
+      { code: '22', label: 'Income tax deducted', type: 'currency', targets: [{ kind: 'income', category: 'tax_withheld', description: 'T4FHSA box 22 tax withheld', lineRef: '43700', asWithholding: true }], extractionHints: { legacyFieldKey: 'income_tax_deducted', labelPatterns: ['income[_\\s-]*tax[_\\s-]*deducted'] } },
+      { code: '26', label: 'Qualifying withdrawals', type: 'currency', targets: noTarget, extractionHints: { legacyFieldKey: 'qualifying_withdrawals', labelPatterns: ['qualifying[_\\s-]*withdrawals?'] } }
+    ]
+  },
+  {
+    code: 'T4A-RCA',
+    name: 'Statement of Distributions from a Retirement Compensation Arrangement (RCA)',
+    payerLabel: 'Issuer name',
+    boxes: [
+      { code: '16', label: 'Distributions from RCA', type: 'currency', targets: [{ kind: 'income', category: 'rca_distribution', description: 'T4A-RCA box 16 RCA distribution', lineRef: '13000' }], extractionHints: { legacyFieldKey: 'rca_distribution', labelPatterns: ['distributions?[_\\s-]*from[_\\s-]*rca', 'box[_\\s-]*16'] } },
+      { code: '22', label: 'Income tax deducted', type: 'currency', targets: [{ kind: 'income', category: 'tax_withheld', description: 'T4A-RCA box 22 tax withheld', lineRef: '43700', asWithholding: true }], extractionHints: { legacyFieldKey: 'income_tax_deducted', labelPatterns: ['income[_\\s-]*tax[_\\s-]*deducted'] } }
+    ]
+  },
+  {
+    code: 'T4EQ',
+    name: 'Statement of Employment Insurance and Other Benefits (Quebec)',
+    payerLabel: 'Issuer name',
+    boxes: [
+      { code: '14', label: 'Total benefits paid', type: 'currency', targets: [{ kind: 'income', category: 'ei_benefits', description: 'T4EQ box 14 EI benefits', lineRef: '11900' }], extractionHints: { legacyFieldKey: 'total_benefits_paid', labelPatterns: ['total[_\\s-]*benefits[_\\s-]*paid'] } },
+      { code: '15', label: 'Income tax deducted', type: 'currency', targets: [{ kind: 'income', category: 'tax_withheld', description: 'T4EQ box 15 tax withheld', lineRef: '43700', asWithholding: true }], extractionHints: { legacyFieldKey: 'income_tax_deducted', labelPatterns: ['income[_\\s-]*tax[_\\s-]*deducted'] } }
+    ]
+  },
+  {
+    code: 'T4A-NR',
+    name: 'Statement of Fees, Commissions, or Other Amounts Paid to Non-Residents',
+    payerLabel: 'Payer name',
+    boxes: [
+      { code: '16', label: 'Fees, commissions, or other amounts', type: 'currency', targets: [{ kind: 'income', category: 'non_resident_fees', description: 'T4A-NR box 16 fees/commissions', lineRef: '13000' }], extractionHints: { legacyFieldKey: 'fees_commissions', labelPatterns: ['fees?[_\\s-]*commissions?', 'other[_\\s-]*amounts?'] } },
+      { code: '22', label: 'Income tax deducted', type: 'currency', targets: [{ kind: 'income', category: 'tax_withheld', description: 'T4A-NR box 22 tax withheld', lineRef: '43700', asWithholding: true }], extractionHints: { legacyFieldKey: 'income_tax_deducted', labelPatterns: ['income[_\\s-]*tax[_\\s-]*deducted'] } }
+    ]
+  },
+  {
+    code: 'NR4',
+    name: 'Statement of Amounts Paid or Credited to Non-Residents of Canada',
+    payerLabel: 'Payer name',
+    boxes: [
+      { code: '16', label: 'Self-employment income', type: 'currency', targets: [{ kind: 'income', category: 'non_resident_self_employment', description: 'NR4 box 16 self-employment income', lineRef: '13499', scheduleRef: 'T2125' }], extractionHints: { legacyFieldKey: 'self_employment_income', labelPatterns: ['self[_\\s-]*employment[_\\s-]*income'] } },
+      { code: '26', label: 'Other income', type: 'currency', targets: [{ kind: 'income', category: 'non_resident_other_income', description: 'NR4 box 26 other income', lineRef: '13000' }], extractionHints: { legacyFieldKey: 'other_income', labelPatterns: ['other[_\\s-]*income'] } },
+      { code: '28', label: 'Capital gains', type: 'currency', targets: [{ kind: 'income', category: 'capital_gains', description: 'NR4 box 28 capital gains', lineRef: '12700', scheduleRef: 'Schedule 3' }], extractionHints: { legacyFieldKey: 'capital_gains', labelPatterns: ['capital[_\\s-]*gains?'] } },
+      { code: '30', label: 'Income tax deducted', type: 'currency', targets: [{ kind: 'income', category: 'tax_withheld', description: 'NR4 box 30 tax withheld', lineRef: '43700', asWithholding: true }], extractionHints: { legacyFieldKey: 'income_tax_deducted', labelPatterns: ['income[_\\s-]*tax[_\\s-]*deducted'] } }
+    ]
+  },
+  {
+    code: 'T1198',
+    name: 'Statement of Qualifying Retroactive Lump-Sum Payment',
+    payerLabel: 'Payer name',
+    boxes: [
+      { code: '10', label: 'Qualifying retroactive lump-sum payment', type: 'currency', targets: [{ kind: 'income', category: 'retroactive_lump_sum', description: 'T1198 box 10 retroactive lump-sum', lineRef: '13000' }], extractionHints: { legacyFieldKey: 'retroactive_lump_sum', labelPatterns: ['retroactive[_\\s-]*lump[_\\s-]*sum', 'qualifying[_\\s-]*retroactive'] } }
+    ]
+  },
+  {
+    code: 'T1212',
+    name: 'Statement of Deferred Security Options Benefits',
+    payerLabel: 'Employer name',
+    boxes: [
+      { code: '38', label: 'Security options benefits', type: 'currency', targets: [{ kind: 'income', category: 'security_option_benefits', description: 'T1212 box 38 security options benefits', lineRef: '10100' }], extractionHints: { legacyFieldKey: 'security_options_benefits', labelPatterns: ['security[_\\s-]*options?[_\\s-]*benefits?'] } },
+      { code: '12', label: 'Security options deduction', type: 'currency', targets: [{ kind: 'deduction', category: 'security_options_deduction', description: 'T1212 box 12 security options deduction', lineRef: '24900' }], extractionHints: { legacyFieldKey: 'security_options_deduction', labelPatterns: ['security[_\\s-]*options?[_\\s-]*deduction'] } }
     ]
   }
 ]

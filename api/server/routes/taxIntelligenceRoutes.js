@@ -276,12 +276,13 @@ export function createTaxIntelligenceRouter (pool) {
     try {
       const ocr = await extractOcrTextFromDocument(pool, session.userId, documentId)
       if (!ocr) return res.status(404).json({ error: 'Document not found' })
-      const structured = await extractStructuredDataFromText(ocr.text)
+      const structured = await extractStructuredDataFromText(ocr.text, pool)
       const extraction = await persistDocumentExtraction(pool, session.userId, {
         documentId,
         taxReturnId,
         ocrText: ocr.text,
         slipType: structured.slipType,
+        boxes: structured.boxes,
         extracted: structured.extracted,
         confidence: structured.confidence,
         reviewRequired: structured.reviewRequired
@@ -298,10 +299,11 @@ export function createTaxIntelligenceRouter (pool) {
           confidence: structured.confidence
         }
       })
-      const mappedEntries = mapExtractedSlipToEntries(structured.slipType, structured.extracted, {
+      const mappedEntries = await mapExtractedSlipToEntries(pool, structured.slipType, structured.extracted, {
         documentId,
         extractionId: extraction?.id || null,
-        slipType: structured.slipType
+        slipType: structured.slipType,
+        source: 'document_extraction'
       })
       if (taxReturnId) {
         await upsertDocumentMappedEntries(pool, session.userId, taxReturnId, documentId, mappedEntries)
@@ -310,6 +312,8 @@ export function createTaxIntelligenceRouter (pool) {
         extraction,
         reviewRequired: structured.reviewRequired,
         confidence: structured.confidence,
+        slipType: structured.slipType,
+        boxes: structured.boxes,
         mappedEntries
       })
     } catch (e) {

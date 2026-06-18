@@ -67,6 +67,7 @@ export async function upsertSlipSchema (pool, row) {
         ELSE EXCLUDED.payer_label
       END,
       schema_status = CASE
+        WHEN EXCLUDED.schema_status = 'complete' THEN 'complete'
         WHEN taxgpt.slip_schemas.schema_status = 'complete' THEN taxgpt.slip_schemas.schema_status
         ELSE EXCLUDED.schema_status
       END,

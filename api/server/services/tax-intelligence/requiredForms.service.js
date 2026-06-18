@@ -24,11 +24,14 @@ const CATEGORY_FORM_RULES = {
   capital_gains: { formCode: 'Schedule 3', reason: 'Capital gains income reported on the return' },
   capital_disposition_proceeds: { formCode: 'Schedule 3', reason: 'Capital disposition proceeds reported' },
   partnership_capital_gains: { formCode: 'Schedule 3', reason: 'Partnership capital gains reported' },
+  non_resident_self_employment: { formCode: 'T2125', reason: 'Non-resident self-employment income reported' },
   self_employed_commissions: { formCode: 'T2125', reason: 'Self-employment commission income reported' },
   professional_fees: { formCode: 'T2125', reason: 'Professional or business fees reported' },
   partnership_business_income: { formCode: 'T2125', reason: 'Partnership business income reported' },
   contract_payments: { formCode: 'T2125', reason: 'Contractor/subcontractor payments reported' },
-  rental_income: { formCode: 'T776', reason: 'Rental income reported on the return' }
+  rental_income: { formCode: 'T776', reason: 'Rental income reported on the return' },
+  retroactive_lump_sum: { formCode: 'T1198', reason: 'Retroactive lump-sum payment reported on slip' },
+  security_option_benefits: { formCode: 'T1212', reason: 'Deferred security option benefits reported' }
 }
 
 const SETUP_FLAG_RULES = [

@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
-import { taxFetch, type SlipSchema, type SlipSchemasResponse, type TaxReturnSummary } from '../../../lib/taxIntelligenceApi'
+import { taxFetch, type RequiredFormsResponse, type SlipSchema, type SlipSchemasResponse, type TaxReturnSummary } from '../../../lib/taxIntelligenceApi'
 import { getTaxBasePath } from './path'
 
 type TaxReturnPayload = {
@@ -260,6 +260,20 @@ function slipBoxEntriesForRow (row: SlipRow, schema?: SlipSchema): Array<{ code:
   ]
 }
 
+function requiredFormStatusLabel (status: string): string {
+  if (status === 'active') return 'Active'
+  if (status === 'archived') return 'Archived'
+  if (status === 'not_indexed') return 'Not in catalog'
+  if (status === 'registry_unavailable') return 'Registry unavailable'
+  return status
+}
+
+function requiredFormStatusClass (status: string): string {
+  if (status === 'active') return 'bg-green-50 text-green-800 border-green-200'
+  if (status === 'archived') return 'bg-amber-50 text-amber-800 border-amber-200'
+  return 'bg-gray-50 text-gray-700 border-border'
+}
+
 type LineMappingRow = {
   source: string
   mappedTo: string
@@ -435,6 +449,8 @@ const ReturnBuilder: FC = () => {
   const [slipSchemas, setSlipSchemas] = useState<SlipSchema[]>([])
   const [loadingSlipSchemas, setLoadingSlipSchemas] = useState(true)
   const [slipSearch, setSlipSearch] = useState('')
+  const [requiredForms, setRequiredForms] = useState<RequiredFormsResponse | null>(null)
+  const [loadingRequiredForms, setLoadingRequiredForms] = useState(false)
   const [setupIssueFilter, setSetupIssueFilter] = useState<'all' | 'required'>('all')
   const [showAllSetupIssues, setShowAllSetupIssues] = useState(false)
   const [creatingDependentIdx, setCreatingDependentIdx] = useState<number | null>(null)
@@ -879,6 +895,27 @@ const ReturnBuilder: FC = () => {
     ))
   }, [data, slipSchemas, slipSchemasByCode])
 
+  const loadRequiredForms = async () => {
+    if (!id) {
+      setRequiredForms(null)
+      return
+    }
+    setLoadingRequiredForms(true)
+    try {
+      const response = await taxFetch<RequiredFormsResponse>(`/tax-returns/${id}/required-forms`, getToken)
+      setRequiredForms(response)
+    } catch {
+      setRequiredForms(null)
+    } finally {
+      setLoadingRequiredForms(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeStep === 'Review' && id) void loadRequiredForms()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStep, id])
+
   useEffect(() => {
     if (!hasSpouseReturnMode && returnRole === 'spouse') setReturnRole('self')
   }, [hasSpouseReturnMode, returnRole])
@@ -967,6 +1004,7 @@ const ReturnBuilder: FC = () => {
         })
       })
       await load()
+      if (activeStep === 'Review') void loadRequiredForms()
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not save income')
     } finally {
@@ -1018,6 +1056,7 @@ const ReturnBuilder: FC = () => {
         })
       })
       await load()
+      if (activeStep === 'Review') void loadRequiredForms()
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not save deductions')
     } finally {
@@ -1037,6 +1076,7 @@ const ReturnBuilder: FC = () => {
         })
       })
       await load()
+      if (activeStep === 'Review') void loadRequiredForms()
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not import from document')
     } finally {
@@ -1049,6 +1089,7 @@ const ReturnBuilder: FC = () => {
     try {
       await taxFetch(`/tax-returns/${id}/calculate`, getToken, { method: 'POST' })
       await load()
+      if (activeStep === 'Review') void loadRequiredForms()
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not calculate return')
     } finally {
@@ -1064,6 +1105,7 @@ const ReturnBuilder: FC = () => {
         body: JSON.stringify({ taxReturnId: id })
       })
       await load()
+      if (activeStep === 'Review') void loadRequiredForms()
       setActiveStep('Risk')
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not run audit')
@@ -2422,6 +2464,50 @@ const ReturnBuilder: FC = () => {
                   </div>
                 </div>
               )}
+              <div id="rb-required-forms" className="mt-4 border border-border rounded-md p-3 bg-background/50">
+                <h3 className="text-sm font-semibold text-primary-dark">Required CRA forms &amp; schedules</h3>
+                <p className="text-xs text-text-light mt-1">
+                  Auto-inferred from setup flags, slip data, and income mappings. These forms populate from your slip entries and calculations — not manual data entry.
+                </p>
+                {loadingRequiredForms && <p className="text-xs text-text-light mt-2">Analyzing required forms…</p>}
+                {!loadingRequiredForms && (requiredForms?.forms?.length || 0) === 0 && (
+                  <p className="text-xs text-text-light mt-2">No additional CRA forms inferred yet for this return.</p>
+                )}
+                {!loadingRequiredForms && (requiredForms?.forms?.length || 0) > 0 && (
+                  <div className="overflow-x-auto mt-2 border border-border rounded-md">
+                    <table className="min-w-full text-xs">
+                      <thead className="bg-background/70">
+                        <tr>
+                          <th className="text-left px-3 py-2 font-semibold text-primary-dark">Form</th>
+                          <th className="text-left px-3 py-2 font-semibold text-primary-dark">Title</th>
+                          <th className="text-left px-3 py-2 font-semibold text-primary-dark">Catalog</th>
+                          <th className="text-left px-3 py-2 font-semibold text-primary-dark">Why required</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {requiredForms?.forms.map((form) => (
+                          <tr key={form.normalizedFormCode} className="border-t border-border align-top">
+                            <td className="px-3 py-2 font-medium text-text">{form.formCode}</td>
+                            <td className="px-3 py-2 text-text">{form.registry.title || '—'}</td>
+                            <td className="px-3 py-2">
+                              <span className={`inline-flex px-2 py-0.5 rounded border text-[11px] ${requiredFormStatusClass(form.registry.registryStatus)}`}>
+                                {requiredFormStatusLabel(form.registry.registryStatus)}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-text-light">
+                              <ul className="list-disc pl-4 space-y-1">
+                                {form.reasons.map((reason) => (
+                                  <li key={reason}>{reason}</li>
+                                ))}
+                              </ul>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
               <div id="rb-review" className="mt-4">
                 <h3 className="text-sm font-semibold text-primary-dark">Slip line mapping trace</h3>
                 <p className="text-xs text-text-light mt-1">Shows how slip boxes are mapped into T1 lines/schedules.</p>

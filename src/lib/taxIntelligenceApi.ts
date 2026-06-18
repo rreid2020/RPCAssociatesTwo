@@ -93,6 +93,33 @@ export type SlipSchemasResponse = {
   schemas: SlipSchema[]
 }
 
+export type DocumentExtractionRecord = {
+  id: string
+  document_id: string
+  tax_return_id?: string | null
+  extraction_status?: string
+  confidence_score?: number
+  review_required?: boolean
+}
+
+export type DocumentExtractResponse = {
+  extraction: DocumentExtractionRecord | null
+  previewOnly: boolean
+  appliedToReturn: boolean
+  reviewRequired: boolean
+  confidence: number
+  slipType: string
+  boxes: Record<string, number>
+  mappedEntries?: Array<{
+    category: string
+    description?: string | null
+    amount: number
+    metadata?: Record<string, unknown>
+  }>
+  ocrMethod?: string | null
+  ocrWarning?: string | null
+}
+
 export type TaxReturnSummary = {
   id: string
   tax_year: number

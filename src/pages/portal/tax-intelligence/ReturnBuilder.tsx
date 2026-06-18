@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
-import { taxFetch, type RequiredFormsResponse, type SlipSchema, type SlipSchemasResponse, type TaxReturnSummary } from '../../../lib/taxIntelligenceApi'
+import { taxFetch, type DocumentExtractResponse, type RequiredFormsResponse, type SlipSchema, type SlipSchemasResponse, type TaxReturnSummary } from '../../../lib/taxIntelligenceApi'
 import { getTaxBasePath } from './path'
 
 type TaxReturnPayload = {
@@ -196,6 +196,17 @@ type SlipRow = {
   taxpayerRole: 'self' | 'spouse'
   boxes: Record<string, number>
   manualSlipId?: string
+}
+
+type ExtractionPreviewState = {
+  extractionId: string | null
+  documentId: string
+  slipType: string
+  confidence: number
+  reviewRequired: boolean
+  boxes: Record<string, number>
+  ocrMethod?: string | null
+  ocrWarning?: string | null
 }
 
 function buildDefaultBoxes (schema?: SlipSchema): Record<string, number> {
@@ -445,6 +456,7 @@ const ReturnBuilder: FC = () => {
   const [returnRole, setReturnRole] = useState<'self' | 'spouse'>('self')
   const [documents, setDocuments] = useState<Array<{ id: string; file_name: string }>>([])
   const [selectedDocumentId, setSelectedDocumentId] = useState('')
+  const [extractionPreview, setExtractionPreview] = useState<ExtractionPreviewState | null>(null)
   const [newSlipCode, setNewSlipCode] = useState('T4')
   const [slipSchemas, setSlipSchemas] = useState<SlipSchema[]>([])
   const [loadingSlipSchemas, setLoadingSlipSchemas] = useState(true)
@@ -1067,21 +1079,66 @@ const ReturnBuilder: FC = () => {
   const importFromDocument = async () => {
     if (!selectedDocumentId) return
     setSaving(true)
+    setErr(null)
     try {
-      await taxFetch('/documents/extract', getToken, {
+      const response = await taxFetch<DocumentExtractResponse>('/documents/extract', getToken, {
         method: 'POST',
         body: JSON.stringify({
           documentId: selectedDocumentId,
-          taxReturnId: id
+          taxReturnId: id,
+          previewOnly: true,
+          taxYear: data?.taxReturn?.tax_year,
+          taxpayerName: data?.taxReturn?.taxpayer_name
         })
       })
-      await load()
-      if (activeStep === 'Review') void loadRequiredForms()
+      setExtractionPreview({
+        extractionId: response.extraction?.id || null,
+        documentId: selectedDocumentId,
+        slipType: response.slipType || 'UNKNOWN',
+        confidence: response.confidence || 0,
+        reviewRequired: response.reviewRequired,
+        boxes: { ...(response.boxes || {}) },
+        ocrMethod: response.ocrMethod,
+        ocrWarning: response.ocrWarning
+      })
+      if (response.slipType && response.slipType !== 'UNKNOWN') {
+        setNewSlipCode(response.slipType)
+      }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Could not import from document')
+      setErr(e instanceof Error ? e.message : 'Could not extract from document')
     } finally {
       setSaving(false)
     }
+  }
+
+  const applyExtractionPreview = async () => {
+    if (!extractionPreview) return
+    const slipCode = extractionPreview.slipType
+    if (!slipCode || slipCode === 'UNKNOWN') {
+      setErr('Select a slip type before applying the extraction.')
+      return
+    }
+    const schema = slipSchemasByCode[slipCode.toUpperCase()]
+    const mergedBoxes = { ...buildDefaultBoxes(schema), ...extractionPreview.boxes }
+    const newRow: SlipRow = {
+      slipCode,
+      payerName: '',
+      taxYear: data?.taxReturn?.tax_year || new Date().getFullYear(),
+      taxpayerRole: returnRole,
+      manualSlipId: `extract-${extractionPreview.extractionId || Date.now()}`,
+      boxes: mergedBoxes
+    }
+    setManualSlipRows((prev) => [...prev, newRow])
+    if (extractionPreview.extractionId) {
+      try {
+        await taxFetch(`/documents/extractions/${extractionPreview.extractionId}/review`, getToken, { method: 'POST' })
+      } catch {
+        // Non-blocking: slip row is applied locally even if review flag fails.
+      }
+    }
+    setExtractionPreview(null)
+    setSelectedDocumentId('')
+    setErr(null)
   }
 
   const runCalculation = async () => {
@@ -2203,9 +2260,91 @@ const ReturnBuilder: FC = () => {
                   {documents.map((d) => <option key={d.id} value={d.id}>{d.file_name}</option>)}
                 </select>
                 <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={() => { void importFromDocument() }} disabled={saving || !selectedDocumentId}>
-                  Import selected document
+                  {saving && selectedDocumentId ? 'Extracting…' : 'Extract from document'}
                 </button>
               </div>
+              {extractionPreview && (() => {
+                const previewSchema = slipSchemasByCode[extractionPreview.slipType.toUpperCase()]
+                const previewRow: SlipRow = {
+                  slipCode: extractionPreview.slipType,
+                  payerName: '',
+                  taxYear: data?.taxReturn?.tax_year || new Date().getFullYear(),
+                  taxpayerRole: returnRole,
+                  boxes: extractionPreview.boxes
+                }
+                const previewBoxFields = slipBoxEntriesForRow(previewRow, previewSchema)
+                const selectedDoc = documents.find((d) => d.id === extractionPreview.documentId)
+                return (
+                  <div className="border border-primary-dark/30 rounded-md p-3 bg-primary-dark/5 space-y-3">
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
+                      <div>
+                        <h3 className="text-sm font-semibold text-primary-dark">Extraction preview</h3>
+                        <p className="text-xs text-text-light mt-1">
+                          {selectedDoc?.file_name || 'Selected document'} · confidence {(extractionPreview.confidence * 100).toFixed(0)}%
+                          {extractionPreview.ocrMethod ? ` · ${extractionPreview.ocrMethod}` : ''}
+                        </p>
+                        {extractionPreview.ocrWarning && (
+                          <p className="text-xs text-amber-700 mt-1">{extractionPreview.ocrWarning}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={() => setExtractionPreview(null)}>
+                          Dismiss
+                        </button>
+                        <button type="button" className="btn btn--primary text-sm px-3 py-2" onClick={() => { void applyExtractionPreview() }}>
+                          Apply to slip rows
+                        </button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <label className="text-xs text-text-light">
+                        Detected slip type
+                        <select
+                          className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                          value={extractionPreview.slipType}
+                          onChange={(e) => setExtractionPreview((prev) => prev ? { ...prev, slipType: e.target.value } : prev)}
+                        >
+                          <option value="UNKNOWN">Unknown — select slip type</option>
+                          {slipSchemas.map((schema) => (
+                            <option key={schema.code} value={schema.code}>
+                              {schema.code} - {schema.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <p className="text-xs text-text-light self-end pb-2">
+                        Review box values below, then apply to add a slip row. Save income when finished.
+                      </p>
+                    </div>
+                    {previewBoxFields.length === 0 ? (
+                      <p className="text-xs text-amber-700">No box values were detected. Choose a slip type and enter values manually after applying, or dismiss and add a slip manually.</p>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                        {previewBoxFields.map((box) => (
+                          <label key={`preview-${box.code}`} className="text-xs text-text-light">
+                            Box {box.code} {box.label}
+                            <input
+                              type="number"
+                              className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                              value={Number(extractionPreview.boxes[box.code] || 0)}
+                              onChange={(e) => {
+                                const value = Number(e.target.value)
+                                setExtractionPreview((prev) => {
+                                  if (!prev) return prev
+                                  return {
+                                    ...prev,
+                                    boxes: { ...prev.boxes, [box.code]: Number.isFinite(value) ? value : 0 }
+                                  }
+                                })
+                              }}
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
               <div id="rb-income-slips" className="border border-border rounded-md p-3 bg-background/50 space-y-3">
                 <div>
                   <h3 className="text-sm font-semibold text-primary-dark">Manual CRA slip entry (box format)</h3>

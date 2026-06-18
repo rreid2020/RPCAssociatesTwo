@@ -113,6 +113,22 @@ export async function presignGet (key) {
   return getSignedUrl(s3.client, cmd, { expiresIn: TTL })
 }
 
+/** Download object bytes for server-side processing (OCR, parsing). */
+export async function getObjectBytes (key) {
+  const s3 = getS3()
+  if (!s3 || !key) return null
+  const response = await s3.client.send(new GetObjectCommand({ Bucket: s3.bucket, Key: key }))
+  const chunks = []
+  for await (const chunk of response.Body) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+  }
+  return {
+    bytes: Buffer.concat(chunks),
+    contentType: response.ContentType || 'application/octet-stream',
+    contentLength: Number(response.ContentLength || 0)
+  }
+}
+
 /** Best-effort delete; returns true if S3 is configured and delete was sent, false if storage unavailable. */
 export async function deleteObject (key) {
   const s3 = getS3()

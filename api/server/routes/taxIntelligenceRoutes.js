@@ -272,6 +272,7 @@ export function createTaxIntelligenceRouter (pool) {
     if (!session) return
     const documentId = parseUuid(req.body?.documentId)
     const taxReturnId = parseUuid(req.body?.taxReturnId)
+    const previewOnly = Boolean(req.body?.previewOnly)
     if (!documentId) return res.status(400).json({ error: 'documentId is required' })
     try {
       const ocr = await extractOcrTextFromDocument(pool, session.userId, documentId)
@@ -293,10 +294,12 @@ export function createTaxIntelligenceRouter (pool) {
         documentType: structured.slipType,
         taxpayerName: req.body?.taxpayerName,
         suggestedMatch: true,
-        suggestionStatus: structured.reviewRequired ? 'pending' : 'accepted',
+        suggestionStatus: previewOnly || structured.reviewRequired ? 'pending' : 'accepted',
         metadata: {
           extractionId: extraction?.id || null,
-          confidence: structured.confidence
+          confidence: structured.confidence,
+          previewOnly,
+          ocrMethod: ocr.ocrMethod || null
         }
       })
       const mappedEntries = await mapExtractedSlipToEntries(pool, structured.slipType, structured.extracted, {
@@ -305,16 +308,20 @@ export function createTaxIntelligenceRouter (pool) {
         slipType: structured.slipType,
         source: 'document_extraction'
       })
-      if (taxReturnId) {
+      if (taxReturnId && !previewOnly) {
         await upsertDocumentMappedEntries(pool, session.userId, taxReturnId, documentId, mappedEntries)
       }
       res.json({
         extraction,
+        previewOnly,
+        appliedToReturn: Boolean(taxReturnId && !previewOnly),
         reviewRequired: structured.reviewRequired,
         confidence: structured.confidence,
         slipType: structured.slipType,
         boxes: structured.boxes,
-        mappedEntries
+        mappedEntries,
+        ocrMethod: ocr.ocrMethod || null,
+        ocrWarning: ocr.ocrWarning || null
       })
     } catch (e) {
       console.error('POST /documents/extract', e)

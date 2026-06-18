@@ -964,7 +964,32 @@ const ReturnBuilder: FC = () => {
   }, [taxpayerProfile.maritalStatus, taxpayerProfile.spouseReturnMode])
 
   const addIncomeRow = (role: 'self' | 'spouse') => setIncomeRows((prev) => [...prev, { category: 'employment_income', description: '', amount: 0, taxpayerRole: role }])
-  const addSlipRow = (role: 'self' | 'spouse') => setManualSlipRows((prev) => [...prev, { ...createSlipRow(newSlipCode), taxpayerRole: role }])
+  const addSlipRow = () => setManualSlipRows((prev) => [...prev, { ...createSlipRow(newSlipCode), taxpayerRole: 'self' }])
+  const removeSlipRow = async (idx: number) => {
+    const row = manualSlipRows[idx]
+    if (!row) return
+    const label = slipSchemasByCode[row.slipCode.toUpperCase()]?.name || row.slipCode
+    if (!window.confirm(`Remove ${row.slipCode} — ${label}?`)) return
+    const previousSlips = manualSlipRows
+    const nextSlips = manualSlipRows.filter((_, i) => i !== idx)
+    setManualSlipRows(nextSlips)
+    const saved = await saveIncome({ slips: nextSlips })
+    if (!saved) setManualSlipRows(previousSlips)
+  }
+  const updateSlipRowCode = (idx: number, slipCode: string) => {
+    const schema = slipSchemasByCode[slipCode.toUpperCase()]
+    setManualSlipRows((prev) => {
+      const next = [...prev]
+      const row = next[idx]
+      if (!row) return prev
+      next[idx] = {
+        ...row,
+        slipCode,
+        boxes: { ...buildDefaultBoxes(schema), ...row.boxes }
+      }
+      return next
+    })
+  }
   const addCustomBoxToSlip = (idx: number) => {
     const nextCode = window.prompt('Enter CRA box code (for example 14 or 16A)')
     if (!nextCode?.trim()) return
@@ -1029,20 +1054,23 @@ const ReturnBuilder: FC = () => {
     return rows
   }, [data?.incomeEntries, slipSchemasByCode])
 
-  const saveIncome = async () => {
+  const saveIncome = async (overrides?: { slips?: SlipRow[] }): Promise<boolean> => {
     setSaving(true)
     try {
+      const slips = (overrides?.slips ?? manualSlipRows).map((row) => ({ ...row, taxpayerRole: 'self' as const }))
       await taxFetch(`/tax-returns/${id}/slips`, getToken, {
         method: 'POST',
         body: JSON.stringify({
           manualIncomeRows: incomeRows,
-          slips: manualSlipRows
+          slips
         })
       })
       await load()
       if (activeStep === 'Review') void loadRequiredForms()
+      return true
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not save income')
+      return false
     } finally {
       setSaving(false)
     }
@@ -1148,7 +1176,7 @@ const ReturnBuilder: FC = () => {
       slipCode,
       payerName: '',
       taxYear: data?.taxReturn?.tax_year || new Date().getFullYear(),
-      taxpayerRole: returnRole,
+      taxpayerRole: 'self',
       manualSlipId: `extract-${extractionPreview.extractionId || Date.now()}`,
       boxes: mergedBoxes
     }
@@ -2256,24 +2284,10 @@ const ReturnBuilder: FC = () => {
           {!loading && activeStep === 'Income' && (
             <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
               <h2 className="text-lg font-semibold text-primary-dark">Income</h2>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-text-light">Building return for:</span>
-                <button
-                  type="button"
-                  className={`px-2 py-1 text-xs rounded border ${returnRole === 'self' ? 'bg-primary-dark text-white border-primary-dark' : 'bg-white text-text border-border'}`}
-                  onClick={() => setReturnRole('self')}
-                >
-                  Taxpayer
-                </button>
-                <button
-                  type="button"
-                  className={`px-2 py-1 text-xs rounded border ${returnRole === 'spouse' ? 'bg-primary-dark text-white border-primary-dark' : 'bg-white text-text border-border'} ${!hasSpouseReturnMode ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  onClick={() => hasSpouseReturnMode && setReturnRole('spouse')}
-                  disabled={!hasSpouseReturnMode}
-                >
-                  Spouse
-                </button>
-              </div>
+              <p className="text-xs text-text-light">
+                Entering income for <span className="font-semibold text-text">{data?.taxReturn?.taxpayer_name || 'this workspace'}</span>.
+                Use household workspace tabs above to switch to another person&apos;s return.
+              </p>
               <div className="flex flex-col md:flex-row gap-2">
                 <select
                   className="border border-border rounded-md px-3 py-2 text-sm flex-1"
@@ -2293,7 +2307,7 @@ const ReturnBuilder: FC = () => {
                   slipCode: extractionPreview.slipType,
                   payerName: '',
                   taxYear: data?.taxReturn?.tax_year || new Date().getFullYear(),
-                  taxpayerRole: returnRole,
+                  taxpayerRole: 'self',
                   boxes: extractionPreview.boxes
                 }
                 const previewBoxFields = slipBoxEntriesForRow(previewRow, previewSchema)
@@ -2408,7 +2422,7 @@ const ReturnBuilder: FC = () => {
                       </optgroup>
                     )}
                   </select>
-                  <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={() => addSlipRow(returnRole)} disabled={loadingSlipSchemas || !newSlipCode}>
+                  <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={() => addSlipRow()} disabled={loadingSlipSchemas || !newSlipCode}>
                     Add slip
                   </button>
                 </div>
@@ -2419,13 +2433,12 @@ const ReturnBuilder: FC = () => {
                   <p className="text-xs text-amber-700">No slip schemas are available yet. Try refreshing the page.</p>
                 )}
                 {manualSlipRows.map((row, idx) => {
-                  if (row.taxpayerRole !== returnRole) return null
                   const def = slipSchemasByCode[row.slipCode.toUpperCase()]
                   if (!def) return null
                   const boxFields = slipBoxEntriesForRow(row, def)
                   return (
                   <div key={`slip-${row.manualSlipId || idx}`} className="border border-border rounded-md p-3 bg-white space-y-2">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       <input
                         className="border border-border rounded-md px-3 py-2 text-sm"
                         placeholder={def.payerLabel}
@@ -2447,18 +2460,30 @@ const ReturnBuilder: FC = () => {
                           setManualSlipRows(next)
                         }}
                       />
-                      <select
-                        className="border border-border rounded-md px-3 py-2 text-sm"
-                        value={row.taxpayerRole}
-                        onChange={(e) => {
-                          const next = [...manualSlipRows]
-                          next[idx].taxpayerRole = e.target.value === 'spouse' ? 'spouse' : 'self'
-                          setManualSlipRows(next)
-                        }}
+                    </div>
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                      <label className="text-xs text-text-light flex-1">
+                        Slip type
+                        <select
+                          className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                          value={row.slipCode}
+                          onChange={(e) => updateSlipRowCode(idx, e.target.value)}
+                        >
+                          {filteredSlipSchemas.map((schema) => (
+                            <option key={schema.code} value={schema.code}>
+                              {schema.code} - {schema.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <button
+                        type="button"
+                        className="btn btn--secondary text-sm px-3 py-2 md:self-end"
+                        onClick={() => { void removeSlipRow(idx) }}
+                        disabled={saving}
                       >
-                        <option value="self">Taxpayer</option>
-                        <option value="spouse">Spouse</option>
-                      </select>
+                        {saving ? 'Saving…' : 'Delete slip'}
+                      </button>
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs text-text-light font-medium">{def.code} - {def.name}</p>

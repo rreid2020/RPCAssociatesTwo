@@ -1,4 +1,4 @@
-import { FC, useEffect, useMemo, useRef, useState } from 'react'
+import { FC, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
@@ -606,8 +606,9 @@ const YesNoToggle: FC<{
   value: boolean | null
   onChange: (value: boolean | null) => void
   allowUnset?: boolean
-}> = ({ value, onChange, allowUnset = false }) => (
-  <div className="mt-1 inline-flex items-center gap-1 rounded-md border border-border bg-white p-1">
+  className?: string
+}> = ({ value, onChange, allowUnset = false, className = 'mt-1' }) => (
+  <div className={`inline-flex items-center gap-1 rounded-md border border-border bg-white p-1 ${className}`}>
     <button
       type="button"
       className={`px-2 py-1 text-xs rounded ${value === true ? 'bg-primary-dark text-white' : 'text-text'}`}
@@ -631,6 +632,16 @@ const YesNoToggle: FC<{
         Unset
       </button>
     )}
+  </div>
+)
+
+const CraQuestionRow: FC<{
+  label: string
+  children: ReactNode
+}> = ({ label, children }) => (
+  <div className="flex items-center justify-between gap-6 py-3 border-b border-border/70 last:border-b-0">
+    <span className="text-sm text-text flex-1 min-w-0">{label}</span>
+    <div className="shrink-0">{children}</div>
   </div>
 )
 
@@ -2101,103 +2112,101 @@ const ReturnBuilder: FC = () => {
             <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
               <h2 className="text-lg font-semibold text-primary-dark">CRA questions</h2>
               <p className="text-sm text-text-light">T1 page 2 questions and elections.</p>
-              <div id="rb-elections" className="space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <label className="text-xs text-text-light">
-                    Are you filing a CRA income tax return for the first time?
+              <div id="rb-elections" className="divide-y divide-border/70 rounded-md border border-border">
+                <CraQuestionRow label="Are you filing a CRA income tax return for the first time?">
+                  <YesNoToggle
+                    className=""
+                    value={taxpayerProfile.firstTimeFiler === '' ? null : taxpayerProfile.firstTimeFiler === 'yes'}
+                    allowUnset
+                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, firstTimeFiler: value == null ? '' : (value ? 'yes' : 'no') }))}
+                  />
+                </CraQuestionRow>
+                <CraQuestionRow label="Did you sell a principal residence in the tax year?">
+                  <YesNoToggle
+                    className=""
+                    value={taxpayerProfile.soldPrincipalResidence === '' ? null : taxpayerProfile.soldPrincipalResidence === 'yes'}
+                    allowUnset
+                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, soldPrincipalResidence: value == null ? '' : (value ? 'yes' : 'no') }))}
+                  />
+                </CraQuestionRow>
+                <CraQuestionRow label="Are you (or eligible household member) exempt from tax under a treaty because of foreign service/diplomatic status?">
+                  <YesNoToggle
+                    className=""
+                    value={taxpayerProfile.treatyExemptForeignService === '' ? null : taxpayerProfile.treatyExemptForeignService === 'yes'}
+                    allowUnset
+                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, treatyExemptForeignService: value == null ? '' : (value ? 'yes' : 'no') }))}
+                  />
+                </CraQuestionRow>
+                <CraQuestionRow label="Elections Canada - Are you a Canadian citizen?">
+                  <YesNoToggle
+                    className=""
+                    value={taxpayerProfile.electionsCanadianCitizen === '' ? null : taxpayerProfile.electionsCanadianCitizen === 'yes'}
+                    allowUnset
+                    onChange={(value) => setTaxpayerProfile((prev) => ({
+                      ...prev,
+                      electionsCanadianCitizen: value == null ? '' : (value ? 'yes' : 'no'),
+                      electionsAuthorize: value === true ? prev.electionsAuthorize : ''
+                    }))}
+                  />
+                </CraQuestionRow>
+                {taxpayerProfile.electionsCanadianCitizen === 'yes' && (
+                  <CraQuestionRow label="Elections Canada authorization to share information with Elections Canada">
                     <YesNoToggle
-                      value={taxpayerProfile.firstTimeFiler === '' ? null : taxpayerProfile.firstTimeFiler === 'yes'}
+                      className=""
+                      value={taxpayerProfile.electionsAuthorize === '' ? null : taxpayerProfile.electionsAuthorize === 'yes'}
                       allowUnset
-                      onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, firstTimeFiler: value == null ? '' : (value ? 'yes' : 'no') }))}
+                      onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, electionsAuthorize: value == null ? '' : (value ? 'yes' : 'no') }))}
                     />
-                  </label>
-                  <label className="text-xs text-text-light">
-                    Did you sell a principal residence in the tax year?
-                    <YesNoToggle
-                      value={taxpayerProfile.soldPrincipalResidence === '' ? null : taxpayerProfile.soldPrincipalResidence === 'yes'}
-                      allowUnset
-                      onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, soldPrincipalResidence: value == null ? '' : (value ? 'yes' : 'no') }))}
-                    />
-                  </label>
-                  <label className="text-xs text-text-light md:col-span-2">
-                    Are you (or eligible household member) exempt from tax under a treaty because of foreign service/diplomatic status?
-                    <YesNoToggle
-                      value={taxpayerProfile.treatyExemptForeignService === '' ? null : taxpayerProfile.treatyExemptForeignService === 'yes'}
-                      allowUnset
-                      onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, treatyExemptForeignService: value == null ? '' : (value ? 'yes' : 'no') }))}
-                    />
-                  </label>
-                  <label className="text-xs text-text-light">
-                    Elections Canada - Are you a Canadian citizen?
-                    <YesNoToggle
-                      value={taxpayerProfile.electionsCanadianCitizen === '' ? null : taxpayerProfile.electionsCanadianCitizen === 'yes'}
-                      allowUnset
-                      onChange={(value) => setTaxpayerProfile((prev) => ({
-                        ...prev,
-                        electionsCanadianCitizen: value == null ? '' : (value ? 'yes' : 'no'),
-                        electionsAuthorize: value === true ? prev.electionsAuthorize : ''
-                      }))}
-                    />
-                  </label>
-                  {taxpayerProfile.electionsCanadianCitizen === 'yes' && (
-                    <label className="text-xs text-text-light">
-                    Elections Canada authorization to share information with Elections Canada
-                      <YesNoToggle
-                        value={taxpayerProfile.electionsAuthorize === '' ? null : taxpayerProfile.electionsAuthorize === 'yes'}
-                        allowUnset
-                        onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, electionsAuthorize: value == null ? '' : (value ? 'yes' : 'no') }))}
-                      />
-                    </label>
-                  )}
-                  <label className="text-xs text-text-light inline-flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={taxpayerProfile.indianActExemptIncome}
-                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, indianActExemptIncome: e.target.checked }))}
-                    />
-                    Tick if you had income exempt under the Indian Act
-                  </label>
-                  <label className="text-xs text-text-light">
-                    Did you own/hold specified foreign property above CAD 100,000 at any point in the year?
-                    <YesNoToggle
-                      value={taxpayerProfile.foreignPropertyOver100k === '' ? null : taxpayerProfile.foreignPropertyOver100k === 'yes'}
-                      allowUnset
-                      onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, foreignPropertyOver100k: value == null ? '' : (value ? 'yes' : 'no') }))}
-                    />
-                  </label>
-                  <label className="text-xs text-text-light md:col-span-2">
-                    Ontario organ/tissue donor contact sharing consent
-                    <YesNoToggle
-                      value={taxpayerProfile.organDonorConsent === '' ? null : taxpayerProfile.organDonorConsent === 'yes'}
-                      allowUnset
-                      onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, organDonorConsent: value == null ? '' : (value ? 'yes' : 'no') }))}
-                    />
-                  </label>
-                  <label className="text-xs text-text-light">
-                    I accept CRA terms and choose to receive email notifications.
-                    <YesNoToggle
-                      value={taxpayerProfile.craEmailNotificationsConsent === '' ? null : taxpayerProfile.craEmailNotificationsConsent === 'yes'}
-                      allowUnset
-                      onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, craEmailNotificationsConsent: value == null ? '' : (value ? 'yes' : 'no') }))}
-                    />
-                  </label>
-                  <label className="text-xs text-text-light">
-                    I confirm the CRA email address is correct.
-                    <YesNoToggle
-                      value={taxpayerProfile.craEmailConfirmed === '' ? null : taxpayerProfile.craEmailConfirmed === 'yes'}
-                      allowUnset
-                      onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, craEmailConfirmed: value == null ? '' : (value ? 'yes' : 'no') }))}
-                    />
-                  </label>
-                  <label className="text-xs text-text-light md:col-span-2">
-                    Do you have a foreign mailing address on file with CRA?
-                    <YesNoToggle
-                      value={taxpayerProfile.craHasForeignMailingAddress === '' ? null : taxpayerProfile.craHasForeignMailingAddress === 'yes'}
-                      allowUnset
-                      onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, craHasForeignMailingAddress: value == null ? '' : (value ? 'yes' : 'no') }))}
-                    />
-                  </label>
-                </div>
+                  </CraQuestionRow>
+                )}
+                <CraQuestionRow label="Tick if you had income exempt under the Indian Act">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={taxpayerProfile.indianActExemptIncome}
+                    onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, indianActExemptIncome: e.target.checked }))}
+                  />
+                </CraQuestionRow>
+                <CraQuestionRow label="Did you own/hold specified foreign property above CAD 100,000 at any point in the year?">
+                  <YesNoToggle
+                    className=""
+                    value={taxpayerProfile.foreignPropertyOver100k === '' ? null : taxpayerProfile.foreignPropertyOver100k === 'yes'}
+                    allowUnset
+                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, foreignPropertyOver100k: value == null ? '' : (value ? 'yes' : 'no') }))}
+                  />
+                </CraQuestionRow>
+                <CraQuestionRow label="Ontario organ/tissue donor contact sharing consent">
+                  <YesNoToggle
+                    className=""
+                    value={taxpayerProfile.organDonorConsent === '' ? null : taxpayerProfile.organDonorConsent === 'yes'}
+                    allowUnset
+                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, organDonorConsent: value == null ? '' : (value ? 'yes' : 'no') }))}
+                  />
+                </CraQuestionRow>
+                <CraQuestionRow label="I accept CRA terms and choose to receive email notifications.">
+                  <YesNoToggle
+                    className=""
+                    value={taxpayerProfile.craEmailNotificationsConsent === '' ? null : taxpayerProfile.craEmailNotificationsConsent === 'yes'}
+                    allowUnset
+                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, craEmailNotificationsConsent: value == null ? '' : (value ? 'yes' : 'no') }))}
+                  />
+                </CraQuestionRow>
+                <CraQuestionRow label="I confirm the CRA email address is correct.">
+                  <YesNoToggle
+                    className=""
+                    value={taxpayerProfile.craEmailConfirmed === '' ? null : taxpayerProfile.craEmailConfirmed === 'yes'}
+                    allowUnset
+                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, craEmailConfirmed: value == null ? '' : (value ? 'yes' : 'no') }))}
+                  />
+                </CraQuestionRow>
+                <CraQuestionRow label="Do you have a foreign mailing address on file with CRA?">
+                  <YesNoToggle
+                    className=""
+                    value={taxpayerProfile.craHasForeignMailingAddress === '' ? null : taxpayerProfile.craHasForeignMailingAddress === 'yes'}
+                    allowUnset
+                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, craHasForeignMailingAddress: value == null ? '' : (value ? 'yes' : 'no') }))}
+                  />
+                </CraQuestionRow>
               </div>
               <WorkflowPageNav
                 activeStep={activeStep}

@@ -1,6 +1,13 @@
 import { getTaxReturnById } from './taxReturn.service.js'
 import { listDeductions, listIncomeEntries } from './income.service.js'
 import { INTERVIEW_TOPIC_CATEGORIES, normalizeInterviewTopicIds } from '../../lib/taxSlips/interviewTopics.registry.js'
+import {
+  getProvincialPackage,
+  getT1PackageCatalog,
+  resolveFormsForLineRefs,
+  collectTriggeredLineRefs
+} from '../../lib/taxSlips/t1Package.registry.js'
+import { classifyReturnBuilderArtifact, isOutOfScopeForm } from '../../lib/taxSlips/formScope.js'
 
 function normalizeFormCode (value) {
   return String(value || '').trim().toUpperCase().replace(/\s+/g, '')
@@ -32,7 +39,14 @@ const CATEGORY_FORM_RULES = {
   contract_payments: { formCode: 'T2125', reason: 'Contractor/subcontractor payments reported' },
   rental_income: { formCode: 'T776', reason: 'Rental income reported on the return' },
   retroactive_lump_sum: { formCode: 'T1198', reason: 'Retroactive lump-sum payment reported on slip' },
-  security_option_benefits: { formCode: 'T1212', reason: 'Deferred security option benefits reported' }
+  security_option_benefits: { formCode: 'T1212', reason: 'Deferred security option benefits reported' },
+  child_care_expenses: { formCode: 'T778', reason: 'Child care expenses reported' },
+  moving_expenses: { formCode: 'T1-M', reason: 'Moving expenses reported' },
+  donations: { formCode: 'Schedule 9', reason: 'Donations and gifts reported' },
+  medical_expenses: { formCode: 'Schedule 9', reason: 'Medical expenses may affect donation limit calculations' },
+  fhsa_deduction: { formCode: 'Schedule 15', reason: 'FHSA deduction reported' },
+  employment_expenses: { formCode: 'T777', reason: 'Employment expenses reported' },
+  student_loan_interest: { formCode: 'Schedule 9', reason: 'Student loan interest reported' }
 }
 
 const SETUP_FLAG_RULES = [
@@ -199,26 +213,65 @@ export async function inferRequiredFormsForReturn (pool, clerkUserId, taxReturnI
     }
   }
 
+  const provinceCode = String(taxReturn.province_code || profile.residenceProvinceDec31 || 'ON').toUpperCase()
+  const triggeredLineRefs = collectTriggeredLineRefs(incomeEntries, deductions)
+  const crosswalk = resolveFormsForLineRefs(triggeredLineRefs, { provinceCode })
+
+  for (const artifact of [...crosswalk.forms, ...crosswalk.schedules, ...crosswalk.worksheets]) {
+    pushSignal(signals, {
+      formCode: artifact.formCode,
+      sources: ['t1_line_crosswalk'],
+      reasons: [`CRA T1 package crosswalk for line(s) ${artifact.lineRefs.join(', ')}`]
+    })
+  }
+
   const forms = []
   for (const signal of signals.values()) {
+    if (isOutOfScopeForm(signal.formCode)) continue
     const registry = await lookupFormInRegistry(pool, signal.formCode)
+    if (isOutOfScopeForm(registry.formNumber || signal.formCode, registry.title || '')) continue
+    const classification = classifyReturnBuilderArtifact(
+      registry.formNumber || signal.formCode,
+      registry.title || '',
+      registry.landingUrl || ''
+    )
+    if (!classification.returnBuilderEligible && classification.artifactKind !== 't1_guide') continue
     forms.push({
       formCode: signal.formCode,
       normalizedFormCode: normalizeFormCode(signal.formCode),
       sources: signal.sources || [],
       reasons: signal.reasons || [],
       requirementStatus: 'required',
+      artifactKind: classification.artifactKind,
       registry
     })
   }
 
   forms.sort((a, b) => a.normalizedFormCode.localeCompare(b.normalizedFormCode))
 
+  const grouped = {
+    schedules: forms.filter((f) => f.artifactKind === 't1_schedule'),
+    forms: forms.filter((f) => f.artifactKind === 't1_form'),
+    worksheets: forms.filter((f) => f.artifactKind === 't1_worksheet'),
+    other: forms.filter((f) => !['t1_schedule', 't1_form', 't1_worksheet'].includes(f.artifactKind))
+  }
+
+  const provincialPackage = getProvincialPackage(provinceCode)
+  const catalog = getT1PackageCatalog()
+
   return {
+    domain: 't1_personal',
     taxReturnId,
     taxYear: taxReturn.tax_year,
     taxpayerName: taxReturn.taxpayer_name,
+    provinceCode,
+    provincialPackage,
+    packageIndexUrl: catalog.indexUrl,
+    crosswalkUrl: catalog.crosswalkUrl,
+    triggeredLineRefs,
+    referenceGuides: crosswalk.guides,
     generatedAt: new Date().toISOString(),
-    forms
+    forms,
+    grouped
   }
 }

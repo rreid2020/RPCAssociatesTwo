@@ -1,4 +1,4 @@
-export const INTERVIEW_TOPICS_VERSION = 1
+export const INTERVIEW_TOPICS_VERSION = 2
 
 /**
  * Tax situation interview topics — drives per-taxpayer workspace setup.
@@ -12,6 +12,14 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
     icon: 'SS',
     topics: [
       {
+        id: 'no_changes_prior_year',
+        label: 'No changes to report since prior year',
+        description: 'Situation is unchanged from the previous tax return.',
+        slipCodes: [],
+        formCodes: [],
+        linkedStep: 'Setup'
+      },
+      {
         id: 'cra_autofill',
         label: 'CRA Auto-fill my return',
         description: 'Import slips and amounts from CRA My Account (when connected).',
@@ -21,11 +29,27 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
       },
       {
         id: 'immigrant_emigrant',
-        label: 'Immigrant or emigrant in the tax year',
+        label: 'Immigrant, emigrant, or non-resident taxpayer',
         description: 'Part-year residency, entry or departure dates, and world income.',
         slipCodes: [],
-        formCodes: ['T2209'],
+        formCodes: ['T2209', 'T1248'],
         linkedStep: 'Setup'
+      },
+      {
+        id: 'bankrupt_taxpayer',
+        label: 'Tax return for a bankrupt person',
+        description: 'Bankruptcy date and pre- or post-bankruptcy income reporting.',
+        slipCodes: [],
+        formCodes: [],
+        linkedStep: 'Setup'
+      },
+      {
+        id: 'climate_action_incentive',
+        label: 'Climate action incentive payment',
+        description: 'CAIP eligibility and household fuel charge rebate.',
+        slipCodes: [],
+        formCodes: ['Schedule 14'],
+        linkedStep: 'Review'
       },
       {
         id: 'deceased_taxpayer',
@@ -52,6 +76,14 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
     icon: 'EB',
     topics: [
       {
+        id: 'employment_income_bundle',
+        label: 'Employment income and related benefits (T4, T4A, T4E, etc.)',
+        description: 'Salary, wages, taxable benefits, EI, and related employment slips.',
+        slipCodes: ['T4', 'T4A', 'T4E', 'T4EQ'],
+        formCodes: [],
+        linkedStep: 'Income'
+      },
+      {
         id: 'employment_t4',
         label: 'T4 — employment income',
         description: 'Salary, wages, CPP/EI, tax withheld, and taxable benefits.',
@@ -71,7 +103,7 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
         id: 'employment_rl1',
         label: 'RL-1 — Quebec employment income',
         description: 'Quebec Revenu Québec employment slip (federal linkage via T4 where applicable).',
-        slipCodes: [],
+        slipCodes: ['RL1'],
         formCodes: [],
         linkedStep: 'Income'
       },
@@ -79,7 +111,15 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
         id: 'employment_rl6',
         label: 'RL-6 — Quebec self-employment and other income',
         description: 'Quebec RL-6 slip for certain employment-related amounts.',
-        slipCodes: [],
+        slipCodes: ['RL6'],
+        formCodes: [],
+        linkedStep: 'Income'
+      },
+      {
+        id: 'retiring_allowance',
+        label: 'Retiring allowance and death benefits (T4A, RL-2)',
+        description: 'Retiring allowances, death benefits, and related pension slip boxes.',
+        slipCodes: ['T4A', 'RL2'],
         formCodes: [],
         linkedStep: 'Income'
       },
@@ -87,17 +127,25 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
         id: 'social_assistance_t5007',
         label: 'T5007 / RL-5 — social assistance or workers compensation',
         description: 'Social assistance, workers compensation, and related benefits.',
-        slipCodes: ['T5007'],
+        slipCodes: ['T5007', 'RL5'],
         formCodes: [],
         linkedStep: 'Income'
       },
       {
         id: 'employment_expenses',
-        label: 'Employment expenses (T777)',
+        label: 'Employment expenses (T777, T2200, TL2)',
         description: 'Motor vehicle, supplies, and other deductible employment expenses.',
         slipCodes: [],
-        formCodes: ['T777'],
+        formCodes: ['T777', 'T2200', 'TL2'],
         linkedStep: 'Deductions'
+      },
+      {
+        id: 'gst_hst_rebate_employment',
+        label: 'GST/HST rebate for employment or partnership expenses',
+        description: 'Rebate of GST/HST paid on employment or partnership expenses.',
+        slipCodes: [],
+        formCodes: ['GST370'],
+        linkedStep: 'Review'
       }
     ]
   },
@@ -107,6 +155,14 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
     summary: 'Retirement, annuity, CPP, OAS, RRSP, and RRIF income.',
     icon: 'PI',
     topics: [
+      {
+        id: 'pension_income_bundle',
+        label: 'Pension income, other income and split income (CPP, OAS, T4A, T4A(P), T4A(RCA), T4RIF, T4RSP, etc.)',
+        description: 'Retirement, annuity, CPP, OAS, RRSP, and RRIF income slips.',
+        slipCodes: ['T4A', 'T4AP', 'T4A(P)', 'T4AOAS', 'T4A(OAS)', 'T4RIF', 'T4RSP', 'T4A-RCA', 'T737-RCA', 'RL2'],
+        formCodes: ['T1032'],
+        linkedStep: 'Income'
+      },
       {
         id: 'pension_t4a',
         label: 'T4A — pension, retirement, annuity, and other income',
@@ -151,7 +207,7 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
         id: 'pension_rl2',
         label: 'RL-2 — Quebec retirement and annuity income',
         description: 'Quebec RL-2 retirement income slip.',
-        slipCodes: [],
+        slipCodes: ['RL2'],
         formCodes: [],
         linkedStep: 'Income'
       },
@@ -188,6 +244,14 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
     icon: 'IN',
     topics: [
       {
+        id: 'investment_income_bundle',
+        label: 'Interest, investment income and carrying charges (T3, T5, T4PS, T5008, T5013, etc.)',
+        description: 'Interest, dividends, trust allocations, and securities transactions.',
+        slipCodes: ['T3', 'T5', 'T4PS', 'T5008', 'T5013', 'RL3'],
+        formCodes: ['5000-D1'],
+        linkedStep: 'Income'
+      },
+      {
         id: 'investment_t3',
         label: 'T3 — trust income',
         description: 'Trust allocations of income, dividends, and capital gains.',
@@ -204,11 +268,11 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
         linkedStep: 'Income'
       },
       {
-        id: 'investment_t5013',
-        label: 'T5013 — partnership income',
-        description: 'Partnership income allocations and capital gains.',
-        slipCodes: ['T5013'],
-        formCodes: [],
+        id: 'investment_partnership_shelters',
+        label: 'Partnership income, tax shelters, and other investment income',
+        description: 'Partnership allocations, tax shelter reporting, and related investment income.',
+        slipCodes: ['T5013', 'T5003'],
+        formCodes: ['T5003'],
         linkedStep: 'Income'
       },
       {
@@ -236,10 +300,18 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
         linkedStep: 'Review'
       },
       {
+        id: 'investment_renewable_energy',
+        label: 'Tax credit for renewable energy and conservation expenses',
+        description: 'Eligible renewable energy and conservation property expenses.',
+        slipCodes: [],
+        formCodes: ['T2038(IND)'],
+        linkedStep: 'Review'
+      },
+      {
         id: 'investment_rl3',
         label: 'RL-3 — Quebec investment income',
         description: 'Quebec investment income slip.',
-        slipCodes: [],
+        slipCodes: ['RL3'],
         formCodes: [],
         linkedStep: 'Income'
       }
@@ -251,6 +323,30 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
     summary: 'Business, professional, farming, fishing, and commission income.',
     icon: 'SE',
     topics: [
+      {
+        id: 'self_employment_bundle',
+        label: 'Self-employment and business income',
+        description: 'Business, professional, commission, farming, and fishing income.',
+        slipCodes: ['T4A', 'T5018', 'AGR-1', 'RL6'],
+        formCodes: ['T2125', 'T2042', 'T2121'],
+        linkedStep: 'Income'
+      },
+      {
+        id: 'digital_news_subscription',
+        label: 'Tax credit for qualifying digital news subscription',
+        description: 'Digital news subscription expenses for the digital news tax credit.',
+        slipCodes: [],
+        formCodes: [],
+        linkedStep: 'Deductions'
+      },
+      {
+        id: 'tax_shelter_credits',
+        label: 'Tax shelter and tax credits',
+        description: 'Tax shelter investments and related credit claims.',
+        slipCodes: ['T5003'],
+        formCodes: ['T5003'],
+        linkedStep: 'Review'
+      },
       {
         id: 'self_employment_business',
         label: 'Business or professional income (T2125)',
@@ -324,11 +420,11 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
     icon: 'CD',
     topics: [
       {
-        id: 'deduction_medical',
-        label: 'Medical expenses',
+        id: 'deduction_medical_bundle',
+        label: 'Medical expenses, disability, caregiver',
         description: 'Medical and disability-related expenses for you and dependants.',
         slipCodes: [],
-        formCodes: [],
+        formCodes: ['T2201'],
         linkedStep: 'Deductions'
       },
       {
@@ -341,18 +437,18 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
       },
       {
         id: 'deduction_donations',
-        label: 'Charitable donations',
-        description: 'Donations and gifts to registered charities.',
+        label: 'Donations and political contributions',
+        description: 'Donations and gifts to registered charities and political contributions.',
         slipCodes: [],
-        formCodes: [],
+        formCodes: ['Schedule 9'],
         linkedStep: 'Deductions'
       },
       {
-        id: 'deduction_rrsp',
-        label: 'RRSP, PRPP, LLP, or HBP',
-        description: 'RRSP contributions, home buyers plan, and lifelong learning plan.',
-        slipCodes: ['T4RSP'],
-        formCodes: [],
+        id: 'deduction_rrsp_bundle',
+        label: 'RRSP, PRPP, SPP, FHSA, other plans and loans (HBP, LLP)',
+        description: 'RRSP contributions, FHSA, home buyers plan, and lifelong learning plan.',
+        slipCodes: ['T4RSP', 'T4FHSA'],
+        formCodes: ['Schedule 7', 'Schedule 15'],
         linkedStep: 'Deductions'
       },
       {
@@ -392,7 +488,7 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
         label: 'Child care expenses',
         description: 'Child care costs for eligible dependants.',
         slipCodes: [],
-        formCodes: [],
+        formCodes: ['T778'],
         linkedStep: 'Deductions'
       },
       {
@@ -440,8 +536,24 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
         label: 'Moving expenses',
         description: 'Eligible moving expenses for work or study relocation.',
         slipCodes: [],
-        formCodes: [],
+        formCodes: ['T1-M'],
         linkedStep: 'Deductions'
+      },
+      {
+        id: 'other_deductions_credits',
+        label: 'Other deductions and credits (northern residents, home buyers amount, etc.)',
+        description: 'Northern residents deduction, home buyers amount, and other miscellaneous claims.',
+        slipCodes: [],
+        formCodes: ['T2222'],
+        linkedStep: 'Deductions'
+      },
+      {
+        id: 'adjustment_request',
+        label: 'Adjustment request for a filed tax return',
+        description: 'Request to change a return that has already been filed.',
+        slipCodes: [],
+        formCodes: ['T1-ADJ'],
+        linkedStep: 'Review'
       },
       {
         id: 'other_repayment',
@@ -488,7 +600,15 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
         label: 'Non-capital or net capital losses from prior years',
         description: 'Loss carryforwards applied on the current return.',
         slipCodes: [],
-        formCodes: [],
+        formCodes: ['Schedule 3'],
+        linkedStep: 'Review'
+      },
+      {
+        id: 'carryforward_amt',
+        label: 'Alternative minimum tax carryforwards',
+        description: 'AMT credit and carryforward amounts from prior years.',
+        slipCodes: [],
+        formCodes: ['T691'],
         linkedStep: 'Review'
       },
       {

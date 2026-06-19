@@ -46,7 +46,7 @@ export async function seedCompleteSlipSchemas (pool) {
       slipKind: 'information_slip',
       schemaStatus: 'complete',
       catalogTitle: definition.name,
-      metadata: { seededFrom: 'complete_definitions_v5' }
+      metadata: { seededFrom: 'complete_definitions_v6' }
     })
     await replaceSlipBoxSchemas(pool, schema.id, definition.boxes)
   }

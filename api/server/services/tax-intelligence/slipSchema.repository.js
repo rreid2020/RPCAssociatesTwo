@@ -1,4 +1,5 @@
 import { EXCLUDED_SLIP_FORM_NUMBERS } from '../../lib/taxSlips/slipDefinitions.seed.js'
+import { isOutOfScopeForm, isPersonalInformationSlip } from '../../lib/taxSlips/formScope.js'
 
 const SCHEDULE_FORM_NUMBERS = new Set([
   'T2125', 'T776', 'T777', 'T2042', 'T2121', 'T1163', 'T1164', 'T1273', 'T1274',
@@ -57,15 +58,10 @@ export function isInformationSlipCandidate (formNumber, title) {
   const normalizedTitle = String(title || '').trim()
   if (!code || !normalizedTitle) return false
   if (isExcludedSlipForm(code, normalizedTitle)) return false
+  if (isOutOfScopeForm(code, normalizedTitle)) return false
   if (SCHEDULE_FORM_NUMBERS.has(code)) return false
   if (SCHEDULE_TITLE_PATTERNS.some((pattern) => pattern.test(normalizedTitle))) return false
-  if (/\(slip\)/i.test(normalizedTitle)) return true
-  if (/^T4/.test(code) && !/-SUM$/.test(code) && !/SUM$/.test(code)) return true
-  if (/^T5/.test(code)) return true
-  if (code === 'T3') return true
-  if (['T2202', 'T5007', 'T5008', 'T5013', 'T5018', 'T4FHSA', 'NR4', 'NR4OAS', 'T4AOAS', 'T4A(OAS)', 'T4AP', 'T4A(P)', 'RC62', 'AGR-1', 'T1198', 'T1212', 'T737-RCA', 'T4A-RCA', 'T4A-NR', 'T4EQ', 'T5003'].includes(code)) return true
-  if (/^statement of /i.test(normalizedTitle) && !/summary/i.test(normalizedTitle)) return true
-  return false
+  return isPersonalInformationSlip(code, normalizedTitle)
 }
 
 export async function upsertSlipSchema (pool, row) {

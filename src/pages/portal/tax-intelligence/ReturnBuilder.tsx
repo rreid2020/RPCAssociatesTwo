@@ -4,6 +4,7 @@ import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
 import { taxFetch, type DocumentExtractResponse, type RequiredFormsResponse, type ReturnInterviewTopicsResponse, type SlipSchema, type SlipSchemasResponse, type TaxReturnSummary } from '../../../lib/taxIntelligenceApi'
+import RequiredFormsPanel from './RequiredFormsPanel'
 import InterviewTopicsSetup from './InterviewTopicsSetup'
 import { getTaxBasePath } from './path'
 
@@ -178,7 +179,7 @@ type TaxpayerProfileState = {
   dependents: DependentProfile[]
 }
 
-type Step = 'Setup' | 'Income' | 'Deductions' | 'Review' | 'Optimization' | 'Risk'
+type Step = 'Setup' | 'Interview' | 'Income' | 'Deductions' | 'Review' | 'Optimization' | 'Risk'
 type CompletenessSeverity = 'required' | 'recommended'
 type CompletenessIssue = { field: string; message: string; severity: CompletenessSeverity }
 type SetupSectionKey = 'taxSituation' | 'identity' | 'mailing' | 'spouse' | 'elections' | 'dependents'
@@ -304,20 +305,6 @@ function slipBoxEntriesForRow (row: SlipRow, schema?: SlipSchema): Array<{ code:
   ]
 }
 
-function requiredFormStatusLabel (status: string): string {
-  if (status === 'active') return 'Active'
-  if (status === 'archived') return 'Archived'
-  if (status === 'not_indexed') return 'Not in catalog'
-  if (status === 'registry_unavailable') return 'Registry unavailable'
-  return status
-}
-
-function requiredFormStatusClass (status: string): string {
-  if (status === 'active') return 'bg-green-50 text-green-800 border-green-200'
-  if (status === 'archived') return 'bg-amber-50 text-amber-800 border-amber-200'
-  return 'bg-gray-50 text-gray-700 border-border'
-}
-
 type LineMappingRow = {
   source: string
   mappedTo: string
@@ -368,7 +355,7 @@ type WorkflowStageId = typeof INTERVIEW_FLOW[number]['id']
 
 const WORKFLOW_STAGE_TO_STEP: Record<WorkflowStageId, Step> = {
   start: 'Setup',
-  interview: 'Income',
+  interview: 'Interview',
   review: 'Review',
   return: 'Optimization',
   netfile: 'Risk'
@@ -376,10 +363,11 @@ const WORKFLOW_STAGE_TO_STEP: Record<WorkflowStageId, Step> = {
 
 function stepToWorkflowStage (step: Step): WorkflowStageId {
   if (step === 'Setup') return 'start'
-  if (step === 'Income' || step === 'Deductions') return 'interview'
+  if (step === 'Interview' || step === 'Income' || step === 'Deductions') return 'interview'
   if (step === 'Review') return 'review'
   if (step === 'Optimization') return 'return'
   return 'netfile'
+}
 }
 
 const DEFAULT_TAXPAYER_PROFILE: TaxpayerProfileState = {
@@ -474,7 +462,7 @@ const ReturnBuilder: FC = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const basePath = useMemo(() => getTaxBasePath(), [])
-  const [activeStep, setActiveStep] = useState<Step>('Setup')
+  const [activeStep, setActiveStep] = useState<Step>('Interview')
   const [data, setData] = useState<TaxReturnPayload | null>(null)
   const [allReturns, setAllReturns] = useState<TaxReturnSummary[]>([])
   const [loading, setLoading] = useState(true)
@@ -514,6 +502,7 @@ const ReturnBuilder: FC = () => {
     if (!value) return null
     const normalized = value.toLowerCase().trim()
     if (normalized === 'setup') return 'Setup'
+    if (normalized === 'interview') return 'Interview'
     if (normalized === 'income') return 'Income'
     if (normalized === 'deductions') return 'Deductions'
     if (normalized === 'review') return 'Review'
@@ -589,7 +578,7 @@ const ReturnBuilder: FC = () => {
     })
   }, [allReturns, householdRootId])
   const interviewMenuItems = useMemo<InterviewMenuItem[]>(() => ([
-    { id: 'setup-tax-situation', label: 'Tax situation setup', step: 'Setup', setupSection: 'taxSituation' },
+    { id: 'setup-tax-situation', label: 'Interview setup', step: 'Interview' },
     { id: 'setup-identity', label: 'Identification', step: 'Setup', setupSection: 'identity' },
     { id: 'setup-cra', label: 'CRA questions', step: 'Setup', setupSection: 'elections' },
     { id: 'setup-spouse', label: 'Spouse setup', step: 'Setup', setupSection: 'spouse' },
@@ -1333,6 +1322,13 @@ const ReturnBuilder: FC = () => {
   }
 
   const openSetupIssueField = (field: string) => {
+    if (field === 'taxSituation') {
+      setActiveStep('Interview')
+      window.setTimeout(() => {
+        document.getElementById('rb-tax-situation')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 40)
+      return
+    }
     const section = sectionForIssueField(field)
     setActiveStep('Setup')
     setSetupSectionOpen((prev) => ({ ...prev, [section]: true }))
@@ -1343,6 +1339,12 @@ const ReturnBuilder: FC = () => {
 
   const jumpToMenuItem = (item: InterviewMenuItem) => {
     setActiveStep(item.step)
+    if (item.id === 'setup-tax-situation') {
+      window.setTimeout(() => {
+        document.getElementById('rb-tax-situation')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 40)
+      return
+    }
     if (item.setupSection) {
       setSetupSectionOpen((prev) => ({ ...prev, [item.setupSection as SetupSectionKey]: true }))
       window.setTimeout(() => {
@@ -1609,6 +1611,21 @@ const ReturnBuilder: FC = () => {
               {err && <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md p-3">{err}</p>}
               {loading && <p className="text-sm text-text-light">Loading return data…</p>}
 
+          {!loading && activeStep === 'Interview' && (
+            <section className="bg-white p-4 rounded-lg border border-border shadow-sm">
+              {id ? (
+                <InterviewTopicsSetup
+                  taxReturnId={id}
+                  taxpayerName={data?.taxReturn?.taxpayer_name || 'this taxpayer'}
+                  getToken={getToken}
+                  onSaved={(response) => setInterviewSetup(response)}
+                />
+              ) : (
+                <p className="text-sm text-text-light">Select a household workspace tab to begin interview setup.</p>
+              )}
+            </section>
+          )}
+
           {!loading && activeStep === 'Setup' && (
             <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
               <h2 className="text-lg font-semibold text-primary-dark">Setup</h2>
@@ -1691,24 +1708,6 @@ const ReturnBuilder: FC = () => {
                   )}
                 </div>
               )}
-              <div id="rb-taxSituation" className="border border-border rounded-md p-3 bg-background/50 space-y-2">
-                <button
-                  type="button"
-                  className="w-full flex items-center justify-between text-left"
-                  onClick={() => toggleSetupSection('taxSituation')}
-                >
-                  <h3 className="text-sm font-semibold text-primary-dark">Interview setup — tax situation</h3>
-                  <span className="text-xs text-text-light">{setupSectionOpen.taxSituation ? 'Hide' : 'Show'}</span>
-                </button>
-                {setupSectionOpen.taxSituation && id && (
-                  <InterviewTopicsSetup
-                    taxReturnId={id}
-                    taxpayerName={data?.taxReturn?.taxpayer_name || 'this taxpayer'}
-                    getToken={getToken}
-                    onSaved={(response) => setInterviewSetup(response)}
-                  />
-                )}
-              </div>
               <div id="rb-identity" className="border border-border rounded-md p-3 bg-background/50 space-y-2">
                 <button
                   type="button"
@@ -2779,47 +2778,7 @@ const ReturnBuilder: FC = () => {
               )}
               <div id="rb-required-forms" className="mt-4 border border-border rounded-md p-3 bg-background/50">
                 <h3 className="text-sm font-semibold text-primary-dark">Required CRA forms &amp; schedules</h3>
-                <p className="text-xs text-text-light mt-1">
-                  Auto-inferred from setup flags, slip data, and income mappings. These forms populate from your slip entries and calculations — not manual data entry.
-                </p>
-                {loadingRequiredForms && <p className="text-xs text-text-light mt-2">Analyzing required forms…</p>}
-                {!loadingRequiredForms && (requiredForms?.forms?.length || 0) === 0 && (
-                  <p className="text-xs text-text-light mt-2">No additional CRA forms inferred yet for this return.</p>
-                )}
-                {!loadingRequiredForms && (requiredForms?.forms?.length || 0) > 0 && (
-                  <div className="overflow-x-auto mt-2 border border-border rounded-md">
-                    <table className="min-w-full text-xs">
-                      <thead className="bg-background/70">
-                        <tr>
-                          <th className="text-left px-3 py-2 font-semibold text-primary-dark">Form</th>
-                          <th className="text-left px-3 py-2 font-semibold text-primary-dark">Title</th>
-                          <th className="text-left px-3 py-2 font-semibold text-primary-dark">Catalog</th>
-                          <th className="text-left px-3 py-2 font-semibold text-primary-dark">Why required</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {requiredForms?.forms.map((form) => (
-                          <tr key={form.normalizedFormCode} className="border-t border-border align-top">
-                            <td className="px-3 py-2 font-medium text-text">{form.formCode}</td>
-                            <td className="px-3 py-2 text-text">{form.registry.title || '—'}</td>
-                            <td className="px-3 py-2">
-                              <span className={`inline-flex px-2 py-0.5 rounded border text-[11px] ${requiredFormStatusClass(form.registry.registryStatus)}`}>
-                                {requiredFormStatusLabel(form.registry.registryStatus)}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2 text-text-light">
-                              <ul className="list-disc pl-4 space-y-1">
-                                {form.reasons.map((reason) => (
-                                  <li key={reason}>{reason}</li>
-                                ))}
-                              </ul>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                <RequiredFormsPanel requiredForms={requiredForms} loading={loadingRequiredForms} compact />
               </div>
               <div id="rb-review" className="mt-4">
                 <h3 className="text-sm font-semibold text-primary-dark">Slip line mapping trace</h3>

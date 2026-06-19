@@ -51,15 +51,48 @@ export type RequiredFormItem = {
   sources: string[]
   reasons: string[]
   requirementStatus: 'required'
+  artifactKind?: 't1_schedule' | 't1_form' | 't1_worksheet' | 'information_slip' | 't1_guide' | 'other' | 'out_of_scope'
   registry: RequiredFormRegistryInfo
 }
 
+export type RequiredFormsGrouped = {
+  schedules: RequiredFormItem[]
+  forms: RequiredFormItem[]
+  worksheets: RequiredFormItem[]
+  other: RequiredFormItem[]
+}
+
+export type T1ProvincialPackage = {
+  code: string
+  name: string
+  pathSegment: string
+  packageCode: string
+}
+
 export type RequiredFormsResponse = {
+  domain?: 't1_personal'
   taxReturnId: string
   taxYear: number
   taxpayerName: string
+  provinceCode?: string
+  provincialPackage?: T1ProvincialPackage
+  packageIndexUrl?: string
+  crosswalkUrl?: string
+  triggeredLineRefs?: string[]
+  referenceGuides?: Array<{ formCode: string; artifactKind: string; lineRefs: string[]; step: string }>
   generatedAt: string
   forms: RequiredFormItem[]
+  grouped?: RequiredFormsGrouped
+}
+
+export type T1PackageCatalogResponse = {
+  domain: 't1_personal'
+  taxYear: number
+  indexUrl: string
+  crosswalkUrl: string
+  provincialPackages: Array<T1ProvincialPackage & { packageUrl: string }>
+  coreSchedules: string[]
+  lineCrosswalk: Array<Record<string, unknown>>
 }
 
 export type SlipSchemaTarget = {

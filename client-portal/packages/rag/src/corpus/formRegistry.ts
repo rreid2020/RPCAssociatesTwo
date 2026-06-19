@@ -36,15 +36,21 @@ export function resolveFormRegistryStatus (title: string): FormRegistryStatus {
   return 'active'
 }
 
-export function classifyFormFamily (formNumber: string): FormRegistryFamily {
+export function classifyFormFamily (formNumber: string, title = ''): FormRegistryFamily {
   const normalized = normalizeFormNumber(formNumber)
-  if (/^T1/.test(normalized) || /^SCH\d/.test(normalized)) return 't1'
+  const normalizedTitle = String(title || '').trim()
+  if (/^T1/.test(normalized) || /^SCH\d/.test(normalized) || /^5000-/.test(normalized) || /^5005-/.test(normalized)) return 't1'
   if (/^T2/.test(normalized)) return 'corporate'
-  if (/^T3/.test(normalized)) return 'trust'
+  if (/^T3/.test(normalized)) {
+    if (/statement of trust income/i.test(normalizedTitle) || /\(slip\)/i.test(normalizedTitle)) return 't1'
+    if (/trust income tax return/i.test(normalizedTitle) || /return for trusts/i.test(normalizedTitle)) return 'trust'
+    return 't1'
+  }
   if (/^RC/.test(normalized)) return 'rc'
   if (/^GST/.test(normalized) || /^B\d/.test(normalized)) return 'gst'
   if (/^NR/.test(normalized)) return 'non_resident'
   if (/^UHT/.test(normalized)) return 'uht'
+  if (/^T5013FIN$/i.test(normalized) || /^T5013SCH/i.test(normalized)) return 'other'
   return 'other'
 }
 
@@ -96,7 +102,7 @@ export async function upsertFormRegistryRows (
     if (!formNumber || !row.title || !row.landingUrl) continue
 
     const status = row.status || resolveFormRegistryStatus(row.title)
-    const formFamily = row.formFamily || classifyFormFamily(formNumber)
+    const formFamily = row.formFamily || classifyFormFamily(formNumber, row.title)
     const lastUpdate = row.lastUpdate || null
     const parsedLastUpdate = lastUpdate && /^\d{4}-\d{2}-\d{2}$/.test(lastUpdate) ? lastUpdate : null
 

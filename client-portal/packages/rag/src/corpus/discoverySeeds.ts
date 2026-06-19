@@ -100,6 +100,14 @@ export const CRA_T1_GENERAL_PACKAGE_URL =
 export const CRA_TAX_PACKAGES_YEARS_URL =
   'https://www.canada.ca/en/revenue-agency/services/forms-publications/tax-packages-years.html'
 
+/** T1 package index and provincial package selector (2025). */
+export const CRA_T1_PACKAGE_INDEX_URL =
+  'https://www.canada.ca/en/revenue-agency/services/forms-publications/tax-packages-years/general-income-tax-benefit-package.html'
+
+/** CRA line-to-form crosswalk for completing a T1 return. */
+export const CRA_T1_OTHER_FORMS_CROSSWALK_URL =
+  'https://www.canada.ca/en/revenue-agency/services/forms-publications/tax-packages-years/general-income-tax-benefit-package/other-forms-publications.html'
+
 export const CRA_TAX_REFERENCE_CONTENT_SEEDS: CorpusDiscoverySeed[] = [
   {
     key: 'canadian_income_tax_rates',
@@ -135,6 +143,24 @@ export const CRA_TAX_REFERENCE_CONTENT_SEEDS: CorpusDiscoverySeed[] = [
     sourceType: 'html',
     category: 'guide',
     pageKind: 'content',
+    priority: 'high'
+  },
+  {
+    key: 't1_package_index',
+    url: CRA_T1_PACKAGE_INDEX_URL,
+    title: 'Get a T1 income tax package — provincial packages',
+    sourceType: 'html',
+    category: 'guide',
+    pageKind: 'directory',
+    priority: 'high'
+  },
+  {
+    key: 't1_other_forms_crosswalk',
+    url: CRA_T1_OTHER_FORMS_CROSSWALK_URL,
+    title: 'Other forms and publications — T1 line crosswalk',
+    sourceType: 'html',
+    category: 'form',
+    pageKind: 'directory',
     priority: 'high'
   }
 ]

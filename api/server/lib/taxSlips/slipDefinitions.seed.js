@@ -473,6 +473,62 @@ export const COMPLETE_SLIP_DEFINITIONS = [
     boxes: [
       cur('20', 'Discounting fee', [{ kind: 'deduction', category: 'refund_discounting_fee', description: 'RC71 box 20 discounting fee', lineRef: '23200' }])
     ]
+  },
+  {
+    code: 'RL1',
+    name: 'RL-1 — Employment and Other Income (Revenu Québec)',
+    payerLabel: 'Employer name',
+    boxes: [
+      cur('A', 'Employment income', [{ kind: 'income', category: 'employment_income', description: 'RL-1 box A employment income', lineRef: '10100' }]),
+      cur('B', 'QPP contributions', [{ kind: 'deduction', category: 'qpp_contributions', description: 'RL-1 box B QPP contributions', lineRef: '30800' }]),
+      cur('C', 'QPIP premiums', [{ kind: 'deduction', category: 'qpip_premiums', description: 'RL-1 box C QPIP premiums', lineRef: '31210' }]),
+      cur('E', 'Quebec income tax withheld', [{ kind: 'income', category: 'quebec_tax_withheld', description: 'RL-1 box E Quebec tax withheld', lineRef: '43700', asWithholding: true }]),
+      cur('G', 'Taxable benefits', [{ kind: 'income', category: 'employment_benefits', description: 'RL-1 box G taxable benefits', lineRef: '10100' }]),
+      cur('I', 'Other income', [{ kind: 'income', category: 'other_income', description: 'RL-1 box I other income', lineRef: '13000' }])
+    ]
+  },
+  {
+    code: 'RL2',
+    name: 'RL-2 — Retirement and Annuity Income (Revenu Québec)',
+    payerLabel: 'Payer name',
+    boxes: [
+      cur('A', 'Pension or annuity income', [{ kind: 'income', category: 'pension_income', description: 'RL-2 box A pension income', lineRef: '11500' }]),
+      cur('B', 'Lump-sum payments', [{ kind: 'income', category: 'retiring_allowance', description: 'RL-2 box B lump-sum payments', lineRef: '13000' }]),
+      cur('C', 'Death benefits', [{ kind: 'income', category: 'death_benefits', description: 'RL-2 box C death benefits', lineRef: '13000' }]),
+      cur('E', 'Quebec income tax withheld', [{ kind: 'income', category: 'quebec_tax_withheld', description: 'RL-2 box E Quebec tax withheld', lineRef: '43700', asWithholding: true }])
+    ]
+  },
+  {
+    code: 'RL3',
+    name: 'RL-3 — Investment Income (Revenu Québec)',
+    payerLabel: 'Payer name',
+    boxes: [
+      cur('A', 'Interest income', [{ kind: 'income', category: 'interest_income', description: 'RL-3 box A interest income', lineRef: '12100' }]),
+      cur('B', 'Dividend income', [{ kind: 'income', category: 'dividend_income', description: 'RL-3 box B dividend income', lineRef: '12010' }]),
+      cur('C', 'Capital gains dividends', [{ kind: 'income', category: 'capital_gains_dividends', description: 'RL-3 box C capital gains dividends', lineRef: '12700' }]),
+      cur('E', 'Quebec income tax withheld', [{ kind: 'income', category: 'quebec_tax_withheld', description: 'RL-3 box E Quebec tax withheld', lineRef: '43700', asWithholding: true }])
+    ]
+  },
+  {
+    code: 'RL5',
+    name: 'RL-5 — Income Support Payments (Revenu Québec)',
+    payerLabel: 'Issuer name',
+    boxes: [
+      cur('A', 'Social assistance payments', [{ kind: 'income', category: 'social_assistance', description: 'RL-5 box A social assistance', lineRef: '14500' }]),
+      cur('B', "Workers' compensation benefits", [{ kind: 'income', category: 'workers_compensation', description: "RL-5 box B workers' compensation", lineRef: '14400' }]),
+      cur('C', 'Quebec income tax withheld', [{ kind: 'income', category: 'quebec_tax_withheld', description: 'RL-5 box C Quebec tax withheld', lineRef: '43700', asWithholding: true }])
+    ]
+  },
+  {
+    code: 'RL6',
+    name: 'RL-6 — Self-Employment and Other Income (Revenu Québec)',
+    payerLabel: 'Payer name',
+    boxes: [
+      cur('A', 'Self-employment income', [{ kind: 'income', category: 'self_employed_commissions', description: 'RL-6 box A self-employment income', lineRef: '13500' }]),
+      cur('B', 'Professional fees', [{ kind: 'income', category: 'professional_fees', description: 'RL-6 box B professional fees', lineRef: '13500' }]),
+      cur('C', 'Other income', [{ kind: 'income', category: 'other_income', description: 'RL-6 box C other income', lineRef: '13000' }]),
+      cur('E', 'Quebec income tax withheld', [{ kind: 'income', category: 'quebec_tax_withheld', description: 'RL-6 box E Quebec tax withheld', lineRef: '43700', asWithholding: true }])
+    ]
   }
 ]
 
@@ -499,5 +555,10 @@ export const COMPLETE_SLIP_MIN_BOX_COUNTS = {
   T4AOAS: 6,
   'T4A(OAS)': 6,
   T4AP: 8,
-  'T4A(P)': 8
+  'T4A(P)': 8,
+  RL1: 6,
+  RL2: 4,
+  RL3: 4,
+  RL5: 3,
+  RL6: 4
 }

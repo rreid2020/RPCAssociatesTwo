@@ -27,6 +27,10 @@ import {
   getReturnInterviewTopics,
   saveReturnInterviewTopics
 } from '../services/tax-intelligence/interviewTopics.service.js'
+import {
+  getT1ReturnPackageCatalog,
+  getT1ReturnPackageForReturn
+} from '../services/tax-intelligence/t1Package.service.js'
 
 function parseUuid (v) {
   return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
@@ -457,6 +461,32 @@ export function createTaxIntelligenceRouter (pool) {
     } catch (e) {
       console.error('PUT /tax-returns/:id/interview-topics', e)
       res.status(500).json({ error: 'Could not save interview topics for return' })
+    }
+  })
+
+  r.get('/t1-package-catalog', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      res.json(getT1ReturnPackageCatalog())
+    } catch (e) {
+      console.error('GET /t1-package-catalog', e)
+      res.status(500).json({ error: 'Could not load T1 package catalog' })
+    }
+  })
+
+  r.get('/tax-returns/:id/t1-package', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const id = parseUuid(req.params.id)
+    if (!id) return res.status(400).json({ error: 'Invalid id' })
+    try {
+      const result = await getT1ReturnPackageForReturn(pool, session.userId, id)
+      if (!result) return res.status(404).json({ error: 'Not found' })
+      res.json(result)
+    } catch (e) {
+      console.error('GET /tax-returns/:id/t1-package', e)
+      res.status(500).json({ error: 'Could not load T1 package for return' })
     }
   })
 

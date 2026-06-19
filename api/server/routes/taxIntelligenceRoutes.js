@@ -18,6 +18,7 @@ import {
 import { createScenario, listScenarios } from '../services/tax-intelligence/scenario.service.js'
 import { listAuditFlags, runAuditRules } from '../services/tax-intelligence/audit.service.js'
 import { getAdvisorySummary } from '../services/tax-intelligence/aiAdvisory.service.js'
+import { runHouseholdReview } from '../services/tax-intelligence/review.service.js'
 import { mapExtractedSlipToEntries, upsertDocumentMappedEntries } from '../services/tax-intelligence/slipMapping.service.js'
 import { inferRequiredFormsForReturn } from '../services/tax-intelligence/requiredForms.service.js'
 import { listSlipSchemasForReturnBuilder, getSlipSchema } from '../services/tax-intelligence/slipSchema.service.js'
@@ -217,6 +218,21 @@ export function createTaxIntelligenceRouter (pool) {
     } catch (e) {
       console.error('GET /tax-returns/:id/documents/suggestions', e)
       res.status(500).json({ error: 'Could not suggest documents' })
+    }
+  })
+
+  r.post('/tax-returns/:id/review', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const id = parseUuid(req.params.id)
+    if (!id) return res.status(400).json({ error: 'Invalid id' })
+    try {
+      const review = await runHouseholdReview(pool, session.userId, id)
+      if (!review) return res.status(404).json({ error: 'Not found' })
+      res.json({ review })
+    } catch (e) {
+      console.error('POST /tax-returns/:id/review', e)
+      res.status(500).json({ error: 'Could not run household review' })
     }
   })
 

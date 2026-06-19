@@ -6,6 +6,7 @@ import ClientPortalShell from '../../../components/ClientPortalShell'
 import { taxFetch, type DocumentExtractResponse, type RequiredFormsResponse, type ReturnInterviewTopicsResponse, type SlipSchema, type SlipSchemasResponse, type TaxReturnSummary } from '../../../lib/taxIntelligenceApi'
 import RequiredFormsPanel from './RequiredFormsPanel'
 import InterviewTopicsSetup, { type InterviewTopicsSetupHandle } from './InterviewTopicsSetup'
+import ReviewDiagnosticsPanel from './ReviewDiagnosticsPanel'
 import { getTaxBasePath } from './path'
 
 type TaxReturnPayload = {
@@ -321,8 +322,95 @@ function compareSlipSchemas (a: SlipSchema, b: SlipSchema): number {
 
 function buildDefaultBoxes (schema?: SlipSchema): Record<string, number> {
   if (!schema?.boxes?.length) return {}
-  return Object.fromEntries(schema.boxes.map((box) => [box.code, 0]))
+  return {}
 }
+
+function formatSlipBoxDisplay (value: number | undefined): string {
+  if (value == null || !Number.isFinite(value) || value === 0) return ''
+  return String(value)
+}
+
+function parseSlipBoxInput (raw: string, boxType: 'currency' | 'number'): number | undefined {
+  const trimmed = raw.trim().replace(/,/g, '')
+  if (!trimmed) return undefined
+  if (boxType === 'number') {
+    const digits = trimmed.replace(/\D/g, '')
+    if (!digits) return undefined
+    const parsed = Number(digits)
+    return Number.isFinite(parsed) ? parsed : undefined
+  }
+  const parsed = Number(trimmed)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
+type SlipBoxFieldDef = { code: string; label: string; type: 'currency' | 'number' }
+
+const SlipBoxAmountInput: FC<{
+  boxType: 'currency' | 'number'
+  value: number | undefined
+  onChange: (value: number | undefined) => void
+}> = ({ boxType, value, onChange }) => {
+  const [draft, setDraft] = useState(() => formatSlipBoxDisplay(value))
+
+  useEffect(() => {
+    setDraft(formatSlipBoxDisplay(value))
+  }, [value])
+
+  const commitDraft = (raw: string) => {
+    onChange(parseSlipBoxInput(raw, boxType))
+  }
+
+  return (
+    <input
+      type="text"
+      inputMode={boxType === 'currency' ? 'decimal' : 'numeric'}
+      autoComplete="off"
+      className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
+      placeholder={boxType === 'currency' ? '0.00' : '0'}
+      value={draft}
+      onChange={(e) => {
+        const raw = e.target.value
+        if (raw === '') {
+          setDraft('')
+          onChange(undefined)
+          return
+        }
+        if (boxType === 'number' && !/^\d*$/.test(raw)) return
+        if (boxType === 'currency' && !/^\d*\.?\d{0,2}$/.test(raw)) return
+        setDraft(raw)
+        if (!(boxType === 'currency' && raw.endsWith('.'))) {
+          commitDraft(raw)
+        }
+      }}
+      onBlur={() => {
+        commitDraft(draft)
+        setDraft(formatSlipBoxDisplay(parseSlipBoxInput(draft, boxType)))
+      }}
+    />
+  )
+}
+
+const SlipBoxFieldGrid: FC<{
+  boxes: Record<string, number>
+  boxFields: SlipBoxFieldDef[]
+  keyPrefix: string
+  onBoxChange: (boxCode: string, value: number | undefined) => void
+}> = ({ boxes, boxFields, keyPrefix, onBoxChange }) => (
+  <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-4">
+    {boxFields.map((box) => (
+      <div key={`${keyPrefix}-${box.code}`} className="flex min-w-0 flex-col gap-1.5">
+        <span className="block min-h-[2.75rem] text-xs leading-snug text-text-light">
+          <span className="font-medium text-text">Box {box.code}</span> {box.label}
+        </span>
+        <SlipBoxAmountInput
+          boxType={box.type}
+          value={boxes[box.code]}
+          onChange={(nextValue) => onBoxChange(box.code, nextValue)}
+        />
+      </div>
+    ))}
+  </div>
+)
 
 function resolveManualSlipIdFromMeta (
   meta: Record<string, unknown>,
@@ -371,7 +459,9 @@ function buildSlipRowsFromReturnData (
     }
     const row = grouped.get(manualSlipId)
     if (!row || !boxCode) return
-    row.boxes[boxCode] = Number.isFinite(boxValue) ? boxValue : 0
+    if (Number.isFinite(boxValue) && boxValue !== 0) {
+      row.boxes[boxCode] = boxValue
+    }
   }
 
   for (const entry of incomeEntries) {
@@ -408,6 +498,24 @@ type LineMappingRow = {
   amount: number
   status: 'OK' | 'REVIEW'
   reason: string
+}
+
+function reviewFieldToStep (field: string): Step {
+  if (field === 'identity' || field === 'firstName' || field === 'sin') return 'Identity'
+  if (field === 'mailing') return 'Mailing'
+  if (field === 'elections' || field === 'firstTimeFiler' || field === 'craEmailNotificationsConsent') return 'Elections'
+  if (field === 'spouse') return 'Spouse'
+  if (field === 'dependents') return 'Dependents'
+  if (field === 'interview') return 'Interview'
+  if (field === 'income') return 'Income'
+  if (field === 'deductions') return 'Deductions'
+  return 'Review'
+}
+
+function stepToQueryValue (step: Step): string {
+  if (step === 'TaxReturn') return 'tax-return'
+  if (step === 'Netfile') return 'netfile'
+  return step.toLowerCase()
 }
 
 function sanitizeSin (value: string): string {
@@ -559,8 +667,6 @@ const ReturnBuilder: FC = () => {
   const [creatingDependentIdx, setCreatingDependentIdx] = useState<number | null>(null)
   const [interviewSetup, setInterviewSetup] = useState<ReturnInterviewTopicsResponse | null>(null)
   const interviewSetupRef = useRef<InterviewTopicsSetupHandle>(null)
-  const [auditFlags, setAuditFlags] = useState<Array<{ id: string; severity: string; title: string; detail: string | null }>>([])
-  const [loadingAuditFlags, setLoadingAuditFlags] = useState(false)
 
   const requestedStep = useMemo<Step | null>(() => {
     const value = new URLSearchParams(location.search).get('step')
@@ -996,29 +1102,9 @@ const ReturnBuilder: FC = () => {
     }
   }
 
-  const loadAuditFlags = async () => {
-    if (!id) {
-      setAuditFlags([])
-      return
-    }
-    setLoadingAuditFlags(true)
-    try {
-      const response = await taxFetch<{ flags: Array<{ id: string; severity: string; title: string; detail: string | null }> }>(
-        `/audit/flags?taxReturnId=${id}`,
-        getToken
-      )
-      setAuditFlags(response.flags || [])
-    } catch {
-      setAuditFlags([])
-    } finally {
-      setLoadingAuditFlags(false)
-    }
-  }
-
   useEffect(() => {
     if (activeStep === 'Review' && id) {
       void loadRequiredForms()
-      void loadAuditFlags()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStep, id])
@@ -1292,36 +1378,6 @@ const ReturnBuilder: FC = () => {
     setErr(null)
   }
 
-  const runCalculation = async () => {
-    setSaving(true)
-    try {
-      await taxFetch(`/tax-returns/${id}/calculate`, getToken, { method: 'POST' })
-      await load()
-      if (activeStep === 'Review') void loadRequiredForms()
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Could not calculate return')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const runAudit = async () => {
-    setSaving(true)
-    try {
-      const response = await taxFetch<{ flags: Array<{ id: string; severity: string; title: string; detail: string | null }> }>('/audit/run', getToken, {
-        method: 'POST',
-        body: JSON.stringify({ taxReturnId: id })
-      })
-      setAuditFlags(response.flags || [])
-      await load()
-      if (activeStep === 'Review') void loadRequiredForms()
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Could not run audit')
-    } finally {
-      setSaving(false)
-    }
-  }
-
   const addDependent = () => {
     setTaxpayerProfile((prev) => ({
       ...prev,
@@ -1561,6 +1617,15 @@ const ReturnBuilder: FC = () => {
     const saved = await saveActiveStepData()
     if (!saved) return
     navigateWorkflowStep(item.step)
+  }
+
+  const navigateFromReviewField = (reviewField: string, targetReturnId?: string) => {
+    const step = reviewFieldToStep(reviewField)
+    if (targetReturnId && targetReturnId !== id) {
+      navigate(`${basePath}/returns/${targetReturnId}?step=${stepToQueryValue(step)}`)
+      return
+    }
+    navigateWorkflowStep(step)
   }
 
   return (
@@ -2436,28 +2501,20 @@ const ReturnBuilder: FC = () => {
                     {previewBoxFields.length === 0 ? (
                       <p className="text-xs text-amber-700">No box values were detected. Choose a slip type and enter values manually after applying, or dismiss and add a slip manually.</p>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                        {previewBoxFields.map((box) => (
-                          <label key={`preview-${box.code}`} className="text-xs text-text-light">
-                            Box {box.code} {box.label}
-                            <input
-                              type="number"
-                              className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                              value={Number(extractionPreview.boxes[box.code] || 0)}
-                              onChange={(e) => {
-                                const value = Number(e.target.value)
-                                setExtractionPreview((prev) => {
-                                  if (!prev) return prev
-                                  return {
-                                    ...prev,
-                                    boxes: { ...prev.boxes, [box.code]: Number.isFinite(value) ? value : 0 }
-                                  }
-                                })
-                              }}
-                            />
-                          </label>
-                        ))}
-                      </div>
+                      <SlipBoxFieldGrid
+                        keyPrefix="preview"
+                        boxes={extractionPreview.boxes}
+                        boxFields={previewBoxFields}
+                        onBoxChange={(boxCode, nextValue) => {
+                          setExtractionPreview((prev) => {
+                            if (!prev) return prev
+                            const boxes = { ...prev.boxes }
+                            if (nextValue == null) delete boxes[boxCode]
+                            else boxes[boxCode] = nextValue
+                            return { ...prev, boxes }
+                          })
+                        }}
+                      />
                     )}
                   </div>
                 )
@@ -2578,23 +2635,21 @@ const ReturnBuilder: FC = () => {
                     {def.schemaStatus === 'catalog_only' && boxFields.length === 0 && (
                       <p className="text-xs text-amber-700">This slip is in the catalog but does not have predefined boxes yet. Use Add box to enter values from your slip.</p>
                     )}
-                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                      {boxFields.map((box) => (
-                        <label key={`${row.slipCode}-${idx}-${box.code}`} className="text-xs text-text-light">
-                          Box {box.code} {box.label}
-                          <input
-                            type="number"
-                            className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                            value={Number(row.boxes[box.code] || 0)}
-                            onChange={(e) => {
-                              const next = [...manualSlipRows]
-                              next[idx].boxes = { ...next[idx].boxes, [box.code]: Number(e.target.value) }
-                              setManualSlipRows(next)
-                            }}
-                          />
-                        </label>
-                      ))}
-                    </div>
+                    <SlipBoxFieldGrid
+                      keyPrefix={`${row.slipCode}-${idx}`}
+                      boxes={row.boxes}
+                      boxFields={boxFields}
+                      onBoxChange={(boxCode, nextValue) => {
+                        setManualSlipRows((prev) => {
+                          const next = [...prev]
+                          const boxes = { ...next[idx].boxes }
+                          if (nextValue == null) delete boxes[boxCode]
+                          else boxes[boxCode] = nextValue
+                          next[idx] = { ...next[idx], boxes }
+                          return next
+                        })
+                      }}
+                    />
                   </div>
                   )
                 })}
@@ -2703,178 +2758,79 @@ const ReturnBuilder: FC = () => {
           )}
 
           {!loading && activeStep === 'Review' && (
-            <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-4">
-              <div>
+            <section className="space-y-4">
+              <div className="bg-white p-4 rounded-lg border border-border shadow-sm">
                 <h2 className="text-lg font-semibold text-primary-dark">Review &amp; diagnostics</h2>
                 <p className="text-sm text-text-light mt-1">
-                  Run calculations, validate slip mappings, confirm required forms, and check audit risk before filing.
+                  Balance overview, messages, federal summary, and tax-saving ideas are calculated automatically when you open this step.
                 </p>
               </div>
-              <button type="button" className="btn btn--primary text-sm px-3 py-2" onClick={() => { void runCalculation() }} disabled={saving}>
-                Run deterministic calculation
-              </button>
-              {data?.calculation?.assumptions?.comparative && (
-                <div className="mt-3 border border-border rounded-md p-3 bg-background/50">
-                  <h3 className="text-sm font-semibold text-primary-dark mb-2">
-                    {returnRole === 'self' ? 'Taxpayer' : 'Spouse'} T1 summary (estimated)
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
-                    <div className="border border-border rounded-md p-2 bg-white">
-                      <p className="text-text-light">Line 23600 Net income</p>
-                      <p className="font-semibold text-text">
-                        ${Number((returnRole === 'self'
-                          ? data.calculation.assumptions.comparative.self?.netIncome
-                          : data.calculation.assumptions.comparative.spouse?.netIncome) || 0).toFixed(2)}
-                      </p>
-                    </div>
-                    <div className="border border-border rounded-md p-2 bg-white">
-                      <p className="text-text-light">Line 26000 Taxable income</p>
-                      <p className="font-semibold text-text">
-                        ${Number((returnRole === 'self'
-                          ? data.calculation.assumptions.comparative.self?.taxableIncome
-                          : data.calculation.assumptions.comparative.spouse?.taxableIncome) || 0).toFixed(2)}
-                      </p>
-                    </div>
-                    <div className="border border-border rounded-md p-2 bg-white">
-                      <p className="text-text-light">Line 43500 Tax (before credits)</p>
-                      <p className="font-semibold text-text">
-                        ${Number((returnRole === 'self'
-                          ? data.calculation.assumptions.comparative.self?.estimatedTaxBeforeCredits
-                          : data.calculation.assumptions.comparative.spouse?.estimatedTaxBeforeCredits) || 0).toFixed(2)}
-                      </p>
-                    </div>
-                    <div className="border border-border rounded-md p-2 bg-white">
-                      <p className="text-text-light">Line 43700 Tax deducted</p>
-                      <p className="font-semibold text-text">
-                        ${Number((returnRole === 'self'
-                          ? data.calculation.assumptions.comparative.self?.taxesWithheld
-                          : data.calculation.assumptions.comparative.spouse?.taxesWithheld) || 0).toFixed(2)}
-                      </p>
-                    </div>
+              {id ? (
+                <ReviewDiagnosticsPanel
+                  taxReturnId={id}
+                  taxYear={data?.taxReturn?.tax_year || new Date().getFullYear()}
+                  getToken={getToken}
+                  onNavigateToField={navigateFromReviewField}
+                  onReviewComplete={() => { void load(); void loadRequiredForms() }}
+                />
+              ) : (
+                <p className="text-sm text-text-light">Select a household workspace to run review.</p>
+              )}
+              <details className="bg-white p-4 rounded-lg border border-border shadow-sm">
+                <summary className="text-sm font-semibold text-primary-dark cursor-pointer">Technical diagnostics</summary>
+                <div className="mt-4 space-y-4">
+                  <div id="rb-required-forms" className="border border-border rounded-md p-3 bg-background/50">
+                    <h3 className="text-sm font-semibold text-primary-dark">Required CRA forms &amp; schedules</h3>
+                    <RequiredFormsPanel requiredForms={requiredForms} loading={loadingRequiredForms} compact />
                   </div>
-                </div>
-              )}
-              <div id="rb-required-forms" className="mt-4 border border-border rounded-md p-3 bg-background/50">
-                <h3 className="text-sm font-semibold text-primary-dark">Required CRA forms &amp; schedules</h3>
-                <RequiredFormsPanel requiredForms={requiredForms} loading={loadingRequiredForms} compact />
-              </div>
-              <div id="rb-review" className="mt-4">
-                <h3 className="text-sm font-semibold text-primary-dark">Slip line mapping trace</h3>
-                <p className="text-xs text-text-light mt-1">Shows how slip boxes are mapped into T1 lines/schedules.</p>
-                {lineMappingRows.length === 0 ? (
-                  <p className="text-xs text-text-light mt-2">No slip mappings available yet. Add manual slips or import extracted slips.</p>
-                ) : (
-                  <div className="overflow-x-auto mt-2 border border-border rounded-md">
-                    <table className="min-w-full text-xs">
-                      <thead className="bg-background/70">
-                        <tr>
-                          <th className="text-left px-3 py-2 font-semibold text-primary-dark">Source</th>
-                          <th className="text-left px-3 py-2 font-semibold text-primary-dark">Mapped To</th>
-                          <th className="text-left px-3 py-2 font-semibold text-primary-dark">Category</th>
-                          <th className="text-left px-3 py-2 font-semibold text-primary-dark">Validation</th>
-                          <th className="text-right px-3 py-2 font-semibold text-primary-dark">Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {lineMappingRows.map((row, idx) => (
-                          <tr key={`${row.source}-${row.mappedTo}-${idx}`} className="border-t border-border">
-                            <td className="px-3 py-2 text-text">{row.source}</td>
-                            <td className="px-3 py-2 text-text">{row.mappedTo}</td>
-                            <td className="px-3 py-2 text-text">{row.category}</td>
-                            <td className="px-3 py-2">
-                              <span
-                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                                  row.status === 'OK'
-                                    ? 'bg-green-100 text-green-800'
-                                    : 'bg-amber-100 text-amber-800'
-                                }`}
-                                title={row.reason}
-                              >
-                                {row.status}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2 text-right text-text">${row.amount.toFixed(2)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-                {lineMappingRows.some((r) => r.status === 'REVIEW') && (
-                  <p className="text-xs text-amber-700 mt-2">
-                    One or more mappings need review. Hover over the `REVIEW` badge to see the reason.
-                  </p>
-                )}
-              </div>
-              {data?.calculation && (
-                <div className="mt-3 text-sm text-text space-y-1">
-                  <p>Taxable income: ${Number(data.calculation.taxable_income || 0).toFixed(2)}</p>
-                  <p>Total payable: ${Number(data.calculation.total_payable || 0).toFixed(2)}</p>
-                  <p>Refund / balance: ${Number(data.calculation.refund_or_balance || 0).toFixed(2)}</p>
-                </div>
-              )}
-              {data?.calculation?.assumptions?.comparative && (
-                <div className="mt-4 border border-border rounded-md p-3 bg-background/50">
-                  <h3 className="text-sm font-semibold text-primary-dark mb-2">Taxpayer vs spouse comparative</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-text">
-                    <div className="border border-border rounded-md p-2 bg-white">
-                      <p className="font-semibold">Taxpayer</p>
-                      <p>Net income: ${Number(data.calculation.assumptions.comparative.self?.netIncome || 0).toFixed(2)}</p>
-                      <p>Taxable income: ${Number(data.calculation.assumptions.comparative.self?.taxableIncome || 0).toFixed(2)}</p>
-                      <p>Est. tax (before credits): ${Number(data.calculation.assumptions.comparative.self?.estimatedTaxBeforeCredits || 0).toFixed(2)}</p>
-                    </div>
-                    <div className="border border-border rounded-md p-2 bg-white">
-                      <p className="font-semibold">Spouse</p>
-                      <p>Net income: ${Number(data.calculation.assumptions.comparative.spouse?.netIncome || 0).toFixed(2)}</p>
-                      <p>Taxable income: ${Number(data.calculation.assumptions.comparative.spouse?.taxableIncome || 0).toFixed(2)}</p>
-                      <p>Est. tax (before credits): ${Number(data.calculation.assumptions.comparative.spouse?.estimatedTaxBeforeCredits || 0).toFixed(2)}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {data?.calculation?.assumptions?.optimization?.pensionSplit && (
-                <div className="mt-3 border border-border rounded-md p-3 bg-background/50 text-xs text-text">
-                  <h3 className="text-sm font-semibold text-primary-dark mb-1">Optimization: pension splitting</h3>
-                  <p>
-                    Recommended split from {String(data.calculation.assumptions.optimization.pensionSplit.splitSourceRole || 'taxpayer')}:
-                    {' '}${Number(data.calculation.assumptions.optimization.pensionSplit.recommendedSplit || 0).toFixed(2)}
-                  </p>
-                  <p>
-                    Estimated tax savings (before credits): ${Number(data.calculation.assumptions.optimization.pensionSplit.estimatedTaxSavingsBeforeCredits || 0).toFixed(2)}
-                  </p>
-                </div>
-              )}
-              <div id="rb-risk" className="border border-border rounded-md p-3 bg-background/50 space-y-3">
-                <div>
-                  <h3 className="text-sm font-semibold text-primary-dark">Risk checks</h3>
-                  <p className="text-xs text-text-light mt-1">
-                    Rule-based audit flags for high-risk return patterns before you proceed to Tax Return and NETFILE.
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={() => { void runAudit() }} disabled={saving}>
-                    Run audit risk checks
-                  </button>
-                  <Link className="text-sm text-accent font-medium hover:underline" to={`${basePath}/risk`}>Open Audit &amp; Risk panel</Link>
-                </div>
-                {loadingAuditFlags ? (
-                  <p className="text-xs text-text-light">Loading audit flags…</p>
-                ) : (
-                  <ul className="space-y-2">
-                    {auditFlags.map((flag) => (
-                      <li key={flag.id} className="border border-border rounded-md p-3 bg-white text-xs">
-                        <p className="font-semibold text-accent">{flag.severity}</p>
-                        <p className="font-medium text-text">{flag.title}</p>
-                        {flag.detail && <p className="text-text-light mt-1">{flag.detail}</p>}
-                      </li>
-                    ))}
-                    {auditFlags.length === 0 && (
-                      <li className="text-xs text-text-light">No audit flags yet. Run risk checks to evaluate this return.</li>
+                  <div id="rb-review">
+                    <h3 className="text-sm font-semibold text-primary-dark">Slip line mapping trace</h3>
+                    <p className="text-xs text-text-light mt-1">Shows how slip boxes are mapped into T1 lines/schedules.</p>
+                    {lineMappingRows.length === 0 ? (
+                      <p className="text-xs text-text-light mt-2">No slip mappings available yet. Add manual slips or import extracted slips.</p>
+                    ) : (
+                      <div className="overflow-x-auto mt-2 border border-border rounded-md">
+                        <table className="min-w-full text-xs">
+                          <thead className="bg-background/70">
+                            <tr>
+                              <th className="text-left px-3 py-2 font-semibold text-primary-dark">Source</th>
+                              <th className="text-left px-3 py-2 font-semibold text-primary-dark">Mapped To</th>
+                              <th className="text-left px-3 py-2 font-semibold text-primary-dark">Category</th>
+                              <th className="text-left px-3 py-2 font-semibold text-primary-dark">Validation</th>
+                              <th className="text-right px-3 py-2 font-semibold text-primary-dark">Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {lineMappingRows.map((row, idx) => (
+                              <tr key={`${row.source}-${row.mappedTo}-${idx}`} className="border-t border-border">
+                                <td className="px-3 py-2 text-text">{row.source}</td>
+                                <td className="px-3 py-2 text-text">{row.mappedTo}</td>
+                                <td className="px-3 py-2 text-text">{row.category}</td>
+                                <td className="px-3 py-2">
+                                  <span
+                                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                      row.status === 'OK'
+                                        ? 'bg-green-100 text-green-800'
+                                        : 'bg-amber-100 text-amber-800'
+                                    }`}
+                                    title={row.reason}
+                                  >
+                                    {row.status}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2 text-right text-text">${row.amount.toFixed(2)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     )}
-                  </ul>
-                )}
+                  </div>
+                </div>
+              </details>
+              <div className="bg-white p-4 rounded-lg border border-border shadow-sm">
+                <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} onSaveBeforeNavigate={saveActiveStepData} saving={saving} />
               </div>
-              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} onSaveBeforeNavigate={saveActiveStepData} saving={saving} />
             </section>
           )}
 

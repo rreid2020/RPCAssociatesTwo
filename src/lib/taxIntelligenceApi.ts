@@ -237,3 +237,86 @@ export type TaxReturnSummary = {
   }
   updated_at: string
 }
+
+export type ReviewBalanceMember = {
+  id: string
+  taxpayerName: string
+  workspaceRole: string
+  status: string
+  balance: {
+    federalTax: number
+    taxesWithheld: number
+    amountDue: number
+    refund: number
+    netBalance: number
+  }
+}
+
+export type ReviewFederalSummaryLine = {
+  sectionId: string
+  sectionTitle: string
+  lineRef: string
+  label: string
+  amounts: Record<string, number>
+}
+
+export type ReviewFederalSummarySection = {
+  id: string
+  title: string
+  lines: ReviewFederalSummaryLine[]
+}
+
+export type ReviewMessage = {
+  severity: 'warning' | 'info' | 'error'
+  title: string
+  detail: string
+  reviewField?: string
+  taxpayerName?: string
+  taxReturnId?: string
+}
+
+export type HouseholdReviewSnapshot = {
+  generatedAt: string
+  taxYear: number
+  householdRootId: string
+  members: Array<ReviewBalanceMember & {
+    federalSummary: {
+      sections: Array<{
+        id: string
+        title: string
+        lines: Array<{ lineRef: string; label: string; amount: number }>
+        subtotal: { lineRef: string; label: string; amount: number }
+      }>
+      totals: Record<string, number | boolean>
+    }
+    messages: ReviewMessage[]
+  }>
+  balanceOverview: {
+    totalAmountDue: number
+    totalRefunds: number
+    householdNetOwing: number
+    headline: string
+  }
+  federalSummaryColumns: ReviewFederalSummarySection[]
+  messages: ReviewMessage[]
+}
+
+export type TaxSavingIdea = {
+  id: string
+  title: string
+  summary: string
+  actions: Array<{
+    label: string
+    reviewField?: string
+    href?: string
+  }>
+}
+
+export type TaxAdvisoryResponse = {
+  status: 'AI' | 'FALLBACK' | 'SCAFFOLD_ONLY'
+  taxReturnId: string
+  taxYear: number
+  taxpayerName: string
+  ideas: TaxSavingIdea[]
+  notes: string[]
+}

@@ -179,16 +179,99 @@ type TaxpayerProfileState = {
   dependents: DependentProfile[]
 }
 
-type Step = 'Setup' | 'Interview' | 'Income' | 'Deductions' | 'Review' | 'Optimization' | 'Risk'
+type Step = 'Identity' | 'Mailing' | 'Elections' | 'Spouse' | 'Dependents' | 'Interview' | 'Income' | 'Deductions' | 'Review' | 'Optimization' | 'Risk'
 type CompletenessSeverity = 'required' | 'recommended'
 type CompletenessIssue = { field: string; message: string; severity: CompletenessSeverity }
-type SetupSectionKey = 'taxSituation' | 'identity' | 'mailing' | 'spouse' | 'elections' | 'dependents'
 
-type InterviewMenuItem = {
+type WorkflowMenuItem = {
   id: string
   label: string
   step: Step
-  setupSection?: SetupSectionKey
+}
+
+/** Linear workflow order for Back/Next navigation and sidebar sequencing. */
+const WORKFLOW_PAGES: Step[] = [
+  'Identity',
+  'Mailing',
+  'Elections',
+  'Spouse',
+  'Dependents',
+  'Interview',
+  'Income',
+  'Deductions',
+  'Review',
+  'Risk'
+]
+
+const SIDEBAR_MENU_ITEMS: WorkflowMenuItem[] = [
+  { id: 'setup-identity', label: 'Identification', step: 'Identity' },
+  { id: 'setup-mailing', label: 'Mailing & residence', step: 'Mailing' },
+  { id: 'setup-cra', label: 'CRA questions', step: 'Elections' },
+  { id: 'setup-spouse', label: 'Spouse setup', step: 'Spouse' },
+  { id: 'setup-dependents', label: 'Dependent setup', step: 'Dependents' },
+  { id: 'setup-tax-situation', label: 'Interview setup', step: 'Interview' },
+  { id: 'income-slips', label: 'Income & CRA slips', step: 'Income' },
+  { id: 'deductions', label: 'Deductions & credits', step: 'Deductions' },
+  { id: 'review', label: 'Review & diagnostics', step: 'Review' },
+  { id: 'risk', label: 'Risk checks', step: 'Risk' }
+]
+
+function workflowNeighbors (step: Step): { previous: Step | null; next: Step | null } {
+  const index = WORKFLOW_PAGES.indexOf(step)
+  if (index < 0) return { previous: null, next: null }
+  return {
+    previous: index > 0 ? WORKFLOW_PAGES[index - 1] : null,
+    next: index < WORKFLOW_PAGES.length - 1 ? WORKFLOW_PAGES[index + 1] : null
+  }
+}
+
+function stepLabel (step: Step): string {
+  return SIDEBAR_MENU_ITEMS.find((item) => item.step === step)?.label || step
+}
+
+type WorkflowPageNavProps = {
+  activeStep: Step
+  onNavigate: (step: Step) => void
+  showSaveProfile?: boolean
+  onSaveProfile?: () => void
+  saving?: boolean
+}
+
+const WorkflowPageNav: FC<WorkflowPageNavProps> = ({
+  activeStep,
+  onNavigate,
+  showSaveProfile = false,
+  onSaveProfile,
+  saving = false
+}) => {
+  const { previous, next } = workflowNeighbors(activeStep)
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 pt-4 mt-4 border-t border-border">
+      <div>
+        {previous ? (
+          <button type="button" className="btn btn--secondary text-sm px-4 py-2" onClick={() => onNavigate(previous)}>
+            ← Back: {stepLabel(previous)}
+          </button>
+        ) : (
+          <span className="text-xs text-text-light">Start of workflow</span>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {showSaveProfile && onSaveProfile && (
+          <button type="button" className="btn btn--primary text-sm px-4 py-2" onClick={onSaveProfile} disabled={saving}>
+            {saving ? 'Saving…' : 'Save taxpayer profile'}
+          </button>
+        )}
+        {next ? (
+          <button type="button" className="btn btn--primary text-sm px-4 py-2" onClick={() => onNavigate(next)}>
+            Next: {stepLabel(next)} →
+          </button>
+        ) : (
+          <span className="text-xs text-text-light">End of workflow</span>
+        )}
+      </div>
+    </div>
+  )
 }
 
 type SlipRow = {
@@ -354,7 +437,7 @@ const INTERVIEW_FLOW = [
 type WorkflowStageId = typeof INTERVIEW_FLOW[number]['id']
 
 const WORKFLOW_STAGE_TO_STEP: Record<WorkflowStageId, Step> = {
-  start: 'Setup',
+  start: 'Identity',
   interview: 'Interview',
   review: 'Review',
   return: 'Optimization',
@@ -362,7 +445,7 @@ const WORKFLOW_STAGE_TO_STEP: Record<WorkflowStageId, Step> = {
 }
 
 function stepToWorkflowStage (step: Step): WorkflowStageId {
-  if (step === 'Setup') return 'start'
+  if (step === 'Identity' || step === 'Mailing' || step === 'Elections' || step === 'Spouse' || step === 'Dependents') return 'start'
   if (step === 'Interview' || step === 'Income' || step === 'Deductions') return 'interview'
   if (step === 'Review') return 'review'
   if (step === 'Optimization') return 'return'
@@ -461,7 +544,7 @@ const ReturnBuilder: FC = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const basePath = useMemo(() => getTaxBasePath(), [])
-  const [activeStep, setActiveStep] = useState<Step>('Interview')
+  const [activeStep, setActiveStep] = useState<Step>('Identity')
   const [data, setData] = useState<TaxReturnPayload | null>(null)
   const [allReturns, setAllReturns] = useState<TaxReturnSummary[]>([])
   const [loading, setLoading] = useState(true)
@@ -487,20 +570,16 @@ const ReturnBuilder: FC = () => {
   const [showAllSetupIssues, setShowAllSetupIssues] = useState(false)
   const [creatingDependentIdx, setCreatingDependentIdx] = useState<number | null>(null)
   const [interviewSetup, setInterviewSetup] = useState<ReturnInterviewTopicsResponse | null>(null)
-  const [setupSectionOpen, setSetupSectionOpen] = useState<Record<SetupSectionKey, boolean>>({
-    taxSituation: true,
-    identity: false,
-    mailing: false,
-    spouse: false,
-    elections: false,
-    dependents: false
-  })
 
   const requestedStep = useMemo<Step | null>(() => {
     const value = new URLSearchParams(location.search).get('step')
     if (!value) return null
     const normalized = value.toLowerCase().trim()
-    if (normalized === 'setup') return 'Setup'
+    if (normalized === 'setup' || normalized === 'identity') return 'Identity'
+    if (normalized === 'mailing') return 'Mailing'
+    if (normalized === 'elections' || normalized === 'cra') return 'Elections'
+    if (normalized === 'spouse') return 'Spouse'
+    if (normalized === 'dependents') return 'Dependents'
     if (normalized === 'interview') return 'Interview'
     if (normalized === 'income') return 'Income'
     if (normalized === 'deductions') return 'Deductions'
@@ -576,17 +655,7 @@ const ReturnBuilder: FC = () => {
       return String(a.taxpayer_name || '').localeCompare(String(b.taxpayer_name || ''))
     })
   }, [allReturns, householdRootId])
-  const interviewMenuItems = useMemo<InterviewMenuItem[]>(() => ([
-    { id: 'setup-tax-situation', label: 'Interview setup', step: 'Interview' },
-    { id: 'setup-identity', label: 'Identification', step: 'Setup', setupSection: 'identity' },
-    { id: 'setup-cra', label: 'CRA questions', step: 'Setup', setupSection: 'elections' },
-    { id: 'setup-spouse', label: 'Spouse setup', step: 'Setup', setupSection: 'spouse' },
-    { id: 'setup-dependents', label: 'Dependent setup', step: 'Setup', setupSection: 'dependents' },
-    { id: 'income-slips', label: 'Income & CRA slips', step: 'Income' },
-    { id: 'deductions', label: 'Deductions & credits', step: 'Deductions' },
-    { id: 'review', label: 'Review & diagnostics', step: 'Review' },
-    { id: 'risk', label: 'Risk checks', step: 'Risk' }
-  ]), [])
+  const interviewMenuItems = useMemo<WorkflowMenuItem[]>(() => SIDEBAR_MENU_ITEMS, [])
   const suggestedSlipSchemas = useMemo(() => {
     const codes = new Set((interviewSetup?.resolvedSlipCodes || []).map((code) => code.toUpperCase()))
     if (codes.size === 0) return []
@@ -693,49 +762,12 @@ const ReturnBuilder: FC = () => {
     setShowAllSetupIssues(false)
   }, [setupIssueFilter, visibleSetupCompletenessIssues.length])
 
-  useEffect(() => {
-    if (activeStep !== 'Setup') return
-    const requiredIssues = setupCompletenessIssues.filter((item) => item.severity === 'required')
-    if (requiredIssues.length === 0) return
-    const nextOpen = {
-      taxSituation: requiredIssues.some((item) => item.field === 'taxSituation'),
-      identity: requiredIssues.some((item) => (
-        ['firstName', 'lastName', 'sin', 'dateOfBirth'].includes(item.field)
-      )),
-      mailing: requiredIssues.some((item) => (
-        item.field.startsWith('mailing') ||
-        item.field.startsWith('residence') ||
-        item.field === 'email'
-      )),
-      spouse: requiredIssues.some((item) => (
-        item.field.startsWith('spouse') || item.field === 'spouseUccb'
-      )),
-      elections: requiredIssues.some((item) => (
-        [
-          'languageCorrespondence',
-          'firstTimeFiler',
-          'soldPrincipalResidence',
-          'treatyExemptForeignService',
-          'electionsCanadianCitizen',
-          'electionsAuthorize',
-          'foreignPropertyOver100k',
-          'organDonorConsent',
-          'craEmailNotificationsConsent',
-          'craEmailConfirmed',
-          'craHasForeignMailingAddress'
-        ].includes(item.field)
-      )),
-      dependents: requiredIssues.some((item) => item.field.startsWith('dependents'))
-    }
-    setSetupSectionOpen((prev) => ({
-      taxSituation: prev.taxSituation || nextOpen.taxSituation,
-      identity: prev.identity || nextOpen.identity,
-      mailing: prev.mailing || nextOpen.mailing,
-      spouse: prev.spouse || nextOpen.spouse,
-      elections: prev.elections || nextOpen.elections,
-      dependents: prev.dependents || nextOpen.dependents
-    }))
-  }, [activeStep, setupCompletenessIssues])
+  const navigateWorkflowStep = (step: Step) => {
+    setActiveStep(step)
+    window.setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }, 20)
+  }
 
   const load = async () => {
     if (!id) return
@@ -1290,70 +1322,41 @@ const ReturnBuilder: FC = () => {
     }))
   }
 
-  const toggleSetupSection = (key: SetupSectionKey) => {
-    setSetupSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
-  }
-
-  const sectionForIssueField = (field: string): SetupSectionKey => {
-    if (field === 'taxSituation') return 'taxSituation'
-    if (field.startsWith('mailing') || field.startsWith('residence') || field === 'email') return 'mailing'
+  const stepForIssueField = (field: string): Step => {
+    if (field === 'taxSituation') return 'Interview'
+    if (field.startsWith('spouse') || field === 'spouseUccb') return 'Spouse'
+    if (field.startsWith('dependents')) return 'Dependents'
+    if ([
+      'firstTimeFiler',
+      'soldPrincipalResidence',
+      'treatyExemptForeignService',
+      'electionsCanadianCitizen',
+      'electionsAuthorize',
+      'foreignPropertyOver100k',
+      'organDonorConsent',
+      'craEmailNotificationsConsent',
+      'craEmailConfirmed',
+      'craHasForeignMailingAddress'
+    ].includes(field)) return 'Elections'
     if (
-      field.startsWith('spouse') ||
-      field === 'spouseUccb'
-    ) return 'spouse'
-    if (
-      [
-        'languageCorrespondence',
-        'firstTimeFiler',
-        'soldPrincipalResidence',
-        'treatyExemptForeignService',
-        'electionsCanadianCitizen',
-        'electionsAuthorize',
-        'foreignPropertyOver100k',
-        'organDonorConsent',
-        'craEmailNotificationsConsent',
-        'craEmailConfirmed',
-        'craHasForeignMailingAddress'
-      ].includes(field)
-    ) return 'elections'
-    if (field.startsWith('dependents')) return 'dependents'
-    return 'identity'
+      field.startsWith('mailing') ||
+      field.startsWith('residence') ||
+      field === 'email' ||
+      field === 'languageCorrespondence' ||
+      field === 'maritalStatusChangeDate' ||
+      field === 'becameResidentDate' ||
+      field === 'ceasedResidentDate' ||
+      field === 'deceasedDate'
+    ) return 'Mailing'
+    return 'Identity'
   }
 
   const openSetupIssueField = (field: string) => {
-    if (field === 'taxSituation') {
-      setActiveStep('Interview')
-      window.setTimeout(() => {
-        document.getElementById('rb-tax-situation')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 40)
-      return
-    }
-    const section = sectionForIssueField(field)
-    setActiveStep('Setup')
-    setSetupSectionOpen((prev) => ({ ...prev, [section]: true }))
-    window.setTimeout(() => {
-      document.getElementById(`rb-${section}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 40)
+    navigateWorkflowStep(stepForIssueField(field))
   }
 
-  const jumpToMenuItem = (item: InterviewMenuItem) => {
-    setActiveStep(item.step)
-    if (item.id === 'setup-tax-situation') {
-      window.setTimeout(() => {
-        document.getElementById('rb-tax-situation')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 40)
-      return
-    }
-    if (item.setupSection) {
-      setSetupSectionOpen((prev) => ({ ...prev, [item.setupSection as SetupSectionKey]: true }))
-      window.setTimeout(() => {
-        document.getElementById(`rb-${item.setupSection}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 40)
-      return
-    }
-    window.setTimeout(() => {
-      document.getElementById(`rb-${item.id.replace(/^setup-/, '')}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 40)
+  const jumpToMenuItem = (item: WorkflowMenuItem) => {
+    navigateWorkflowStep(item.step)
   }
 
   const createDependentReturn = async (dep: DependentProfile, idx: number) => {
@@ -1379,7 +1382,7 @@ const ReturnBuilder: FC = () => {
       })
       const createdId = created?.taxReturn?.id
       if (!createdId) throw new Error('Dependent return was created but no return id was received.')
-      navigate(`${basePath}/returns/${createdId}?step=Setup&setupFocus=all`)
+      navigate(`${basePath}/returns/${createdId}?step=identity&setupFocus=all`)
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not create dependant return workspace')
     } finally {
@@ -1622,20 +1625,15 @@ const ReturnBuilder: FC = () => {
               ) : (
                 <p className="text-sm text-text-light">Select a household workspace tab to begin interview setup.</p>
               )}
+              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} />
             </section>
           )}
 
-          {!loading && activeStep === 'Setup' && (
+          {!loading && activeStep === 'Identity' && (
             <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
-              <h2 className="text-lg font-semibold text-primary-dark">Setup</h2>
+              <h2 className="text-lg font-semibold text-primary-dark">Identification</h2>
               <p className="text-sm text-text-light">
-                Return status: <strong className="text-text">{data?.taxReturn.status}</strong>. Complete taxpayer profile details for T1 Step 1 and family-related claims.
-              </p>
-              <p className="text-xs text-text-light">
-                If married/common-law, choose spouse mode below: Summary only or Complete full spouse return.
-              </p>
-              <p className="text-xs text-text-light">
-                Complete tax situation setup and profile for each taxpayer tab (primary, spouse, dependant) before entering tax data.
+                Return status: <strong className="text-text">{data?.taxReturn.status}</strong>. Enter taxpayer identity for T1 Step 1.
               </p>
               {profileSavedMsg && (
                 <p className="text-sm text-green-800 bg-green-50 border border-green-200 rounded-md px-3 py-2">{profileSavedMsg}</p>
@@ -1707,17 +1705,8 @@ const ReturnBuilder: FC = () => {
                   )}
                 </div>
               )}
-              <div id="rb-identity" className="border border-border rounded-md p-3 bg-background/50 space-y-2">
-                <button
-                  type="button"
-                  className="w-full flex items-center justify-between text-left"
-                  onClick={() => toggleSetupSection('identity')}
-                >
-                  <h3 className="text-sm font-semibold text-primary-dark">Identification</h3>
-                  <span className="text-xs text-text-light">{setupSectionOpen.identity ? 'Hide' : 'Show'}</span>
-                </button>
-                {setupSectionOpen.identity && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div id="rb-identity" className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <label className="text-xs text-text-light">
                   First name
                   <input
@@ -1774,21 +1763,65 @@ const ReturnBuilder: FC = () => {
                     <option value="widowed">Widowed</option>
                   </select>
                 </label>
-                  </div>
-                )}
+                </div>
               </div>
+              <WorkflowPageNav
+                activeStep={activeStep}
+                onNavigate={navigateWorkflowStep}
+                showSaveProfile
+                onSaveProfile={() => { void saveTaxpayerProfile() }}
+                saving={saving}
+              />
+            </section>
+          )}
 
-              <div id="rb-mailing" className="border border-border rounded-md p-3 bg-background/50 space-y-2">
-                <button
-                  type="button"
-                  className="w-full flex items-center justify-between text-left"
-                  onClick={() => toggleSetupSection('mailing')}
-                >
-                  <h3 className="text-sm font-semibold text-primary-dark">Mailing and residence information (T1 Step 1)</h3>
-                  <span className="text-xs text-text-light">{setupSectionOpen.mailing ? 'Hide' : 'Show'}</span>
-                </button>
-                {setupSectionOpen.mailing && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {!loading && activeStep === 'Mailing' && (
+            <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
+              <h2 className="text-lg font-semibold text-primary-dark">Mailing and residence information (T1 Step 1)</h2>
+              <p className="text-sm text-text-light">Mailing address, province of residence, and residency-related questions.</p>
+              {profileSavedMsg && (
+                <p className="text-sm text-green-800 bg-green-50 border border-green-200 rounded-md px-3 py-2">{profileSavedMsg}</p>
+              )}
+              {setupCompletenessIssues.length > 0 && (
+                <div className="rounded-md border border-amber-300 bg-amber-50 p-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-medium text-amber-900">T1 Setup completeness checker</p>
+                    <span className="text-[11px] text-amber-900 border border-amber-300 bg-amber-100 rounded px-2 py-0.5">
+                      {requiredSetupIssueCount} required
+                    </span>
+                    <span className="text-[11px] text-amber-900 border border-amber-300 bg-amber-100 rounded px-2 py-0.5">
+                      {recommendedSetupIssueCount} recommended
+                    </span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      className={`px-2 py-1 text-[11px] rounded border ${setupIssueFilter === 'all' ? 'bg-amber-700 text-white border-amber-700' : 'bg-white text-amber-900 border-amber-300'}`}
+                      onClick={() => setSetupIssueFilter('all')}
+                    >
+                      Show all warnings
+                    </button>
+                    <button
+                      type="button"
+                      className={`px-2 py-1 text-[11px] rounded border ${setupIssueFilter === 'required' ? 'bg-amber-700 text-white border-amber-700' : 'bg-white text-amber-900 border-amber-300'}`}
+                      onClick={() => setSetupIssueFilter('required')}
+                    >
+                      Show required only
+                    </button>
+                  </div>
+                  <ul className="mt-2 space-y-1 text-xs text-amber-900">
+                    {displayedSetupIssues.map((item, idx) => (
+                      <li key={`${item.field}-${idx}`}>
+                        <button type="button" className="text-left hover:underline" onClick={() => openSetupIssueField(item.field)}>
+                          [{item.severity === 'required' ? 'REQUIRED' : 'RECOMMENDED'}] {item.message}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div id="rb-mailing" className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <label className="text-xs text-text-light md:col-span-2">
                     Mailing address (apartment, number, street)
                     <input
@@ -1960,213 +1993,24 @@ const ReturnBuilder: FC = () => {
                       />
                     </label>
                   )}
-                  </div>
-                )}
-              </div>
-
-              {(taxpayerProfile.maritalStatus === 'married' || taxpayerProfile.maritalStatus === 'common_law') && (
-                <div id="rb-spouse" className="border border-border rounded-md p-3 bg-background/50 space-y-2">
-                  <button
-                    type="button"
-                    className="w-full flex items-center justify-between text-left"
-                    onClick={() => toggleSetupSection('spouse')}
-                  >
-                    <h3 className="text-sm font-semibold text-primary-dark">Spouse or common-law partner</h3>
-                    <span className="text-xs text-text-light">{setupSectionOpen.spouse ? 'Hide' : 'Show'}</span>
-                  </button>
-                  {setupSectionOpen.spouse && (
-                    <>
-                  <div className="text-xs text-text-light border border-border rounded-md p-2 bg-white">
-                    Choose spouse return mode:
-                    <div className="mt-2 flex items-center gap-2">
-                      <button
-                        type="button"
-                        className={`px-2 py-1 text-xs rounded border ${taxpayerProfile.spouseReturnMode === 'summary' ? 'bg-primary-dark text-white border-primary-dark' : 'bg-white text-text border-border'}`}
-                        onClick={() => setTaxpayerProfile((prev) => ({ ...prev, spouseReturnMode: 'summary' }))}
-                      >
-                        Summary only
-                      </button>
-                      <button
-                        type="button"
-                        className={`px-2 py-1 text-xs rounded border ${taxpayerProfile.spouseReturnMode === 'full' ? 'bg-primary-dark text-white border-primary-dark' : 'bg-white text-text border-border'}`}
-                        onClick={() => setTaxpayerProfile((prev) => ({ ...prev, spouseReturnMode: 'full' }))}
-                      >
-                        Complete full spouse return
-                      </button>
-                    </div>
-                  </div>
-
-                  {taxpayerProfile.spouseReturnMode === 'summary' ? (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                      <label className="text-xs text-text-light">
-                        Full name (required)
-                        <input
-                          className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                          value={taxpayerProfile.spouse.fullName}
-                          onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, fullName: e.target.value } }))}
-                        />
-                      </label>
-                      <label className="text-xs text-text-light">
-                        SIN (9 digits)
-                        <input
-                          className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                          value={taxpayerProfile.spouse.fullSin}
-                          onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, fullSin: sanitizeSin(e.target.value) } }))}
-                        />
-                      </label>
-                      <label className="text-xs text-text-light">
-                        Net income (line 23600)
-                        <input
-                          type="number"
-                          className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                          value={Number(taxpayerProfile.spouseNetIncome23600 || 0)}
-                          onChange={(e) => setTaxpayerProfile((prev) => ({
-                            ...prev,
-                            spouseNetIncome23600: Number(e.target.value || 0),
-                            spouse: { ...prev.spouse, netIncome: Number(e.target.value || 0) }
-                          }))}
-                        />
-                      </label>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <label className="text-xs text-text-light">
-                        Does spouse reside at the same address as the main taxpayer?
-                        <YesNoToggle
-                          value={taxpayerProfile.spouseSameAddress}
-                          onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, spouseSameAddress: value !== false }))}
-                        />
-                      </label>
-                      <p className="text-[11px] text-text-light">
-                        If Yes, spouse workspace mailing/residence fields will auto-fill from the main taxpayer on save.
-                      </p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        <label className="text-xs text-text-light">
-                          First name (required)
-                          <input
-                            className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                            value={taxpayerProfile.spouse.firstName}
-                            onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, firstName: e.target.value } }))}
-                          />
-                        </label>
-                        <label className="text-xs text-text-light">
-                          Last name (required)
-                          <input
-                            className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                            value={taxpayerProfile.spouse.lastName}
-                            onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, lastName: e.target.value } }))}
-                          />
-                        </label>
-                        <label className="text-xs text-text-light">
-                          Date of birth (required)
-                          <input
-                            type="date"
-                            className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                            value={taxpayerProfile.spouse.dateOfBirth ? taxpayerProfile.spouse.dateOfBirth.slice(0, 10) : ''}
-                            onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, dateOfBirth: e.target.value } }))}
-                          />
-                        </label>
-                        <label className="text-xs text-text-light">
-                          Net income (line 23600)
-                          <input
-                            type="number"
-                            className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                            value={Number(taxpayerProfile.spouseNetIncome23600 || 0)}
-                            onChange={(e) => setTaxpayerProfile((prev) => ({
-                              ...prev,
-                              spouseNetIncome23600: Number(e.target.value || 0),
-                              spouse: { ...prev.spouse, netIncome: Number(e.target.value || 0) }
-                            }))}
-                          />
-                        </label>
-                        <label className="text-xs text-text-light">
-                          SIN (9 digits) (required)
-                          <input
-                            className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                            value={taxpayerProfile.spouse.fullSin}
-                            onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, fullSin: sanitizeSin(e.target.value) } }))}
-                          />
-                        </label>
-                      </div>
-                      <div className="flex gap-2 pt-1">
-                        <button
-                          type="button"
-                          className="btn btn--secondary text-xs px-2 py-1"
-                          onClick={() => {
-                            setReturnRole('spouse')
-                            setActiveStep('Income')
-                          }}
-                        >
-                          Build spouse return now
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <label className="text-xs text-text-light inline-flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={taxpayerProfile.spouseSelfEmployed}
-                        onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouseSelfEmployed: e.target.checked }))}
-                      />
-                      Spouse was self-employed in the tax year
-                    </label>
-                    <label className="text-xs text-text-light md:col-span-2">
-                      Does spouse have UCCB adjustments (line 11700 or 21300)?
-                      <YesNoToggle
-                        value={taxpayerProfile.spouseHasUccbAdjustments}
-                        onChange={(value) => setTaxpayerProfile((prev) => ({
-                          ...prev,
-                          spouseHasUccbAdjustments: Boolean(value),
-                          spouseUccb11700: value ? prev.spouseUccb11700 : 0,
-                          spouseUccbRepayment21300: value ? prev.spouseUccbRepayment21300 : 0
-                        }))}
-                      />
-                    </label>
-                    {taxpayerProfile.spouseHasUccbAdjustments && (
-                      <>
-                        <label className="text-xs text-text-light">
-                          UCCB amount from spouse line 11700 (required when Yes)
-                          <input
-                            type="number"
-                            className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                            value={Number(taxpayerProfile.spouseUccb11700 || 0)}
-                            onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouseUccb11700: Number(e.target.value || 0) }))}
-                          />
-                        </label>
-                        <label className="text-xs text-text-light">
-                          UCCB repayment from spouse line 21300 (required when Yes)
-                          <input
-                            type="number"
-                            className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                            value={Number(taxpayerProfile.spouseUccbRepayment21300 || 0)}
-                            onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouseUccbRepayment21300: Number(e.target.value || 0) }))}
-                          />
-                        </label>
-                      </>
-                    )}
-                  </div>
-                  <div className="text-[11px] text-text-light">
-                    {taxpayerProfile.spouseReturnMode === 'summary'
-                      ? 'Summary mode stores spouse profile basics only.'
-                      : 'Full mode requires complete spouse profile and enables full spouse return entry in Income and Deductions.'}
-                  </div>
-                    </>
-                  )}
                 </div>
-              )}
+              </div>
+              <WorkflowPageNav
+                activeStep={activeStep}
+                onNavigate={navigateWorkflowStep}
+                showSaveProfile
+                onSaveProfile={() => { void saveTaxpayerProfile() }}
+                saving={saving}
+              />
+            </section>
+          )}
 
-              <div id="rb-elections" className="border border-border rounded-md p-3 bg-background/50 space-y-3">
-                <button
-                  type="button"
-                  className="w-full flex items-center justify-between text-left"
-                  onClick={() => toggleSetupSection('elections')}
-                >
-                  <h3 className="text-sm font-semibold text-primary-dark">T1 page 2 questions and elections</h3>
-                  <span className="text-xs text-text-light">{setupSectionOpen.elections ? 'Hide' : 'Show'}</span>
-                </button>
-                {setupSectionOpen.elections && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {!loading && activeStep === 'Elections' && (
+            <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
+              <h2 className="text-lg font-semibold text-primary-dark">CRA questions</h2>
+              <p className="text-sm text-text-light">T1 page 2 questions and elections.</p>
+              <div id="rb-elections" className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <label className="text-xs text-text-light">
                     Are you filing a CRA income tax return for the first time?
                     <YesNoToggle
@@ -2261,24 +2105,131 @@ const ReturnBuilder: FC = () => {
                       onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, craHasForeignMailingAddress: value == null ? '' : (value ? 'yes' : 'no') }))}
                     />
                   </label>
-                  </div>
-                )}
+                </div>
               </div>
+              <WorkflowPageNav
+                activeStep={activeStep}
+                onNavigate={navigateWorkflowStep}
+                showSaveProfile
+                onSaveProfile={() => { void saveTaxpayerProfile() }}
+                saving={saving}
+              />
+            </section>
+          )}
 
-              <div id="rb-dependents" className="border border-border rounded-md p-3 bg-background/50 space-y-2">
-                <div className="flex items-center justify-between">
-                  <button
-                    type="button"
-                    className="flex items-center justify-between text-left w-full"
-                    onClick={() => toggleSetupSection('dependents')}
-                  >
-                  <h3 className="text-sm font-semibold text-primary-dark">Dependants</h3>
-                    <span className="text-xs text-text-light">{setupSectionOpen.dependents ? 'Hide' : 'Show'}</span>
-                  </button>
+          {!loading && activeStep === 'Spouse' && (
+            <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
+              <h2 className="text-lg font-semibold text-primary-dark">Spouse setup</h2>
+              <p className="text-sm text-text-light">Spouse or common-law partner details for summary or full spouse return mode.</p>
+              {!(taxpayerProfile.maritalStatus === 'married' || taxpayerProfile.maritalStatus === 'common_law') ? (
+                <p className="text-sm text-text-light border border-border rounded-md p-3 bg-background/50">
+                  Spouse setup applies when marital status is Married or Common-law. Update marital status on the Identification page.
+                </p>
+              ) : (
+                <div id="rb-spouse" className="space-y-2">
+                  <div className="text-xs text-text-light border border-border rounded-md p-2 bg-white">
+                    Choose spouse return mode:
+                    <div className="mt-2 flex items-center gap-2">
+                      <button
+                        type="button"
+                        className={`px-2 py-1 text-xs rounded border ${taxpayerProfile.spouseReturnMode === 'summary' ? 'bg-primary-dark text-white border-primary-dark' : 'bg-white text-text border-border'}`}
+                        onClick={() => setTaxpayerProfile((prev) => ({ ...prev, spouseReturnMode: 'summary' }))}
+                      >
+                        Summary only
+                      </button>
+                      <button
+                        type="button"
+                        className={`px-2 py-1 text-xs rounded border ${taxpayerProfile.spouseReturnMode === 'full' ? 'bg-primary-dark text-white border-primary-dark' : 'bg-white text-text border-border'}`}
+                        onClick={() => setTaxpayerProfile((prev) => ({ ...prev, spouseReturnMode: 'full' }))}
+                      >
+                        Complete full spouse return
+                      </button>
+                    </div>
+                  </div>
+                  {taxpayerProfile.spouseReturnMode === 'summary' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <label className="text-xs text-text-light">
+                        Full name (required)
+                        <input className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={taxpayerProfile.spouse.fullName} onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, fullName: e.target.value } }))} />
+                      </label>
+                      <label className="text-xs text-text-light">
+                        SIN (9 digits)
+                        <input className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={taxpayerProfile.spouse.fullSin} onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, fullSin: sanitizeSin(e.target.value) } }))} />
+                      </label>
+                      <label className="text-xs text-text-light">
+                        Net income (line 23600)
+                        <input type="number" className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={Number(taxpayerProfile.spouseNetIncome23600 || 0)} onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouseNetIncome23600: Number(e.target.value || 0), spouse: { ...prev.spouse, netIncome: Number(e.target.value || 0) } }))} />
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <label className="text-xs text-text-light">
+                        Does spouse reside at the same address as the main taxpayer?
+                        <YesNoToggle value={taxpayerProfile.spouseSameAddress} onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, spouseSameAddress: value !== false }))} />
+                      </label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <label className="text-xs text-text-light">
+                          First name (required)
+                          <input className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={taxpayerProfile.spouse.firstName} onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, firstName: e.target.value } }))} />
+                        </label>
+                        <label className="text-xs text-text-light">
+                          Last name (required)
+                          <input className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={taxpayerProfile.spouse.lastName} onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, lastName: e.target.value } }))} />
+                        </label>
+                        <label className="text-xs text-text-light">
+                          Date of birth (required)
+                          <input type="date" className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={taxpayerProfile.spouse.dateOfBirth ? taxpayerProfile.spouse.dateOfBirth.slice(0, 10) : ''} onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, dateOfBirth: e.target.value } }))} />
+                        </label>
+                        <label className="text-xs text-text-light">
+                          Net income (line 23600)
+                          <input type="number" className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={Number(taxpayerProfile.spouseNetIncome23600 || 0)} onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouseNetIncome23600: Number(e.target.value || 0), spouse: { ...prev.spouse, netIncome: Number(e.target.value || 0) } }))} />
+                        </label>
+                        <label className="text-xs text-text-light">
+                          SIN (9 digits) (required)
+                          <input className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={taxpayerProfile.spouse.fullSin} onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, fullSin: sanitizeSin(e.target.value) } }))} />
+                        </label>
+                      </div>
+                      <button type="button" className="btn btn--secondary text-xs px-2 py-1" onClick={() => { setReturnRole('spouse'); navigateWorkflowStep('Income') }}>
+                        Build spouse return now
+                      </button>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <label className="text-xs text-text-light inline-flex items-center gap-2">
+                      <input type="checkbox" checked={taxpayerProfile.spouseSelfEmployed} onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouseSelfEmployed: e.target.checked }))} />
+                      Spouse was self-employed in the tax year
+                    </label>
+                    <label className="text-xs text-text-light md:col-span-2">
+                      Does spouse have UCCB adjustments (line 11700 or 21300)?
+                      <YesNoToggle value={taxpayerProfile.spouseHasUccbAdjustments} onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, spouseHasUccbAdjustments: Boolean(value), spouseUccb11700: value ? prev.spouseUccb11700 : 0, spouseUccbRepayment21300: value ? prev.spouseUccbRepayment21300 : 0 }))} />
+                    </label>
+                    {taxpayerProfile.spouseHasUccbAdjustments && (
+                      <>
+                        <label className="text-xs text-text-light">
+                          UCCB amount from spouse line 11700
+                          <input type="number" className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={Number(taxpayerProfile.spouseUccb11700 || 0)} onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouseUccb11700: Number(e.target.value || 0) }))} />
+                        </label>
+                        <label className="text-xs text-text-light">
+                          UCCB repayment from spouse line 21300
+                          <input type="number" className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={Number(taxpayerProfile.spouseUccbRepayment21300 || 0)} onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouseUccbRepayment21300: Number(e.target.value || 0) }))} />
+                        </label>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} showSaveProfile onSaveProfile={() => { void saveTaxpayerProfile() }} saving={saving} />
+            </section>
+          )}
+
+          {!loading && activeStep === 'Dependents' && (
+            <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
+              <h2 className="text-lg font-semibold text-primary-dark">Dependent setup</h2>
+              <p className="text-sm text-text-light">Each dependant can have their own return workspace.</p>
+              <div id="rb-dependents" className="space-y-2">
+                <div className="flex items-center justify-end">
                   <button type="button" className="btn btn--secondary text-xs px-2 py-1" onClick={addDependent}>Add dependant</button>
                 </div>
-                {setupSectionOpen.dependents && (
-                  <>
                 <p className="text-xs text-text-light">
                   Each dependant can have their own full return workspace so the same T1 profile questions can be completed separately.
                 </p>
@@ -2351,15 +2302,8 @@ const ReturnBuilder: FC = () => {
                     </div>
                   </div>
                 ))}
-                  </>
-                )}
               </div>
-
-              <div className="flex gap-2">
-                <button type="button" className="btn btn--primary text-sm px-3 py-2" onClick={() => { void saveTaxpayerProfile() }} disabled={saving}>
-                  Save taxpayer profile
-                </button>
-              </div>
+              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} showSaveProfile onSaveProfile={() => { void saveTaxpayerProfile() }} saving={saving} />
             </section>
           )}
 
@@ -2656,6 +2600,7 @@ const ReturnBuilder: FC = () => {
                 </button>
                 <button type="button" className="btn btn--primary text-sm px-3 py-2" onClick={() => { void saveIncome() }} disabled={saving}>Save income</button>
               </div>
+              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} />
             </section>
           )}
 
@@ -2725,6 +2670,7 @@ const ReturnBuilder: FC = () => {
                 </button>
                 <button type="button" className="btn btn--primary text-sm px-3 py-2" onClick={() => { void saveDeductions() }} disabled={saving}>Save deductions</button>
               </div>
+              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} />
             </section>
           )}
 
@@ -2865,6 +2811,7 @@ const ReturnBuilder: FC = () => {
                   </p>
                 </div>
               )}
+              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} />
             </section>
           )}
 
@@ -2883,6 +2830,7 @@ const ReturnBuilder: FC = () => {
                 Run audit risk checks
               </button>
               <Link className="text-sm text-accent font-medium hover:underline block" to={`${basePath}/risk`}>Open Audit & Risk panel</Link>
+              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} />
             </section>
           )}
             </div>

@@ -1,11 +1,11 @@
-import { FC, useEffect, useMemo, useState } from 'react'
+import { FC, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
 import { taxFetch, type DocumentExtractResponse, type RequiredFormsResponse, type ReturnInterviewTopicsResponse, type SlipSchema, type SlipSchemasResponse, type TaxReturnSummary } from '../../../lib/taxIntelligenceApi'
 import RequiredFormsPanel from './RequiredFormsPanel'
-import InterviewTopicsSetup from './InterviewTopicsSetup'
+import InterviewTopicsSetup, { type InterviewTopicsSetupHandle } from './InterviewTopicsSetup'
 import { getTaxBasePath } from './path'
 
 type TaxReturnPayload = {
@@ -179,7 +179,7 @@ type TaxpayerProfileState = {
   dependents: DependentProfile[]
 }
 
-type Step = 'Identity' | 'Mailing' | 'Elections' | 'Spouse' | 'Dependents' | 'Interview' | 'Income' | 'Deductions' | 'Review' | 'Optimization' | 'Risk'
+type Step = 'Identity' | 'Mailing' | 'Elections' | 'Spouse' | 'Dependents' | 'Interview' | 'Income' | 'Deductions' | 'Review' | 'TaxReturn' | 'Netfile'
 type CompletenessSeverity = 'required' | 'recommended'
 type CompletenessIssue = { field: string; message: string; severity: CompletenessSeverity }
 
@@ -200,7 +200,8 @@ const WORKFLOW_PAGES: Step[] = [
   'Income',
   'Deductions',
   'Review',
-  'Risk'
+  'TaxReturn',
+  'Netfile'
 ]
 
 const SIDEBAR_MENU_ITEMS: WorkflowMenuItem[] = [
@@ -213,7 +214,8 @@ const SIDEBAR_MENU_ITEMS: WorkflowMenuItem[] = [
   { id: 'income-slips', label: 'Income & CRA slips', step: 'Income' },
   { id: 'deductions', label: 'Deductions & credits', step: 'Deductions' },
   { id: 'review', label: 'Review & diagnostics', step: 'Review' },
-  { id: 'risk', label: 'Risk checks', step: 'Risk' }
+  { id: 'tax-return', label: 'Tax Return', step: 'TaxReturn' },
+  { id: 'netfile', label: 'NETFILE', step: 'Netfile' }
 ]
 
 function workflowNeighbors (step: Step): { previous: Step | null; next: Step | null } {
@@ -232,6 +234,7 @@ function stepLabel (step: Step): string {
 type WorkflowPageNavProps = {
   activeStep: Step
   onNavigate: (step: Step) => void
+  onSaveBeforeNavigate?: () => Promise<boolean>
   showSaveProfile?: boolean
   onSaveProfile?: () => void
   saving?: boolean
@@ -240,16 +243,26 @@ type WorkflowPageNavProps = {
 const WorkflowPageNav: FC<WorkflowPageNavProps> = ({
   activeStep,
   onNavigate,
+  onSaveBeforeNavigate,
   showSaveProfile = false,
   onSaveProfile,
   saving = false
 }) => {
   const { previous, next } = workflowNeighbors(activeStep)
+
+  const navigateWithSave = async (step: Step) => {
+    if (onSaveBeforeNavigate) {
+      const saved = await onSaveBeforeNavigate()
+      if (!saved) return
+    }
+    onNavigate(step)
+  }
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 pt-4 mt-4 border-t border-border">
       <div>
         {previous ? (
-          <button type="button" className="btn btn--secondary text-sm px-4 py-2" onClick={() => onNavigate(previous)}>
+          <button type="button" className="btn btn--secondary text-sm px-4 py-2" onClick={() => { void navigateWithSave(previous) }} disabled={saving}>
             ← Back: {stepLabel(previous)}
           </button>
         ) : (
@@ -263,8 +276,8 @@ const WorkflowPageNav: FC<WorkflowPageNavProps> = ({
           </button>
         )}
         {next ? (
-          <button type="button" className="btn btn--primary text-sm px-4 py-2" onClick={() => onNavigate(next)}>
-            Next: {stepLabel(next)} →
+          <button type="button" className="btn btn--primary text-sm px-4 py-2" onClick={() => { void navigateWithSave(next) }} disabled={saving}>
+            {saving ? 'Saving…' : `Next: ${stepLabel(next)} →`}
           </button>
         ) : (
           <span className="text-xs text-text-light">End of workflow</span>
@@ -427,31 +440,6 @@ const T1_DEDUCTION_FIELDS = [
   { key: 'donations', label: 'Donations and gifts', lineRef: '34900', category: 'donations', isCredit: true }
 ] as const
 
-const INTERVIEW_FLOW = [
-  { id: 'start', label: 'Start' },
-  { id: 'interview', label: 'Interview' },
-  { id: 'review', label: 'Review' },
-  { id: 'return', label: 'Tax Return' },
-  { id: 'netfile', label: 'NETFILE' }
-] as const
-type WorkflowStageId = typeof INTERVIEW_FLOW[number]['id']
-
-const WORKFLOW_STAGE_TO_STEP: Record<WorkflowStageId, Step> = {
-  start: 'Identity',
-  interview: 'Interview',
-  review: 'Review',
-  return: 'Optimization',
-  netfile: 'Risk'
-}
-
-function stepToWorkflowStage (step: Step): WorkflowStageId {
-  if (step === 'Identity' || step === 'Mailing' || step === 'Elections' || step === 'Spouse' || step === 'Dependents') return 'start'
-  if (step === 'Interview' || step === 'Income' || step === 'Deductions') return 'interview'
-  if (step === 'Review') return 'review'
-  if (step === 'Optimization') return 'return'
-  return 'netfile'
-}
-
 const DEFAULT_TAXPAYER_PROFILE: TaxpayerProfileState = {
   firstName: '',
   lastName: '',
@@ -570,6 +558,9 @@ const ReturnBuilder: FC = () => {
   const [showAllSetupIssues, setShowAllSetupIssues] = useState(false)
   const [creatingDependentIdx, setCreatingDependentIdx] = useState<number | null>(null)
   const [interviewSetup, setInterviewSetup] = useState<ReturnInterviewTopicsResponse | null>(null)
+  const interviewSetupRef = useRef<InterviewTopicsSetupHandle>(null)
+  const [auditFlags, setAuditFlags] = useState<Array<{ id: string; severity: string; title: string; detail: string | null }>>([])
+  const [loadingAuditFlags, setLoadingAuditFlags] = useState(false)
 
   const requestedStep = useMemo<Step | null>(() => {
     const value = new URLSearchParams(location.search).get('step')
@@ -583,9 +574,9 @@ const ReturnBuilder: FC = () => {
     if (normalized === 'interview') return 'Interview'
     if (normalized === 'income') return 'Income'
     if (normalized === 'deductions') return 'Deductions'
-    if (normalized === 'review') return 'Review'
-    if (normalized === 'optimization') return 'Optimization'
-    if (normalized === 'risk') return 'Risk'
+    if (normalized === 'review' || normalized === 'risk') return 'Review'
+    if (normalized === 'tax-return' || normalized === 'taxreturn' || normalized === 'return' || normalized === 'optimization') return 'TaxReturn'
+    if (normalized === 'netfile') return 'Netfile'
     return null
   }, [location.search])
 
@@ -663,7 +654,6 @@ const ReturnBuilder: FC = () => {
       .filter((schema) => codes.has(schema.code.toUpperCase()))
       .sort(compareSlipSchemas)
   }, [interviewSetup, slipSchemas])
-  const activeWorkflowStage = useMemo(() => stepToWorkflowStage(activeStep), [activeStep])
   const setupCompletenessIssues = useMemo<CompletenessIssue[]>(() => {
     const issues: CompletenessIssue[] = []
     const married = taxpayerProfile.maritalStatus === 'married' || taxpayerProfile.maritalStatus === 'common_law'
@@ -1006,8 +996,30 @@ const ReturnBuilder: FC = () => {
     }
   }
 
+  const loadAuditFlags = async () => {
+    if (!id) {
+      setAuditFlags([])
+      return
+    }
+    setLoadingAuditFlags(true)
+    try {
+      const response = await taxFetch<{ flags: Array<{ id: string; severity: string; title: string; detail: string | null }> }>(
+        `/audit/flags?taxReturnId=${id}`,
+        getToken
+      )
+      setAuditFlags(response.flags || [])
+    } catch {
+      setAuditFlags([])
+    } finally {
+      setLoadingAuditFlags(false)
+    }
+  }
+
   useEffect(() => {
-    if (activeStep === 'Review' && id) void loadRequiredForms()
+    if (activeStep === 'Review' && id) {
+      void loadRequiredForms()
+      void loadAuditFlags()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStep, id])
 
@@ -1161,7 +1173,7 @@ const ReturnBuilder: FC = () => {
     }
   }
 
-  const saveDeductions = async () => {
+  const saveDeductions = async (): Promise<boolean> => {
     setSaving(true)
     try {
       const structuredEntries = T1_DEDUCTION_FIELDS
@@ -1206,8 +1218,10 @@ const ReturnBuilder: FC = () => {
       })
       await load()
       if (activeStep === 'Review') void loadRequiredForms()
+      return true
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not save deductions')
+      return false
     } finally {
       setSaving(false)
     }
@@ -1294,13 +1308,13 @@ const ReturnBuilder: FC = () => {
   const runAudit = async () => {
     setSaving(true)
     try {
-      await taxFetch('/audit/run', getToken, {
+      const response = await taxFetch<{ flags: Array<{ id: string; severity: string; title: string; detail: string | null }> }>('/audit/run', getToken, {
         method: 'POST',
         body: JSON.stringify({ taxReturnId: id })
       })
+      setAuditFlags(response.flags || [])
       await load()
       if (activeStep === 'Review') void loadRequiredForms()
-      setActiveStep('Risk')
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not run audit')
     } finally {
@@ -1355,10 +1369,6 @@ const ReturnBuilder: FC = () => {
     navigateWorkflowStep(stepForIssueField(field))
   }
 
-  const jumpToMenuItem = (item: WorkflowMenuItem) => {
-    navigateWorkflowStep(item.step)
-  }
-
   const createDependentReturn = async (dep: DependentProfile, idx: number) => {
     const dependentName = dep.fullName.trim()
     if (!dependentName) {
@@ -1390,8 +1400,8 @@ const ReturnBuilder: FC = () => {
     }
   }
 
-  const saveTaxpayerProfile = async () => {
-    if (!data?.taxReturn?.id) return
+  const saveTaxpayerProfile = async (): Promise<boolean> => {
+    if (!data?.taxReturn?.id) return true
     setSaving(true)
     setProfileSavedMsg(null)
     setErr(null)
@@ -1512,11 +1522,45 @@ const ReturnBuilder: FC = () => {
       } else {
         setProfileSavedMsg('Taxpayer profile saved.')
       }
+      return true
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not save taxpayer profile')
+      return false
     } finally {
       setSaving(false)
     }
+  }
+
+  const saveActiveStepData = async (): Promise<boolean> => {
+    switch (activeStep) {
+      case 'Identity':
+      case 'Mailing':
+      case 'Elections':
+      case 'Spouse':
+      case 'Dependents':
+        return saveTaxpayerProfile()
+      case 'Interview': {
+        setSaving(true)
+        try {
+          return await (interviewSetupRef.current?.save() ?? true)
+        } finally {
+          setSaving(false)
+        }
+      }
+      case 'Income':
+        return saveIncome()
+      case 'Deductions':
+        return saveDeductions()
+      default:
+        return true
+    }
+  }
+
+  const jumpToMenuItem = async (item: WorkflowMenuItem) => {
+    if (item.step === activeStep) return
+    const saved = await saveActiveStepData()
+    if (!saved) return
+    navigateWorkflowStep(item.step)
   }
 
   return (
@@ -1538,52 +1582,32 @@ const ReturnBuilder: FC = () => {
             <Link to={`${basePath}/returns`} className="text-sm text-accent font-medium hover:underline">Back to returns</Link>
           </div>
 
-          <div className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-              {INTERVIEW_FLOW.map((node, idx) => {
-                const isActive = activeWorkflowStage === node.id
+          <div className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-2">
+            <p className="text-xs text-text-light">Household workspaces</p>
+            <div className="rounded-md border border-border bg-background/40 p-2">
+              <div role="tablist" aria-label="Household workspaces" className="flex flex-wrap items-end gap-2 border-b border-border px-1">
+              {workspaceTabs.map((w) => {
+                const current = w.id === id
+                const label = String(w.workspace_role || 'primary') === 'primary'
+                  ? `${w.taxpayer_name}`
+                  : `${w.taxpayer_name} (${String(w.workspace_role || '').toLowerCase()})`
                 return (
                   <button
-                    key={node.id}
+                    key={w.id}
                     type="button"
-                    onClick={() => setActiveStep(WORKFLOW_STAGE_TO_STEP[node.id])}
-                    className={`px-3 py-2 rounded-md border text-xs font-medium text-left ${isActive ? 'bg-primary-dark text-white border-primary-dark' : 'bg-background text-text border-border hover:bg-white'}`}
+                    role="tab"
+                    aria-selected={current}
+                    onClick={() => navigate(`${basePath}/returns/${w.id}`)}
+                    className={`px-3 py-1.5 text-xs rounded-t-md border border-b-0 ${current ? 'bg-white text-primary-dark border-primary-dark font-semibold' : 'bg-background text-text border-border hover:bg-white'}`}
                   >
-                    <span className="mr-1 opacity-80">{idx + 1}</span>
-                    {node.label}
-                    {node.id === 'start' && requiredSetupIssueCount > 0 ? ` (${requiredSetupIssueCount} required)` : ''}
-                    {node.id === 'start' && requiredSetupIssueCount === 0 && recommendedSetupIssueCount > 0 ? ` (${recommendedSetupIssueCount} review)` : ''}
+                    {label}
                   </button>
                 )
               })}
-            </div>
-            <div className="border-t border-border pt-3 space-y-2">
-              <p className="text-xs text-text-light">Household workspaces</p>
-              <div className="rounded-md border border-border bg-background/40 p-2">
-                <div role="tablist" aria-label="Household workspaces" className="flex flex-wrap items-end gap-2 border-b border-border px-1">
-                {workspaceTabs.map((w) => {
-                  const current = w.id === id
-                  const label = String(w.workspace_role || 'primary') === 'primary'
-                    ? `${w.taxpayer_name}`
-                    : `${w.taxpayer_name} (${String(w.workspace_role || '').toLowerCase()})`
-                  return (
-                    <button
-                      key={w.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={current}
-                      onClick={() => navigate(`${basePath}/returns/${w.id}`)}
-                      className={`px-3 py-1.5 text-xs rounded-t-md border border-b-0 ${current ? 'bg-white text-primary-dark border-primary-dark font-semibold' : 'bg-background text-text border-border hover:bg-white'}`}
-                    >
-                      {label}
-                    </button>
-                  )
-                })}
-                </div>
-                {workspaceTabs.length === 0 && (
-                  <span className="text-xs text-text-light block px-1">This return has no linked household workspaces yet.</span>
-                )}
               </div>
+              {workspaceTabs.length === 0 && (
+                <span className="text-xs text-text-light block px-1">This return has no linked household workspaces yet.</span>
+              )}
             </div>
           </div>
 
@@ -1595,7 +1619,7 @@ const ReturnBuilder: FC = () => {
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => jumpToMenuItem(item)}
+                    onClick={() => { void jumpToMenuItem(item) }}
                     className={`w-full text-left px-2 py-1.5 text-xs rounded-md border ${
                       activeStep === item.step ? 'bg-primary-dark text-white border-primary-dark' : 'bg-white text-text border-border hover:bg-background'
                     }`}
@@ -1605,7 +1629,7 @@ const ReturnBuilder: FC = () => {
                 ))}
               </div>
               <p className="text-[11px] text-text-light mt-3">
-                Move through setup, slips, deductions, review and risk just like an interview workflow.
+                Move through setup, slips, deductions, review, tax return, and NETFILE.
               </p>
             </aside>
 
@@ -1617,6 +1641,7 @@ const ReturnBuilder: FC = () => {
             <section className="bg-white p-4 rounded-lg border border-border shadow-sm">
               {id ? (
                 <InterviewTopicsSetup
+                  ref={interviewSetupRef}
                   taxReturnId={id}
                   taxpayerName={data?.taxReturn?.taxpayer_name || 'this taxpayer'}
                   getToken={getToken}
@@ -1625,7 +1650,7 @@ const ReturnBuilder: FC = () => {
               ) : (
                 <p className="text-sm text-text-light">Select a household workspace tab to begin interview setup.</p>
               )}
-              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} />
+              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} onSaveBeforeNavigate={saveActiveStepData} saving={saving} />
             </section>
           )}
 
@@ -1770,6 +1795,7 @@ const ReturnBuilder: FC = () => {
                 onNavigate={navigateWorkflowStep}
                 showSaveProfile
                 onSaveProfile={() => { void saveTaxpayerProfile() }}
+                onSaveBeforeNavigate={saveActiveStepData}
                 saving={saving}
               />
             </section>
@@ -2000,6 +2026,7 @@ const ReturnBuilder: FC = () => {
                 onNavigate={navigateWorkflowStep}
                 showSaveProfile
                 onSaveProfile={() => { void saveTaxpayerProfile() }}
+                onSaveBeforeNavigate={saveActiveStepData}
                 saving={saving}
               />
             </section>
@@ -2112,6 +2139,7 @@ const ReturnBuilder: FC = () => {
                 onNavigate={navigateWorkflowStep}
                 showSaveProfile
                 onSaveProfile={() => { void saveTaxpayerProfile() }}
+                onSaveBeforeNavigate={saveActiveStepData}
                 saving={saving}
               />
             </section>
@@ -2218,7 +2246,7 @@ const ReturnBuilder: FC = () => {
                   </div>
                 </div>
               )}
-              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} showSaveProfile onSaveProfile={() => { void saveTaxpayerProfile() }} saving={saving} />
+              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} showSaveProfile onSaveProfile={() => { void saveTaxpayerProfile() }} onSaveBeforeNavigate={saveActiveStepData} saving={saving} />
             </section>
           )}
 
@@ -2303,7 +2331,7 @@ const ReturnBuilder: FC = () => {
                   </div>
                 ))}
               </div>
-              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} showSaveProfile onSaveProfile={() => { void saveTaxpayerProfile() }} saving={saving} />
+              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} showSaveProfile onSaveProfile={() => { void saveTaxpayerProfile() }} onSaveBeforeNavigate={saveActiveStepData} saving={saving} />
             </section>
           )}
 
@@ -2600,7 +2628,7 @@ const ReturnBuilder: FC = () => {
                 </button>
                 <button type="button" className="btn btn--primary text-sm px-3 py-2" onClick={() => { void saveIncome() }} disabled={saving}>Save income</button>
               </div>
-              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} />
+              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} onSaveBeforeNavigate={saveActiveStepData} saving={saving} />
             </section>
           )}
 
@@ -2670,13 +2698,18 @@ const ReturnBuilder: FC = () => {
                 </button>
                 <button type="button" className="btn btn--primary text-sm px-3 py-2" onClick={() => { void saveDeductions() }} disabled={saving}>Save deductions</button>
               </div>
-              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} />
+              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} onSaveBeforeNavigate={saveActiveStepData} saving={saving} />
             </section>
           )}
 
           {!loading && activeStep === 'Review' && (
-            <section className="bg-white p-4 rounded-lg border border-border shadow-sm">
-              <h2 className="text-lg font-semibold text-primary-dark mb-2">Review</h2>
+            <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold text-primary-dark">Review &amp; diagnostics</h2>
+                <p className="text-sm text-text-light mt-1">
+                  Run calculations, validate slip mappings, confirm required forms, and check audit risk before filing.
+                </p>
+              </div>
               <button type="button" className="btn btn--primary text-sm px-3 py-2" onClick={() => { void runCalculation() }} disabled={saving}>
                 Run deterministic calculation
               </button>
@@ -2811,28 +2844,66 @@ const ReturnBuilder: FC = () => {
                   </p>
                 </div>
               )}
-              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} />
+              <div id="rb-risk" className="border border-border rounded-md p-3 bg-background/50 space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-primary-dark">Risk checks</h3>
+                  <p className="text-xs text-text-light mt-1">
+                    Rule-based audit flags for high-risk return patterns before you proceed to Tax Return and NETFILE.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={() => { void runAudit() }} disabled={saving}>
+                    Run audit risk checks
+                  </button>
+                  <Link className="text-sm text-accent font-medium hover:underline" to={`${basePath}/risk`}>Open Audit &amp; Risk panel</Link>
+                </div>
+                {loadingAuditFlags ? (
+                  <p className="text-xs text-text-light">Loading audit flags…</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {auditFlags.map((flag) => (
+                      <li key={flag.id} className="border border-border rounded-md p-3 bg-white text-xs">
+                        <p className="font-semibold text-accent">{flag.severity}</p>
+                        <p className="font-medium text-text">{flag.title}</p>
+                        {flag.detail && <p className="text-text-light mt-1">{flag.detail}</p>}
+                      </li>
+                    ))}
+                    {auditFlags.length === 0 && (
+                      <li className="text-xs text-text-light">No audit flags yet. Run risk checks to evaluate this return.</li>
+                    )}
+                  </ul>
+                )}
+              </div>
+              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} onSaveBeforeNavigate={saveActiveStepData} saving={saving} />
             </section>
           )}
 
-          {!loading && activeStep === 'Optimization' && (
-            <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-2">
-              <h2 className="text-lg font-semibold text-primary-dark">Optimization</h2>
-              <p className="text-sm text-text-light">Create scenarios in the dedicated Scenarios page.</p>
-              <Link className="text-sm text-accent font-medium hover:underline" to={`${basePath}/scenarios`}>Open scenarios</Link>
+          {!loading && activeStep === 'TaxReturn' && (
+            <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
+              <h2 className="text-lg font-semibold text-primary-dark">Tax Return</h2>
+              <p className="text-sm text-text-light">
+                Review completed T1 forms, schedules, and line summaries for {data?.taxReturn?.taxpayer_name || 'this taxpayer'} before filing.
+              </p>
+              <Link className="text-sm text-accent font-medium hover:underline block" to={`${basePath}/forms-schedules`}>
+                Open Forms &amp; Schedules workspace
+              </Link>
+              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} onSaveBeforeNavigate={saveActiveStepData} saving={saving} />
             </section>
           )}
 
-          {!loading && activeStep === 'Risk' && (
-            <section id="rb-risk" className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-2">
-              <h2 className="text-lg font-semibold text-primary-dark">Risk</h2>
-              <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={() => { void runAudit() }} disabled={saving}>
-                Run audit risk checks
-              </button>
-              <Link className="text-sm text-accent font-medium hover:underline block" to={`${basePath}/risk`}>Open Audit & Risk panel</Link>
-              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} />
+          {!loading && activeStep === 'Netfile' && (
+            <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
+              <h2 className="text-lg font-semibold text-primary-dark">NETFILE</h2>
+              <p className="text-sm text-text-light">
+                Prepare to electronically file this return with the CRA after review and diagnostics are complete.
+              </p>
+              <p className="text-xs text-text-light border border-border rounded-md p-3 bg-background/50">
+                NETFILE submission will be available here once return validation and certification checks pass.
+              </p>
+              <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} onSaveBeforeNavigate={saveActiveStepData} saving={saving} />
             </section>
           )}
+
             </div>
           </div>
         </div>

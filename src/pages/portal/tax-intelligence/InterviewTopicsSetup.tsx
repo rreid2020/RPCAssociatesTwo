@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useState, type FC } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react'
 import {
   taxFetch,
   type ReturnInterviewTopicsResponse
 } from '../../../lib/taxIntelligenceApi'
+
+export type InterviewTopicsSetupHandle = {
+  save: () => Promise<boolean>
+}
 
 type Props = {
   taxReturnId: string
@@ -26,7 +30,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   carryforward: '↩️'
 }
 
-const InterviewTopicsSetup: FC<Props> = ({ taxReturnId, taxpayerName, getToken, onSaved }) => {
+const InterviewTopicsSetup = forwardRef<InterviewTopicsSetupHandle, Props>(({ taxReturnId, taxpayerName, getToken, onSaved }, ref) => {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -71,8 +75,8 @@ const InterviewTopicsSetup: FC<Props> = ({ taxReturnId, taxpayerName, getToken, 
     setSavedMsg(null)
   }
 
-  const save = async () => {
-    if (!taxReturnId) return
+  const save = async (): Promise<boolean> => {
+    if (!taxReturnId) return true
     setSaving(true)
     setErr(null)
     setSavedMsg(null)
@@ -89,12 +93,16 @@ const InterviewTopicsSetup: FC<Props> = ({ taxReturnId, taxpayerName, getToken, 
       setSelected(new Set(response.selectedTopicIds || []))
       setSavedMsg(`Saved interview setup for ${taxpayerName || 'this taxpayer'}.`)
       onSaved?.(response)
+      return true
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not save interview setup')
+      return false
     } finally {
       setSaving(false)
     }
   }
+
+  useImperativeHandle(ref, () => ({ save }), [taxReturnId, selected, taxpayerName, getToken, onSaved])
 
   if (loading) {
     return <p className="text-sm text-text-light">Loading interview setup…</p>
@@ -193,6 +201,8 @@ const InterviewTopicsSetup: FC<Props> = ({ taxReturnId, taxpayerName, getToken, 
       </div>
     </div>
   )
-}
+})
+
+InterviewTopicsSetup.displayName = 'InterviewTopicsSetup'
 
 export default InterviewTopicsSetup

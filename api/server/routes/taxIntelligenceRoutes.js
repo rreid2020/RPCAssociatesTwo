@@ -22,6 +22,11 @@ import { mapExtractedSlipToEntries, upsertDocumentMappedEntries } from '../servi
 import { inferRequiredFormsForReturn } from '../services/tax-intelligence/requiredForms.service.js'
 import { listSlipSchemasForReturnBuilder, getSlipSchema } from '../services/tax-intelligence/slipSchema.service.js'
 import { saveReturnSlipsAndIncome } from '../services/tax-intelligence/slipEntry.service.js'
+import {
+  getInterviewTopicsCatalog,
+  getReturnInterviewTopics,
+  saveReturnInterviewTopics
+} from '../services/tax-intelligence/interviewTopics.service.js'
 
 function parseUuid (v) {
   return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
@@ -411,6 +416,47 @@ export function createTaxIntelligenceRouter (pool) {
     } catch (e) {
       console.error('GET /tax-returns/:id/required-forms', e)
       res.status(500).json({ error: 'Could not infer required forms' })
+    }
+  })
+
+  r.get('/interview-topics', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      res.json(getInterviewTopicsCatalog())
+    } catch (e) {
+      console.error('GET /interview-topics', e)
+      res.status(500).json({ error: 'Could not load interview topics' })
+    }
+  })
+
+  r.get('/tax-returns/:id/interview-topics', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const id = parseUuid(req.params.id)
+    if (!id) return res.status(400).json({ error: 'Invalid id' })
+    try {
+      const result = await getReturnInterviewTopics(pool, session.userId, id)
+      if (!result) return res.status(404).json({ error: 'Not found' })
+      res.json(result)
+    } catch (e) {
+      console.error('GET /tax-returns/:id/interview-topics', e)
+      res.status(500).json({ error: 'Could not load interview topics for return' })
+    }
+  })
+
+  r.put('/tax-returns/:id/interview-topics', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const id = parseUuid(req.params.id)
+    if (!id) return res.status(400).json({ error: 'Invalid id' })
+    try {
+      const result = await saveReturnInterviewTopics(pool, session.userId, id, req.body || {})
+      if (!result) return res.status(404).json({ error: 'Not found' })
+      res.json(result)
+    } catch (e) {
+      console.error('PUT /tax-returns/:id/interview-topics', e)
+      res.status(500).json({ error: 'Could not save interview topics for return' })
     }
   })
 

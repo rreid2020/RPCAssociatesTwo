@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
-import { taxFetch, type DocumentExtractResponse, type RequiredFormsResponse, type SlipSchema, type SlipSchemasResponse, type TaxReturnSummary } from '../../../lib/taxIntelligenceApi'
+import { taxFetch, type DocumentExtractResponse, type RequiredFormsResponse, type ReturnInterviewTopicsResponse, type SlipSchema, type SlipSchemasResponse, type TaxReturnSummary } from '../../../lib/taxIntelligenceApi'
+import InterviewTopicsSetup from './InterviewTopicsSetup'
 import { getTaxBasePath } from './path'
 
 type TaxReturnPayload = {
@@ -180,7 +181,7 @@ type TaxpayerProfileState = {
 type Step = 'Setup' | 'Income' | 'Deductions' | 'Review' | 'Optimization' | 'Risk'
 type CompletenessSeverity = 'required' | 'recommended'
 type CompletenessIssue = { field: string; message: string; severity: CompletenessSeverity }
-type SetupSectionKey = 'identity' | 'mailing' | 'spouse' | 'elections' | 'dependents'
+type SetupSectionKey = 'taxSituation' | 'identity' | 'mailing' | 'spouse' | 'elections' | 'dependents'
 
 type InterviewMenuItem = {
   id: string
@@ -478,12 +479,14 @@ const ReturnBuilder: FC = () => {
   const [setupIssueFilter, setSetupIssueFilter] = useState<'all' | 'required'>('all')
   const [showAllSetupIssues, setShowAllSetupIssues] = useState(false)
   const [creatingDependentIdx, setCreatingDependentIdx] = useState<number | null>(null)
+  const [interviewSetup, setInterviewSetup] = useState<ReturnInterviewTopicsResponse | null>(null)
   const [setupSectionOpen, setSetupSectionOpen] = useState<Record<SetupSectionKey, boolean>>({
-    identity: true,
-    mailing: true,
-    spouse: true,
-    elections: true,
-    dependents: true
+    taxSituation: true,
+    identity: false,
+    mailing: false,
+    spouse: false,
+    elections: false,
+    dependents: false
   })
 
   const requestedStep = useMemo<Step | null>(() => {
@@ -565,7 +568,8 @@ const ReturnBuilder: FC = () => {
     })
   }, [allReturns, householdRootId])
   const interviewMenuItems = useMemo<InterviewMenuItem[]>(() => ([
-    { id: 'setup-identity', label: 'Interview setup', step: 'Setup', setupSection: 'identity' },
+    { id: 'setup-tax-situation', label: 'Tax situation setup', step: 'Setup', setupSection: 'taxSituation' },
+    { id: 'setup-identity', label: 'Identification', step: 'Setup', setupSection: 'identity' },
     { id: 'setup-cra', label: 'CRA questions', step: 'Setup', setupSection: 'elections' },
     { id: 'setup-spouse', label: 'Spouse setup', step: 'Setup', setupSection: 'spouse' },
     { id: 'setup-dependents', label: 'Dependent setup', step: 'Setup', setupSection: 'dependents' },
@@ -574,6 +578,13 @@ const ReturnBuilder: FC = () => {
     { id: 'review', label: 'Review & diagnostics', step: 'Review' },
     { id: 'risk', label: 'Risk checks', step: 'Risk' }
   ]), [])
+  const suggestedSlipSchemas = useMemo(() => {
+    const codes = new Set((interviewSetup?.resolvedSlipCodes || []).map((code) => code.toUpperCase()))
+    if (codes.size === 0) return []
+    return slipSchemas
+      .filter((schema) => codes.has(schema.code.toUpperCase()))
+      .sort(compareSlipSchemas)
+  }, [interviewSetup, slipSchemas])
   const activeWorkflowStage = useMemo(() => stepToWorkflowStage(activeStep), [activeStep])
   const setupCompletenessIssues = useMemo<CompletenessIssue[]>(() => {
     const issues: CompletenessIssue[] = []
@@ -635,8 +646,11 @@ const ReturnBuilder: FC = () => {
         issues.push({ field: 'spouseUccb', message: 'UCCB adjustments is marked Yes, but line 11700 and 21300 amounts are both zero.', severity: 'required' })
       }
     }
+    if ((interviewSetup?.selectedTopicIds?.length || 0) === 0) {
+      issues.push({ field: 'taxSituation', message: 'Tax situation setup has no topics selected for this taxpayer.', severity: 'recommended' })
+    }
     return issues
-  }, [taxpayerProfile])
+  }, [taxpayerProfile, interviewSetup])
   const requiredSetupIssueCount = useMemo(
     () => setupCompletenessIssues.filter((item) => item.severity === 'required').length,
     [setupCompletenessIssues]
@@ -675,6 +689,7 @@ const ReturnBuilder: FC = () => {
     const requiredIssues = setupCompletenessIssues.filter((item) => item.severity === 'required')
     if (requiredIssues.length === 0) return
     const nextOpen = {
+      taxSituation: requiredIssues.some((item) => item.field === 'taxSituation'),
       identity: requiredIssues.some((item) => (
         ['firstName', 'lastName', 'sin', 'dateOfBirth'].includes(item.field)
       )),
@@ -704,6 +719,7 @@ const ReturnBuilder: FC = () => {
       dependents: requiredIssues.some((item) => item.field.startsWith('dependents'))
     }
     setSetupSectionOpen((prev) => ({
+      taxSituation: prev.taxSituation || nextOpen.taxSituation,
       identity: prev.identity || nextOpen.identity,
       mailing: prev.mailing || nextOpen.mailing,
       spouse: prev.spouse || nextOpen.spouse,
@@ -716,13 +732,15 @@ const ReturnBuilder: FC = () => {
     if (!id) return
     setLoading(true)
     try {
-      const [returnData, docs, listData] = await Promise.all([
+      const [returnData, docs, listData, interviewTopicsData] = await Promise.all([
         taxFetch<TaxReturnPayload>(`/tax-returns/${id}`, getToken),
         taxFetch<{ documents: Array<{ id: string; file_name: string }> }>('/documents/for-tax', getToken),
-        taxFetch<{ returns: TaxReturnSummary[] }>('/tax-returns', getToken)
+        taxFetch<{ returns: TaxReturnSummary[] }>('/tax-returns', getToken),
+        taxFetch<ReturnInterviewTopicsResponse>(`/tax-returns/${id}/interview-topics`, getToken).catch(() => null)
       ])
       setData(returnData)
       setAllReturns(listData.returns || [])
+      setInterviewSetup(interviewTopicsData)
       const setupJson = (returnData.taxReturn.setup_json || {}) as Record<string, unknown>
       const setupTaxpayerProfile = (setupJson.taxpayerProfile && typeof setupJson.taxpayerProfile === 'object'
         ? setupJson.taxpayerProfile
@@ -965,6 +983,10 @@ const ReturnBuilder: FC = () => {
 
   const addIncomeRow = (role: 'self' | 'spouse') => setIncomeRows((prev) => [...prev, { category: 'employment_income', description: '', amount: 0, taxpayerRole: role }])
   const addSlipRow = () => setManualSlipRows((prev) => [...prev, { ...createSlipRow(newSlipCode), taxpayerRole: 'self' }])
+  const addSuggestedSlipRow = (slipCode: string) => {
+    setNewSlipCode(slipCode)
+    setManualSlipRows((prev) => [...prev, { ...createSlipRow(slipCode), taxpayerRole: 'self' }])
+  }
   const removeSlipRow = async (idx: number) => {
     const row = manualSlipRows[idx]
     if (!row) return
@@ -1242,6 +1264,7 @@ const ReturnBuilder: FC = () => {
   }
 
   const sectionForIssueField = (field: string): SetupSectionKey => {
+    if (field === 'taxSituation') return 'taxSituation'
     if (field.startsWith('mailing') || field.startsWith('residence') || field === 'email') return 'mailing'
     if (
       field.startsWith('spouse') ||
@@ -1553,7 +1576,7 @@ const ReturnBuilder: FC = () => {
                 If married/common-law, choose spouse mode below: Summary only or Complete full spouse return.
               </p>
               <p className="text-xs text-text-light">
-                Complete this setup for each taxpayer tab (primary, spouse, dependant) before entering tax data.
+                Complete tax situation setup and profile for each taxpayer tab (primary, spouse, dependant) before entering tax data.
               </p>
               {profileSavedMsg && (
                 <p className="text-sm text-green-800 bg-green-50 border border-green-200 rounded-md px-3 py-2">{profileSavedMsg}</p>
@@ -1625,6 +1648,24 @@ const ReturnBuilder: FC = () => {
                   )}
                 </div>
               )}
+              <div id="rb-taxSituation" className="border border-border rounded-md p-3 bg-background/50 space-y-2">
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between text-left"
+                  onClick={() => toggleSetupSection('taxSituation')}
+                >
+                  <h3 className="text-sm font-semibold text-primary-dark">Interview setup — tax situation</h3>
+                  <span className="text-xs text-text-light">{setupSectionOpen.taxSituation ? 'Hide' : 'Show'}</span>
+                </button>
+                {setupSectionOpen.taxSituation && id && (
+                  <InterviewTopicsSetup
+                    taxReturnId={id}
+                    taxpayerName={data?.taxReturn?.taxpayer_name || 'this taxpayer'}
+                    getToken={getToken}
+                    onSaved={(response) => setInterviewSetup(response)}
+                  />
+                )}
+              </div>
               <div id="rb-identity" className="border border-border rounded-md p-3 bg-background/50 space-y-2">
                 <button
                   type="button"
@@ -2288,6 +2329,31 @@ const ReturnBuilder: FC = () => {
                 Entering income for <span className="font-semibold text-text">{data?.taxReturn?.taxpayer_name || 'this workspace'}</span>.
                 Use household workspace tabs above to switch to another person&apos;s return.
               </p>
+              {suggestedSlipSchemas.length > 0 && (
+                <div className="border border-primary-dark/20 rounded-md p-3 bg-primary-dark/5 space-y-2">
+                  <h3 className="text-sm font-semibold text-primary-dark">Suggested slips from tax situation setup</h3>
+                  <p className="text-xs text-text-light">
+                    Based on topics selected for this taxpayer. Add a slip row to start entering box amounts.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {suggestedSlipSchemas.map((schema) => {
+                      const alreadyAdded = manualSlipRows.some((row) => row.slipCode.toUpperCase() === schema.code.toUpperCase())
+                      return (
+                        <button
+                          key={`suggested-${schema.code}`}
+                          type="button"
+                          className={`text-xs px-2 py-1 rounded border ${alreadyAdded ? 'border-green-600 bg-green-50 text-green-800' : 'border-border bg-white hover:bg-background'}`}
+                          onClick={() => { if (!alreadyAdded) addSuggestedSlipRow(schema.code) }}
+                          disabled={alreadyAdded || saving}
+                          title={schema.name}
+                        >
+                          {alreadyAdded ? `${schema.code} added` : `+ ${schema.code}`}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
               <div className="flex flex-col md:flex-row gap-2">
                 <select
                   className="border border-border rounded-md px-3 py-2 text-sm flex-1"

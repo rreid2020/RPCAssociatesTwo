@@ -120,6 +120,45 @@ export type DocumentExtractResponse = {
   ocrWarning?: string | null
 }
 
+export type InterviewTopicItem = {
+  id: string
+  categoryId: string
+  label: string
+  description: string
+  slipCodes: string[]
+  formCodes: string[]
+  linkedStep: 'Income' | 'Deductions' | 'Setup' | 'Review'
+}
+
+export type InterviewTopicCategory = {
+  id: string
+  title: string
+  summary: string
+  icon: string
+  topics: InterviewTopicItem[]
+}
+
+export type InterviewTopicsResponse = {
+  version: number
+  categories: InterviewTopicCategory[]
+}
+
+export type ReturnInterviewTopicsResponse = InterviewTopicsResponse & {
+  taxReturnId: string
+  taxpayerName: string
+  workspaceRole?: string
+  selectedTopicIds: string[]
+  resolvedSlipCodes: string[]
+  resolvedFormCodes: string[]
+  resolvedTopics: Array<{
+    id: string
+    label: string
+    categoryId: string
+    categoryTitle: string
+  }>
+  updatedAt: string | null
+}
+
 export type TaxReturnSummary = {
   id: string
   tax_year: number

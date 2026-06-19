@@ -1,5 +1,6 @@
 import { getTaxReturnById } from './taxReturn.service.js'
 import { listDeductions, listIncomeEntries } from './income.service.js'
+import { INTERVIEW_TOPIC_CATEGORIES, normalizeInterviewTopicIds } from '../../lib/taxSlips/interviewTopics.registry.js'
 
 function normalizeFormCode (value) {
   return String(value || '').trim().toUpperCase().replace(/\s+/g, '')
@@ -131,6 +132,26 @@ export async function inferRequiredFormsForReturn (pool, clerkUserId, taxReturnI
   const profile = taxReturn.taxpayer_profile && typeof taxReturn.taxpayer_profile === 'object'
     ? taxReturn.taxpayer_profile
     : {}
+  const setupJson = taxReturn.setup_json && typeof taxReturn.setup_json === 'object'
+    ? taxReturn.setup_json
+    : {}
+  const interviewTopics = setupJson.interviewTopics && typeof setupJson.interviewTopics === 'object'
+    ? setupJson.interviewTopics
+    : {}
+  const selectedInterviewTopicIds = normalizeInterviewTopicIds(interviewTopics.selectedTopicIds)
+
+  for (const category of INTERVIEW_TOPIC_CATEGORIES) {
+    for (const topic of category.topics) {
+      if (!selectedInterviewTopicIds.includes(topic.id)) continue
+      for (const formCode of topic.formCodes || []) {
+        pushSignal(signals, {
+          formCode,
+          sources: ['interview_topic'],
+          reasons: [`Tax situation setup: ${topic.label}`]
+        })
+      }
+    }
+  }
 
   for (const rule of SETUP_FLAG_RULES) {
     if (profile[rule.field] === true) {

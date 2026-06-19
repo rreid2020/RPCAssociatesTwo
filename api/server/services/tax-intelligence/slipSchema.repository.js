@@ -63,7 +63,7 @@ export function isInformationSlipCandidate (formNumber, title) {
   if (/^T4/.test(code) && !/-SUM$/.test(code) && !/SUM$/.test(code)) return true
   if (/^T5/.test(code)) return true
   if (code === 'T3') return true
-  if (['T2202', 'T5007', 'T5008', 'T5013', 'T5018', 'T4FHSA', 'NR4', 'NR4OAS', 'T4AOAS', 'T4AP', 'RC62', 'AGR-1', 'T1198', 'T1212', 'T737-RCA', 'T4A-RCA', 'T4A-NR', 'T4EQ', 'T5003'].includes(code)) return true
+  if (['T2202', 'T5007', 'T5008', 'T5013', 'T5018', 'T4FHSA', 'NR4', 'NR4OAS', 'T4AOAS', 'T4A(OAS)', 'T4AP', 'T4A(P)', 'RC62', 'AGR-1', 'T1198', 'T1212', 'T737-RCA', 'T4A-RCA', 'T4A-NR', 'T4EQ', 'T5003'].includes(code)) return true
   if (/^statement of /i.test(normalizedTitle) && !/summary/i.test(normalizedTitle)) return true
   return false
 }

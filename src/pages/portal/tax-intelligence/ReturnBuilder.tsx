@@ -227,6 +227,26 @@ function buildDefaultBoxes (schema?: SlipSchema): Record<string, number> {
   return Object.fromEntries(schema.boxes.map((box) => [box.code, 0]))
 }
 
+function resolveManualSlipIdFromMeta (
+  meta: Record<string, unknown>,
+  entryId: string,
+  slipType: string
+): string {
+  if (meta.manualSlipId) return String(meta.manualSlipId)
+  const payer = String(meta.payerName || '').trim()
+  const year = String(meta.taxYear || '')
+  const role = String(meta.taxpayerRole || 'self')
+  if (payer || year) {
+    return `legacy-${slipType}-${payer}-${year}-${role}`.replace(/\s+/g, '_')
+  }
+  return `${slipType}-${entryId}`
+}
+
+function createManualSlipId (): string {
+  if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID()
+  return `slip-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
 function buildSlipRowsFromReturnData (
   incomeEntries: TaxReturnPayload['incomeEntries'],
   deductions: TaxReturnPayload['deductions'],
@@ -238,7 +258,7 @@ function buildSlipRowsFromReturnData (
     const meta = (entry.metadata || {}) as Record<string, unknown>
     const slipType = String(meta.slipType || '')
     if (!slipType) return
-    const manualSlipId = String(meta.manualSlipId || `${slipType}-${entry.id}`)
+    const manualSlipId = resolveManualSlipIdFromMeta(meta, entry.id, slipType)
     const boxCode = String(meta.boxCode || '')
     const boxValue = Number(meta.boxValue ?? entry.amount ?? 0)
     if (!grouped.has(manualSlipId)) {
@@ -537,6 +557,7 @@ const ReturnBuilder: FC = () => {
       payerName: '',
       taxYear: data?.taxReturn?.tax_year || new Date().getFullYear(),
       taxpayerRole: 'self',
+      manualSlipId: createManualSlipId(),
       boxes: buildDefaultBoxes(schema)
     }
   }
@@ -987,15 +1008,19 @@ const ReturnBuilder: FC = () => {
     setNewSlipCode(slipCode)
     setManualSlipRows((prev) => [...prev, { ...createSlipRow(slipCode), taxpayerRole: 'self' }])
   }
-  const removeSlipRow = async (idx: number) => {
-    const row = manualSlipRows[idx]
+  const removeSlipRow = async (target: { idx: number; manualSlipId?: string }) => {
+    const row = manualSlipRows[target.idx]
     if (!row) return
     const label = slipSchemasByCode[row.slipCode.toUpperCase()]?.name || row.slipCode
     if (!window.confirm(`Remove ${row.slipCode} — ${label}?`)) return
+    const slipKey = row.manualSlipId || target.manualSlipId
     const previousSlips = manualSlipRows
-    const nextSlips = manualSlipRows.filter((_, i) => i !== idx)
+    const nextSlips = manualSlipRows.filter((candidate, i) => {
+      if (slipKey) return candidate.manualSlipId !== slipKey
+      return i !== target.idx
+    })
     setManualSlipRows(nextSlips)
-    const saved = await saveIncome({ slips: nextSlips })
+    const saved = await saveIncome({ slips: nextSlips, reload: false })
     if (!saved) setManualSlipRows(previousSlips)
   }
   const updateSlipRowCode = (idx: number, slipCode: string) => {
@@ -1007,6 +1032,7 @@ const ReturnBuilder: FC = () => {
       next[idx] = {
         ...row,
         slipCode,
+        manualSlipId: row.manualSlipId || createManualSlipId(),
         boxes: { ...buildDefaultBoxes(schema), ...row.boxes }
       }
       return next
@@ -1076,18 +1102,35 @@ const ReturnBuilder: FC = () => {
     return rows
   }, [data?.incomeEntries, slipSchemasByCode])
 
-  const saveIncome = async (overrides?: { slips?: SlipRow[] }): Promise<boolean> => {
+  const saveIncome = async (overrides?: { slips?: SlipRow[]; reload?: boolean }): Promise<boolean> => {
     setSaving(true)
     try {
-      const slips = (overrides?.slips ?? manualSlipRows).map((row) => ({ ...row, taxpayerRole: 'self' as const }))
-      await taxFetch(`/tax-returns/${id}/slips`, getToken, {
+      const slips = (overrides?.slips ?? manualSlipRows).map((row) => ({
+        ...row,
+        manualSlipId: row.manualSlipId || createManualSlipId(),
+        taxpayerRole: 'self' as const
+      }))
+      const result = await taxFetch<{ incomeEntries: TaxReturnPayload['incomeEntries']; deductions: TaxReturnPayload['deductions'] }>(`/tax-returns/${id}/slips`, getToken, {
         method: 'POST',
         body: JSON.stringify({
           manualIncomeRows: incomeRows,
           slips
         })
       })
-      await load()
+      if (overrides?.reload === false) {
+        setManualSlipRows(buildSlipRowsFromReturnData(
+          result.incomeEntries || [],
+          result.deductions || [],
+          slipSchemasByCode
+        ))
+        setData((prev) => prev ? {
+          ...prev,
+          incomeEntries: result.incomeEntries || [],
+          deductions: result.deductions || []
+        } : prev)
+      } else {
+        await load()
+      }
       if (activeStep === 'Review') void loadRequiredForms()
       return true
     } catch (e) {
@@ -2545,7 +2588,7 @@ const ReturnBuilder: FC = () => {
                       <button
                         type="button"
                         className="btn btn--secondary text-sm px-3 py-2 md:self-end"
-                        onClick={() => { void removeSlipRow(idx) }}
+                        onClick={() => { void removeSlipRow({ idx, manualSlipId: row.manualSlipId }) }}
                         disabled={saving}
                       >
                         {saving ? 'Saving…' : 'Delete slip'}

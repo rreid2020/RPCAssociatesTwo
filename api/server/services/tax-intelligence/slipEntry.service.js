@@ -26,23 +26,71 @@ function buildSlipBaseMeta (slip, manualSlipId) {
   }
 }
 
+function pushSlipShellEntry (incomeEntries, slipCode, baseMeta, schemaStatus = 'complete') {
+  incomeEntries.push({
+    category: 'slip_shell',
+    description: `${slipCode} slip instance`,
+    amount: 0,
+    sourceType: 'manual_slip',
+    isManual: true,
+    metadata: {
+      ...baseMeta,
+      slipShell: true,
+      schemaStatus
+    }
+  })
+}
+
 export function mapSlipInstancesToEntries (slips = [], schemasByCode = {}) {
   const incomeEntries = []
   const deductionEntries = []
 
   for (const slip of slips) {
-    const schema = schemasByCode[String(slip.slipCode || '').toUpperCase()]
+    const slipCode = String(slip.slipCode || '').toUpperCase()
+    const schema = schemasByCode[slipCode]
     const manualSlipId = slip.manualSlipId || randomUUID()
     const baseMeta = buildSlipBaseMeta(slip, manualSlipId)
     const boxes = slip.boxes && typeof slip.boxes === 'object' ? slip.boxes : {}
+    let entriesForSlip = 0
 
-    if (!schema) continue
+    const trackIncome = (entry) => {
+      incomeEntries.push(entry)
+      entriesForSlip += 1
+    }
+    const trackDeduction = (entry) => {
+      deductionEntries.push(entry)
+      entriesForSlip += 1
+    }
+
+    if (!schema) {
+      for (const [boxCode, rawValue] of Object.entries(boxes)) {
+        const boxValue = n(rawValue)
+        if (boxValue === 0) continue
+        trackIncome({
+          category: 'unmapped_slip_income',
+          description: `${slipCode} box ${boxCode}`,
+          amount: boxValue,
+          sourceType: 'manual_slip',
+          isManual: true,
+          metadata: {
+            ...baseMeta,
+            boxCode,
+            boxValue,
+            schemaStatus: 'catalog_only',
+            unmapped: true,
+            reviewRequired: true
+          }
+        })
+      }
+      if (entriesForSlip === 0) pushSlipShellEntry(incomeEntries, slipCode, baseMeta, 'catalog_only')
+      continue
+    }
 
     if (schema.schemaStatus === 'catalog_only' && (!schema.boxes || schema.boxes.length === 0)) {
       for (const [boxCode, rawValue] of Object.entries(boxes)) {
         const boxValue = n(rawValue)
         if (boxValue === 0) continue
-        incomeEntries.push({
+        trackIncome({
           category: 'unmapped_slip_income',
           description: `${schema.code} box ${boxCode}`,
           amount: boxValue,
@@ -58,6 +106,7 @@ export function mapSlipInstancesToEntries (slips = [], schemasByCode = {}) {
           }
         })
       }
+      if (entriesForSlip === 0) pushSlipShellEntry(incomeEntries, schema.code, baseMeta, 'catalog_only')
       continue
     }
 
@@ -85,8 +134,8 @@ export function mapSlipInstancesToEntries (slips = [], schemasByCode = {}) {
             schemaStatus: schema.schemaStatus
           }
         }
-        if (target.kind === 'deduction') deductionEntries.push(entry)
-        else incomeEntries.push(entry)
+        if (target.kind === 'deduction') trackDeduction(entry)
+        else trackIncome(entry)
       }
     }
 
@@ -94,7 +143,7 @@ export function mapSlipInstancesToEntries (slips = [], schemasByCode = {}) {
       if (knownBoxCodes.has(String(boxCode))) continue
       const boxValue = n(rawValue)
       if (boxValue === 0) continue
-      incomeEntries.push({
+      trackIncome({
         category: 'unmapped_slip_income',
         description: `${schema.code} box ${boxCode}`,
         amount: boxValue,
@@ -110,6 +159,8 @@ export function mapSlipInstancesToEntries (slips = [], schemasByCode = {}) {
         }
       })
     }
+
+    if (entriesForSlip === 0) pushSlipShellEntry(incomeEntries, schema.code, baseMeta, schema.schemaStatus)
   }
 
   return { incomeEntries, deductionEntries }
@@ -209,6 +260,17 @@ export async function saveReturnSlipsAndIncome (pool, clerkUserId, taxReturnId, 
   return { incomeEntries, deductions }
 }
 
+function resolveManualSlipId (meta, entryId, slipType) {
+  if (meta.manualSlipId) return String(meta.manualSlipId)
+  const payer = String(meta.payerName || '').trim()
+  const year = String(meta.taxYear || '')
+  const role = String(meta.taxpayerRole || 'self')
+  if (payer || year) {
+    return `legacy-${slipType}-${payer}-${year}-${role}`.replace(/\s+/g, '_')
+  }
+  return `${slipType}-${entryId}`
+}
+
 export function buildSlipInstancesFromReturnData (incomeEntries = [], deductions = [], schemasByCode = {}) {
   const grouped = new Map()
 
@@ -216,7 +278,7 @@ export function buildSlipInstancesFromReturnData (incomeEntries = [], deductions
     const meta = entry.metadata && typeof entry.metadata === 'object' ? entry.metadata : {}
     const slipType = String(meta.slipType || '')
     if (!slipType) return
-    const manualSlipId = String(meta.manualSlipId || `${slipType}-${entry.id}`)
+    const manualSlipId = resolveManualSlipId(meta, entry.id, slipType)
     const boxCode = String(meta.boxCode || '')
     const boxValue = n(meta.boxValue ?? entry.amount)
 

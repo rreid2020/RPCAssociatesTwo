@@ -368,7 +368,6 @@ function stepToWorkflowStage (step: Step): WorkflowStageId {
   if (step === 'Optimization') return 'return'
   return 'netfile'
 }
-}
 
 const DEFAULT_TAXPAYER_PROFILE: TaxpayerProfileState = {
   firstName: '',

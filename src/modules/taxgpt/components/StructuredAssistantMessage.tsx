@@ -217,6 +217,8 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({
                           <SourceHighlights highlights={entry.highlights} />
                         ) : entry.summary ? (
                           <p className="mt-1 text-sm text-text">{entry.summary}</p>
+                        ) : entry.excerpt ? (
+                          <p className="mt-1 text-sm text-text">{entry.excerpt}</p>
                         ) : null}
                       </li>
                     ))}

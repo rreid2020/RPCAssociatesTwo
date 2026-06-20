@@ -719,6 +719,24 @@ function buildGroupedSources (citations, sourceAnalysis, sourceReferences = [], 
       })
     }
 
+    if (bucket === 'legislation' || bucket === 'case_law') {
+      for (const reference of sourceReferences) {
+        if (reference.sourceBucket !== bucket) continue
+        if (!reference.citationIndex || seenCitationIndices.has(reference.citationIndex)) continue
+        const analysisItem = analysisByIndex.get(reference.citationIndex)
+        const excerpt = excerptByIndex.get(reference.citationIndex) || reference.excerpt || ''
+        if (!excerpt) continue
+        seenCitationIndices.add(reference.citationIndex)
+        entries.push({
+          ...reference,
+          sourceTitle: resolveChunkDisplayTitle(chunks[reference.citationIndex - 1]) || reference.sourceTitle,
+          excerpt,
+          highlights: analysisItem?.highlights || [],
+          summary: analysisItem?.summary || excerpt.slice(0, 400)
+        })
+      }
+    }
+
     const group = {
       bucket,
       label: sourceBucketLabel(bucket),

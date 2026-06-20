@@ -35,11 +35,13 @@ export function resolveSourceBucket (source = {}) {
   if (
     family === 'case_law' ||
     family === 'caselaw' ||
-    CASE_LAW_CATEGORY_HINTS.has(category) ||
-    /canlii\.ca|taxcourt|scc-csc\.lexum|fct-cf\.gc\.ca|decisions\//i.test(url) ||
-    /\bv\.\s|re:\s/i.test(title)
+    CASE_LAW_CATEGORY_HINTS.has(category)
   ) {
     return 'case_law'
+  }
+
+  if (/canlii\.(org|ca)\/[^?#]*\/(laws|regu|stat|regulations)\b/i.test(url)) {
+    return 'legislation'
   }
 
   if (/laws-lois\.justice\.gc\.ca|\/statute|\/acts\//i.test(url)) {
@@ -52,8 +54,18 @@ export function resolveSourceBucket (source = {}) {
     return 'legislation'
   }
 
-  if (/ontariocourts\.ca|bccourts\.ca|albertacourts\.ca|tribunaux\.qc\.ca/i.test(url)) {
+  if (
+    /canlii\.(org|ca)|taxcourt|scc-csc\.lexum|fct-cf\.gc\.ca|decisions\.|ontariocourts\.ca|bccourts\.ca|albertacourts\.ca|tribunaux\.qc\.ca/i.test(url) ||
+    /\bv\.\s|re:\s/i.test(title)
+  ) {
     return 'case_law'
+  }
+
+  if (
+    /\b(regulation|rules|statute)\b/i.test(title) &&
+    /canlii\.(org|ca)|justice\.gc\.ca|gov\.(on|bc|ab|mb|sk|nl|ns|nb|pe|yk|nt|nu)\.ca/i.test(url)
+  ) {
+    return 'legislation'
   }
 
   return 'cra'
@@ -73,16 +85,11 @@ export function sourceBucketLabel (bucket) {
 
 /** @param {TaxgptSourceBucket} bucket */
 export function emptyBucketMessage (bucket) {
-  const webSearchConfigured = Boolean(process.env.TAVILY_API_KEY)
   switch (bucket) {
     case 'legislation':
-      return webSearchConfigured
-        ? 'No relevant federal or provincial legislation was found via Tavily web search for this question.'
-        : 'No legislation sources were retrieved. Set TAVILY_API_KEY to enable live federal and provincial legislation search.'
+      return 'No legislation or regulation sources were retrieved for this question.'
     case 'case_law':
-      return webSearchConfigured
-        ? 'No relevant federal or provincial case law was found via Tavily web search for this question.'
-        : 'No case law sources were retrieved. Set TAVILY_API_KEY to enable live federal and provincial case law search.'
+      return 'No case law sources were retrieved for this question.'
     default:
       return 'No CRA guidance sources were retrieved for this question.'
   }

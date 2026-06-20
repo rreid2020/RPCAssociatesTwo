@@ -1,5 +1,8 @@
+import { extractMainContentHtml, cleanWebExcerpt } from './taxgptWebExcerpt.js'
 import dns from 'node:dns/promises'
 import net from 'node:net'
+
+const ALLOWED_TAVILY_PURPOSES = new Set(['legislation', 'case_law', 'strategy'])
 
 const PLANNING_KEYWORDS = [
   'tax strateg',
@@ -67,6 +70,9 @@ function stripHtmlToText (html) {
   text = text.replace(/<script[\s\S]*?<\/script>/gi, ' ')
   text = text.replace(/<style[\s\S]*?<\/style>/gi, ' ')
   text = text.replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
+  text = text.replace(/<nav[\s\S]*?<\/nav>/gi, ' ')
+  text = text.replace(/<header[\s\S]*?<\/header>/gi, ' ')
+  text = text.replace(/<footer[\s\S]*?<\/footer>/gi, ' ')
   text = text.replace(/<[^>]+>/g, ' ')
   text = text
     .replace(/&nbsp;/gi, ' ')
@@ -75,6 +81,11 @@ function stripHtmlToText (html) {
     .replace(/&gt;/gi, '>')
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'")
+    .replace(/&#(\d+);/g, (_, code) => {
+      const value = Number(code)
+      return Number.isFinite(value) ? String.fromCharCode(value) : ''
+    })
+    .replace(/&ccedil;/gi, 'ç')
   return normalizeWhitespace(text)
 }
 
@@ -203,16 +214,18 @@ export async function fetchPageExcerpt (url, signal) {
 
   const buffer = Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)))
   const html = buffer.toString('utf8')
-  const text = stripHtmlToText(html)
+  const text = stripHtmlToText(extractMainContentHtml(html))
   if (!text || text.length < 80) {
     throw new Error('Insufficient page text')
   }
 
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
   const title = normalizeWhitespace(titleMatch?.[1] || publisherFromUrl(safeUrl))
-  const excerpt = text.length > MAX_EXCERPT_CHARS
-    ? `${text.slice(0, MAX_EXCERPT_CHARS).trim()}…`
-    : text
+  const cleaned = cleanWebExcerpt(text, MAX_EXCERPT_CHARS)
+  if (!cleaned || cleaned.length < 80) {
+    throw new Error('Page content is navigation boilerplate')
+  }
+  const excerpt = cleaned
 
   return {
     url: safeUrl,
@@ -228,6 +241,13 @@ export async function fetchPageExcerpt (url, signal) {
  * @param {{ includeDomains?: string[], maxResults?: number }} [options]
  */
 export async function searchWithTavily (query, options = {}) {
+  const purpose = String(options.purpose || '').trim()
+  if (!ALLOWED_TAVILY_PURPOSES.has(purpose)) {
+    throw new Error(
+      `Tavily search blocked: purpose must be one of ${[...ALLOWED_TAVILY_PURPOSES].join(', ')}`
+    )
+  }
+
   const apiKey = process.env.TAVILY_API_KEY
   if (!apiKey) return null
 
@@ -299,10 +319,14 @@ async function searchWithSerper (query) {
 }
 
 /**
+ * Strategy-only web search. Tavily is preferred; Serper is an optional fallback.
  * @param {string} query
  */
 async function searchWeb (query) {
-  const tavily = await searchWithTavily(query).catch((error) => {
+  const tavily = await searchWithTavily(query, {
+    purpose: 'strategy',
+    maxResults: MAX_RESULTS
+  }).catch((error) => {
     console.warn('[taxgpt] Tavily search failed:', error.message)
     return null
   })

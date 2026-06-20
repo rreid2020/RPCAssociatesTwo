@@ -61,13 +61,6 @@ export function resolveSourceBucket (source = {}) {
     return 'case_law'
   }
 
-  if (
-    /\b(regulation|rules|statute)\b/i.test(title) &&
-    /canlii\.(org|ca)|justice\.gc\.ca|gov\.(on|bc|ab|mb|sk|nl|ns|nb|pe|yk|nt|nu)\.ca/i.test(url)
-  ) {
-    return 'legislation'
-  }
-
   return 'cra'
 }
 

@@ -230,14 +230,19 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
     chunks: annotatedChunks
   })
   const systemPrompt = buildTaxgptStructuredSystemPrompt(effectiveRetrievalMode, language)
-  const promptOptions = {
-    requestedPublicationsContext: formatRequestedPublicationsContext(requestedPublications),
-    requestedFormsContext: formatRequestedFormsContext(requestedForms),
-    strategyWebChunks
-  }
   const userPrompt = effectiveRetrievalMode === 'rag'
-    ? buildTaxgptStructuredUserPrompt(message, annotatedChunks, language, promptOptions)
-    : buildTaxgptStructuredUserPrompt(message, [], language, promptOptions)
+    ? buildTaxgptStructuredUserPrompt(message, annotatedChunks, language, {
+      craChunks: annotatedCraChunks,
+      legalWebChunks: annotatedLegalChunks,
+      requestedPublicationsContext: formatRequestedPublicationsContext(requestedPublications),
+      requestedFormsContext: formatRequestedFormsContext(requestedForms),
+      strategyWebChunks
+    })
+    : buildTaxgptStructuredUserPrompt(message, [], language, {
+      requestedPublicationsContext: formatRequestedPublicationsContext(requestedPublications),
+      requestedFormsContext: formatRequestedFormsContext(requestedForms),
+      strategyWebChunks
+    })
 
   let completion
   try {
@@ -308,8 +313,8 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
     reasoning: payload.agentic
       ? [
           effectiveRetrievalMode === 'rag'
-            ? `Retrieved ${retrieval.chunks.length} CRA source chunks and ${legalWebRetrieval.chunks.length} federal/provincial legislation and case-law web sources for grounding.`
-            : 'Answered without retrieved CRA source chunks.'
+            ? `Retrieved ${retrieval.chunks.length} CRA corpus chunks${legalWebRetrieval.skipped ? '' : ` and ${legalWebRetrieval.chunks.length} live legislation/case-law web sources`}${strategyWebRetrieval.skipped ? '' : ` and ${strategyWebChunks.length} strategy web sources`}.`
+            : 'Answered without retrieved CRA corpus chunks.'
         ]
       : undefined,
     actions: undefined

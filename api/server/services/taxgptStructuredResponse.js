@@ -9,6 +9,12 @@ import { resolveDocumentDisplayTitle } from './taxgptSourceDisplay.js'
 import { extractTaxgptCitations } from './taxgptPrompt.js'
 import { isTableOfContentsExcerpt } from './taxgptRetrievalFilters.js'
 import { taxgptLanguageLabel } from './taxgptSourceLanguage.js'
+import {
+  cleanWebExcerpt,
+  isCaseLawDecisionUrl,
+  isGovNavigationBoilerplate,
+  isLegislationStatuteUrl
+} from './taxgptWebExcerpt.js'
 
 const STRUCTURED_RESPONSE_SCHEMA = `{
   "directAnswer": "2-3 sentence direct answer to the user question",
@@ -74,7 +80,7 @@ RULES:
 3. For each sourceAnalysis entry, include highlights: an array of 2-4 concise bullet points (1-2 sentences each) with the most relevant facts, rules, deadlines, thresholds, or obligations from that source for THIS question.
 4. Highlights must be specific and grounded in the retrieved excerpt. Do not paste raw markdown, table-of-contents text, or long verbatim passages.
 5. Only include a bucket entry when that source type was actually provided in the source list.
-6. If no legislation or case law sources were provided, return empty arrays for those buckets. Legislation and case law may be supplied from live Tavily web search (federal and provincial statutes, justice.gc.ca, CanLII, provincial courts) rather than a pre-ingested corpus.
+6. If no legislation or case law sources were provided, return empty arrays for those buckets. Legislation and case law are supplied only from LEGAL WEB SOURCES (live Tavily search on statute and court sites) when the question calls for statutory or case-law research — not from the CRA corpus.
 7. Never fabricate citations, statutes, or cases.
 8. complianceRisks must be an array. Include items ONLY when retrieved sources describe a concrete non-compliance consequence for THIS question (missed filing, incorrect reporting, denied claim, reassessment, penalties, interest, or similar).
 9. Each complianceRisks item must cite at least one retrieved source index in citationIndices and name the specific obligation, form, section, policy, or case principle from that source. Do not use generic boilerplate such as "if not reported correctly there may be penalties."
@@ -125,7 +131,7 @@ export function buildTaxgptStructuredSystemPrompt (mode, language = 'en') {
  * @param {string} message
  * @param {Array<{ content: string, citation: Record<string, unknown>, sourceBucket?: string }>} chunks
  * @param {'en' | 'fr'} [language]
- * @param {{ requestedPublicationsContext?: string, requestedFormsContext?: string, strategyWebChunks?: Array<{ content: string, citation: Record<string, unknown> }> }} [options]
+ * @param {{ requestedPublicationsContext?: string, requestedFormsContext?: string, craChunks?: Array<{ content: string, citation: Record<string, unknown>, sourceBucket?: string }>, legalWebChunks?: Array<{ content: string, citation: Record<string, unknown>, sourceBucket?: string }>, strategyWebChunks?: Array<{ content: string, citation: Record<string, unknown> }> }} [options]
  */
 export function buildTaxgptStructuredUserPrompt (message, chunks, language = 'en', options = {}) {
   const languageLabel = taxgptLanguageLabel(language)
@@ -134,13 +140,30 @@ export function buildTaxgptStructuredUserPrompt (message, chunks, language = 'en
     String(options.requestedFormsContext || '').trim()
   ].filter(Boolean).join('\n\n')
   const strategyWebChunks = Array.isArray(options.strategyWebChunks) ? options.strategyWebChunks : []
-  const sourcesText = chunks
-    .map((chunk, index) => {
-      const heading = chunk.citation.sectionHeading ? ` - ${chunk.citation.sectionHeading}` : ''
-      const page = chunk.citation.pageNumber ? ` (Page ${chunk.citation.pageNumber})` : ''
-      const bucket = chunk.sourceBucket || chunk.citation.sourceBucket || 'cra'
-      return `[${index + 1}] (${bucket}) ${chunk.citation.sourceTitle}${heading}${page}\n${chunk.content}`
+  const craChunks = Array.isArray(options.craChunks)
+    ? options.craChunks
+    : chunks.filter((chunk) => (chunk.sourceBucket || chunk.citation?.sourceBucket || 'cra') === 'cra')
+  const legalWebChunks = Array.isArray(options.legalWebChunks)
+    ? options.legalWebChunks
+    : chunks.filter((chunk) => {
+      const bucket = chunk.sourceBucket || chunk.citation?.sourceBucket || 'cra'
+      return bucket === 'legislation' || bucket === 'case_law'
     })
+
+  function formatIndexedSource (chunk, index) {
+    const heading = chunk.citation.sectionHeading ? ` - ${chunk.citation.sectionHeading}` : ''
+    const page = chunk.citation.pageNumber ? ` (Page ${chunk.citation.pageNumber})` : ''
+    const bucket = chunk.sourceBucket || chunk.citation.sourceBucket || 'cra'
+    return `[${index}] (${bucket}) ${chunk.citation.sourceTitle}${heading}${page}\n${chunk.content}`
+  }
+
+  const craSourcesText = craChunks
+    .map((chunk, index) => formatIndexedSource(chunk, index + 1))
+    .join('\n\n')
+
+  const legalStartIndex = craChunks.length + 1
+  const legalSourcesText = legalWebChunks
+    .map((chunk, index) => formatIndexedSource(chunk, legalStartIndex + index))
     .join('\n\n')
 
   const strategySourcesText = strategyWebChunks.length > 0
@@ -157,17 +180,20 @@ export function buildTaxgptStructuredUserPrompt (message, chunks, language = 'en
 
 Response language: ${languageLabel}
 ${requestedContext ? `\n${requestedContext}\n` : ''}
-CORPUS SOURCES (use ONLY for all fields except taxStrategies):
-${sourcesText || 'None provided.'}
+CORPUS SOURCES — CRA guidance from the indexed knowledge base (use for directAnswer, sourceAnalysis.cra, taxTips, complianceRisks, filingDeadlines, penaltiesAndInterest, keyPoints, whatThisMeansForYou, considerations, suggestedNextSteps):
+${craSourcesText || 'None provided.'}
 
-STRATEGY WEB SOURCES (use ONLY for taxStrategies):
+LEGAL WEB SOURCES — live legislation and case law from Tavily (use ONLY for sourceAnalysis.legislation and sourceAnalysis.caseLaw):
+${legalSourcesText || 'None provided.'}
+
+STRATEGY WEB SOURCES — live tax planning ideas from Tavily (use ONLY for taxStrategies):
 ${strategySourcesText}
 
-Populate sourceAnalysis buckets using the bucket label shown for each CORPUS SOURCE index.
+Citation indices are continuous across CORPUS SOURCES and LEGAL WEB SOURCES. Populate sourceAnalysis.cra from CRA corpus indices only; populate sourceAnalysis.legislation and sourceAnalysis.caseLaw from LEGAL WEB SOURCE indices only.
 For each cited source, write 2-4 highlights with enough detail for context but stay concise.
-Populate taxTips, filingDeadlines, and penaltiesAndInterest only when CORPUS SOURCES support them for this specific question.
+Populate taxTips, filingDeadlines, and penaltiesAndInterest only when CRA CORPUS SOURCES support them for this specific question.
 Populate taxStrategies only when STRATEGY WEB SOURCES support planning ideas for this question.
-For complianceRisks, include only consequences that are supported by CORPUS SOURCE excerpts for this specific question. Each item must cite CORPUS SOURCE indices and avoid generic penalty boilerplate.`
+For complianceRisks, include only consequences that are supported by CRA CORPUS SOURCE excerpts for this specific question. Each item must cite CRA CORPUS SOURCE indices and avoid generic penalty boilerplate.`
 }
 
 /**
@@ -655,6 +681,14 @@ function buildSourceReferences (chunks) {
   }))
 }
 
+function isUsableLegalGroupEntry (bucket, url, excerpt) {
+  const cleaned = cleanWebExcerpt(excerpt)
+  if (!cleaned || isGovNavigationBoilerplate(cleaned)) return false
+  if (bucket === 'legislation') return isLegislationStatuteUrl(url)
+  if (bucket === 'case_law') return isCaseLawDecisionUrl(url)
+  return true
+}
+
 /**
  * @param {Array<Record<string, unknown>>} citations
  * @param {Record<string, Array<{ citationIndex: number, summary: string }>>} sourceAnalysis
@@ -693,6 +727,8 @@ function buildGroupedSources (citations, sourceAnalysis, sourceReferences = [], 
       const excerpt = excerptByIndex.get(item.citationIndex) || citation.excerpt || ''
       const highlights = item.highlights || []
       if (highlights.length === 0 && !excerpt && !item.summary) continue
+      if ((bucket === 'legislation' || bucket === 'case_law') &&
+        !isUsableLegalGroupEntry(bucket, citation.sourceUrl, excerpt)) continue
       entries.push({
         ...citation,
         sourceTitle: resolveChunkDisplayTitle(chunks[item.citationIndex - 1]) || citation.sourceTitle,
@@ -710,6 +746,8 @@ function buildGroupedSources (citations, sourceAnalysis, sourceReferences = [], 
       const excerpt = excerptByIndex.get(citation.citationIndex) || citation.excerpt || ''
       const highlights = analysisItem?.highlights || []
       if (highlights.length === 0 && !excerpt) continue
+      if ((bucket === 'legislation' || bucket === 'case_law') &&
+        !isUsableLegalGroupEntry(bucket, citation.sourceUrl, excerpt)) continue
       seenCitationIndices.add(citation.citationIndex)
       entries.push({
         ...citation,
@@ -726,6 +764,7 @@ function buildGroupedSources (citations, sourceAnalysis, sourceReferences = [], 
         const analysisItem = analysisByIndex.get(reference.citationIndex)
         const excerpt = excerptByIndex.get(reference.citationIndex) || reference.excerpt || ''
         if (!excerpt) continue
+        if (!isUsableLegalGroupEntry(bucket, reference.sourceUrl, excerpt)) continue
         seenCitationIndices.add(reference.citationIndex)
         entries.push({
           ...reference,

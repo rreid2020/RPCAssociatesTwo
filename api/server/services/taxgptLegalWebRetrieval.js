@@ -2,19 +2,71 @@ import {
   FETCH_TIMEOUT_MS,
   MAX_EXCERPT_CHARS,
   fetchPageExcerpt,
-  normalizeWhitespace,
   publisherFromUrl,
   searchWithTavily
 } from './taxgptStrategyWebRetrieval.js'
+import {
+  cleanWebExcerpt,
+  isCaseLawDecisionUrl,
+  isGovNavigationBoilerplate,
+  isLegislationStatuteUrl
+} from './taxgptWebExcerpt.js'
 
 const MAX_RESULTS_PER_SEARCH = 2
 const MAX_TOTAL_PER_BUCKET = 5
 const MAX_PROVINCES_TO_SEARCH = 2
 
+const LEGAL_RESEARCH_KEYWORDS = [
+  'legislation',
+  'statute',
+  'regulation',
+  'regulations',
+  'income tax act',
+  'tax act',
+  ' ita ',
+  ' i.t.a',
+  'case law',
+  'caselaw',
+  'court decision',
+  'court ruling',
+  'precedent',
+  'canlii',
+  'tax court',
+  'federal court',
+  'court of appeal',
+  'supreme court',
+  'held that',
+  'judgment',
+  'decision in',
+  'ruling in',
+  'subsection',
+  'paragraph',
+  'loi de l\'impôt',
+  'législation',
+  'jurisprudence',
+  'statutory',
+  'enacted',
+  'provision of the act',
+  'general anti-avoidance',
+  ' gaar',
+  'under the act',
+  'in the act',
+  'pursuant to',
+  'provincial tax act',
+  'provincial act',
+  'interpretation of section',
+  'section of the act'
+]
+
+const LEGAL_RESEARCH_PATTERNS = [
+  /\b(s\.|section|subs?\.|subparagraph|paragraph|par\.)\s*\d/i,
+  /\b\d+\(\d+(?:\.\d+)?\)(?:\(\w\))?/,
+  /\bv\.?\s+(?:the\s+)?(?:queen|crown|canada|m\.?n\.?r\.?|minister)/i
+]
+
 const FEDERAL_LEGISLATION_DOMAINS = [
   'laws-lois.justice.gc.ca',
-  'justice.gc.ca',
-  'canada.ca'
+  'canlii.org'
 ]
 
 const FEDERAL_CASE_LAW_DOMAINS = [
@@ -32,7 +84,7 @@ const PROVINCE_LEGAL_PROFILES = [
     name: 'Ontario',
     nameFr: 'Ontario',
     patterns: [/\bontario\b/i, /\bON\b(?=[\s,;.]|$)/],
-    legislationDomains: ['e-laws.gov.on.ca', 'ontario.ca'],
+    legislationDomains: ['e-laws.gov.on.ca'],
     caseLawDomains: ['canlii.org', 'canlii.ca', 'ontariocourts.ca']
   },
   {
@@ -48,7 +100,7 @@ const PROVINCE_LEGAL_PROFILES = [
     name: 'British Columbia',
     nameFr: 'Colombie-Britannique',
     patterns: [/\bbritish columbia\b/i, /\bBC\b(?=[\s,;.]|$)/],
-    legislationDomains: ['bclaws.gov.bc.ca', 'gov.bc.ca'],
+    legislationDomains: ['bclaws.gov.bc.ca'],
     caseLawDomains: ['canlii.org', 'canlii.ca', 'bccourts.ca']
   },
   {
@@ -56,7 +108,7 @@ const PROVINCE_LEGAL_PROFILES = [
     name: 'Alberta',
     nameFr: 'Alberta',
     patterns: [/\balberta\b/i, /\bAB\b(?=[\s,;.]|$)/],
-    legislationDomains: ['qp.alberta.ca', 'alberta.ca'],
+    legislationDomains: ['qp.alberta.ca'],
     caseLawDomains: ['canlii.org', 'canlii.ca', 'albertacourts.ca']
   },
   {
@@ -72,7 +124,7 @@ const PROVINCE_LEGAL_PROFILES = [
     name: 'Manitoba',
     nameFr: 'Manitoba',
     patterns: [/\bmanitoba\b/i, /\bMB\b(?=[\s,;.]|$)/],
-    legislationDomains: ['web2.gov.mb.ca', 'gov.mb.ca'],
+    legislationDomains: ['web2.gov.mb.ca'],
     caseLawDomains: ['canlii.org', 'canlii.ca']
   },
   {
@@ -80,7 +132,7 @@ const PROVINCE_LEGAL_PROFILES = [
     name: 'Nova Scotia',
     nameFr: 'Nouvelle-Écosse',
     patterns: [/\bnova scotia\b/i, /\bNS\b(?=[\s,;.]|$)/],
-    legislationDomains: ['nslegislature.ca', 'novascotia.ca'],
+    legislationDomains: ['nslegislature.ca'],
     caseLawDomains: ['canlii.org', 'canlii.ca']
   },
   {
@@ -88,7 +140,7 @@ const PROVINCE_LEGAL_PROFILES = [
     name: 'New Brunswick',
     nameFr: 'Nouveau-Brunswick',
     patterns: [/\bnew brunswick\b/i, /\bNB\b(?=[\s,;.]|$)/],
-    legislationDomains: ['gnb.ca', 'laws.gnb.ca'],
+    legislationDomains: ['laws.gnb.ca'],
     caseLawDomains: ['canlii.org', 'canlii.ca']
   },
   {
@@ -96,7 +148,7 @@ const PROVINCE_LEGAL_PROFILES = [
     name: 'Newfoundland and Labrador',
     nameFr: 'Terre-Neuve-et-Labrador',
     patterns: [/\bnewfoundland\b/i, /\blabrador\b/i, /\bNL\b(?=[\s,;.]|$)/],
-    legislationDomains: ['assembly.nl.ca', 'gov.nl.ca'],
+    legislationDomains: ['assembly.nl.ca'],
     caseLawDomains: ['canlii.org', 'canlii.ca']
   },
   {
@@ -104,7 +156,7 @@ const PROVINCE_LEGAL_PROFILES = [
     name: 'Prince Edward Island',
     nameFr: 'Île-du-Prince-Édouard',
     patterns: [/\bprince edward island\b/i, /\bPEI\b/i, /\bPE\b(?=[\s,;.]|$)/],
-    legislationDomains: ['princeedwardisland.ca', 'assembly.pe.ca'],
+    legislationDomains: ['assembly.pe.ca'],
     caseLawDomains: ['canlii.org', 'canlii.ca']
   },
   {
@@ -112,7 +164,7 @@ const PROVINCE_LEGAL_PROFILES = [
     name: 'Yukon',
     nameFr: 'Yukon',
     patterns: [/\byukon\b/i, /\bYT\b(?=[\s,;.]|$)/],
-    legislationDomains: ['gov.yk.ca', 'legislation.yukon.ca'],
+    legislationDomains: ['legislation.yukon.ca'],
     caseLawDomains: ['canlii.org', 'canlii.ca']
   },
   {
@@ -120,7 +172,7 @@ const PROVINCE_LEGAL_PROFILES = [
     name: 'Northwest Territories',
     nameFr: 'Territoires du Nord-Ouest',
     patterns: [/\bnorthwest territories\b/i, /\bNWT\b/i, /\bNT\b(?=[\s,;.]|$)/],
-    legislationDomains: ['justice.gov.nt.ca', 'gov.nt.ca'],
+    legislationDomains: ['justice.gov.nt.ca'],
     caseLawDomains: ['canlii.org', 'canlii.ca']
   },
   {
@@ -128,7 +180,7 @@ const PROVINCE_LEGAL_PROFILES = [
     name: 'Nunavut',
     nameFr: 'Nunavut',
     patterns: [/\bnunavut\b/i, /\bNU\b(?=[\s,;.]|$)/],
-    legislationDomains: ['nunavut.ca', 'assembly.nu.ca'],
+    legislationDomains: ['assembly.nu.ca'],
     caseLawDomains: ['canlii.org', 'canlii.ca']
   }
 ]
@@ -220,18 +272,67 @@ function buildProvincialCaseLawQuery (message, language, province = null) {
 }
 
 /**
+ * @param {string} message
+ */
+export function detectLegalWebResearchIntent (message) {
+  const text = String(message || '')
+  const lower = text.toLowerCase()
+  if (LEGAL_RESEARCH_KEYWORDS.some((keyword) => lower.includes(keyword))) {
+    return true
+  }
+  if (LEGAL_RESEARCH_PATTERNS.some((pattern) => pattern.test(text))) {
+    return true
+  }
+  if (detectProvincesFromMessage(text).length > 0) {
+    return /\b(provincial|province|act|legislation|statute|regulation)\b/i.test(text)
+  }
+  return false
+}
+
+/**
  * @param {string} query
  * @param {string[]} includeDomains
+ * @param {'legislation' | 'case_law'} purpose
  */
-async function searchLegalWeb (query, includeDomains) {
+async function searchLegalWeb (query, includeDomains, purpose) {
   const tavily = await searchWithTavily(query, {
     includeDomains,
-    maxResults: MAX_RESULTS_PER_SEARCH
+    maxResults: MAX_RESULTS_PER_SEARCH,
+    purpose
   }).catch((error) => {
     console.warn('[taxgpt] Tavily legal search failed:', error.message)
     return null
   })
   return tavily || []
+}
+
+/**
+ * @param {string} url
+ * @param {'legislation' | 'case_law'} bucket
+ * @param {string} [title]
+ */
+function isValidLegalSourceUrl (url, bucket, title = '') {
+  if (bucket === 'legislation') return isLegislationStatuteUrl(url)
+  if (bucket === 'case_law') return isCaseLawDecisionUrl(url, title)
+  return false
+}
+
+/**
+ * @param {{ excerpt?: string } | null} page
+ * @param {{ snippet?: string }} result
+ */
+function resolveLegalExcerpt (page, result) {
+  const pageExcerpt = cleanWebExcerpt(page?.excerpt || '', MAX_EXCERPT_CHARS)
+  if (pageExcerpt.length >= 80 && !isGovNavigationBoilerplate(pageExcerpt)) {
+    return pageExcerpt
+  }
+
+  const snippetExcerpt = cleanWebExcerpt(result.snippet || '', MAX_EXCERPT_CHARS)
+  if (snippetExcerpt.length >= 80 && !isGovNavigationBoilerplate(snippetExcerpt)) {
+    return snippetExcerpt
+  }
+
+  return ''
 }
 
 /**
@@ -246,50 +347,37 @@ async function buildChunksFromSearchResults (results, bucket, seenUrls, maxResul
   for (const result of results) {
     if (chunks.length >= maxResults) break
     if (!result.url || seenUrls.has(result.url)) continue
+    if (!isValidLegalSourceUrl(result.url, bucket, result.title)) continue
     seenUrls.add(result.url)
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
 
+    let page = null
     try {
-      const page = await fetchPageExcerpt(result.url, controller.signal)
-      chunks.push({
-        content: page.excerpt || result.snippet,
-        citation: {
-          sourceTitle: page.title || result.title || page.publisher,
-          sourceUrl: page.url,
-          sourceBucket: bucket
-        },
-        sourceBucket: bucket,
-        sourceCategory: bucket,
-        retrievalMethod: 'tavily_web',
-        publisher: page.publisher,
-        fetchedAt: page.fetchedAt
-      })
+      page = await fetchPageExcerpt(result.url, controller.signal)
     } catch (error) {
-      const snippet = normalizeWhitespace(result.snippet)
-      if (snippet.length >= 80) {
-        chunks.push({
-          content: snippet.length > MAX_EXCERPT_CHARS
-            ? `${snippet.slice(0, MAX_EXCERPT_CHARS).trim()}…`
-            : snippet,
-          citation: {
-            sourceTitle: result.title || publisherFromUrl(result.url),
-            sourceUrl: result.url,
-            sourceBucket: bucket
-          },
-          sourceBucket: bucket,
-          sourceCategory: bucket,
-          retrievalMethod: 'tavily_web',
-          publisher: publisherFromUrl(result.url),
-          fetchedAt: new Date().toISOString()
-        })
-      } else {
-        console.warn('[taxgpt] legal web fetch skipped:', result.url, error.message)
-      }
+      console.warn('[taxgpt] legal web fetch skipped:', result.url, error.message)
     } finally {
       clearTimeout(timeout)
     }
+
+    const excerpt = resolveLegalExcerpt(page, result)
+    if (!excerpt) continue
+
+    chunks.push({
+      content: excerpt,
+      citation: {
+        sourceTitle: page?.title || result.title || publisherFromUrl(result.url),
+        sourceUrl: page?.url || result.url,
+        sourceBucket: bucket
+      },
+      sourceBucket: bucket,
+      sourceCategory: bucket,
+      retrievalMethod: 'tavily_web',
+      publisher: page?.publisher || publisherFromUrl(result.url),
+      fetchedAt: page?.fetchedAt || new Date().toISOString()
+    })
   }
 
   return chunks
@@ -325,6 +413,16 @@ async function collectBucketChunks (searchPromises, bucket, seenUrls) {
  * @param {{ language?: 'en' | 'fr' }} [options]
  */
 export async function retrieveTaxgptLegalWebSources (message, options = {}) {
+  if (!detectLegalWebResearchIntent(message)) {
+    return {
+      chunks: [],
+      legislationChunks: [],
+      caseLawChunks: [],
+      skipped: true,
+      reason: 'not_applicable'
+    }
+  }
+
   if (!process.env.TAVILY_API_KEY) {
     return {
       chunks: [],
@@ -340,10 +438,10 @@ export async function retrieveTaxgptLegalWebSources (message, options = {}) {
   const seenUrls = new Set()
 
   const legislationSearches = [
-    searchLegalWeb(buildFederalLegislationQuery(message, language), FEDERAL_LEGISLATION_DOMAINS)
+    searchLegalWeb(buildFederalLegislationQuery(message, language), FEDERAL_LEGISLATION_DOMAINS, 'legislation')
   ]
   const caseLawSearches = [
-    searchLegalWeb(buildFederalCaseLawQuery(message, language), FEDERAL_CASE_LAW_DOMAINS)
+    searchLegalWeb(buildFederalCaseLawQuery(message, language), FEDERAL_CASE_LAW_DOMAINS, 'case_law')
   ]
 
   if (provinces.length > 0) {
@@ -351,13 +449,15 @@ export async function retrieveTaxgptLegalWebSources (message, options = {}) {
       legislationSearches.push(
         searchLegalWeb(
           buildProvincialLegislationQuery(message, language, province),
-          province.legislationDomains
+          province.legislationDomains,
+          'legislation'
         )
       )
       caseLawSearches.push(
         searchLegalWeb(
           buildProvincialCaseLawQuery(message, language, province),
-          [...new Set([...FEDERAL_CASE_LAW_DOMAINS, ...province.caseLawDomains])]
+          [...new Set([...FEDERAL_CASE_LAW_DOMAINS, ...province.caseLawDomains])],
+          'case_law'
         )
       )
     }
@@ -365,13 +465,15 @@ export async function retrieveTaxgptLegalWebSources (message, options = {}) {
     legislationSearches.push(
       searchLegalWeb(
         buildProvincialLegislationQuery(message, language),
-        ALL_PROVINCIAL_LEGISLATION_DOMAINS
+        ALL_PROVINCIAL_LEGISLATION_DOMAINS,
+        'legislation'
       )
     )
     caseLawSearches.push(
       searchLegalWeb(
         buildProvincialCaseLawQuery(message, language),
-        [...new Set([...FEDERAL_CASE_LAW_DOMAINS, ...ALL_PROVINCIAL_CASE_LAW_DOMAINS])]
+        [...new Set([...FEDERAL_CASE_LAW_DOMAINS, ...ALL_PROVINCIAL_CASE_LAW_DOMAINS])],
+        'case_law'
       )
     )
   }

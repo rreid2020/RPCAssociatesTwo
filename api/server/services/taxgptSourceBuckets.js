@@ -46,6 +46,16 @@ export function resolveSourceBucket (source = {}) {
     return 'legislation'
   }
 
+  if (
+    /e-laws\.gov\.on\.ca|legisquebec\.gouv\.qc\.ca|bclaws\.gov\.bc\.ca|qp\.alberta\.ca|publications\.saskatchewan\.ca|laws_regs\.gov\.sk\.ca|nslegislature\.ca|laws\.gnb\.ca|assembly\.nl\.ca|assembly\.pe\.ca|legislation\.yukon\.ca|justice\.gov\.nt\.ca/i.test(url)
+  ) {
+    return 'legislation'
+  }
+
+  if (/ontariocourts\.ca|bccourts\.ca|albertacourts\.ca|tribunaux\.qc\.ca/i.test(url)) {
+    return 'case_law'
+  }
+
   return 'cra'
 }
 
@@ -63,11 +73,16 @@ export function sourceBucketLabel (bucket) {
 
 /** @param {TaxgptSourceBucket} bucket */
 export function emptyBucketMessage (bucket) {
+  const webSearchConfigured = Boolean(process.env.TAVILY_API_KEY)
   switch (bucket) {
     case 'legislation':
-      return 'No legislation sources were retrieved for this question. This corpus will be added in a future release.'
+      return webSearchConfigured
+        ? 'No relevant federal or provincial legislation was found via Tavily web search for this question.'
+        : 'No legislation sources were retrieved. Set TAVILY_API_KEY to enable live federal and provincial legislation search.'
     case 'case_law':
-      return 'No case law sources were retrieved for this question. This corpus will be added in a future release.'
+      return webSearchConfigured
+        ? 'No relevant federal or provincial case law was found via Tavily web search for this question.'
+        : 'No case law sources were retrieved. Set TAVILY_API_KEY to enable live federal and provincial case law search.'
     default:
       return 'No CRA guidance sources were retrieved for this question.'
   }

@@ -190,7 +190,7 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({
       <section>
         <h3 className="text-sm font-semibold text-primary-dark">Sources consulted</h3>
         <p className="mt-1 text-xs text-text-light">
-          Key points from retrieved CRA and other sources. Numbered citations such as [1] match the references section below.
+          Key points from retrieved CRA guidance, federal/provincial legislation, and case law. Numbered citations such as [1] match the references section below.
         </p>
         <div className="mt-3 space-y-3">
           {BUCKET_ORDER.map((bucket) => {

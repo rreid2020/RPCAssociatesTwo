@@ -55,10 +55,10 @@ const HIGH_RISK_STRATEGY_KEYWORDS = [
 
 const FETCH_TIMEOUT_MS = 12_000
 const MAX_FETCH_BYTES = 500_000
-const MAX_EXCERPT_CHARS = 1_200
+export const MAX_EXCERPT_CHARS = 1_200
 const MAX_RESULTS = 6
 
-function normalizeWhitespace (text) {
+export function normalizeWhitespace (text) {
   return String(text || '').replace(/\s+/g, ' ').trim()
 }
 
@@ -78,7 +78,7 @@ function stripHtmlToText (html) {
   return normalizeWhitespace(text)
 }
 
-function publisherFromUrl (url) {
+export function publisherFromUrl (url) {
   try {
     const hostname = new URL(url).hostname.replace(/^www\./i, '')
     const parts = hostname.split('.')
@@ -168,7 +168,7 @@ export function shouldSuppressStrategyWebRetrieval (message) {
  * @param {string} url
  * @param {AbortSignal} signal
  */
-async function fetchPageExcerpt (url, signal) {
+export async function fetchPageExcerpt (url, signal) {
   const safeUrl = await assertPublicHttpUrl(url)
   const response = await fetch(safeUrl, {
     signal,
@@ -225,10 +225,16 @@ async function fetchPageExcerpt (url, signal) {
 
 /**
  * @param {string} query
+ * @param {{ includeDomains?: string[], maxResults?: number }} [options]
  */
-async function searchWithTavily (query) {
+export async function searchWithTavily (query, options = {}) {
   const apiKey = process.env.TAVILY_API_KEY
   if (!apiKey) return null
+
+  const includeDomains = Array.isArray(options.includeDomains)
+    ? options.includeDomains.filter(Boolean)
+    : []
+  const maxResults = Number(options.maxResults) > 0 ? Number(options.maxResults) : MAX_RESULTS
 
   const response = await fetch('https://api.tavily.com/search', {
     method: 'POST',
@@ -237,8 +243,9 @@ async function searchWithTavily (query) {
       api_key: apiKey,
       query,
       search_depth: 'basic',
-      max_results: MAX_RESULTS,
-      include_answer: false
+      max_results: maxResults,
+      include_answer: false,
+      ...(includeDomains.length > 0 ? { include_domains: includeDomains } : {})
     })
   })
 
@@ -394,3 +401,5 @@ export async function retrieveTaxgptStrategyWebSources (message, options = {}) {
     reason: chunks.length === 0 ? 'fetch_failed' : null
   }
 }
+
+export { FETCH_TIMEOUT_MS }

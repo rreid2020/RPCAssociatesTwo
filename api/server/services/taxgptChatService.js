@@ -20,6 +20,7 @@ import { buildTaxgptFeedbackSuggestion } from './taxgptFeedbackSuggestion.js'
 import { getTaxgptModelRoutingSummary, resolveTaxgptChatModel, buildTaxgptChatCompletionOptions } from './taxgptModelRouter.js'
 import { normalizeTaxgptLanguage, taxgptLanguageLabel } from './taxgptSourceLanguage.js'
 import { retrieveTaxgptStrategyWebSources } from './taxgptStrategyWebRetrieval.js'
+import { retrieveTaxgptLegalWebSources } from './taxgptLegalWebRetrieval.js'
 
 const HIGH_RISK_KEYWORDS = [
   'gaar',
@@ -207,25 +208,34 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
   const requestedPublications = await resolveRequestedPublications(pool, message)
   const requestedForms = await resolveRequestedForms(pool, message)
   const retrieval = await resolveRetrievedChunks(pool, message, corpus, { topK: 10, language })
-  const retrievalMode = retrieval.mode
   const strategyWebRetrieval = riskLevel === 'high'
     ? { chunks: [], citations: [], skipped: true, reason: 'high_risk' }
     : await retrieveTaxgptStrategyWebSources(message, { language })
+  const legalWebRetrieval = await retrieveTaxgptLegalWebSources(message, { language })
   const strategyWebChunks = strategyWebRetrieval.chunks
+  const annotatedCraChunks = annotateChunksWithBuckets(retrieval.chunks)
+  const annotatedLegalChunks = legalWebRetrieval.chunks.map((chunk) => ({
+    ...chunk,
+    citation: {
+      ...chunk.citation,
+      sourceBucket: chunk.sourceBucket || chunk.citation?.sourceBucket
+    }
+  }))
+  const annotatedChunks = [...annotatedCraChunks, ...annotatedLegalChunks]
+  const effectiveRetrievalMode = annotatedChunks.length > 0 ? 'rag' : retrieval.mode
   const resolvedModelPlan = resolveTaxgptChatModel({
     message,
-    retrievalMode,
+    retrievalMode: effectiveRetrievalMode,
     riskLevel,
-    chunks: retrieval.chunks
+    chunks: annotatedChunks
   })
-  const annotatedChunks = annotateChunksWithBuckets(retrieval.chunks)
-  const systemPrompt = buildTaxgptStructuredSystemPrompt(retrievalMode, language)
+  const systemPrompt = buildTaxgptStructuredSystemPrompt(effectiveRetrievalMode, language)
   const promptOptions = {
     requestedPublicationsContext: formatRequestedPublicationsContext(requestedPublications),
     requestedFormsContext: formatRequestedFormsContext(requestedForms),
     strategyWebChunks
   }
-  const userPrompt = retrievalMode === 'rag'
+  const userPrompt = effectiveRetrievalMode === 'rag'
     ? buildTaxgptStructuredUserPrompt(message, annotatedChunks, language, promptOptions)
     : buildTaxgptStructuredUserPrompt(message, [], language, promptOptions)
 
@@ -240,7 +250,7 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
       ...buildTaxgptChatCompletionOptions({
         model: resolvedModelPlan.model,
         maxTokens: resolvedModelPlan.maxTokens,
-        temperature: retrievalMode === 'rag' ? 0.3 : 0.5,
+        temperature: effectiveRetrievalMode === 'rag' ? 0.3 : 0.5,
         jsonResponse: true
       })
     })
@@ -251,7 +261,7 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
   const rawResponse = completion.choices[0]?.message?.content ||
     '{"directAnswer":"I apologize, but I could not generate a response.","sourceAnalysis":{"cra":[],"legislation":[],"caseLaw":[]},"complianceRisks":[],"taxTips":[],"taxStrategies":[],"filingDeadlines":[],"penaltiesAndInterest":[],"keyPoints":[],"whatThisMeansForYou":"","considerations":[],"suggestedNextSteps":[],"confidence":"low"}'
 
-  const parsed = parseTaxgptStructuredResponse(rawResponse, annotatedChunks, retrievalMode, strategyWebChunks)
+  const parsed = parseTaxgptStructuredResponse(rawResponse, annotatedChunks, effectiveRetrievalMode, strategyWebChunks)
   const response = parsed.plainText
   const citations = parsed.citations
   const structuredResponse = {
@@ -259,13 +269,13 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
     groupedSources: parsed.groupedSources
   }
   const feedbackSuggestion = buildTaxgptFeedbackSuggestion(message, {
-    retrievalMode,
+    retrievalMode: effectiveRetrievalMode,
     retrievalNotice: retrieval.notice,
     requestedPublications,
     requestedForms,
     confidence: structuredResponse.confidence
   })
-  const sources = retrievalMode === 'rag'
+  const sources = effectiveRetrievalMode === 'rag'
     ? buildTaxgptSources(annotatedChunks)
     : []
 
@@ -283,7 +293,7 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
     sources,
     riskLevel,
     sessionId,
-    retrievalMode,
+    retrievalMode: effectiveRetrievalMode,
     retrievalNotice: retrieval.notice,
     feedbackSuggestion,
     model: resolvedModelPlan.model,
@@ -297,8 +307,8 @@ export async function handleTaxgptChat (pool, userId, payload = {}) {
     },
     reasoning: payload.agentic
       ? [
-          retrievalMode === 'rag'
-            ? `Retrieved ${retrieval.chunks.length} CRA source chunks for grounding.`
+          effectiveRetrievalMode === 'rag'
+            ? `Retrieved ${retrieval.chunks.length} CRA source chunks and ${legalWebRetrieval.chunks.length} federal/provincial legislation and case-law web sources for grounding.`
             : 'Answered without retrieved CRA source chunks.'
         ]
       : undefined,

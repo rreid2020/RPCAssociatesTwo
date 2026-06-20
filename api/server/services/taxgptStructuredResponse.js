@@ -74,7 +74,7 @@ RULES:
 3. For each sourceAnalysis entry, include highlights: an array of 2-4 concise bullet points (1-2 sentences each) with the most relevant facts, rules, deadlines, thresholds, or obligations from that source for THIS question.
 4. Highlights must be specific and grounded in the retrieved excerpt. Do not paste raw markdown, table-of-contents text, or long verbatim passages.
 5. Only include a bucket entry when that source type was actually provided in the source list.
-6. If no legislation or case law sources were provided, return empty arrays for those buckets.
+6. If no legislation or case law sources were provided, return empty arrays for those buckets. Legislation and case law may be supplied from live Tavily web search (federal and provincial statutes, justice.gc.ca, CanLII, provincial courts) rather than a pre-ingested corpus.
 7. Never fabricate citations, statutes, or cases.
 8. complianceRisks must be an array. Include items ONLY when retrieved sources describe a concrete non-compliance consequence for THIS question (missed filing, incorrect reporting, denied claim, reassessment, penalties, interest, or similar).
 9. Each complianceRisks item must cite at least one retrieved source index in citationIndices and name the specific obligation, form, section, policy, or case principle from that source. Do not use generic boilerplate such as "if not reported correctly there may be penalties."

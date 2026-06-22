@@ -65,8 +65,8 @@ const SECTIONS: NavigationSection[] = [
   },
   {
     id: 'tax-returns-title',
-    label: 'Tax Returns',
-    iconKey: 'document',
+    label: 'Tax Return Builder',
+    iconKey: 'plus',
     depth: 0,
     items: []
   },
@@ -74,8 +74,7 @@ const SECTIONS: NavigationSection[] = [
     id: 'tax-returns',
     depth: 1,
     items: [
-      { to: '/app/tax-intelligence/returns', label: 'Tax Return Builder', iconKey: 'plus', depth: 1, activeWhen: 'child' },
-      { to: '/app/tax-intelligence/returns', label: 'Tax Returns', iconKey: 'clipboardList', depth: 2, activeWhen: 'exact' },
+      { to: '/app/tax-intelligence/returns', label: 'Tax Returns', iconKey: 'clipboardList', depth: 2 },
       { to: '/app/tax-intelligence/documents', label: 'Document Processing', iconKey: 'exchange', depth: 2 },
       { to: '/app/tax-intelligence/optimization', label: 'Optimization', iconKey: 'magic', depth: 2 },
       { to: '/app/tax-intelligence/scenarios', label: 'Scenarios', iconKey: 'trend', depth: 2 },

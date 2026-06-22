@@ -1,12 +1,13 @@
-import { Fragment, lazy } from 'react'
+import { Fragment } from 'react'
 import { Navigate, Route } from 'react-router-dom'
 import { ProtectedRoute } from './route-guards'
 import RouteSuspense from './route-suspense'
 import { PermissionGuard } from '../platform/api/guards'
+import { routeLazy } from '../shared/loading/routeLazy'
 
-const BillingSettingsPage = lazy(async () => await import('../modules/billing/pages/BillingSettingsPage'))
-const SubscriptionManagementPage = lazy(async () => await import('../modules/billing/pages/SubscriptionManagementPage'))
-const UsageDashboardPage = lazy(async () => await import('../modules/billing/pages/UsageDashboardPage'))
+const BillingSettingsPage = routeLazy(async () => await import('../modules/billing/pages/BillingSettingsPage'))
+const SubscriptionManagementPage = routeLazy(async () => await import('../modules/billing/pages/SubscriptionManagementPage'))
+const UsageDashboardPage = routeLazy(async () => await import('../modules/billing/pages/UsageDashboardPage'))
 
 function billingRoute (path: string, element: JSX.Element, permission: string) {
   return (

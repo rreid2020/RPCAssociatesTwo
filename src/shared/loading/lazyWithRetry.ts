@@ -4,7 +4,7 @@ type ModuleDefault<T> = { default: T }
 
 const CHUNK_RELOAD_KEY = 'axiom:chunk-reload'
 
-function isStaleChunkError (error: unknown): boolean {
+export function isStaleChunkError (error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error || '')
   return (
     message.includes('does not provide an export named') ||
@@ -31,7 +31,9 @@ export function lazyWithRetry<T extends ComponentType<any>> (
     let lastError: unknown
     for (let attempt = 0; attempt < retries; attempt += 1) {
       try {
-        return await importer()
+        const module = await importer()
+        clearStaleChunkReloadFlag()
+        return module
       } catch (error) {
         lastError = error
         if (isStaleChunkError(error)) {
@@ -44,6 +46,11 @@ export function lazyWithRetry<T extends ComponentType<any>> (
     }
     throw lastError
   })
+}
+
+export function clearStaleChunkReloadFlag (): void {
+  if (typeof window === 'undefined') return
+  window.sessionStorage.removeItem(CHUNK_RELOAD_KEY)
 }
 
 export function preloadModule (importer: () => Promise<unknown>): void {

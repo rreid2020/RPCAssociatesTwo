@@ -54,7 +54,9 @@
     <div id="root"></div>
     <script>
       window.__loadAxiomAppFallback = function () {
-        // Production entry is injected by Vite with a content hash; reload to pick up the latest deploy.
+        // Production entry is injected by Vite with a content hash; reload once to pick up the latest deploy.
+        if (window.sessionStorage.getItem('axiom:entry-reload') === '1') return
+        window.sessionStorage.setItem('axiom:entry-reload', '1')
         window.location.reload()
       }
     </script>

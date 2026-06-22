@@ -1,6 +1,7 @@
 import { FC, ReactNode, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
+import PageLoadingSkeleton from '../../../shared/loading/PageLoadingSkeleton'
 import {
   getOnboardingStatus,
   ONBOARDING_REQUIRED_PATH,
@@ -13,7 +14,7 @@ type Props = {
 }
 
 const OnboardingGuard: FC<Props> = ({ children }) => {
-  const { getToken } = useAuth()
+  const { getToken, isLoaded, isSignedIn } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const [checking, setChecking] = useState(true)
@@ -21,7 +22,14 @@ const OnboardingGuard: FC<Props> = ({ children }) => {
   const shouldBypass = useMemo(() => shouldBypassOnboardingGate(location.pathname), [location.pathname])
 
   useEffect(() => {
+    if (!isLoaded || !isSignedIn) {
+      setChecking(false)
+      return
+    }
+
     let mounted = true
+    setChecking(true)
+
     const run = async () => {
       if (shouldBypass || ROLLOUT_BYPASS_ENABLED) {
         if (mounted) setChecking(false)
@@ -29,11 +37,13 @@ const OnboardingGuard: FC<Props> = ({ children }) => {
       }
       try {
         const status = await getOnboardingStatus(getToken)
+        if (!mounted) return
         if (status.required) {
           navigate(ONBOARDING_REQUIRED_PATH, { replace: true })
           return
         }
       } catch {
+        if (!mounted) return
         navigate(ONBOARDING_REQUIRED_PATH, { replace: true })
         return
       } finally {
@@ -44,10 +54,20 @@ const OnboardingGuard: FC<Props> = ({ children }) => {
     return () => {
       mounted = false
     }
-  }, [getToken, navigate, shouldBypass])
+  }, [getToken, isLoaded, isSignedIn, location.pathname, navigate, shouldBypass])
+
+  if (!isLoaded || !isSignedIn) {
+    return <>{children}</>
+  }
 
   if (checking) {
-    return <p className="p-4 text-sm text-text-light">Loading...</p>
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-6">
+        <div className="w-full max-w-md">
+          <PageLoadingSkeleton variant="default" />
+        </div>
+      </div>
+    )
   }
   return <>{children}</>
 }

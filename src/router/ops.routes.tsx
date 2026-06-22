@@ -1,16 +1,17 @@
-import { Fragment, lazy } from 'react'
+import { Fragment } from 'react'
 import { Route } from 'react-router-dom'
 import { ProtectedRoute } from './route-guards'
 import RouteSuspense from './route-suspense'
 import StaffGuard from '../platform/api/guards/StaffGuard'
+import { routeLazy } from '../shared/loading/routeLazy'
 
-const OpsDashboardPage = lazy(async () => await import('../modules/ops/pages/OpsDashboardPage'))
-const CorpusOpsPage = lazy(async () => await import('../modules/ops/pages/CorpusOpsPage'))
-const FormRegistryOpsPage = lazy(async () => await import('../modules/ops/pages/FormRegistryOpsPage'))
-const ExternalLinksPage = lazy(async () => await import('../modules/ops/pages/ExternalLinksPage'))
-const FeedbackOpsPage = lazy(async () => await import('../modules/ops/pages/FeedbackOpsPage'))
-const FeedbackDetailOpsPage = lazy(async () => await import('../modules/ops/pages/FeedbackDetailOpsPage'))
-const UsersOpsPage = lazy(async () => await import('../modules/ops/pages/UsersOpsPage'))
+const OpsDashboardPage = routeLazy(async () => await import('../modules/ops/pages/OpsDashboardPage'))
+const CorpusOpsPage = routeLazy(async () => await import('../modules/ops/pages/CorpusOpsPage'))
+const FormRegistryOpsPage = routeLazy(async () => await import('../modules/ops/pages/FormRegistryOpsPage'))
+const ExternalLinksPage = routeLazy(async () => await import('../modules/ops/pages/ExternalLinksPage'))
+const FeedbackOpsPage = routeLazy(async () => await import('../modules/ops/pages/FeedbackOpsPage'))
+const FeedbackDetailOpsPage = routeLazy(async () => await import('../modules/ops/pages/FeedbackDetailOpsPage'))
+const UsersOpsPage = routeLazy(async () => await import('../modules/ops/pages/UsersOpsPage'))
 
 function opsRoute (path: string, element: JSX.Element) {
   return (

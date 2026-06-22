@@ -1,4 +1,4 @@
-import { FC, lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { FC, Suspense, useEffect, useRef, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../components/SEO'
 import ClientPortalShell from '../../components/ClientPortalShell'
@@ -7,8 +7,9 @@ import { fetchTaxgptStatus } from '../../domains/taxgpt'
 import type { TaxgptCorpusStats } from '../../domains/taxgpt'
 import { useFeatureAccess } from '../../lib/subscriptions/hooks'
 import PageLoadingSkeleton from '../../shared/loading/PageLoadingSkeleton'
+import { routeLazy } from '../../shared/loading/routeLazy'
 
-const ChatInterface = lazy(async () => await import('../../modules/taxgpt/components/ChatInterface'))
+const ChatInterface = routeLazy(async () => await import('../../modules/taxgpt/components/ChatInterface'))
 const chatInterfacePreload = import('../../modules/taxgpt/components/ChatInterface')
 
 const OPTIMISTIC_CORPUS: TaxgptCorpusStats = {

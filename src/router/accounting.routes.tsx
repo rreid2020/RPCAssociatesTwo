@@ -1,13 +1,14 @@
-import { Fragment, lazy } from 'react'
+import { Fragment } from 'react'
 import { Navigate, Outlet, Route } from 'react-router-dom'
 import { ProtectedRoute } from './route-guards'
 import RouteSuspense from './route-suspense'
 import { EntitlementGuard, PermissionGuard } from '../platform/api/guards'
+import { routeLazy } from '../shared/loading/routeLazy'
 
-const AccountingWorkspacePage = lazy(async () => await import('../pages/portal/accounting/AccountingWorkspacePage'))
-const EngagementLayout = lazy(async () => await import('../modules/accounting/layouts/EngagementLayout'))
-const EngagementExecutionRoute = lazy(async () => await import('../modules/engagement-execution/EngagementExecutionRoute'))
-const EngagementDatasetsRoute = lazy(async () => await import('../modules/engagement-datasets/EngagementDatasetsRoute'))
+const AccountingWorkspacePage = routeLazy(async () => await import('../pages/portal/accounting/AccountingWorkspacePage'))
+const EngagementLayout = routeLazy(async () => await import('../modules/accounting/layouts/EngagementLayout'))
+const EngagementExecutionRoute = routeLazy(async () => await import('../modules/engagement-execution/EngagementExecutionRoute'))
+const EngagementDatasetsRoute = routeLazy(async () => await import('../modules/engagement-datasets/EngagementDatasetsRoute'))
 
 function CompanyProfileOutlet () {
   return <Outlet />

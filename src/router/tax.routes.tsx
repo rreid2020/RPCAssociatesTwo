@@ -1,15 +1,16 @@
-import { Fragment, lazy } from 'react'
+import { Fragment } from 'react'
 import { Navigate, Route } from 'react-router-dom'
 import { ProtectedRoute } from './route-guards'
 import RouteSuspense from './route-suspense'
+import { routeLazy } from '../shared/loading/routeLazy'
 
-const TaxReturns = lazy(async () => await import('../pages/portal/tax-intelligence/TaxReturns'))
-const ReturnBuilder = lazy(async () => await import('../pages/portal/tax-intelligence/ReturnBuilder'))
-const DocumentProcessing = lazy(async () => await import('../pages/portal/tax-intelligence/DocumentProcessing'))
-const Optimization = lazy(async () => await import('../pages/portal/tax-intelligence/Optimization'))
-const Scenarios = lazy(async () => await import('../pages/portal/tax-intelligence/Scenarios'))
-const AuditRisk = lazy(async () => await import('../pages/portal/tax-intelligence/AuditRisk'))
-const FormsSchedules = lazy(async () => await import('../pages/portal/tax-intelligence/FormsSchedules'))
+const TaxReturns = routeLazy(async () => await import('../pages/portal/tax-intelligence/TaxReturns'))
+const ReturnBuilder = routeLazy(async () => await import('../pages/portal/tax-intelligence/ReturnBuilder'))
+const DocumentProcessing = routeLazy(async () => await import('../pages/portal/tax-intelligence/DocumentProcessing'))
+const Optimization = routeLazy(async () => await import('../pages/portal/tax-intelligence/Optimization'))
+const Scenarios = routeLazy(async () => await import('../pages/portal/tax-intelligence/Scenarios'))
+const AuditRisk = routeLazy(async () => await import('../pages/portal/tax-intelligence/AuditRisk'))
+const FormsSchedules = routeLazy(async () => await import('../pages/portal/tax-intelligence/FormsSchedules'))
 
 function protectedTaxElement (element: JSX.Element) {
   return (

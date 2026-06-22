@@ -16,7 +16,8 @@ import {
   isRelevantTaxLegalSource
 } from './taxgptLegalRelevance.js'
 
-const MAX_RESULTS_PER_SEARCH = 2
+const MAX_LEGISLATION_RESULTS_PER_SEARCH = 2
+const MAX_CASE_LAW_RESULTS_PER_SEARCH = 4
 const MAX_TOTAL_PER_BUCKET = 5
 const MAX_PROVINCES_TO_SEARCH = 2
 
@@ -249,6 +250,14 @@ function buildFederalCaseLawQuery (message, language, province = null) {
   return context.caseLawQuery
 }
 
+function buildSupplementalCaseLawQuery (message, language) {
+  const context = inferLegalSearchContext(message, language)
+  if (language === 'fr') {
+    return `canlii.org TCC décision ${context.caseLawQuery}`
+  }
+  return `canlii.org TCC decision ${context.caseLawQuery}`
+}
+
 /**
  * @param {string} message
  */
@@ -271,11 +280,14 @@ export function detectLegalWebResearchIntent (message) {
  * @param {string} query
  * @param {string[]} includeDomains
  * @param {'legislation' | 'case_law'} purpose
+ * @param {number} [maxResults]
  */
-async function searchLegalWeb (query, includeDomains, purpose) {
+async function searchLegalWeb (query, includeDomains, purpose, maxResults) {
   const tavily = await searchWithTavily(query, {
     includeDomains,
-    maxResults: MAX_RESULTS_PER_SEARCH,
+    maxResults: maxResults || (purpose === 'case_law'
+      ? MAX_CASE_LAW_RESULTS_PER_SEARCH
+      : MAX_LEGISLATION_RESULTS_PER_SEARCH),
     purpose
   }).catch((error) => {
     console.warn('[taxgpt] Tavily legal search failed:', error.message)
@@ -416,13 +428,19 @@ export async function retrieveTaxgptLegalWebSources (message, options = {}) {
 
   const language = options.language === 'fr' ? 'fr' : 'en'
   const provinces = detectProvincesFromMessage(message)
-  const seenUrls = new Set()
+  const legislationSeenUrls = new Set()
+  const caseLawSeenUrls = new Set()
 
   const legislationSearches = [
     searchLegalWeb(buildFederalLegislationQuery(message, language), FEDERAL_LEGISLATION_DOMAINS, 'legislation')
   ]
   const caseLawSearches = [
-    searchLegalWeb(buildFederalCaseLawQuery(message, language), FEDERAL_CASE_LAW_DOMAINS, 'case_law')
+    searchLegalWeb(buildFederalCaseLawQuery(message, language), FEDERAL_CASE_LAW_DOMAINS, 'case_law'),
+    searchLegalWeb(
+      buildSupplementalCaseLawQuery(message, language),
+      ['canlii.org', 'canlii.ca'],
+      'case_law'
+    )
   ]
 
   if (provinces.length > 0) {
@@ -453,8 +471,8 @@ export async function retrieveTaxgptLegalWebSources (message, options = {}) {
   }
 
   const [legislationChunks, caseLawChunks] = await Promise.all([
-    collectBucketChunks(legislationSearches, 'legislation', seenUrls),
-    collectBucketChunks(caseLawSearches, 'case_law', seenUrls)
+    collectBucketChunks(legislationSearches, 'legislation', legislationSeenUrls),
+    collectBucketChunks(caseLawSearches, 'case_law', caseLawSeenUrls)
   ])
 
   const chunks = [...legislationChunks, ...caseLawChunks]

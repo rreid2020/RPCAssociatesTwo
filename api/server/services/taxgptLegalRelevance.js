@@ -27,6 +27,22 @@ const TAX_SIGNAL_TERMS = [
   'revenu canada'
 ]
 
+const TAX_CASE_LAW_SIGNAL_TERMS = [
+  ...TAX_SIGNAL_TERMS,
+  'federal court of appeal',
+  'federal court of canada',
+  'cour canadienne',
+  'v. the queen',
+  'v. canada',
+  'v. mnr',
+  'v. minister',
+  're:',
+  ' tcc ',
+  ' fca ',
+  ' fct ',
+  ' scc '
+]
+
 const IRRELEVANT_CASE_LAW_PATTERNS = [
   /family\s+focused\s+protocol/i,
   /family\s+court/i,
@@ -125,9 +141,13 @@ function combinedText (parts) {
   return normalizeWhitespace(parts.filter(Boolean).join(' ')).toLowerCase()
 }
 
-function hasTaxSignal (text) {
+function hasTaxSignal (text, terms = TAX_SIGNAL_TERMS) {
   const lower = combinedText([text])
-  return TAX_SIGNAL_TERMS.some((term) => lower.includes(term))
+  return terms.some((term) => lower.includes(term))
+}
+
+function isTrustedFederalTaxCaseLawUrl (url, title = '') {
+  return isFederalTaxCaseLawUrl(url, title)
 }
 
 /**
@@ -177,19 +197,30 @@ export function isFederalTaxCaseLawUrl (url, title = '') {
   if (/taxcourt\.gc\.ca/i.test(value)) return true
   if (/scc-csc\.lexum\.com/i.test(value)) return true
 
-  const canliiCourtMatch = value.match(
-    /canlii\.(org|ca)\/(?:en|fr)\/(?:ca\/)?(tcc|fca|fct|scc|citt)\/(?:doc|dec)\//i
-  )
-  if (canliiCourtMatch) {
-    return FEDERAL_TAX_CANLII_COURTS.has(canliiCourtMatch[2].toLowerCase())
-  }
-
-  if (/canlii\.(org|ca)\/t\/\d+/i.test(value) && hasTaxSignal(`${value} ${normalizedTitle}`)) {
+  if (/canlii\.(org|ca)\/(?:en|fr)\/(?:ca\/)?(tcc|fca|fct|scc|citt)\/(?:doc|dec)\//i.test(value)) {
     return true
   }
 
-  if (/canlii\.(org|ca)/i.test(value) && /\bv\.\s*(the\s+)?(queen|crown|canada|m\.?n\.?r\.?|minister)/i.test(normalizedTitle)) {
-    return hasTaxSignal(normalizedTitle)
+  if (/canlii\.(org|ca).*\b(20\d{2})(tcc|fca|fct)\d+/i.test(value)) {
+    return true
+  }
+
+  if (/canlii\.(org|ca)\/t\/\d+/i.test(value)) {
+    return true
+  }
+
+  if (
+    /canlii\.(org|ca)/i.test(value) &&
+    /\bv\.\s*(the\s+)?(queen|crown|canada|m\.?n\.?r\.?|minister)/i.test(normalizedTitle)
+  ) {
+    return true
+  }
+
+  const canliiCourtMatch = value.match(
+    /canlii\.(org|ca)\/(?:en|fr)\/(?:ca\/)?(tcc|fca|fct|scc|citt)\b/i
+  )
+  if (canliiCourtMatch) {
+    return FEDERAL_TAX_CANLII_COURTS.has(canliiCourtMatch[2].toLowerCase())
   }
 
   return false
@@ -216,10 +247,7 @@ export function isRelevantTaxLegalSource (input = {}) {
     if (IRRELEVANT_CASE_LAW_PATTERNS.some((pattern) => pattern.test(blob))) {
       return false
     }
-    if (!isFederalTaxCaseLawUrl(url, title)) {
-      return false
-    }
-    if (!hasTaxSignal(blob)) {
+    if (!isTrustedFederalTaxCaseLawUrl(url, title)) {
       return false
     }
     return true

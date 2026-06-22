@@ -50,12 +50,14 @@ const SECTIONS: NavigationSection[] = [
   {
     id: 'tax-intelligence-title',
     label: 'Financial Intelligence',
+    iconKey: 'chartBar',
     depth: 0,
     items: []
   },
   {
     id: 'tax-intelligence',
     label: 'Tax Intelligence',
+    iconKey: 'calculator',
     depth: 1,
     items: [
       { to: '/portal/taxgpt', label: 'Tax GPT', iconKey: 'sparkles', badge: 'Active' }
@@ -73,7 +75,7 @@ const SECTIONS: NavigationSection[] = [
     depth: 1,
     items: [
       { to: '/app/tax-intelligence/returns', label: 'Tax Return Builder', iconKey: 'plus', depth: 1, activeWhen: 'child' },
-      { to: '/app/tax-intelligence/returns', label: 'Tax Returns', iconKey: 'document', depth: 2, activeWhen: 'exact' },
+      { to: '/app/tax-intelligence/returns', label: 'Tax Returns', iconKey: 'clipboardList', depth: 2, activeWhen: 'exact' },
       { to: '/app/tax-intelligence/documents', label: 'Document Processing', iconKey: 'exchange', depth: 2 },
       { to: '/app/tax-intelligence/optimization', label: 'Optimization', iconKey: 'magic', depth: 2 },
       { to: '/app/tax-intelligence/scenarios', label: 'Scenarios', iconKey: 'trend', depth: 2 },
@@ -84,12 +86,14 @@ const SECTIONS: NavigationSection[] = [
   {
     id: 'accounting-title',
     label: 'Accounting Operations',
+    iconKey: 'ledger',
     depth: 0,
     items: []
   },
   {
     id: 'company-profile-title',
     label: 'Business/Firm Profile',
+    iconKey: 'building',
     depth: 1,
     items: []
   },
@@ -98,9 +102,9 @@ const SECTIONS: NavigationSection[] = [
     depth: 2,
     items: [
       { to: '/portal/accounting/company-profile', label: 'Business/Firm Details', iconKey: 'workspace', requiredPermission: 'workspace.manage' },
-      { to: '/portal/accounting/company-profile/employees', label: 'Invite Employees', iconKey: 'workspace', requiredPermission: 'workspace.invite' },
-      { to: '/portal/accounting/company-profile/entities', label: 'Entity Profiles / Clients', iconKey: 'document', requiredPermission: 'workspace.manage' },
-      { to: '/portal/accounting/company-profile/roles-and-permissions', label: 'Roles & Permissions', iconKey: 'shield', requiredPermission: 'rbac.read' }
+      { to: '/portal/accounting/company-profile/employees', label: 'Invite Employees', iconKey: 'userPlus', requiredPermission: 'workspace.invite' },
+      { to: '/portal/accounting/company-profile/entities', label: 'Entity Profiles / Clients', iconKey: 'users', requiredPermission: 'workspace.manage' },
+      { to: '/portal/accounting/company-profile/roles-and-permissions', label: 'Roles & Permissions', iconKey: 'key', requiredPermission: 'rbac.read' }
     ]
   },
   {
@@ -108,18 +112,18 @@ const SECTIONS: NavigationSection[] = [
     depth: 1,
     items: [
       { to: '/portal/accounting/working-papers/engagements', label: 'Engagements', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
-      { to: '/portal/accounting/working-papers/engagements?approvalReady=true', label: 'Approval Ready', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
-      { to: '/portal/accounting/working-papers/engagements/new', label: 'Create Engagement', iconKey: 'plus', requiredFeature: 'workingPapers', requiredPermission: 'engagement.manage', requiredWorkspaceRoles: ['owner', 'admin'] },
-      { to: '/portal/accounting/integrations', label: 'Integrations', iconKey: 'terminal', requiredFeature: 'integrations', requiredPermission: 'integrations.manage' }
+      { to: '/portal/accounting/working-papers/engagements?approvalReady=true', label: 'Approval Ready', iconKey: 'clipboardCheck', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
+      { to: '/portal/accounting/working-papers/engagements/new', label: 'Create Engagement', iconKey: 'filePlus', requiredFeature: 'workingPapers', requiredPermission: 'engagement.manage', requiredWorkspaceRoles: ['owner', 'admin'] },
+      { to: '/portal/accounting/integrations', label: 'Integrations', iconKey: 'plug', requiredFeature: 'integrations', requiredPermission: 'integrations.manage' }
     ]
   },
   {
     id: 'docs-billing',
     items: [
       { to: '/portal/files', label: 'Documents', iconKey: 'folder' },
-      { to: '/portal/subscription', label: 'Subscription', iconKey: 'shield' },
+      { to: '/portal/subscription', label: 'Subscription', iconKey: 'creditCard' },
       { to: '/portal/billing/subscription', label: 'Billing', iconKey: 'lock', requiredPermission: 'billing.read' },
-      { to: '/portal/ops', label: 'Ops Portal', iconKey: 'terminal', requiredStaff: true }
+      { to: '/portal/ops', label: 'Ops Portal', iconKey: 'server', requiredStaff: true }
     ]
   }
 ]

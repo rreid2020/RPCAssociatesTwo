@@ -207,8 +207,12 @@ export { CRA_DOCUMENT_TYPE_LABELS, CRA_DOCUMENT_TYPE_ORDER }
  * @param {Array<Record<string, unknown>>} chunks
  */
 export function buildCraDocumentGroupsFromChunks (chunks = []) {
-  const entries = chunks.map((chunk, index) => ({
-    citationIndex: index + 1,
+  const craChunkEntries = chunks
+    .map((chunk, index) => ({ chunk, citationIndex: index + 1 }))
+    .filter(({ chunk }) => (chunk.sourceBucket || chunk.citation?.sourceBucket || 'cra') === 'cra')
+
+  const entries = craChunkEntries.map(({ chunk, citationIndex }) => ({
+    citationIndex,
     chunkId: chunk.citation?.chunkId,
     sourceUrl: chunk.citation?.sourceUrl,
     sourceTitle: chunk.citation?.sourceTitle,
@@ -216,5 +220,5 @@ export function buildCraDocumentGroupsFromChunks (chunks = []) {
     highlights: []
   }))
 
-  return buildCraDocumentGroups(entries, chunks)
+  return buildCraDocumentGroups(entries, craChunkEntries.map(({ chunk }) => chunk))
 }

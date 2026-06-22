@@ -683,7 +683,7 @@ function buildSourceReferences (chunks) {
 
 function isUsableLegalGroupEntry (bucket, url, excerpt) {
   const cleaned = cleanWebExcerpt(excerpt)
-  if (!cleaned || isGovNavigationBoilerplate(cleaned)) return false
+  if (cleaned && isGovNavigationBoilerplate(cleaned)) return false
   if (bucket === 'legislation') return isLegislationStatuteUrl(url)
   if (bucket === 'case_law') return isCaseLawDecisionUrl(url)
   return true
@@ -763,8 +763,8 @@ function buildGroupedSources (citations, sourceAnalysis, sourceReferences = [], 
         if (!reference.citationIndex || seenCitationIndices.has(reference.citationIndex)) continue
         const analysisItem = analysisByIndex.get(reference.citationIndex)
         const excerpt = excerptByIndex.get(reference.citationIndex) || reference.excerpt || ''
-        if (!excerpt) continue
         if (!isUsableLegalGroupEntry(bucket, reference.sourceUrl, excerpt)) continue
+        if (!excerpt && !reference.sourceTitle) continue
         seenCitationIndices.add(reference.citationIndex)
         entries.push({
           ...reference,
@@ -934,18 +934,53 @@ function renderStructuredPlainText (structured, groupedSources, mode) {
   }
 
   if (Array.isArray(structured.sourceReferences) && structured.sourceReferences.length > 0) {
+    const craReferences = structured.sourceReferences.filter((reference) =>
+      (reference.sourceBucket || 'cra') === 'cra'
+    )
+    const legislationReferences = structured.sourceReferences.filter((reference) =>
+      reference.sourceBucket === 'legislation'
+    )
+    const caseLawReferences = structured.sourceReferences.filter((reference) =>
+      reference.sourceBucket === 'case_law'
+    )
+
     lines.push('')
     lines.push('## References')
-    structured.sourceReferences.forEach((reference) => {
-      const heading = reference.sectionHeading ? ` — ${reference.sectionHeading}` : ''
-      const url = reference.sourceUrl ? ` (${reference.sourceUrl})` : ''
-      lines.push(`[${reference.citationIndex}] ${reference.sourceTitle}${heading}${url}`)
-    })
+
+    if (craReferences.length > 0) {
+      lines.push('')
+      lines.push('### CRA (Corpus Documents)')
+      craReferences.forEach((reference) => {
+        const heading = reference.sectionHeading ? ` — ${reference.sectionHeading}` : ''
+        const url = reference.sourceUrl ? ` (${reference.sourceUrl})` : ''
+        lines.push(`[${reference.citationIndex}] ${reference.sourceTitle}${heading}${url}`)
+      })
+    }
+
+    if (legislationReferences.length > 0) {
+      lines.push('')
+      lines.push('### Legislation Sources')
+      legislationReferences.forEach((reference) => {
+        const heading = reference.sectionHeading ? ` — ${reference.sectionHeading}` : ''
+        const url = reference.sourceUrl ? ` (${reference.sourceUrl})` : ''
+        lines.push(`[${reference.citationIndex}] ${reference.sourceTitle}${heading}${url}`)
+      })
+    }
+
+    if (caseLawReferences.length > 0) {
+      lines.push('')
+      lines.push('### Case Law Sources')
+      caseLawReferences.forEach((reference) => {
+        const heading = reference.sectionHeading ? ` — ${reference.sectionHeading}` : ''
+        const url = reference.sourceUrl ? ` (${reference.sourceUrl})` : ''
+        lines.push(`[${reference.citationIndex}] ${reference.sourceTitle}${heading}${url}`)
+      })
+    }
   }
 
   if (Array.isArray(structured.strategySourceReferences) && structured.strategySourceReferences.length > 0) {
     lines.push('')
-    lines.push('## Strategy references')
+    lines.push('### Strategy Sources')
     structured.strategySourceReferences.forEach((reference) => {
       const url = reference.sourceUrl ? ` (${reference.sourceUrl})` : ''
       lines.push(`[${reference.citationIndex}] ${reference.sourceTitle}${url}`)

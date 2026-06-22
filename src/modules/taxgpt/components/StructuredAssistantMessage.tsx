@@ -5,6 +5,7 @@ import type {
   TaxgptGroupedDocument,
   TaxgptSourceBucket,
   TaxgptSourceDocumentGroup,
+  TaxgptSourceReference,
   TaxgptStrategySourceReference,
   TaxgptStructuredResponse
 } from '../../../domains/taxgpt'
@@ -101,6 +102,158 @@ function isGenericComplianceRisk (text: string): boolean {
 
 const BUCKET_ORDER: TaxgptSourceBucket[] = ['cra', 'legislation', 'case_law']
 
+const REFERENCE_SECTION_LABELS = {
+  cra: 'CRA (Corpus Documents)',
+  legislation: 'Legislation Sources',
+  caseLaw: 'Case Law Sources',
+  strategy: 'Strategy Sources'
+} as const
+
+function resolveReferenceBucket (reference: TaxgptSourceReference): TaxgptSourceBucket {
+  return reference.sourceBucket || 'cra'
+}
+
+function splitCorpusSourceReferences (sourceReferences: TaxgptSourceReference[]) {
+  const craReferences: TaxgptSourceReference[] = []
+  const legislationReferences: TaxgptSourceReference[] = []
+  const caseLawReferences: TaxgptSourceReference[] = []
+
+  for (const reference of sourceReferences) {
+    const bucket = resolveReferenceBucket(reference)
+    if (bucket === 'legislation') {
+      legislationReferences.push(reference)
+    } else if (bucket === 'case_law') {
+      caseLawReferences.push(reference)
+    } else {
+      craReferences.push(reference)
+    }
+  }
+
+  return { craReferences, legislationReferences, caseLawReferences }
+}
+
+function CorpusReferenceItem ({ reference }: { reference: TaxgptSourceReference }) {
+  return (
+    <li
+      id={referenceAnchorId(reference.citationIndex)}
+      className="text-sm scroll-mt-4"
+    >
+      <span className="font-medium text-text">[{reference.citationIndex}] </span>
+      {reference.sourceUrl ? (
+        <a
+          href={reference.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-primary hover:underline"
+        >
+          {reference.sourceTitle}
+        </a>
+      ) : (
+        <span className="font-medium text-text">{reference.sourceTitle}</span>
+      )}
+      {reference.sectionHeading && (
+        <span className="text-xs text-text-light"> — {reference.sectionHeading}</span>
+      )}
+    </li>
+  )
+}
+
+function GroupedCorpusReferenceItem ({ document }: { document: TaxgptGroupedDocument }) {
+  return (
+    <li className="text-sm">
+      <span className="font-medium text-text">
+        {document.citationIndices.map((citationIndex, index) => (
+          <span key={citationIndex}>
+            {index > 0 ? ', ' : ''}
+            <a
+              href={`#${referenceAnchorId(citationIndex)}`}
+              className="text-primary hover:underline"
+            >
+              [{citationIndex}]
+            </a>
+          </span>
+        ))}
+        {' '}
+      </span>
+      {document.sourceUrl ? (
+        <a
+          href={document.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-primary hover:underline"
+        >
+          {document.sourceTitle}
+        </a>
+      ) : (
+        <span className="font-medium text-text">{document.sourceTitle}</span>
+      )}
+    </li>
+  )
+}
+
+function ReferenceSubsection ({
+  title,
+  references = [],
+  groupedDocuments = [],
+  useGroupedDocuments = false
+}: {
+  title: string
+  references?: TaxgptSourceReference[]
+  groupedDocuments?: TaxgptGroupedDocument[]
+  useGroupedDocuments?: boolean
+}) {
+  const showGrouped = useGroupedDocuments && groupedDocuments.length > 0
+  if (!showGrouped && references.length === 0) return null
+
+  return (
+    <div className="mt-4 first:mt-0">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-text-light">{title}</h4>
+      <ul className="mt-2 space-y-2">
+        {showGrouped
+          ? groupedDocuments.map((document) => (
+            <GroupedCorpusReferenceItem key={document.documentKey} document={document} />
+          ))
+          : references.map((reference) => (
+            <CorpusReferenceItem
+              key={`ref-${reference.citationIndex}-${reference.chunkId}`}
+              reference={reference}
+            />
+          ))}
+      </ul>
+      {showGrouped && references.map((reference) => (
+        <span
+          key={`anchor-${reference.citationIndex}-${reference.chunkId}`}
+          id={referenceAnchorId(reference.citationIndex)}
+          className="sr-only"
+        />
+      ))}
+    </div>
+  )
+}
+
+function StrategyReferenceItem ({ reference }: { reference: TaxgptStrategySourceReference }) {
+  return (
+    <li
+      id={strategyReferenceAnchorId(reference.citationIndex)}
+      className="text-sm scroll-mt-4"
+    >
+      <span className="font-medium text-text">[{reference.citationIndex}] </span>
+      {reference.sourceUrl ? (
+        <a
+          href={reference.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-primary hover:underline"
+        >
+          {reference.sourceTitle}
+        </a>
+      ) : (
+        <span className="font-medium text-text">{reference.sourceTitle}</span>
+      )}
+    </li>
+  )
+}
+
 function DocumentHighlights ({ document }: { document: TaxgptGroupedDocument }) {
   return (
     <li className="rounded-md border border-border/70 bg-white px-3 py-3">
@@ -164,9 +317,19 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({
 
   const craDocumentGroups = grouped?.cra?.documentGroups ?? []
   const documentReferences = structured.documentReferences ?? []
-  const groupedReferenceDocuments = documentReferences.length > 0
+  const craGroupedReferenceDocuments = documentReferences.length > 0
     ? documentReferences.flatMap((group) => group.documents)
     : craDocumentGroups.flatMap((group) => group.documents)
+  const {
+    craReferences,
+    legislationReferences,
+    caseLawReferences
+  } = splitCorpusSourceReferences(sourceReferences)
+  const hasReferences = craGroupedReferenceDocuments.length > 0 ||
+    craReferences.length > 0 ||
+    legislationReferences.length > 0 ||
+    caseLawReferences.length > 0 ||
+    strategySourceReferences.length > 0
 
   return (
     <div className="space-y-5">
@@ -196,6 +359,12 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({
           {BUCKET_ORDER.map((bucket) => {
             const group = grouped?.[bucket]
             if (!group) return null
+            if ((bucket === 'legislation' || bucket === 'case_law') && group.entries.length === 0) {
+              const bucketReferences = bucket === 'legislation'
+                ? legislationReferences
+                : caseLawReferences
+              if (bucketReferences.length === 0) return null
+            }
             return (
               <div key={bucket} className="rounded-md border border-border bg-background px-4 py-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-text-light">{group.label}</p>
@@ -403,108 +572,44 @@ const StructuredAssistantMessage: FC<StructuredAssistantMessageProps> = ({
         </section>
       )}
 
-      {(groupedReferenceDocuments.length > 0 || sourceReferences.length > 0 || strategySourceReferences.length > 0) && (
+      {hasReferences && (
         <section className="rounded-md border border-border bg-background px-4 py-3">
           <h3 className="text-sm font-semibold text-primary-dark">References</h3>
           <p className="mt-1 text-xs text-text-light">
-            Source documents cited in this answer.
+            Source documents cited in this answer, grouped by CRA corpus, legislation, case law, and strategy web sources.
           </p>
-          {(groupedReferenceDocuments.length > 0 || sourceReferences.length > 0) && (
-            <ul className="mt-3 space-y-2">
-              {groupedReferenceDocuments.length > 0
-                ? groupedReferenceDocuments.map((document) => (
-                  <li key={document.documentKey} className="text-sm">
-                    <span className="font-medium text-text">
-                      {document.citationIndices.map((citationIndex, index) => (
-                        <span key={citationIndex}>
-                          {index > 0 ? ', ' : ''}
-                          <a
-                            href={`#${referenceAnchorId(citationIndex)}`}
-                            className="text-primary hover:underline"
-                          >
-                            [{citationIndex}]
-                          </a>
-                        </span>
-                      ))}
-                      {' '}
-                    </span>
-                    {document.sourceUrl ? (
-                      <a
-                        href={document.sourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-medium text-primary hover:underline"
-                      >
-                        {document.sourceTitle}
-                      </a>
-                    ) : (
-                      <span className="font-medium text-text">{document.sourceTitle}</span>
-                    )}
-                  </li>
-                ))
-                : sourceReferences.map((reference) => (
-                  <li
-                    key={`ref-${reference.citationIndex}-${reference.chunkId}`}
-                    id={referenceAnchorId(reference.citationIndex)}
-                    className="text-sm scroll-mt-4"
-                  >
-                    <span className="font-medium text-text">[{reference.citationIndex}] </span>
-                    {reference.sourceUrl ? (
-                      <a
-                        href={reference.sourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-medium text-primary hover:underline"
-                      >
-                        {reference.sourceTitle}
-                      </a>
-                    ) : (
-                      <span className="font-medium text-text">{reference.sourceTitle}</span>
-                    )}
-                    {reference.sectionHeading && (
-                      <span className="text-xs text-text-light"> — {reference.sectionHeading}</span>
-                    )}
-                  </li>
-                ))}
-            </ul>
-          )}
-          {groupedReferenceDocuments.length > 0 && sourceReferences.map((reference) => (
-            <span
-              key={`anchor-${reference.citationIndex}-${reference.chunkId}`}
-              id={referenceAnchorId(reference.citationIndex)}
-              className="sr-only"
-            />
-          ))}
+
+          <ReferenceSubsection
+            title={REFERENCE_SECTION_LABELS.cra}
+            references={craReferences}
+            groupedDocuments={craGroupedReferenceDocuments}
+            useGroupedDocuments
+          />
+
+          <ReferenceSubsection
+            title={REFERENCE_SECTION_LABELS.legislation}
+            references={legislationReferences}
+          />
+
+          <ReferenceSubsection
+            title={REFERENCE_SECTION_LABELS.caseLaw}
+            references={caseLawReferences}
+          />
 
           {strategySourceReferences.length > 0 && (
-            <>
-              <h4 className="mt-4 text-xs font-semibold uppercase tracking-wide text-text-light">
-                Strategy sources
+            <div className="mt-4">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-text-light">
+                {REFERENCE_SECTION_LABELS.strategy}
               </h4>
               <ul className="mt-2 space-y-2">
                 {strategySourceReferences.map((reference: TaxgptStrategySourceReference) => (
-                  <li
+                  <StrategyReferenceItem
                     key={`strategy-ref-${reference.citationIndex}-${reference.sourceUrl}`}
-                    id={strategyReferenceAnchorId(reference.citationIndex)}
-                    className="text-sm scroll-mt-4"
-                  >
-                    <span className="font-medium text-text">[{reference.citationIndex}] </span>
-                    {reference.sourceUrl ? (
-                      <a
-                        href={reference.sourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-medium text-primary hover:underline"
-                      >
-                        {reference.sourceTitle}
-                      </a>
-                    ) : (
-                      <span className="font-medium text-text">{reference.sourceTitle}</span>
-                    )}
-                  </li>
+                    reference={reference}
+                  />
                 ))}
               </ul>
-            </>
+            </div>
           )}
         </section>
       )}

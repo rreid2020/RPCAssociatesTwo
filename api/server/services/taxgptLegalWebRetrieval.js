@@ -64,9 +64,12 @@ const LEGAL_RESEARCH_PATTERNS = [
   /\bv\.?\s+(?:the\s+)?(?:queen|crown|canada|m\.?n\.?r\.?|minister)/i
 ]
 
+const MIN_LEGAL_EXCERPT_CHARS = 40
+
 const FEDERAL_LEGISLATION_DOMAINS = [
   'laws-lois.justice.gc.ca',
-  'canlii.org'
+  'canlii.org',
+  'canlii.ca'
 ]
 
 const FEDERAL_CASE_LAW_DOMAINS = [
@@ -74,6 +77,7 @@ const FEDERAL_CASE_LAW_DOMAINS = [
   'canlii.ca',
   'decisions.fct-cf.gc.ca',
   'decisions.fca-caf.gc.ca',
+  'taxcourt.gc.ca',
   'scc-csc.lexum.com'
 ]
 
@@ -323,12 +327,12 @@ function isValidLegalSourceUrl (url, bucket, title = '') {
  */
 function resolveLegalExcerpt (page, result) {
   const pageExcerpt = cleanWebExcerpt(page?.excerpt || '', MAX_EXCERPT_CHARS)
-  if (pageExcerpt.length >= 80 && !isGovNavigationBoilerplate(pageExcerpt)) {
+  if (pageExcerpt.length >= MIN_LEGAL_EXCERPT_CHARS && !isGovNavigationBoilerplate(pageExcerpt)) {
     return pageExcerpt
   }
 
   const snippetExcerpt = cleanWebExcerpt(result.snippet || '', MAX_EXCERPT_CHARS)
-  if (snippetExcerpt.length >= 80 && !isGovNavigationBoilerplate(snippetExcerpt)) {
+  if (snippetExcerpt.length >= MIN_LEGAL_EXCERPT_CHARS && !isGovNavigationBoilerplate(snippetExcerpt)) {
     return snippetExcerpt
   }
 
@@ -413,16 +417,6 @@ async function collectBucketChunks (searchPromises, bucket, seenUrls) {
  * @param {{ language?: 'en' | 'fr' }} [options]
  */
 export async function retrieveTaxgptLegalWebSources (message, options = {}) {
-  if (!detectLegalWebResearchIntent(message)) {
-    return {
-      chunks: [],
-      legislationChunks: [],
-      caseLawChunks: [],
-      skipped: true,
-      reason: 'not_applicable'
-    }
-  }
-
   if (!process.env.TAVILY_API_KEY) {
     return {
       chunks: [],

@@ -36,11 +36,34 @@ const LEGISLATION_URL_PATTERNS = [
   /assembly\.nl\.ca\/legislation/i,
   /assembly\.pe\.ca/i,
   /legislation\.yukon\.ca/i,
-  /justice\.gov\.nt\.ca/i
+  /justice\.gov\.nt\.ca/i,
+  /publicationsduquebec\.gouv\.qc\.ca/i
+]
+
+const LEGISLATION_TRUSTED_HOSTS = [
+  'laws-lois.justice.gc.ca',
+  'canlii.org',
+  'canlii.ca',
+  'e-laws.gov.on.ca',
+  'legisquebec.gouv.qc.ca',
+  'publicationsduquebec.gouv.qc.ca',
+  'bclaws.gov.bc.ca',
+  'qp.alberta.ca',
+  'publications.saskatchewan.ca',
+  'laws_regs.gov.sk.ca',
+  'web2.gov.mb.ca',
+  'nslegislature.ca',
+  'laws.gnb.ca',
+  'assembly.nl.ca',
+  'assembly.pe.ca',
+  'legislation.yukon.ca',
+  'justice.gov.nt.ca',
+  'assembly.nu.ca'
 ]
 
 const CASE_LAW_URL_PATTERNS = [
-  /canlii\.(org|ca)\/(en|fr)\/[a-z]{2}\/(scc|fca|fct|tcc|on|bc|ab|qc|mb|sk|ns|nb|nl|pe|yt|nt|nu)\//i,
+  /canlii\.(org|ca)\/(en|fr)\/(?:[a-z]{2}\/)?(scc|fca|fct|tcc|citt|chrt|on|bc|ab|qc|mb|sk|ns|nb|nl|pe|yt|nt|nu)\/(?:doc|dec)\b/i,
+  /canlii\.(org|ca)\/t\/\d+/i,
   /decisions\.(fct-cf|fca-caf)\.gc\.ca/i,
   /taxcourt\.gc\.ca/i,
   /scc-csc\.lexum\.com/i,
@@ -49,6 +72,33 @@ const CASE_LAW_URL_PATTERNS = [
   /albertacourts\.ca/i,
   /tribunaux\.qc\.ca/i
 ]
+
+const CASE_LAW_TRUSTED_HOSTS = [
+  'canlii.org',
+  'canlii.ca',
+  'decisions.fct-cf.gc.ca',
+  'decisions.fca-caf.gc.ca',
+  'taxcourt.gc.ca',
+  'scc-csc.lexum.com',
+  'ontariocourts.ca',
+  'bccourts.ca',
+  'albertacourts.ca',
+  'tribunaux.qc.ca'
+]
+
+function hostnameFromUrl (url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./i, '').toLowerCase()
+  } catch {
+    return ''
+  }
+}
+
+function hostMatchesList (url, hosts) {
+  const hostname = hostnameFromUrl(url)
+  if (!hostname) return false
+  return hosts.some((host) => hostname === host || hostname.endsWith(`.${host}`))
+}
 
 function normalizeWhitespace (text) {
   return String(text || '').replace(/\s+/g, ' ').trim()
@@ -110,7 +160,14 @@ export function cleanWebExcerpt (text, maxLength = 1200) {
 
 export function isLegislationStatuteUrl (url) {
   const value = String(url || '')
-  return LEGISLATION_URL_PATTERNS.some((pattern) => pattern.test(value))
+  if (LEGISLATION_URL_PATTERNS.some((pattern) => pattern.test(value))) return true
+  if (hostMatchesList(value, LEGISLATION_TRUSTED_HOSTS)) {
+    if (/canlii\.(org|ca)/i.test(value)) {
+      return /\/(laws|stat|regu|regulations)\b/i.test(value)
+    }
+    return true
+  }
+  return false
 }
 
 export function isCaseLawDecisionUrl (url, title = '') {
@@ -118,7 +175,11 @@ export function isCaseLawDecisionUrl (url, title = '') {
   const normalizedTitle = String(title || '')
   if (CASE_LAW_URL_PATTERNS.some((pattern) => pattern.test(value))) return true
   if (/canlii\.(org|ca)/i.test(value) && !isLegislationStatuteUrl(value)) {
+    if (/\/(doc|dec)\b/i.test(value) || /\/t\/\d+/i.test(value)) return true
     return /\bv\.\s|re:\s/i.test(normalizedTitle)
+  }
+  if (hostMatchesList(value, CASE_LAW_TRUSTED_HOSTS) && !isLegislationStatuteUrl(value)) {
+    return true
   }
   return false
 }

@@ -55,8 +55,14 @@ export function resolveSourceBucket (source = {}) {
   }
 
   if (
-    /canlii\.(org|ca)|taxcourt|scc-csc\.lexum|fct-cf\.gc\.ca|decisions\.|ontariocourts\.ca|bccourts\.ca|albertacourts\.ca|tribunaux\.qc\.ca/i.test(url) ||
-    /\bv\.\s|re:\s/i.test(title)
+    /decisions\.(fct-cf|fca-caf)\.gc\.ca|taxcourt\.gc\.ca|scc-csc\.lexum/i.test(url)
+  ) {
+    return 'case_law'
+  }
+
+  if (
+    /canlii\.(org|ca)\/(?:en|fr)\/(?:ca\/)?(tcc|fca|fct|scc|citt)\/(?:doc|dec)\b/i.test(url) ||
+    (/\bv\.\s|re:\s/i.test(title) && /canlii\.(org|ca)/i.test(url) && /\b(tax|impôt|income)\b/i.test(`${title} ${url}`))
   ) {
     return 'case_law'
   }

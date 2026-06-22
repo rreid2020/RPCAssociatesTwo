@@ -15,6 +15,7 @@ import {
   isGovNavigationBoilerplate,
   isLegislationStatuteUrl
 } from './taxgptWebExcerpt.js'
+import { isRelevantTaxLegalSource } from './taxgptLegalRelevance.js'
 
 const STRUCTURED_RESPONSE_SCHEMA = `{
   "directAnswer": "2-3 sentence direct answer to the user question",
@@ -681,12 +682,17 @@ function buildSourceReferences (chunks) {
   }))
 }
 
-function isUsableLegalGroupEntry (bucket, url, excerpt) {
+function isUsableLegalGroupEntry (bucket, url, excerpt, title = '') {
   const cleaned = cleanWebExcerpt(excerpt)
   if (cleaned && isGovNavigationBoilerplate(cleaned)) return false
-  if (bucket === 'legislation') return isLegislationStatuteUrl(url)
-  if (bucket === 'case_law') return isCaseLawDecisionUrl(url)
-  return true
+  if (bucket === 'legislation' && !isLegislationStatuteUrl(url)) return false
+  if (bucket === 'case_law' && !isCaseLawDecisionUrl(url, title)) return false
+  return isRelevantTaxLegalSource({
+    url,
+    title,
+    excerpt: cleaned,
+    bucket
+  })
 }
 
 /**
@@ -728,7 +734,7 @@ function buildGroupedSources (citations, sourceAnalysis, sourceReferences = [], 
       const highlights = item.highlights || []
       if (highlights.length === 0 && !excerpt && !item.summary) continue
       if ((bucket === 'legislation' || bucket === 'case_law') &&
-        !isUsableLegalGroupEntry(bucket, citation.sourceUrl, excerpt)) continue
+        !isUsableLegalGroupEntry(bucket, citation.sourceUrl, excerpt, citation.sourceTitle)) continue
       entries.push({
         ...citation,
         sourceTitle: resolveChunkDisplayTitle(chunks[item.citationIndex - 1]) || citation.sourceTitle,
@@ -747,7 +753,7 @@ function buildGroupedSources (citations, sourceAnalysis, sourceReferences = [], 
       const highlights = analysisItem?.highlights || []
       if (highlights.length === 0 && !excerpt) continue
       if ((bucket === 'legislation' || bucket === 'case_law') &&
-        !isUsableLegalGroupEntry(bucket, citation.sourceUrl, excerpt)) continue
+        !isUsableLegalGroupEntry(bucket, citation.sourceUrl, excerpt, citation.sourceTitle)) continue
       seenCitationIndices.add(citation.citationIndex)
       entries.push({
         ...citation,
@@ -763,7 +769,7 @@ function buildGroupedSources (citations, sourceAnalysis, sourceReferences = [], 
         if (!reference.citationIndex || seenCitationIndices.has(reference.citationIndex)) continue
         const analysisItem = analysisByIndex.get(reference.citationIndex)
         const excerpt = excerptByIndex.get(reference.citationIndex) || reference.excerpt || ''
-        if (!isUsableLegalGroupEntry(bucket, reference.sourceUrl, excerpt)) continue
+        if (!isUsableLegalGroupEntry(bucket, reference.sourceUrl, excerpt, reference.sourceTitle)) continue
         if (!excerpt && !reference.sourceTitle) continue
         seenCitationIndices.add(reference.citationIndex)
         entries.push({

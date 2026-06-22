@@ -1,3 +1,5 @@
+import { isFederalTaxCaseLawUrl } from './taxgptLegalRelevance.js'
+
 const NAV_BOILERPLATE_PATTERNS = [
   /skip to main content/i,
   /skip to "about government"/i,
@@ -59,31 +61,6 @@ const LEGISLATION_TRUSTED_HOSTS = [
   'legislation.yukon.ca',
   'justice.gov.nt.ca',
   'assembly.nu.ca'
-]
-
-const CASE_LAW_URL_PATTERNS = [
-  /canlii\.(org|ca)\/(en|fr)\/(?:[a-z]{2}\/)?(scc|fca|fct|tcc|citt|chrt|on|bc|ab|qc|mb|sk|ns|nb|nl|pe|yt|nt|nu)\/(?:doc|dec)\b/i,
-  /canlii\.(org|ca)\/t\/\d+/i,
-  /decisions\.(fct-cf|fca-caf)\.gc\.ca/i,
-  /taxcourt\.gc\.ca/i,
-  /scc-csc\.lexum\.com/i,
-  /ontariocourts\.ca/i,
-  /bccourts\.ca/i,
-  /albertacourts\.ca/i,
-  /tribunaux\.qc\.ca/i
-]
-
-const CASE_LAW_TRUSTED_HOSTS = [
-  'canlii.org',
-  'canlii.ca',
-  'decisions.fct-cf.gc.ca',
-  'decisions.fca-caf.gc.ca',
-  'taxcourt.gc.ca',
-  'scc-csc.lexum.com',
-  'ontariocourts.ca',
-  'bccourts.ca',
-  'albertacourts.ca',
-  'tribunaux.qc.ca'
 ]
 
 function hostnameFromUrl (url) {
@@ -171,17 +148,7 @@ export function isLegislationStatuteUrl (url) {
 }
 
 export function isCaseLawDecisionUrl (url, title = '') {
-  const value = String(url || '')
-  const normalizedTitle = String(title || '')
-  if (CASE_LAW_URL_PATTERNS.some((pattern) => pattern.test(value))) return true
-  if (/canlii\.(org|ca)/i.test(value) && !isLegislationStatuteUrl(value)) {
-    if (/\/(doc|dec)\b/i.test(value) || /\/t\/\d+/i.test(value)) return true
-    return /\bv\.\s|re:\s/i.test(normalizedTitle)
-  }
-  if (hostMatchesList(value, CASE_LAW_TRUSTED_HOSTS) && !isLegislationStatuteUrl(value)) {
-    return true
-  }
-  return false
+  return isFederalTaxCaseLawUrl(url, title)
 }
 
 export function extractMainContentHtml (html) {

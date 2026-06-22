@@ -7,10 +7,14 @@ import {
 } from './taxgptStrategyWebRetrieval.js'
 import {
   cleanWebExcerpt,
-  isCaseLawDecisionUrl,
   isGovNavigationBoilerplate,
   isLegislationStatuteUrl
 } from './taxgptWebExcerpt.js'
+import {
+  inferLegalSearchContext,
+  isFederalTaxCaseLawUrl,
+  isRelevantTaxLegalSource
+} from './taxgptLegalRelevance.js'
 
 const MAX_RESULTS_PER_SEARCH = 2
 const MAX_TOTAL_PER_BUCKET = 5
@@ -72,6 +76,7 @@ const FEDERAL_LEGISLATION_DOMAINS = [
   'canlii.ca'
 ]
 
+/** Federal tax courts only — no provincial general courts (family/civil PDFs). */
 const FEDERAL_CASE_LAW_DOMAINS = [
   'canlii.org',
   'canlii.ca',
@@ -193,10 +198,6 @@ const ALL_PROVINCIAL_LEGISLATION_DOMAINS = [...new Set(
   PROVINCE_LEGAL_PROFILES.flatMap((profile) => profile.legislationDomains)
 )]
 
-const ALL_PROVINCIAL_CASE_LAW_DOMAINS = [...new Set(
-  PROVINCE_LEGAL_PROFILES.flatMap((profile) => profile.caseLawDomains)
-)]
-
 /**
  * @param {string} message
  */
@@ -216,11 +217,8 @@ export function detectProvincesFromMessage (message) {
  * @param {'en' | 'fr'} language
  */
 function buildFederalLegislationQuery (message, language) {
-  const topic = String(message || '').slice(0, 200)
-  if (language === 'fr') {
-    return `Canada loi impôt sur le revenu fédérale législation ${topic}`
-  }
-  return `Canada federal Income Tax Act legislation statute section ${topic}`
+  const context = inferLegalSearchContext(message, language)
+  return context.legislationQuery
 }
 
 /**
@@ -229,30 +227,12 @@ function buildFederalLegislationQuery (message, language) {
  * @param {{ name: string, nameFr: string }} [province]
  */
 function buildProvincialLegislationQuery (message, language, province = null) {
-  const topic = String(message || '').slice(0, 180)
+  const context = inferLegalSearchContext(message, language)
   if (province) {
     const provinceName = language === 'fr' ? province.nameFr : province.name
-    if (language === 'fr') {
-      return `${provinceName} loi impôt provincial législation ${topic}`
-    }
-    return `${provinceName} provincial income tax act legislation statute ${topic}`
+    return `${provinceName} ${context.legislationQuery}`
   }
-  if (language === 'fr') {
-    return `Canada impôt provincial législation loi ${topic}`
-  }
-  return `Canada provincial income tax act legislation statute ${topic}`
-}
-
-/**
- * @param {string} message
- * @param {'en' | 'fr'} language
- */
-function buildFederalCaseLawQuery (message, language) {
-  const topic = String(message || '').slice(0, 200)
-  if (language === 'fr') {
-    return `Cour canadienne de l'impôt décision fédérale ${topic}`
-  }
-  return `Canada Tax Court Federal Court of Appeal tax decision ${topic}`
+  return context.legislationQuery
 }
 
 /**
@@ -260,19 +240,13 @@ function buildFederalCaseLawQuery (message, language) {
  * @param {'en' | 'fr'} language
  * @param {{ name: string, nameFr: string }} [province]
  */
-function buildProvincialCaseLawQuery (message, language, province = null) {
-  const topic = String(message || '').slice(0, 180)
+function buildFederalCaseLawQuery (message, language, province = null) {
+  const context = inferLegalSearchContext(message, language)
   if (province) {
     const provinceName = language === 'fr' ? province.nameFr : province.name
-    if (language === 'fr') {
-      return `${provinceName} décision tribunal cour impôt provincial ${topic}`
-    }
-    return `${provinceName} provincial tax court decision ruling ${topic}`
+    return `${provinceName} ${context.caseLawQuery}`
   }
-  if (language === 'fr') {
-    return `Canada décision impôt provincial cour ${topic}`
-  }
-  return `Canada provincial tax court tribunal decision ${topic}`
+  return context.caseLawQuery
 }
 
 /**
@@ -317,7 +291,7 @@ async function searchLegalWeb (query, includeDomains, purpose) {
  */
 function isValidLegalSourceUrl (url, bucket, title = '') {
   if (bucket === 'legislation') return isLegislationStatuteUrl(url)
-  if (bucket === 'case_law') return isCaseLawDecisionUrl(url, title)
+  if (bucket === 'case_law') return isFederalTaxCaseLawUrl(url, title)
   return false
 }
 
@@ -352,6 +326,12 @@ async function buildChunksFromSearchResults (results, bucket, seenUrls, maxResul
     if (chunks.length >= maxResults) break
     if (!result.url || seenUrls.has(result.url)) continue
     if (!isValidLegalSourceUrl(result.url, bucket, result.title)) continue
+    if (!isRelevantTaxLegalSource({
+      url: result.url,
+      title: result.title,
+      snippet: result.snippet,
+      bucket
+    })) continue
     seenUrls.add(result.url)
 
     const controller = new AbortController()
@@ -368,6 +348,13 @@ async function buildChunksFromSearchResults (results, bucket, seenUrls, maxResul
 
     const excerpt = resolveLegalExcerpt(page, result)
     if (!excerpt) continue
+    if (!isRelevantTaxLegalSource({
+      url: result.url,
+      title: page?.title || result.title,
+      excerpt,
+      snippet: result.snippet,
+      bucket
+    })) continue
 
     chunks.push({
       content: excerpt,
@@ -449,8 +436,8 @@ export async function retrieveTaxgptLegalWebSources (message, options = {}) {
       )
       caseLawSearches.push(
         searchLegalWeb(
-          buildProvincialCaseLawQuery(message, language, province),
-          [...new Set([...FEDERAL_CASE_LAW_DOMAINS, ...province.caseLawDomains])],
+          buildFederalCaseLawQuery(message, language, province),
+          FEDERAL_CASE_LAW_DOMAINS,
           'case_law'
         )
       )
@@ -461,13 +448,6 @@ export async function retrieveTaxgptLegalWebSources (message, options = {}) {
         buildProvincialLegislationQuery(message, language),
         ALL_PROVINCIAL_LEGISLATION_DOMAINS,
         'legislation'
-      )
-    )
-    caseLawSearches.push(
-      searchLegalWeb(
-        buildProvincialCaseLawQuery(message, language),
-        [...new Set([...FEDERAL_CASE_LAW_DOMAINS, ...ALL_PROVINCIAL_CASE_LAW_DOMAINS])],
-        'case_law'
       )
     )
   }

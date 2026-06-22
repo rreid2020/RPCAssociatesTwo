@@ -55,6 +55,7 @@ export type HouseholdInterviewDraftForm = {
   spouseCraEmailNotificationsConsent: YesNo
   spouseCraEmailConfirmed: YesNo
   spouseCraHasForeignMailingAddress: YesNo
+  dependentsApplicable: boolean
   dependents: Array<DependentRecord & { id: string }>
 }
 
@@ -173,6 +174,9 @@ export function deserializeHouseholdInterviewDraft (
     spouseCraEmailNotificationsConsent: normalizeYesNo(draft.spouseCraEmailNotificationsConsent),
     spouseCraEmailConfirmed: normalizeYesNo(draft.spouseCraEmailConfirmed),
     spouseCraHasForeignMailingAddress: normalizeYesNo(draft.spouseCraHasForeignMailingAddress),
+    dependentsApplicable: draft.dependentsApplicable != null
+      ? Boolean(draft.dependentsApplicable)
+      : normalizeDependents(draft.dependents).length > 0,
     dependents: normalizeDependents(draft.dependents)
   }
 }
@@ -227,6 +231,7 @@ export function createEmptyHouseholdInterviewDraft (): HouseholdInterviewDraftFo
     spouseCraEmailNotificationsConsent: '',
     spouseCraEmailConfirmed: '',
     spouseCraHasForeignMailingAddress: '',
+    dependentsApplicable: false,
     dependents: []
   }
 }

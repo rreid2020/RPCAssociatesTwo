@@ -133,6 +133,7 @@ const TaxReturns: FC = () => {
   const [spouseCraEmailNotificationsConsent, setSpouseCraEmailNotificationsConsent] = useState<YesNo>('')
   const [spouseCraEmailConfirmed, setSpouseCraEmailConfirmed] = useState<YesNo>('')
   const [spouseCraHasForeignMailingAddress, setSpouseCraHasForeignMailingAddress] = useState<YesNo>('')
+  const [dependentsApplicable, setDependentsApplicable] = useState(false)
   const [dependents, setDependents] = useState<Array<DependentRecord & { id: string }>>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -191,6 +192,7 @@ const TaxReturns: FC = () => {
     setSpouseCraEmailNotificationsConsent(form.spouseCraEmailNotificationsConsent)
     setSpouseCraEmailConfirmed(form.spouseCraEmailConfirmed)
     setSpouseCraHasForeignMailingAddress(form.spouseCraHasForeignMailingAddress)
+    setDependentsApplicable(form.dependentsApplicable)
     setDependents(form.dependents)
   }
 
@@ -244,6 +246,7 @@ const TaxReturns: FC = () => {
       spouseCraEmailNotificationsConsent,
       spouseCraEmailConfirmed,
       spouseCraHasForeignMailingAddress,
+      dependentsApplicable,
       dependents
     })
   )
@@ -398,9 +401,12 @@ const TaxReturns: FC = () => {
       return null
     }
     if (step === 3) {
-      for (const dependent of dependents) {
-        const issue = validateDependentIdentification(dependent, taxYear)
-        if (issue) return issue
+      if (dependentsApplicable) {
+        if (dependents.length === 0) return 'Add at least one dependant or answer No.'
+        for (const dependent of dependents) {
+          const issue = validateDependentIdentification(dependent, taxYear)
+          if (issue) return issue
+        }
       }
       return null
     }
@@ -499,7 +505,7 @@ const TaxReturns: FC = () => {
                       }
                 }
               : {},
-            dependents: dependents.map((d) => serializeDependent(d)),
+            dependents: dependentsApplicable ? dependents.map((d) => serializeDependent(d)) : [],
             cra: {
               becameResidentDate: null,
               ceasedResidentDate: null,
@@ -921,27 +927,53 @@ const TaxReturns: FC = () => {
             )}
 
             {step === 3 && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-primary-dark">Household dependants</p>
-                    <p className="text-xs text-text-light mt-1">Add dependants claimed on this household return. Full return workspaces are only required when income or filing rules apply.</p>
-                  </div>
-                  <button type="button" className="text-sm text-accent hover:underline shrink-0" onClick={addDependent} disabled={saving}>Add dependant</button>
-                </div>
-                {dependents.length === 0 && (
-                  <p className="text-xs text-text-light">No dependants added.</p>
-                )}
-                {dependents.map((d) => (
-                  <DependentIdentificationForm
-                    key={d.id}
-                    value={d}
-                    taxYear={taxYear}
+              <div className="space-y-4">
+                <p className="text-sm font-medium text-primary-dark">Are there dependants to include in this household return?</p>
+                <div className="inline-flex items-center gap-1 rounded-md border border-border bg-white p-1">
+                  <button
+                    type="button"
+                    className={`px-3 py-1 text-xs rounded ${dependentsApplicable ? 'bg-primary-dark text-white' : 'text-text'}`}
+                    onClick={() => setDependentsApplicable(true)}
                     disabled={saving}
-                    onChange={(patch) => updateDependent(d.id, patch)}
-                    onRemove={() => removeDependent(d.id)}
-                  />
-                ))}
+                  >
+                    Yes
+                  </button>
+                  <button
+                    type="button"
+                    className={`px-3 py-1 text-xs rounded ${!dependentsApplicable ? 'bg-primary-dark text-white' : 'text-text'}`}
+                    onClick={() => {
+                      setDependentsApplicable(false)
+                      setDependents([])
+                    }}
+                    disabled={saving}
+                  >
+                    No
+                  </button>
+                </div>
+                {dependentsApplicable && (
+                  <div className="space-y-3 border border-border rounded-md p-3 bg-background/40">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-primary-dark">Dependant details</p>
+                        <p className="text-xs text-text-light mt-1">Full return workspaces are only required when income or filing rules apply.</p>
+                      </div>
+                      <button type="button" className="text-sm text-accent hover:underline shrink-0" onClick={addDependent} disabled={saving}>Add dependant</button>
+                    </div>
+                    {dependents.length === 0 && (
+                      <p className="text-xs text-text-light">No dependants added yet.</p>
+                    )}
+                    {dependents.map((d) => (
+                      <DependentIdentificationForm
+                        key={d.id}
+                        value={d}
+                        taxYear={taxYear}
+                        disabled={saving}
+                        onChange={(patch) => updateDependent(d.id, patch)}
+                        onRemove={() => removeDependent(d.id)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -950,7 +982,7 @@ const TaxReturns: FC = () => {
                 <p className="font-medium text-primary-dark">Review household workspace setup</p>
                 <p><span className="font-semibold">Main taxpayer:</span> {mainFirstName.trim()} {mainLastName.trim()} · {taxYear}</p>
                 <p><span className="font-semibold">Spouse workflow:</span> {isMarried ? `${maritalStatus} · ${spouseReturnMode}` : 'No spouse workspace'}</p>
-                <p><span className="font-semibold">Dependents:</span> {dependents.length} total · {dependents.filter((d) => dependentRequiresFullReturn(d)).length} full return workspace(s) required</p>
+                <p><span className="font-semibold">Dependents:</span> {dependentsApplicable ? `${dependents.length} total · ${dependents.filter((d) => dependentRequiresFullReturn(d)).length} full return workspace(s) required` : 'No dependants'}</p>
                 <p className="text-xs text-text-light">Address and CRA setup answers are captured in this interview before workspaces are created.</p>
               </div>
             )}

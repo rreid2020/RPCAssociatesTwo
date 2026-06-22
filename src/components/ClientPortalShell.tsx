@@ -78,8 +78,24 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children, wideContent =
     })
   ), [account?.profileBusinessType, account?.role, integrations, isStaff, onboardingComplete, permissions, workspaceType, workingPapers])
 
+  const iconColors: Record<string, string> = {
+    dashboard: 'text-sky-600',
+    sparkles: 'text-violet-500',
+    document: 'text-blue-600',
+    plus: 'text-emerald-600',
+    exchange: 'text-cyan-600',
+    magic: 'text-amber-500',
+    trend: 'text-indigo-600',
+    shield: 'text-rose-600',
+    terminal: 'text-slate-600',
+    workspace: 'text-teal-600',
+    calendar: 'text-orange-500',
+    folder: 'text-amber-600',
+    lock: 'text-red-600'
+  }
+
   const iconForKey = (iconKey: string, active: boolean) => {
-    const iconClass = active ? 'text-white' : 'text-text-light'
+    const iconClass = active ? 'text-white' : (iconColors[iconKey] || 'text-blue-600')
     const icons: Record<string, JSX.Element> = {
       dashboard: <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" /></svg>,
       sparkles: <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3l2.5 5 5.5 2.5-5.5 2.5L12 18l-2.5-5-5.5-2.5 5.5-2.5L12 3z" /></svg>,
@@ -167,20 +183,21 @@ const ClientPortalShell: FC<ClientPortalShellProps> = ({ children, wideContent =
               <div key={section.id} className="pt-1">
                 {section.label && (
                   <div className={`flex items-center gap-3 px-3 py-2 text-sm font-semibold text-primary-dark ${section.depth === 1 ? 'ml-6' : ''}`}>
-                    <span className="text-text-light" aria-hidden>{iconForKey('sparkles', false)}</span>
+                    <span aria-hidden>{iconForKey(section.iconKey || 'sparkles', false)}</span>
                     <span>{section.label}</span>
                   </div>
                 )}
                 <div className="space-y-1">
                   {section.items.map((item) => {
                     const active = isActive(item)
+                    const itemDepth = item.depth ?? section.depth ?? 0
                     return (
                       <Link
                         key={`${section.id}-${item.label}-${item.to}`}
                         to={item.to}
                         onClick={() => setSidebarOpen(false)}
                         className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors ${
-                          section.depth === 2 ? 'ml-10 px-3 py-1.5' : section.depth === 1 ? 'ml-6 px-3 py-1.5' : 'px-3 py-2'
+                          itemDepth === 2 ? 'ml-10 px-3 py-1.5' : itemDepth === 1 ? 'ml-6 px-3 py-1.5' : 'px-3 py-2'
                         } ${
                           active ? 'bg-primary-dark text-white' : 'text-text hover:bg-background hover:text-primary-dark'
                         } ${isLocked(item) ? 'opacity-60 cursor-not-allowed' : ''}`}

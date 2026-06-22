@@ -18,6 +18,8 @@ export type NavigationItem = {
   label: string
   iconKey: string
   badge?: string
+  /** Indent within the section (1 = primary item, 2 = nested sub-item). */
+  depth?: 0 | 1 | 2
   /** exact = pathname must match `to`; child = active only on nested routes under `to` */
   activeWhen?: 'exact' | 'child'
   requiredFeature?: 'workingPapers' | 'integrations'
@@ -29,6 +31,7 @@ export type NavigationItem = {
 export type NavigationSection = {
   id: string
   label?: string
+  iconKey?: string
   depth?: 0 | 1 | 2
   items: NavigationItem[]
 }
@@ -55,14 +58,27 @@ const SECTIONS: NavigationSection[] = [
     label: 'Tax Intelligence',
     depth: 1,
     items: [
-      { to: '/portal/taxgpt', label: 'Tax GPT', iconKey: 'sparkles', badge: 'Active' },
-      { to: '/app/tax-intelligence/returns', label: 'Tax Returns', iconKey: 'document', activeWhen: 'exact' },
-      { to: '/app/tax-intelligence/returns', label: 'Return Builder', iconKey: 'plus', activeWhen: 'child' },
-      { to: '/app/tax-intelligence/documents', label: 'Document Processing', iconKey: 'exchange' },
-      { to: '/app/tax-intelligence/optimization', label: 'Optimization', iconKey: 'magic' },
-      { to: '/app/tax-intelligence/scenarios', label: 'Scenarios', iconKey: 'trend' },
-      { to: '/app/tax-intelligence/risk', label: 'Audit & Risk', iconKey: 'shield' },
-      { to: '/app/tax-intelligence/forms-schedules', label: 'Forms & Schedules', iconKey: 'terminal' }
+      { to: '/portal/taxgpt', label: 'Tax GPT', iconKey: 'sparkles', badge: 'Active' }
+    ]
+  },
+  {
+    id: 'tax-returns-title',
+    label: 'Tax Returns',
+    iconKey: 'document',
+    depth: 0,
+    items: []
+  },
+  {
+    id: 'tax-returns',
+    depth: 1,
+    items: [
+      { to: '/app/tax-intelligence/returns', label: 'Tax Return Builder', iconKey: 'plus', depth: 1, activeWhen: 'child' },
+      { to: '/app/tax-intelligence/returns', label: 'Tax Returns', iconKey: 'document', depth: 2, activeWhen: 'exact' },
+      { to: '/app/tax-intelligence/documents', label: 'Document Processing', iconKey: 'exchange', depth: 2 },
+      { to: '/app/tax-intelligence/optimization', label: 'Optimization', iconKey: 'magic', depth: 2 },
+      { to: '/app/tax-intelligence/scenarios', label: 'Scenarios', iconKey: 'trend', depth: 2 },
+      { to: '/app/tax-intelligence/risk', label: 'Audit & Risk', iconKey: 'shield', depth: 2 },
+      { to: '/app/tax-intelligence/forms-schedules', label: 'Forms & Schedules', iconKey: 'terminal', depth: 2 }
     ]
   },
   {

@@ -3,8 +3,7 @@ region: nyc
 services:
   - name: web
     github:
-      # Update this with your actual repository
-      repo: your-username/your-repo-name
+      repo: rreid2020/RPCAssociatesTwo
       branch: main
       deploy_on_push: true
     build_command: npm run build
@@ -37,7 +36,7 @@ services:
 
   - name: api
     github:
-      repo: your-username/your-repo-name
+      repo: rreid2020/RPCAssociatesTwo
       branch: main
       deploy_on_push: true
     source_dir: api/server
@@ -110,7 +109,7 @@ jobs:
     instance_size_slug: basic-s
     instance_count: 1
     github:
-      repo: your-username/your-repo-name
+      repo: rreid2020/RPCAssociatesTwo
       branch: main
       deploy_on_push: true
     envs:

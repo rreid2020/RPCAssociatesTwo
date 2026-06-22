@@ -244,6 +244,14 @@ const STATEMENTS = [
 )`,
   'CREATE INDEX IF NOT EXISTS taxpayer_dependents_return_idx ON taxgpt.taxpayer_dependents(tax_return_id, sort_order)',
   'CREATE INDEX IF NOT EXISTS taxpayer_dependents_clerk_idx ON taxgpt.taxpayer_dependents(clerk_user_id)',
+  'ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS first_name TEXT',
+  'ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS last_name TEXT',
+  'ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS sin TEXT',
+  'ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS netfile_access_code TEXT',
+  'ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS residence_province_dec31 VARCHAR(4)',
+  'ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS marital_status VARCHAR(32)',
+  'ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS had_income_in_year BOOLEAN',
+  `ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS tax_return_required VARCHAR(8) DEFAULT 'auto'`,
 
   `CREATE TABLE IF NOT EXISTS taxgpt.income_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

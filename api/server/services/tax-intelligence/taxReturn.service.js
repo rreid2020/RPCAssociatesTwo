@@ -25,6 +25,82 @@ function sanitizeSin (v) {
   return String(v || '').replace(/\D/g, '').slice(0, 9)
 }
 
+function normalizeDependentTaxReturnRequired (v) {
+  const value = String(v || 'auto').toLowerCase().trim()
+  if (value === 'yes') return 'yes'
+  if (value === 'no') return 'no'
+  return 'auto'
+}
+
+function dependentRequiresFullReturn (dep) {
+  const taxReturnRequired = normalizeDependentTaxReturnRequired(dep?.taxReturnRequired)
+  if (taxReturnRequired === 'yes') return true
+  if (taxReturnRequired === 'no') return false
+  return normalizeYesNo(dep?.hadIncomeInYear) === true
+}
+
+function normalizeDependentFromInput (d) {
+  const firstName = String(d?.firstName || '').trim()
+  const lastName = String(d?.lastName || '').trim()
+  const fallback = splitNameParts(d?.fullName)
+  const resolvedFirstName = firstName || fallback.firstName
+  const resolvedLastName = lastName || fallback.lastName
+  const fullName = String(d?.fullName || `${resolvedFirstName} ${resolvedLastName}`).trim()
+  const taxReturnRequired = normalizeDependentTaxReturnRequired(d?.taxReturnRequired)
+  const hadIncomeInYear = normalizeYesNo(d?.hadIncomeInYear)
+  const requiresFullReturn = dependentRequiresFullReturn({ taxReturnRequired, hadIncomeInYear })
+  return {
+    fullName,
+    firstName: resolvedFirstName,
+    lastName: resolvedLastName,
+    relationship: String(d?.relationship || '').trim(),
+    dateOfBirth: d?.dateOfBirth || null,
+    sin: sanitizeSin(d?.sin || ''),
+    netfileAccessCode: String(d?.netfileAccessCode || '').trim(),
+    residenceProvinceDec31: String(d?.residenceProvinceDec31 || 'ON').trim().toUpperCase().slice(0, 4),
+    maritalStatus: normalizeMaritalStatus(d?.maritalStatus || 'single'),
+    hadIncomeInYear,
+    taxReturnRequired,
+    disability: Boolean(d?.disability),
+    createWorkspace: parseBoolean(d?.createWorkspace, false) || requiresFullReturn
+  }
+}
+
+function mapDependentRow (row) {
+  return dependentToClientShape(normalizeDependentFromInput({
+    fullName: row?.full_name,
+    firstName: row?.first_name,
+    lastName: row?.last_name,
+    relationship: row?.relationship,
+    dateOfBirth: row?.date_of_birth,
+    sin: row?.sin,
+    netfileAccessCode: row?.netfile_access_code,
+    residenceProvinceDec31: row?.residence_province_dec31,
+    maritalStatus: row?.marital_status,
+    hadIncomeInYear: row?.had_income_in_year,
+    taxReturnRequired: row?.tax_return_required,
+    disability: row?.has_disability
+  }))
+}
+
+function dependentToClientShape (normalized) {
+  const hadIncome = normalized.hadIncomeInYear
+  return {
+    fullName: normalized.fullName,
+    firstName: normalized.firstName,
+    lastName: normalized.lastName,
+    relationship: normalized.relationship,
+    dateOfBirth: normalized.dateOfBirth,
+    sin: normalized.sin || '',
+    netfileAccessCode: normalized.netfileAccessCode || '',
+    residenceProvinceDec31: normalized.residenceProvinceDec31,
+    maritalStatus: normalized.maritalStatus,
+    hadIncomeInYear: hadIncome == null ? '' : (hadIncome ? 'yes' : 'no'),
+    taxReturnRequired: normalized.taxReturnRequired,
+    disability: normalized.disability
+  }
+}
+
 async function getColumnSet (conn, tableName) {
   const { rows } = await conn.query(
     `SELECT column_name
@@ -88,12 +164,7 @@ function readLegacyProfileFromSetup (setupJson) {
       sinLast4: String(spouse.sinLast4 || '').trim().slice(-4),
       netIncome: Number(spouse.netIncome || 0)
     },
-    dependents: dependents.map((d) => ({
-      fullName: String(d?.fullName || '').trim(),
-      relationship: String(d?.relationship || '').trim(),
-      dateOfBirth: d?.dateOfBirth || null,
-      disability: Boolean(d?.disability)
-    }))
+    dependents: dependents.map((d) => dependentToClientShape(normalizeDependentFromInput(d)))
   }
 }
 
@@ -150,7 +221,8 @@ async function loadTaxpayerProfileFromTables (conn, clerkUserId, taxReturnId) {
       [clerkUserId, taxReturnId]
     ),
     conn.query(
-      `SELECT full_name, relationship, date_of_birth, has_disability
+      `SELECT full_name, first_name, last_name, relationship, date_of_birth, sin, netfile_access_code,
+              residence_province_dec31, marital_status, had_income_in_year, tax_return_required, has_disability
        FROM taxgpt.taxpayer_dependents
        WHERE clerk_user_id = $1 AND tax_return_id = $2::uuid
        ORDER BY sort_order ASC, created_at ASC`,
@@ -201,12 +273,7 @@ async function loadTaxpayerProfileFromTables (conn, clerkUserId, taxReturnId) {
       sinLast4: String(spouseRes.rows[0]?.sin_last4 || ''),
       netIncome: Number(spouseRes.rows[0]?.net_income || 0)
     },
-    dependents: dependentsRes.rows.map((d) => ({
-      fullName: String(d.full_name || ''),
-      relationship: String(d.relationship || ''),
-      dateOfBirth: d.date_of_birth || null,
-      disability: Boolean(d.has_disability)
-    }))
+    dependents: dependentsRes.rows.map((d) => mapDependentRow(d))
   }
 }
 
@@ -320,20 +387,29 @@ async function upsertTaxpayerProfileTables (client, clerkUserId, taxReturnId, ta
     [clerkUserId, taxReturnId]
   )
   for (let i = 0; i < dependents.length; i += 1) {
-    const d = dependents[i] || {}
-    const fullName = String(d.fullName || '').trim()
-    if (!fullName) continue
+    const normalized = normalizeDependentFromInput(dependents[i] || {})
+    if (!normalized.fullName) continue
     await client.query(
       `INSERT INTO taxgpt.taxpayer_dependents
-       (clerk_user_id, tax_return_id, full_name, relationship, date_of_birth, has_disability, sort_order, updated_at)
-       VALUES ($1, $2::uuid, $3, $4, $5, $6, $7, now())`,
+       (clerk_user_id, tax_return_id, full_name, first_name, last_name, relationship, date_of_birth,
+        sin, netfile_access_code, residence_province_dec31, marital_status, had_income_in_year,
+        tax_return_required, has_disability, sort_order, updated_at)
+       VALUES ($1, $2::uuid, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, now())`,
       [
         clerkUserId,
         taxReturnId,
-        fullName,
-        String(d.relationship || '').trim() || null,
-        d.dateOfBirth || null,
-        Boolean(d.disability),
+        normalized.fullName,
+        normalized.firstName || null,
+        normalized.lastName || null,
+        normalized.relationship || null,
+        normalized.dateOfBirth || null,
+        normalized.sin || null,
+        normalized.netfileAccessCode || null,
+        normalized.residenceProvinceDec31 || null,
+        normalized.maritalStatus,
+        normalized.hadIncomeInYear,
+        normalized.taxReturnRequired,
+        normalized.disability,
         i
       ]
     )
@@ -599,12 +675,9 @@ export async function createTaxReturn (pool, clerkUserId, payload) {
       const spouseCraSameAsMain = parseBoolean(spouse.craSameAsMain, true)
 
       const normalizedDependents = dependentItems
-        .map((d) => ({
-          fullName: String(d?.fullName || '').trim(),
-          relationship: String(d?.relationship || '').trim(),
-          dateOfBirth: normalizeDateInput(d?.dateOfBirth),
-          disability: parseBoolean(d?.disability, false),
-          createWorkspace: parseBoolean(d?.createWorkspace, false)
+        .map((d) => normalizeDependentFromInput({
+          ...d,
+          dateOfBirth: normalizeDateInput(d?.dateOfBirth)
         }))
         .filter((d) => d.fullName)
 
@@ -661,12 +734,7 @@ export async function createTaxReturn (pool, clerkUserId, payload) {
               netIncome: Number(spouse.netIncome || 0)
             }
           : {},
-        dependents: normalizedDependents.map((d) => ({
-          fullName: d.fullName,
-          relationship: d.relationship,
-          dateOfBirth: d.dateOfBirth,
-          disability: d.disability
-        }))
+        dependents: normalizedDependents.map((d) => dependentToClientShape(d))
       })
 
       const createdLinkedWorkspaces = []
@@ -737,19 +805,21 @@ export async function createTaxReturn (pool, clerkUserId, payload) {
       for (const dependent of normalizedDependents) {
         if (!dependent.createWorkspace) continue
         const dependentParts = splitNameParts(dependent.fullName)
+        const dependentProvince = dependent.residenceProvinceDec31 || main.provinceCode || payload.provinceCode || 'ON'
         const dependentWorkspace = await createReturnWorkspace(client, clerkUserId, {
           taxYear,
           fullName: dependent.fullName,
-          firstName: dependentParts.firstName,
-          lastName: dependentParts.lastName,
-          sin: '',
+          firstName: dependent.firstName || dependentParts.firstName,
+          lastName: dependent.lastName || dependentParts.lastName,
+          sin: sanitizeSin(dependent.sin || ''),
           dateOfBirth: dependent.dateOfBirth,
           title: `${taxYear} T1 Return — Dependent`,
-          provinceCode: main.provinceCode || payload.provinceCode || 'ON',
+          provinceCode: dependentProvince,
           setup: {
             workflow: {
               source: 'household-interview',
-              linkedPrimaryReturnId: mainWorkspace.taxReturn.id
+              linkedPrimaryReturnId: mainWorkspace.taxReturn.id,
+              relationship: dependent.relationship || null
             }
           },
           workspaceRole: 'dependent',
@@ -758,14 +828,14 @@ export async function createTaxReturn (pool, clerkUserId, payload) {
           interviewStage: 'interview-generated'
         })
         await upsertTaxpayerProfileTables(client, clerkUserId, dependentWorkspace.taxReturn.id, {
-          maritalStatus: 'single',
+          maritalStatus: dependent.maritalStatus || 'single',
           spouseReturnMode: 'summary',
           email: '',
           mailingAddressLine1: String(main.mailingAddressLine1 || '').trim(),
           mailingCity: String(main.mailingCity || '').trim(),
           mailingProvinceCode: String(main.mailingProvinceCode || main.provinceCode || payload.provinceCode || 'ON').trim(),
           mailingPostalCode: String(main.mailingPostalCode || '').trim(),
-          residenceProvinceDec31: String(main.residenceProvinceDec31 || main.provinceCode || payload.provinceCode || 'ON').trim(),
+          residenceProvinceDec31: dependentProvince,
           languageCorrespondence: String(main.languageCorrespondence || 'en').toLowerCase() === 'fr' ? 'fr' : 'en',
           electionsCanadianCitizen: normalizeYesNo(cra.electionsCanadianCitizen),
           electionsAuthorize: normalizeYesNo(cra.electionsAuthorize),
@@ -796,6 +866,10 @@ export async function createTaxReturn (pool, clerkUserId, payload) {
 
     const fullName = String(payload.taxpayerName || '').trim()
     if (!fullName) throw new Error('taxpayerName is required')
+    const setupPayload = payload.setup && typeof payload.setup === 'object' ? payload.setup : {}
+    const sourceRole = String(setupPayload.sourceRole || setupPayload.workflow?.workspaceRole || '').toLowerCase()
+    const isDependentWorkspace = sourceRole === 'dependent'
+    const parentTaxReturnId = setupPayload.sourceReturnId || setupPayload.workflow?.linkedPrimaryReturnId || null
     const workspace = await createReturnWorkspace(client, clerkUserId, {
       taxYear,
       fullName,
@@ -803,14 +877,16 @@ export async function createTaxReturn (pool, clerkUserId, payload) {
       lastName: String(payload.lastName || '').trim(),
       sin: payload.sin || '',
       dateOfBirth: payload.dateOfBirth || null,
-      title: payload.title || `${taxYear} T1 Return`,
+      title: isDependentWorkspace ? `${taxYear} T1 Return — Dependent` : (payload.title || `${taxYear} T1 Return`),
       provinceCode: payload.provinceCode || 'ON',
-      setup: payload.setup && typeof payload.setup === 'object' ? payload.setup : {},
+      setup: setupPayload,
       reviewNotes: payload.reviewNotes || null,
-      workspaceRole: 'primary',
-      interviewStage: 'setup'
+      workspaceRole: isDependentWorkspace ? 'dependent' : 'primary',
+      parentTaxReturnId: isDependentWorkspace ? parentTaxReturnId : null,
+      relatedPersonName: isDependentWorkspace ? fullName : null,
+      interviewStage: isDependentWorkspace ? 'return-builder-linked' : 'setup'
     })
-    const legacyFromSetup = readLegacyProfileFromSetup(payload.setup || {})
+    const legacyFromSetup = readLegacyProfileFromSetup(setupPayload)
     const incomingProfile = payload.taxpayerProfile && typeof payload.taxpayerProfile === 'object' ? payload.taxpayerProfile : legacyFromSetup
     await upsertTaxpayerProfileTables(client, clerkUserId, workspace.taxReturn.id, incomingProfile)
     await client.query('COMMIT')

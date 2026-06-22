@@ -5,6 +5,15 @@ import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
 import { taxFetch, type TaxReturnSummary } from '../../../lib/taxIntelligenceApi'
 import { getTaxBasePath } from './path'
+import { CraQuestionRow, toggleToYesNo, yesNoToToggle, YesNoToggle } from './CraQuestionControls'
+import DependentIdentificationForm from './DependentIdentificationForm'
+import {
+  createEmptyDependent,
+  dependentRequiresFullReturn,
+  serializeDependent,
+  validateDependentIdentification,
+  type DependentRecord
+} from './dependentModel'
 
 type ReadinessIssueSeverity = 'required' | 'recommended'
 
@@ -15,14 +24,6 @@ function sanitizeSin (value: string): string {
 type InterviewStep = 1 | 2 | 3
 type MaritalStatus = 'single' | 'married' | 'common_law'
 type SpouseMode = 'summary' | 'full'
-type DependentDraft = {
-  id: string
-  fullName: string
-  relationship: string
-  dateOfBirth: string
-  disability: boolean
-  createWorkspace: boolean
-}
 
 type YesNo = '' | 'yes' | 'no'
 
@@ -127,7 +128,7 @@ const TaxReturns: FC = () => {
   const [spouseCraEmailNotificationsConsent, setSpouseCraEmailNotificationsConsent] = useState<YesNo>('')
   const [spouseCraEmailConfirmed, setSpouseCraEmailConfirmed] = useState<YesNo>('')
   const [spouseCraHasForeignMailingAddress, setSpouseCraHasForeignMailingAddress] = useState<YesNo>('')
-  const [dependents, setDependents] = useState<DependentDraft[]>([])
+  const [dependents, setDependents] = useState<Array<DependentRecord & { id: string }>>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -216,16 +217,12 @@ const TaxReturns: FC = () => {
       ...prev,
       {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        fullName: '',
-        relationship: '',
-        dateOfBirth: '',
-        disability: false,
-        createWorkspace: false
+        ...createEmptyDependent({ residenceProvinceDec31: mainProvinceCode || 'ON' })
       }
     ]))
   }
 
-  const updateDependent = (id: string, patch: Partial<DependentDraft>) => {
+  const updateDependent = (id: string, patch: Partial<DependentRecord>) => {
     setDependents((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch } : d)))
   }
 
@@ -272,8 +269,10 @@ const TaxReturns: FC = () => {
           }
         }
       }
-      const missingDependentName = dependents.some((d) => !d.fullName.trim())
-      if (missingDependentName) return 'Each dependent needs a full name.'
+      for (const dependent of dependents) {
+        const issue = validateDependentIdentification(dependent, taxYear)
+        if (issue) return issue
+      }
       if (firstTimeFiler === '') return 'Answer the first-time filer CRA question.'
       if (soldPrincipalResidence === '') return 'Answer the principal residence sale CRA question.'
       if (treatyExemptForeignService === '') return 'Answer the treaty-exempt foreign service CRA question.'
@@ -376,13 +375,7 @@ const TaxReturns: FC = () => {
                       }
                 }
               : {},
-            dependents: dependents.map((d) => ({
-              fullName: d.fullName.trim(),
-              relationship: d.relationship.trim(),
-              dateOfBirth: d.dateOfBirth || null,
-              disability: d.disability,
-              createWorkspace: d.createWorkspace
-            })),
+            dependents: dependents.map((d) => serializeDependent(d)),
             cra: {
               becameResidentDate: null,
               ceasedResidentDate: null,
@@ -552,48 +545,122 @@ const TaxReturns: FC = () => {
                   </div>
                   <div className="space-y-2 border border-border rounded-md p-3 bg-background/40 mt-3">
                     <p className="text-sm font-semibold text-primary-dark">Question 8: Spouse CRA questions</p>
-                    <p className="text-xs text-text-light">Do you want to use the same CRA answers as the main taxpayer?</p>
-                    <div className="inline-flex items-center gap-1 rounded-md border border-border bg-white p-1">
-                      <button type="button" className={`px-3 py-1 text-xs rounded ${spouseCraSameAsMain ? 'bg-primary-dark text-white' : 'text-text'}`} onClick={() => setSpouseCraSameAsMain(true)} disabled={saving}>Yes</button>
-                      <button type="button" className={`px-3 py-1 text-xs rounded ${!spouseCraSameAsMain ? 'bg-primary-dark text-white' : 'text-text'}`} onClick={() => setSpouseCraSameAsMain(false)} disabled={saving}>No</button>
-                    </div>
+                    <CraQuestionRow label="Do you want to use the same CRA answers as the main taxpayer?">
+                      <YesNoToggle
+                        className=""
+                        value={spouseCraSameAsMain}
+                        onChange={(value) => setSpouseCraSameAsMain(value !== false)}
+                        disabled={saving}
+                      />
+                    </CraQuestionRow>
                     {!spouseCraSameAsMain && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        <label className="text-xs text-text-light">Language of correspondence
-                          <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={spouseLanguageCorrespondence} onChange={(e) => setSpouseLanguageCorrespondence(e.target.value === 'fr' ? 'fr' : 'en')} disabled={saving}><option value="en">English</option><option value="fr">French</option></select>
-                        </label>
-                        <label className="text-xs text-text-light">First time filing with CRA?
-                          <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={spouseFirstTimeFiler} onChange={(e) => setSpouseFirstTimeFiler(e.target.value as YesNo)} disabled={saving}><option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option></select>
-                        </label>
-                        <label className="text-xs text-text-light">Sold principal residence?
-                          <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={spouseSoldPrincipalResidence} onChange={(e) => setSpouseSoldPrincipalResidence(e.target.value as YesNo)} disabled={saving}><option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option></select>
-                        </label>
-                        <label className="text-xs text-text-light">Treaty-exempt foreign service?
-                          <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={spouseTreatyExemptForeignService} onChange={(e) => setSpouseTreatyExemptForeignService(e.target.value as YesNo)} disabled={saving}><option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option></select>
-                        </label>
-                        <label className="text-xs text-text-light">Elections Canada: Canadian citizen?
-                          <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={spouseElectionsCanadianCitizen} onChange={(e) => { setSpouseElectionsCanadianCitizen(e.target.value as YesNo); if (e.target.value !== 'yes') setSpouseElectionsAuthorize('') }} disabled={saving}><option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option></select>
-                        </label>
+                      <div className="divide-y divide-border/70 rounded-md border border-border">
+                        <CraQuestionRow label="Language of correspondence">
+                          <select
+                            className="border border-border rounded-md px-3 py-2 text-sm"
+                            value={spouseLanguageCorrespondence}
+                            onChange={(e) => setSpouseLanguageCorrespondence(e.target.value === 'fr' ? 'fr' : 'en')}
+                            disabled={saving}
+                          >
+                            <option value="en">English</option>
+                            <option value="fr">French</option>
+                          </select>
+                        </CraQuestionRow>
+                        <CraQuestionRow label="First time filing with CRA?">
+                          <YesNoToggle
+                            className=""
+                            value={yesNoToToggle(spouseFirstTimeFiler)}
+                            allowUnset
+                            onChange={(value) => setSpouseFirstTimeFiler(toggleToYesNo(value))}
+                            disabled={saving}
+                          />
+                        </CraQuestionRow>
+                        <CraQuestionRow label="Sold principal residence?">
+                          <YesNoToggle
+                            className=""
+                            value={yesNoToToggle(spouseSoldPrincipalResidence)}
+                            allowUnset
+                            onChange={(value) => setSpouseSoldPrincipalResidence(toggleToYesNo(value))}
+                            disabled={saving}
+                          />
+                        </CraQuestionRow>
+                        <CraQuestionRow label="Treaty-exempt foreign service?">
+                          <YesNoToggle
+                            className=""
+                            value={yesNoToToggle(spouseTreatyExemptForeignService)}
+                            allowUnset
+                            onChange={(value) => setSpouseTreatyExemptForeignService(toggleToYesNo(value))}
+                            disabled={saving}
+                          />
+                        </CraQuestionRow>
+                        <CraQuestionRow label="Elections Canada: Canadian citizen?">
+                          <YesNoToggle
+                            className=""
+                            value={yesNoToToggle(spouseElectionsCanadianCitizen)}
+                            allowUnset
+                            onChange={(value) => {
+                              setSpouseElectionsCanadianCitizen(toggleToYesNo(value))
+                              if (value !== true) setSpouseElectionsAuthorize('')
+                            }}
+                            disabled={saving}
+                          />
+                        </CraQuestionRow>
                         {spouseElectionsCanadianCitizen === 'yes' && (
-                          <label className="text-xs text-text-light">Elections Canada: authorize sharing?
-                            <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={spouseElectionsAuthorize} onChange={(e) => setSpouseElectionsAuthorize(e.target.value as YesNo)} disabled={saving}><option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option></select>
-                          </label>
+                          <CraQuestionRow label="Elections Canada: authorize sharing?">
+                            <YesNoToggle
+                              className=""
+                              value={yesNoToToggle(spouseElectionsAuthorize)}
+                              allowUnset
+                              onChange={(value) => setSpouseElectionsAuthorize(toggleToYesNo(value))}
+                              disabled={saving}
+                            />
+                          </CraQuestionRow>
                         )}
-                        <label className="text-xs text-text-light">Foreign property over CAD 100,000?
-                          <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={spouseForeignPropertyOver100k} onChange={(e) => setSpouseForeignPropertyOver100k(e.target.value as YesNo)} disabled={saving}><option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option></select>
-                        </label>
-                        <label className="text-xs text-text-light">Organ/tissue donor consent?
-                          <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={spouseOrganDonorConsent} onChange={(e) => setSpouseOrganDonorConsent(e.target.value as YesNo)} disabled={saving}><option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option></select>
-                        </label>
-                        <label className="text-xs text-text-light">CRA email notifications consent?
-                          <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={spouseCraEmailNotificationsConsent} onChange={(e) => setSpouseCraEmailNotificationsConsent(e.target.value as YesNo)} disabled={saving}><option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option></select>
-                        </label>
-                        <label className="text-xs text-text-light">CRA email confirmed?
-                          <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={spouseCraEmailConfirmed} onChange={(e) => setSpouseCraEmailConfirmed(e.target.value as YesNo)} disabled={saving}><option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option></select>
-                        </label>
-                        <label className="text-xs text-text-light md:col-span-2">Foreign mailing address on file with CRA?
-                          <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={spouseCraHasForeignMailingAddress} onChange={(e) => setSpouseCraHasForeignMailingAddress(e.target.value as YesNo)} disabled={saving}><option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option></select>
-                        </label>
+                        <CraQuestionRow label="Foreign property over CAD 100,000?">
+                          <YesNoToggle
+                            className=""
+                            value={yesNoToToggle(spouseForeignPropertyOver100k)}
+                            allowUnset
+                            onChange={(value) => setSpouseForeignPropertyOver100k(toggleToYesNo(value))}
+                            disabled={saving}
+                          />
+                        </CraQuestionRow>
+                        <CraQuestionRow label="Organ/tissue donor consent?">
+                          <YesNoToggle
+                            className=""
+                            value={yesNoToToggle(spouseOrganDonorConsent)}
+                            allowUnset
+                            onChange={(value) => setSpouseOrganDonorConsent(toggleToYesNo(value))}
+                            disabled={saving}
+                          />
+                        </CraQuestionRow>
+                        <CraQuestionRow label="CRA email notifications consent?">
+                          <YesNoToggle
+                            className=""
+                            value={yesNoToToggle(spouseCraEmailNotificationsConsent)}
+                            allowUnset
+                            onChange={(value) => setSpouseCraEmailNotificationsConsent(toggleToYesNo(value))}
+                            disabled={saving}
+                          />
+                        </CraQuestionRow>
+                        <CraQuestionRow label="CRA email confirmed?">
+                          <YesNoToggle
+                            className=""
+                            value={yesNoToToggle(spouseCraEmailConfirmed)}
+                            allowUnset
+                            onChange={(value) => setSpouseCraEmailConfirmed(toggleToYesNo(value))}
+                            disabled={saving}
+                          />
+                        </CraQuestionRow>
+                        <CraQuestionRow label="Foreign mailing address on file with CRA?">
+                          <YesNoToggle
+                            className=""
+                            value={yesNoToToggle(spouseCraHasForeignMailingAddress)}
+                            allowUnset
+                            onChange={(value) => setSpouseCraHasForeignMailingAddress(toggleToYesNo(value))}
+                            disabled={saving}
+                          />
+                        </CraQuestionRow>
                       </div>
                     )}
                   </div>
@@ -609,16 +676,14 @@ const TaxReturns: FC = () => {
                     <p className="text-xs text-text-light">No dependents added.</p>
                   )}
                   {dependents.map((d) => (
-                    <div key={d.id} className="border border-border rounded-md p-3 grid grid-cols-1 md:grid-cols-2 gap-2">
-                      <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Dependent full name" value={d.fullName} onChange={(e) => updateDependent(d.id, { fullName: e.target.value })} disabled={saving} />
-                      <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Relationship (child, parent, etc.)" value={d.relationship} onChange={(e) => updateDependent(d.id, { relationship: e.target.value })} disabled={saving} />
-                      <input className="border border-border rounded-md px-3 py-2 text-sm" type="date" value={d.dateOfBirth} onChange={(e) => updateDependent(d.id, { dateOfBirth: e.target.value })} disabled={saving} />
-                      <div className="flex items-center gap-4 text-sm">
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={d.disability} onChange={(e) => updateDependent(d.id, { disability: e.target.checked })} disabled={saving} /> Disability amount eligible</label>
-                        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={d.createWorkspace} onChange={(e) => updateDependent(d.id, { createWorkspace: e.target.checked })} disabled={saving} /> Create return workspace</label>
-                      </div>
-                      <button type="button" className="text-sm text-red-700 hover:underline md:col-span-2 text-left" onClick={() => removeDependent(d.id)} disabled={saving}>Remove dependent</button>
-                    </div>
+                    <DependentIdentificationForm
+                      key={d.id}
+                      value={d}
+                      taxYear={taxYear}
+                      disabled={saving}
+                      onChange={(patch) => updateDependent(d.id, patch)}
+                      onRemove={() => removeDependent(d.id)}
+                    />
                   ))}
                 </div>
                 <div className="space-y-2 border border-border rounded-md p-3 bg-background/40">
@@ -703,7 +768,7 @@ const TaxReturns: FC = () => {
                 <p className="font-medium text-primary-dark">Review household workspace setup</p>
                 <p><span className="font-semibold">Main taxpayer:</span> {mainFirstName.trim()} {mainLastName.trim()} · {taxYear}</p>
                 <p><span className="font-semibold">Spouse workflow:</span> {isMarried ? `${maritalStatus} · ${spouseReturnMode}` : 'No spouse workspace'}</p>
-                <p><span className="font-semibold">Dependents:</span> {dependents.length} total · {dependents.filter((d) => d.createWorkspace).length} workspace(s) requested</p>
+                <p><span className="font-semibold">Dependents:</span> {dependents.length} total · {dependents.filter((d) => dependentRequiresFullReturn(d)).length} full return workspace(s) required</p>
                 <p className="text-xs text-text-light">Address and CRA setup answers are captured in this interview before workspaces are created.</p>
               </div>
             )}

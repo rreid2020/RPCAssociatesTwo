@@ -1,4 +1,4 @@
-import { FC, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { FC, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
@@ -8,6 +8,16 @@ import RequiredFormsPanel from './RequiredFormsPanel'
 import InterviewTopicsSetup, { type InterviewTopicsSetupHandle } from './InterviewTopicsSetup'
 import ReviewDiagnosticsPanel from './ReviewDiagnosticsPanel'
 import { getTaxBasePath } from './path'
+import { CraQuestionRow, YesNoToggle } from './CraQuestionControls'
+import DependentIdentificationForm from './DependentIdentificationForm'
+import {
+  createEmptyDependent,
+  dependentFromLegacy,
+  dependentFullName,
+  dependentRequiresFullReturn,
+  serializeDependent,
+  type DependentRecord
+} from './dependentModel'
 
 type TaxReturnPayload = {
   taxReturn: {
@@ -119,12 +129,7 @@ type TaxReturnPayload = {
   }
 }
 
-type DependentProfile = {
-  fullName: string
-  relationship: string
-  dateOfBirth: string
-  disability: boolean
-}
+type DependentProfile = DependentRecord
 
 type TaxpayerProfileState = {
   firstName: string
@@ -602,49 +607,6 @@ const DEFAULT_TAXPAYER_PROFILE: TaxpayerProfileState = {
   dependents: []
 }
 
-const YesNoToggle: FC<{
-  value: boolean | null
-  onChange: (value: boolean | null) => void
-  allowUnset?: boolean
-  className?: string
-}> = ({ value, onChange, allowUnset = false, className = 'mt-1' }) => (
-  <div className={`inline-flex items-center gap-1 rounded-md border border-border bg-white p-1 ${className}`}>
-    <button
-      type="button"
-      className={`px-2 py-1 text-xs rounded ${value === true ? 'bg-primary-dark text-white' : 'text-text'}`}
-      onClick={() => onChange(true)}
-    >
-      Yes
-    </button>
-    <button
-      type="button"
-      className={`px-2 py-1 text-xs rounded ${value === false ? 'bg-primary-dark text-white' : 'text-text'}`}
-      onClick={() => onChange(false)}
-    >
-      No
-    </button>
-    {allowUnset && (
-      <button
-        type="button"
-        className={`px-2 py-1 text-xs rounded ${value == null ? 'bg-primary-dark text-white' : 'text-text'}`}
-        onClick={() => onChange(null)}
-      >
-        Unset
-      </button>
-    )}
-  </div>
-)
-
-const CraQuestionRow: FC<{
-  label: string
-  children: ReactNode
-}> = ({ label, children }) => (
-  <div className="flex items-center justify-between gap-6 py-3 border-b border-border/70 last:border-b-0">
-    <span className="text-sm text-text flex-1 min-w-0">{label}</span>
-    <div className="shrink-0">{children}</div>
-  </div>
-)
-
 const ReturnBuilder: FC = () => {
   const { id = '' } = useParams()
   const { getToken } = useAuth()
@@ -1002,15 +964,7 @@ const ReturnBuilder: FC = () => {
           fullSin: String(spouseObj.fullSin || ''),
           netIncome: Number(spouseObj.netIncome || 0)
         },
-        dependents: dependentsRaw.map((d) => {
-          const dep = d as Record<string, unknown>
-          return {
-            fullName: String(dep.fullName || ''),
-            relationship: String(dep.relationship || ''),
-            dateOfBirth: String(dep.dateOfBirth || ''),
-            disability: Boolean(dep.disability)
-          }
-        })
+        dependents: dependentsRaw.map((d) => dependentFromLegacy(d as Record<string, unknown>))
       })
       const nonSlipEntries = (returnData.incomeEntries || []).filter(
         (r) => !(r.source_type === 'manual_slip' || r.source_type === 'manual_t4' || String(r?.metadata?.slipType || '').length > 0)
@@ -1392,7 +1346,7 @@ const ReturnBuilder: FC = () => {
   const addDependent = () => {
     setTaxpayerProfile((prev) => ({
       ...prev,
-      dependents: [...prev.dependents, { fullName: '', relationship: '', dateOfBirth: '', disability: false }]
+      dependents: [...prev.dependents, createEmptyDependent({ residenceProvinceDec31: prev.residenceProvinceDec31 || 'ON' })]
     }))
   }
 
@@ -1437,9 +1391,13 @@ const ReturnBuilder: FC = () => {
   }
 
   const createDependentReturn = async (dep: DependentProfile, idx: number) => {
-    const dependentName = dep.fullName.trim()
+    if (!dependentRequiresFullReturn(dep)) {
+      setErr('This dependant does not require a full tax return workspace based on income and filing obligation answers.')
+      return
+    }
+    const dependentName = dependentFullName(dep)
     if (!dependentName) {
-      setErr('Enter the dependant full name before creating a return workspace.')
+      setErr('Enter the dependant first and last name before creating a return workspace.')
       return
     }
     setErr(null)
@@ -1449,11 +1407,27 @@ const ReturnBuilder: FC = () => {
         method: 'POST',
         body: JSON.stringify({
           taxpayerName: dependentName,
+          firstName: dep.firstName.trim(),
+          lastName: dep.lastName.trim(),
+          sin: dep.sin.replace(/\D/g, '').slice(0, 9) || null,
+          dateOfBirth: dep.dateOfBirth || null,
+          provinceCode: dep.residenceProvinceDec31 || 'ON',
           taxYear: data?.taxReturn?.tax_year || new Date().getFullYear(),
           setup: {
             sourceReturnId: data?.taxReturn?.id || null,
             sourceRole: 'dependent',
-            relationship: dep.relationship || null
+            relationship: dep.relationship || null,
+            workflow: {
+              source: 'return-builder',
+              linkedPrimaryReturnId: data?.taxReturn?.id || null,
+              relationship: dep.relationship || null
+            }
+          },
+          taxpayerProfile: {
+            maritalStatus: dep.maritalStatus,
+            residenceProvinceDec31: dep.residenceProvinceDec31 || 'ON',
+            spouseReturnMode: 'summary',
+            dependents: []
           }
         })
       })
@@ -1548,13 +1522,8 @@ const ReturnBuilder: FC = () => {
           netIncome: Number(taxpayerProfile.spouseNetIncome23600 || taxpayerProfile.spouse.netIncome || 0)
         },
         dependents: taxpayerProfile.dependents
-          .filter((d) => d.fullName.trim().length > 0)
-          .map((d) => ({
-            fullName: d.fullName.trim(),
-            relationship: d.relationship.trim(),
-            dateOfBirth: d.dateOfBirth || null,
-            disability: Boolean(d.disability)
-          }))
+          .filter((d) => dependentFullName(d).length > 0)
+          .map((d) => serializeDependent(d))
       }
       await taxFetch(`/tax-returns/${id}`, getToken, {
         method: 'PATCH',
@@ -2326,83 +2295,32 @@ const ReturnBuilder: FC = () => {
 
           {!loading && activeStep === 'Dependents' && (
             <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
-              <h2 className="text-lg font-semibold text-primary-dark">Dependent setup</h2>
-              <p className="text-sm text-text-light">Each dependant can have their own return workspace.</p>
-              <div id="rb-dependents" className="space-y-2">
+              <h2 className="text-lg font-semibold text-primary-dark">Dependant identification</h2>
+              <p className="text-sm text-text-light">
+                Record household dependants here. Only dependants with income or a required filing obligation need a linked full return workspace.
+              </p>
+              <div id="rb-dependents" className="space-y-3">
                 <div className="flex items-center justify-end">
                   <button type="button" className="btn btn--secondary text-xs px-2 py-1" onClick={addDependent}>Add dependant</button>
                 </div>
-                <p className="text-xs text-text-light">
-                  Each dependant can have their own full return workspace so the same T1 profile questions can be completed separately.
-                </p>
                 {taxpayerProfile.dependents.length === 0 && (
                   <p className="text-xs text-text-light">No dependants added.</p>
                 )}
                 {taxpayerProfile.dependents.map((dep, idx) => (
-                  <div key={`dep-${idx}`} className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end border border-border rounded-md p-2 bg-white">
-                    <label className="text-xs text-text-light">
-                      Full name
-                      <input
-                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                        value={dep.fullName}
-                        onChange={(e) => setTaxpayerProfile((prev) => {
-                          const next = [...prev.dependents]
-                          next[idx] = { ...next[idx], fullName: e.target.value }
-                          return { ...prev, dependents: next }
-                        })}
-                      />
-                    </label>
-                    <label className="text-xs text-text-light">
-                      Relationship
-                      <input
-                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                        value={dep.relationship}
-                        onChange={(e) => setTaxpayerProfile((prev) => {
-                          const next = [...prev.dependents]
-                          next[idx] = { ...next[idx], relationship: e.target.value }
-                          return { ...prev, dependents: next }
-                        })}
-                      />
-                    </label>
-                    <label className="text-xs text-text-light">
-                      Date of birth
-                      <input
-                        type="date"
-                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                        value={dep.dateOfBirth ? dep.dateOfBirth.slice(0, 10) : ''}
-                        onChange={(e) => setTaxpayerProfile((prev) => {
-                          const next = [...prev.dependents]
-                          next[idx] = { ...next[idx], dateOfBirth: e.target.value }
-                          return { ...prev, dependents: next }
-                        })}
-                      />
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <label className="text-xs text-text-light inline-flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={dep.disability}
-                          onChange={(e) => setTaxpayerProfile((prev) => {
-                            const next = [...prev.dependents]
-                            next[idx] = { ...next[idx], disability: e.target.checked }
-                            return { ...prev, dependents: next }
-                          })}
-                        />
-                        Disability
-                      </label>
-                      <button type="button" className="text-xs text-red-700 hover:underline" onClick={() => removeDependent(idx)}>
-                        Remove
-                      </button>
-                      <button
-                        type="button"
-                        className="text-xs text-accent hover:underline disabled:opacity-50"
-                        disabled={creatingDependentIdx === idx}
-                        onClick={() => { void createDependentReturn(dep, idx) }}
-                      >
-                        {creatingDependentIdx === idx ? 'Creating return...' : 'Create return workspace'}
-                      </button>
-                    </div>
-                  </div>
+                  <DependentIdentificationForm
+                    key={`dep-${idx}`}
+                    value={dep}
+                    taxYear={data?.taxReturn?.tax_year || new Date().getFullYear()}
+                    onChange={(patch) => setTaxpayerProfile((prev) => {
+                      const next = [...prev.dependents]
+                      next[idx] = { ...next[idx], ...patch }
+                      return { ...prev, dependents: next }
+                    })}
+                    onRemove={() => removeDependent(idx)}
+                    showWorkspaceActions
+                    creatingWorkspace={creatingDependentIdx === idx}
+                    onCreateWorkspace={() => { void createDependentReturn(dep, idx) }}
+                  />
                 ))}
               </div>
               <WorkflowPageNav activeStep={activeStep} onNavigate={navigateWorkflowStep} showSaveProfile onSaveProfile={() => { void saveTaxpayerProfile() }} onSaveBeforeNavigate={saveActiveStepData} saving={saving} />

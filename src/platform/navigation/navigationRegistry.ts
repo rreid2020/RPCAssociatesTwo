@@ -48,19 +48,12 @@ const SECTIONS: NavigationSection[] = [
     ]
   },
   {
-    id: 'tax-intelligence-title',
-    label: 'Financial Intelligence',
-    iconKey: 'chartBar',
-    depth: 0,
-    items: []
-  },
-  {
     id: 'tax-intelligence',
     label: 'Tax Intelligence',
     iconKey: 'calculator',
-    depth: 1,
+    depth: 0,
     items: [
-      { to: '/portal/taxgpt', label: 'Tax GPT', iconKey: 'sparkles', badge: 'Active' }
+      { to: '/portal/taxgpt', label: 'Tax GPT', iconKey: 'sparkles', badge: 'Active', depth: 2 }
     ]
   },
   {
@@ -112,7 +105,6 @@ const SECTIONS: NavigationSection[] = [
     items: [
       { to: '/portal/accounting/working-papers/engagements', label: 'Engagements', iconKey: 'calendar', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
       { to: '/portal/accounting/working-papers/engagements?approvalReady=true', label: 'Approval Ready', iconKey: 'clipboardCheck', requiredFeature: 'workingPapers', requiredPermission: 'engagement.read' },
-      { to: '/portal/accounting/working-papers/engagements/new', label: 'Create Engagement', iconKey: 'filePlus', requiredFeature: 'workingPapers', requiredPermission: 'engagement.manage', requiredWorkspaceRoles: ['owner', 'admin'] },
       { to: '/portal/accounting/integrations', label: 'Integrations', iconKey: 'plug', requiredFeature: 'integrations', requiredPermission: 'integrations.manage' }
     ]
   },

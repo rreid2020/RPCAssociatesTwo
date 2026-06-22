@@ -1753,7 +1753,15 @@ const EVOLUTIONARY_STATEMENTS = [
    DROP CONSTRAINT IF EXISTS accounting_organizations_org_type_chk`,
   `ALTER TABLE taxgpt.accounting_organizations
    ADD CONSTRAINT accounting_organizations_org_type_chk
-   CHECK (organization_type IN ('business', 'firm', 'individual'))`
+   CHECK (organization_type IN ('business', 'firm', 'individual'))`,
+  'ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS first_name TEXT',
+  'ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS last_name TEXT',
+  'ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS sin TEXT',
+  'ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS netfile_access_code TEXT',
+  'ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS residence_province_dec31 VARCHAR(4)',
+  'ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS marital_status VARCHAR(32)',
+  'ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS had_income_in_year BOOLEAN',
+  `ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS tax_return_required VARCHAR(8) DEFAULT 'auto'`
 ]
 
 async function runEvolutionaryMigrations (pool) {

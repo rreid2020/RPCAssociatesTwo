@@ -239,6 +239,17 @@ const TaxReturns: FC = () => {
       if (!mailingCity.trim()) return 'Mailing city is required.'
       if (!mainProvinceCode.trim()) return 'Province on Dec 31 is required.'
       if (!mailingPostalCode.trim()) return 'Mailing postal code is required.'
+      if (firstTimeFiler === '') return 'Answer the first-time filer CRA question.'
+      if (soldPrincipalResidence === '') return 'Answer the principal residence sale CRA question.'
+      if (treatyExemptForeignService === '') return 'Answer the treaty-exempt foreign service CRA question.'
+      if (electionsCanadianCitizen === '') return 'Answer the Elections Canada citizenship question.'
+      if (electionsCanadianCitizen === 'yes' && electionsAuthorize === '') return 'Answer the Elections Canada authorization question.'
+      if (foreignPropertyOver100k === '') return 'Answer the foreign property CRA question.'
+      if (organDonorConsent === '') return 'Answer the organ and tissue donor consent question.'
+      if (craEmailNotificationsConsent === '') return 'Answer the CRA email notification consent question.'
+      if (craEmailNotificationsConsent === 'yes' && !mainEmail.trim()) return 'Email address is required when CRA email notifications are enabled.'
+      if (craEmailConfirmed === '') return 'Answer the CRA email confirmation question.'
+      if (craHasForeignMailingAddress === '') return 'Answer the CRA foreign mailing address question.'
       return null
     }
     if (step === 2) {
@@ -273,17 +284,6 @@ const TaxReturns: FC = () => {
         const issue = validateDependentIdentification(dependent, taxYear)
         if (issue) return issue
       }
-      if (firstTimeFiler === '') return 'Answer the first-time filer CRA question.'
-      if (soldPrincipalResidence === '') return 'Answer the principal residence sale CRA question.'
-      if (treatyExemptForeignService === '') return 'Answer the treaty-exempt foreign service CRA question.'
-      if (electionsCanadianCitizen === '') return 'Answer the Elections Canada citizenship question.'
-      if (electionsCanadianCitizen === 'yes' && electionsAuthorize === '') return 'Answer the Elections Canada authorization question.'
-      if (foreignPropertyOver100k === '') return 'Answer the foreign property CRA question.'
-      if (organDonorConsent === '') return 'Answer the organ and tissue donor consent question.'
-      if (craEmailNotificationsConsent === '') return 'Answer the CRA email notification consent question.'
-      if (craEmailNotificationsConsent === 'yes' && !mainEmail.trim()) return 'Email address is required when CRA email notifications are enabled.'
-      if (craEmailConfirmed === '') return 'Answer the CRA email confirmation question.'
-      if (craHasForeignMailingAddress === '') return 'Answer the CRA foreign mailing address question.'
       return null
     }
     return null
@@ -486,6 +486,117 @@ const TaxReturns: FC = () => {
                   <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Mailing city" value={mailingCity} onChange={(e) => setMailingCity(e.target.value)} disabled={saving} />
                   <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Mailing postal code" value={mailingPostalCode} onChange={(e) => setMailingPostalCode(e.target.value.toUpperCase())} disabled={saving} />
                 </div>
+                <div className="space-y-2 border border-border rounded-md p-3 bg-background/40">
+                  <h3 className="text-sm font-semibold text-primary-dark">Question 5: CRA setup questions for main taxpayer</h3>
+                  <div className="divide-y divide-border/70 rounded-md border border-border">
+                    <CraQuestionRow label="Language of correspondence">
+                      <select
+                        className="border border-border rounded-md px-3 py-2 text-sm"
+                        value={languageCorrespondence}
+                        onChange={(e) => setLanguageCorrespondence(e.target.value === 'fr' ? 'fr' : 'en')}
+                        disabled={saving}
+                      >
+                        <option value="en">English</option>
+                        <option value="fr">French</option>
+                      </select>
+                    </CraQuestionRow>
+                    <CraQuestionRow label="First time filing with CRA?">
+                      <YesNoToggle
+                        className=""
+                        value={yesNoToToggle(firstTimeFiler)}
+                        allowUnset
+                        onChange={(value) => setFirstTimeFiler(toggleToYesNo(value))}
+                        disabled={saving}
+                      />
+                    </CraQuestionRow>
+                    <CraQuestionRow label="Sold principal residence this year?">
+                      <YesNoToggle
+                        className=""
+                        value={yesNoToToggle(soldPrincipalResidence)}
+                        allowUnset
+                        onChange={(value) => setSoldPrincipalResidence(toggleToYesNo(value))}
+                        disabled={saving}
+                      />
+                    </CraQuestionRow>
+                    <CraQuestionRow label="Treaty-exempt foreign service/diplomatic status?">
+                      <YesNoToggle
+                        className=""
+                        value={yesNoToToggle(treatyExemptForeignService)}
+                        allowUnset
+                        onChange={(value) => setTreatyExemptForeignService(toggleToYesNo(value))}
+                        disabled={saving}
+                      />
+                    </CraQuestionRow>
+                    <CraQuestionRow label="Elections Canada: Canadian citizen?">
+                      <YesNoToggle
+                        className=""
+                        value={yesNoToToggle(electionsCanadianCitizen)}
+                        allowUnset
+                        onChange={(value) => {
+                          setElectionsCanadianCitizen(toggleToYesNo(value))
+                          if (value !== true) setElectionsAuthorize('')
+                        }}
+                        disabled={saving}
+                      />
+                    </CraQuestionRow>
+                    {electionsCanadianCitizen === 'yes' && (
+                      <CraQuestionRow label="Elections Canada: authorize sharing?">
+                        <YesNoToggle
+                          className=""
+                          value={yesNoToToggle(electionsAuthorize)}
+                          allowUnset
+                          onChange={(value) => setElectionsAuthorize(toggleToYesNo(value))}
+                          disabled={saving}
+                        />
+                      </CraQuestionRow>
+                    )}
+                    <CraQuestionRow label="Foreign property over CAD 100,000?">
+                      <YesNoToggle
+                        className=""
+                        value={yesNoToToggle(foreignPropertyOver100k)}
+                        allowUnset
+                        onChange={(value) => setForeignPropertyOver100k(toggleToYesNo(value))}
+                        disabled={saving}
+                      />
+                    </CraQuestionRow>
+                    <CraQuestionRow label="Organ/tissue donor consent?">
+                      <YesNoToggle
+                        className=""
+                        value={yesNoToToggle(organDonorConsent)}
+                        allowUnset
+                        onChange={(value) => setOrganDonorConsent(toggleToYesNo(value))}
+                        disabled={saving}
+                      />
+                    </CraQuestionRow>
+                    <CraQuestionRow label="CRA email notifications consent?">
+                      <YesNoToggle
+                        className=""
+                        value={yesNoToToggle(craEmailNotificationsConsent)}
+                        allowUnset
+                        onChange={(value) => setCraEmailNotificationsConsent(toggleToYesNo(value))}
+                        disabled={saving}
+                      />
+                    </CraQuestionRow>
+                    <CraQuestionRow label="CRA email address confirmed?">
+                      <YesNoToggle
+                        className=""
+                        value={yesNoToToggle(craEmailConfirmed)}
+                        allowUnset
+                        onChange={(value) => setCraEmailConfirmed(toggleToYesNo(value))}
+                        disabled={saving}
+                      />
+                    </CraQuestionRow>
+                    <CraQuestionRow label="Foreign mailing address on file with CRA?">
+                      <YesNoToggle
+                        className=""
+                        value={yesNoToToggle(craHasForeignMailingAddress)}
+                        allowUnset
+                        onChange={(value) => setCraHasForeignMailingAddress(toggleToYesNo(value))}
+                        disabled={saving}
+                      />
+                    </CraQuestionRow>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -669,7 +780,7 @@ const TaxReturns: FC = () => {
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-primary-dark">Question 7: Any dependents to include?</h3>
+                    <h3 className="text-sm font-semibold text-primary-dark">Question {isMarried && spouseReturnMode === 'full' ? '9' : isMarried ? '7' : '6'}: Any dependents to include?</h3>
                     <button type="button" className="text-sm text-accent hover:underline" onClick={addDependent} disabled={saving}>Add dependent</button>
                   </div>
                   {dependents.length === 0 && (
@@ -685,80 +796,6 @@ const TaxReturns: FC = () => {
                       onRemove={() => removeDependent(d.id)}
                     />
                   ))}
-                </div>
-                <div className="space-y-2 border border-border rounded-md p-3 bg-background/40">
-                  <h3 className="text-sm font-semibold text-primary-dark">Question 8: CRA setup questions for main taxpayer</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    <label className="text-xs text-text-light">
-                      Language of correspondence
-                      <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={languageCorrespondence} onChange={(e) => setLanguageCorrespondence(e.target.value === 'fr' ? 'fr' : 'en')} disabled={saving}>
-                        <option value="en">English</option>
-                        <option value="fr">French</option>
-                      </select>
-                    </label>
-                    <label className="text-xs text-text-light">
-                      First time filing with CRA?
-                      <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={firstTimeFiler} onChange={(e) => setFirstTimeFiler(e.target.value as YesNo)} disabled={saving}>
-                        <option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option>
-                      </select>
-                    </label>
-                    <label className="text-xs text-text-light">
-                      Sold principal residence this year?
-                      <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={soldPrincipalResidence} onChange={(e) => setSoldPrincipalResidence(e.target.value as YesNo)} disabled={saving}>
-                        <option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option>
-                      </select>
-                    </label>
-                    <label className="text-xs text-text-light">
-                      Treaty-exempt foreign service/diplomatic status?
-                      <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={treatyExemptForeignService} onChange={(e) => setTreatyExemptForeignService(e.target.value as YesNo)} disabled={saving}>
-                        <option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option>
-                      </select>
-                    </label>
-                    <label className="text-xs text-text-light">
-                      Elections Canada: Canadian citizen?
-                      <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={electionsCanadianCitizen} onChange={(e) => { setElectionsCanadianCitizen(e.target.value as YesNo); if (e.target.value !== 'yes') setElectionsAuthorize('') }} disabled={saving}>
-                        <option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option>
-                      </select>
-                    </label>
-                    {electionsCanadianCitizen === 'yes' && (
-                      <label className="text-xs text-text-light">
-                        Elections Canada: authorize sharing?
-                        <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={electionsAuthorize} onChange={(e) => setElectionsAuthorize(e.target.value as YesNo)} disabled={saving}>
-                          <option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option>
-                        </select>
-                      </label>
-                    )}
-                    <label className="text-xs text-text-light">
-                      Foreign property over CAD 100,000?
-                      <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={foreignPropertyOver100k} onChange={(e) => setForeignPropertyOver100k(e.target.value as YesNo)} disabled={saving}>
-                        <option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option>
-                      </select>
-                    </label>
-                    <label className="text-xs text-text-light">
-                      Organ/tissue donor consent?
-                      <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={organDonorConsent} onChange={(e) => setOrganDonorConsent(e.target.value as YesNo)} disabled={saving}>
-                        <option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option>
-                      </select>
-                    </label>
-                    <label className="text-xs text-text-light">
-                      CRA email notifications consent?
-                      <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={craEmailNotificationsConsent} onChange={(e) => setCraEmailNotificationsConsent(e.target.value as YesNo)} disabled={saving}>
-                        <option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option>
-                      </select>
-                    </label>
-                    <label className="text-xs text-text-light">
-                      CRA email address confirmed?
-                      <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={craEmailConfirmed} onChange={(e) => setCraEmailConfirmed(e.target.value as YesNo)} disabled={saving}>
-                        <option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option>
-                      </select>
-                    </label>
-                    <label className="text-xs text-text-light md:col-span-2">
-                      Foreign mailing address on file with CRA?
-                      <select className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={craHasForeignMailingAddress} onChange={(e) => setCraHasForeignMailingAddress(e.target.value as YesNo)} disabled={saving}>
-                        <option value="">Select…</option><option value="yes">Yes</option><option value="no">No</option>
-                      </select>
-                    </label>
-                  </div>
                 </div>
               </div>
             )}

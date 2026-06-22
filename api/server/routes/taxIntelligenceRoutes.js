@@ -32,6 +32,11 @@ import {
   getT1ReturnPackageCatalog,
   getT1ReturnPackageForReturn
 } from '../services/tax-intelligence/t1Package.service.js'
+import {
+  deleteHouseholdInterviewDraft,
+  getHouseholdInterviewDraft,
+  saveHouseholdInterviewDraft
+} from '../services/tax-intelligence/householdInterviewDraft.service.js'
 
 function parseUuid (v) {
   return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
@@ -61,6 +66,42 @@ export function createTaxIntelligenceRouter (pool) {
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Could not create tax return'
       res.status(400).json({ error: msg })
+    }
+  })
+
+  r.get('/tax-returns/household-interview-draft', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const draft = await getHouseholdInterviewDraft(pool, session.userId)
+      res.json({ draft })
+    } catch (e) {
+      console.error('GET /tax-returns/household-interview-draft', e)
+      res.status(500).json({ error: 'Could not load interview draft' })
+    }
+  })
+
+  r.put('/tax-returns/household-interview-draft', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const draft = await saveHouseholdInterviewDraft(pool, session.userId, req.body || {})
+      res.json({ draft })
+    } catch (e) {
+      console.error('PUT /tax-returns/household-interview-draft', e)
+      res.status(500).json({ error: 'Could not save interview draft' })
+    }
+  })
+
+  r.delete('/tax-returns/household-interview-draft', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      await deleteHouseholdInterviewDraft(pool, session.userId)
+      res.status(204).end()
+    } catch (e) {
+      console.error('DELETE /tax-returns/household-interview-draft', e)
+      res.status(500).json({ error: 'Could not delete interview draft' })
     }
   })
 

@@ -14,18 +14,23 @@ import {
   validateDependentIdentification,
   type DependentRecord
 } from './dependentModel'
+import {
+  buildHouseholdInterviewDraftForm,
+  deserializeHouseholdInterviewDraft,
+  serializeHouseholdInterviewDraft,
+  type HouseholdInterviewDraftForm,
+  type HouseholdInterviewDraftRecord,
+  type InterviewStep,
+  type MaritalStatus,
+  type SpouseMode,
+  type YesNo
+} from './householdInterviewDraft'
 
 type ReadinessIssueSeverity = 'required' | 'recommended'
 
 function sanitizeSin (value: string): string {
   return String(value || '').replace(/\D/g, '').slice(0, 9)
 }
-
-type InterviewStep = 1 | 2 | 3
-type MaritalStatus = 'single' | 'married' | 'common_law'
-type SpouseMode = 'summary' | 'full'
-
-type YesNo = '' | 'yes' | 'no'
 
 function computeSetupReadiness (r: TaxReturnSummary): { required: number; recommended: number } {
   const issues: Array<{ severity: ReadinessIssueSeverity }> = []
@@ -133,13 +138,164 @@ const TaxReturns: FC = () => {
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [createdInfo, setCreatedInfo] = useState<string | null>(null)
+  const [draftResumedAt, setDraftResumedAt] = useState<string | null>(null)
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
+
+  const applyInterviewDraft = (form: HouseholdInterviewDraftForm) => {
+    setStep(form.step)
+    setTaxYear(form.taxYear)
+    setMainFirstName(form.mainFirstName)
+    setMainLastName(form.mainLastName)
+    setMainSin(form.mainSin)
+    setMainDateOfBirth(form.mainDateOfBirth)
+    setMainEmail(form.mainEmail)
+    setMailingAddressLine1(form.mailingAddressLine1)
+    setMailingCity(form.mailingCity)
+    setMailingPostalCode(form.mailingPostalCode)
+    setMainProvinceCode(form.mainProvinceCode)
+    setLanguageCorrespondence(form.languageCorrespondence)
+    setFirstTimeFiler(form.firstTimeFiler)
+    setSoldPrincipalResidence(form.soldPrincipalResidence)
+    setTreatyExemptForeignService(form.treatyExemptForeignService)
+    setElectionsCanadianCitizen(form.electionsCanadianCitizen)
+    setElectionsAuthorize(form.electionsAuthorize)
+    setForeignPropertyOver100k(form.foreignPropertyOver100k)
+    setOrganDonorConsent(form.organDonorConsent)
+    setCraEmailNotificationsConsent(form.craEmailNotificationsConsent)
+    setCraEmailConfirmed(form.craEmailConfirmed)
+    setCraHasForeignMailingAddress(form.craHasForeignMailingAddress)
+    setSpouseApplicable(form.spouseApplicable)
+    setMaritalStatus(form.maritalStatus)
+    setSpouseReturnMode(form.spouseReturnMode)
+    setSpouseFullName(form.spouseFullName)
+    setSpouseFirstName(form.spouseFirstName)
+    setSpouseLastName(form.spouseLastName)
+    setSpouseDateOfBirth(form.spouseDateOfBirth)
+    setSpouseSin(form.spouseSin)
+    setSpouseEmail(form.spouseEmail)
+    setSpouseSameAddress(form.spouseSameAddress)
+    setSpouseMailingAddressLine1(form.spouseMailingAddressLine1)
+    setSpouseMailingCity(form.spouseMailingCity)
+    setSpouseMailingProvinceCode(form.spouseMailingProvinceCode)
+    setSpouseMailingPostalCode(form.spouseMailingPostalCode)
+    setSpouseLanguageCorrespondence(form.spouseLanguageCorrespondence)
+    setSpouseCraSameAsMain(form.spouseCraSameAsMain)
+    setSpouseFirstTimeFiler(form.spouseFirstTimeFiler)
+    setSpouseSoldPrincipalResidence(form.spouseSoldPrincipalResidence)
+    setSpouseTreatyExemptForeignService(form.spouseTreatyExemptForeignService)
+    setSpouseElectionsCanadianCitizen(form.spouseElectionsCanadianCitizen)
+    setSpouseElectionsAuthorize(form.spouseElectionsAuthorize)
+    setSpouseForeignPropertyOver100k(form.spouseForeignPropertyOver100k)
+    setSpouseOrganDonorConsent(form.spouseOrganDonorConsent)
+    setSpouseCraEmailNotificationsConsent(form.spouseCraEmailNotificationsConsent)
+    setSpouseCraEmailConfirmed(form.spouseCraEmailConfirmed)
+    setSpouseCraHasForeignMailingAddress(form.spouseCraHasForeignMailingAddress)
+    setDependents(form.dependents)
+  }
+
+  const collectInterviewDraft = (targetStep: InterviewStep): HouseholdInterviewDraftForm => (
+    buildHouseholdInterviewDraftForm({
+      step: targetStep,
+      taxYear,
+      mainFirstName,
+      mainLastName,
+      mainSin,
+      mainDateOfBirth,
+      mainEmail,
+      mailingAddressLine1,
+      mailingCity,
+      mailingPostalCode,
+      mainProvinceCode,
+      languageCorrespondence,
+      firstTimeFiler,
+      soldPrincipalResidence,
+      treatyExemptForeignService,
+      electionsCanadianCitizen,
+      electionsAuthorize,
+      foreignPropertyOver100k,
+      organDonorConsent,
+      craEmailNotificationsConsent,
+      craEmailConfirmed,
+      craHasForeignMailingAddress,
+      spouseApplicable,
+      maritalStatus,
+      spouseReturnMode,
+      spouseFullName,
+      spouseFirstName,
+      spouseLastName,
+      spouseDateOfBirth,
+      spouseSin,
+      spouseEmail,
+      spouseSameAddress,
+      spouseMailingAddressLine1,
+      spouseMailingCity,
+      spouseMailingProvinceCode,
+      spouseMailingPostalCode,
+      spouseLanguageCorrespondence,
+      spouseCraSameAsMain,
+      spouseFirstTimeFiler,
+      spouseSoldPrincipalResidence,
+      spouseTreatyExemptForeignService,
+      spouseElectionsCanadianCitizen,
+      spouseElectionsAuthorize,
+      spouseForeignPropertyOver100k,
+      spouseOrganDonorConsent,
+      spouseCraEmailNotificationsConsent,
+      spouseCraEmailConfirmed,
+      spouseCraHasForeignMailingAddress,
+      dependents
+    })
+  )
+
+  const clearInterviewDraft = async () => {
+    try {
+      await taxFetch('/tax-returns/household-interview-draft', getToken, { method: 'DELETE' })
+    } catch {
+      // Non-blocking when clearing local interview state.
+    }
+    setDraftResumedAt(null)
+    setDraftSavedAt(null)
+  }
+
+  const saveInterviewDraft = async (targetStep: InterviewStep): Promise<boolean> => {
+    setSaving(true)
+    try {
+      const draftForm = collectInterviewDraft(targetStep)
+      const saved = await taxFetch<{ draft: HouseholdInterviewDraftRecord }>('/tax-returns/household-interview-draft', getToken, {
+        method: 'PUT',
+        body: JSON.stringify({
+          step: targetStep,
+          draft: serializeHouseholdInterviewDraft(draftForm)
+        })
+      })
+      const updatedAt = saved?.draft?.updatedAt
+      setDraftSavedAt(updatedAt ? String(updatedAt) : new Date().toISOString())
+      setDraftResumedAt(updatedAt ? String(updatedAt) : draftResumedAt)
+      return true
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not save interview progress')
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const load = async () => {
     setLoading(true)
     try {
-      const data = await taxFetch<{ returns: TaxReturnSummary[] }>('/tax-returns', getToken)
-      setReturns(data.returns || [])
+      const [returnsData, draftData] = await Promise.all([
+        taxFetch<{ returns: TaxReturnSummary[] }>('/tax-returns', getToken),
+        taxFetch<{ draft: HouseholdInterviewDraftRecord | null }>('/tax-returns/household-interview-draft', getToken)
+          .catch(() => ({ draft: null }))
+      ])
+      setReturns(returnsData.returns || [])
+      const restored = deserializeHouseholdInterviewDraft(draftData.draft || undefined)
+      if (restored) {
+        applyInterviewDraft(restored)
+        setDraftResumedAt(draftData.draft?.updatedAt ? String(draftData.draft.updatedAt) : null)
+        setDraftSavedAt(draftData.draft?.updatedAt ? String(draftData.draft.updatedAt) : null)
+      }
       setErr(null)
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not load tax returns')
@@ -161,55 +317,14 @@ const TaxReturns: FC = () => {
   }
 
   const resetInterview = () => {
-    setStep(1)
-    setTaxYear(new Date().getFullYear())
-    setMainFirstName('')
-    setMainLastName('')
-    setMainSin('')
-    setMainDateOfBirth('')
-    setMainEmail('')
-    setMailingAddressLine1('')
-    setMailingCity('')
-    setMailingPostalCode('')
-    setMainProvinceCode('ON')
-    setLanguageCorrespondence('en')
-    setFirstTimeFiler('')
-    setSoldPrincipalResidence('')
-    setTreatyExemptForeignService('')
-    setElectionsCanadianCitizen('')
-    setElectionsAuthorize('')
-    setForeignPropertyOver100k('')
-    setOrganDonorConsent('')
-    setCraEmailNotificationsConsent('')
-    setCraEmailConfirmed('')
-    setCraHasForeignMailingAddress('')
-    setSpouseApplicable(false)
-    setMaritalStatus('single')
-    setSpouseReturnMode('summary')
-    setSpouseFullName('')
-    setSpouseFirstName('')
-    setSpouseLastName('')
-    setSpouseDateOfBirth('')
-    setSpouseSin('')
-    setSpouseEmail('')
-    setSpouseSameAddress(true)
-    setSpouseMailingAddressLine1('')
-    setSpouseMailingCity('')
-    setSpouseMailingProvinceCode('ON')
-    setSpouseMailingPostalCode('')
-    setSpouseLanguageCorrespondence('en')
-    setSpouseCraSameAsMain(true)
-    setSpouseFirstTimeFiler('')
-    setSpouseSoldPrincipalResidence('')
-    setSpouseTreatyExemptForeignService('')
-    setSpouseElectionsCanadianCitizen('')
-    setSpouseElectionsAuthorize('')
-    setSpouseForeignPropertyOver100k('')
-    setSpouseOrganDonorConsent('')
-    setSpouseCraEmailNotificationsConsent('')
-    setSpouseCraEmailConfirmed('')
-    setSpouseCraHasForeignMailingAddress('')
-    setDependents([])
+    applyInterviewDraft(buildHouseholdInterviewDraftForm({ step: 1, taxYear: new Date().getFullYear() }))
+  }
+
+  const startInterviewOver = async () => {
+    await clearInterviewDraft()
+    resetInterview()
+    setErr(null)
+    setCreatedInfo(null)
   }
 
   const addDependent = () => {
@@ -280,6 +395,9 @@ const TaxReturns: FC = () => {
           }
         }
       }
+      return null
+    }
+    if (step === 3) {
       for (const dependent of dependents) {
         const issue = validateDependentIdentification(dependent, taxYear)
         if (issue) return issue
@@ -289,19 +407,25 @@ const TaxReturns: FC = () => {
     return null
   }
 
-  const onNext = () => {
+  const onNext = async () => {
     const issue = validateCurrentStep()
     if (issue) {
       setErr(issue)
       return
     }
     setErr(null)
-    setStep((prev) => Math.min(3, (prev + 1) as InterviewStep) as InterviewStep)
+    const nextStep = Math.min(4, (step + 1) as InterviewStep) as InterviewStep
+    const saved = await saveInterviewDraft(nextStep)
+    if (!saved) return
+    setStep(nextStep)
   }
 
-  const onBack = () => {
+  const onBack = async () => {
     setErr(null)
-    setStep((prev) => Math.max(1, (prev - 1) as InterviewStep) as InterviewStep)
+    const prevStep = Math.max(1, (step - 1) as InterviewStep) as InterviewStep
+    const saved = await saveInterviewDraft(prevStep)
+    if (!saved) return
+    setStep(prevStep)
   }
 
   const onCreate = async () => {
@@ -401,6 +525,7 @@ const TaxReturns: FC = () => {
       } else {
         setCreatedInfo('Created primary return workspace.')
       }
+      await clearInterviewDraft()
       resetInterview()
       await load()
     } catch (e) {
@@ -462,7 +587,22 @@ const TaxReturns: FC = () => {
 
           <section className="bg-white p-4 rounded-lg border border-border shadow-sm">
             <h2 className="text-lg font-semibold text-primary-dark mb-1">Create return interview</h2>
-            <p className="text-xs text-text-light mb-4">Step {step} of 3 — answer a few questions to build the household workspace.</p>
+            <p className="text-xs text-text-light mb-4">Step {step} of 4 — answer a few questions to build the household workspace.</p>
+            {draftResumedAt && (
+              <div className="mb-4 flex flex-col gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900 sm:flex-row sm:items-center sm:justify-between">
+                <span>
+                  Saved progress restored from {new Date(draftResumedAt).toLocaleString()}.
+                </span>
+                <button
+                  type="button"
+                  className="text-sm font-medium text-accent hover:underline disabled:opacity-50"
+                  onClick={() => { void startInterviewOver() }}
+                  disabled={saving || loading}
+                >
+                  Start over
+                </button>
+              </div>
+            )}
 
             {step === 1 && (
               <div className="space-y-3">
@@ -777,30 +917,35 @@ const TaxReturns: FC = () => {
                   </div>
                   </>
                 )}
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-primary-dark">Question {isMarried && spouseReturnMode === 'full' ? '9' : isMarried ? '7' : '6'}: Any dependents to include?</h3>
-                    <button type="button" className="text-sm text-accent hover:underline" onClick={addDependent} disabled={saving}>Add dependent</button>
-                  </div>
-                  {dependents.length === 0 && (
-                    <p className="text-xs text-text-light">No dependents added.</p>
-                  )}
-                  {dependents.map((d) => (
-                    <DependentIdentificationForm
-                      key={d.id}
-                      value={d}
-                      taxYear={taxYear}
-                      disabled={saving}
-                      onChange={(patch) => updateDependent(d.id, patch)}
-                      onRemove={() => removeDependent(d.id)}
-                    />
-                  ))}
-                </div>
               </div>
             )}
 
             {step === 3 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-primary-dark">Household dependants</p>
+                    <p className="text-xs text-text-light mt-1">Add dependants claimed on this household return. Full return workspaces are only required when income or filing rules apply.</p>
+                  </div>
+                  <button type="button" className="text-sm text-accent hover:underline shrink-0" onClick={addDependent} disabled={saving}>Add dependant</button>
+                </div>
+                {dependents.length === 0 && (
+                  <p className="text-xs text-text-light">No dependants added.</p>
+                )}
+                {dependents.map((d) => (
+                  <DependentIdentificationForm
+                    key={d.id}
+                    value={d}
+                    taxYear={taxYear}
+                    disabled={saving}
+                    onChange={(patch) => updateDependent(d.id, patch)}
+                    onRemove={() => removeDependent(d.id)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {step === 4 && (
               <div className="text-sm text-text space-y-2">
                 <p className="font-medium text-primary-dark">Review household workspace setup</p>
                 <p><span className="font-semibold">Main taxpayer:</span> {mainFirstName.trim()} {mainLastName.trim()} · {taxYear}</p>
@@ -811,14 +956,19 @@ const TaxReturns: FC = () => {
             )}
 
             <div className="mt-4 flex items-center justify-between gap-2">
-              <button type="button" className="text-sm text-text-light hover:text-primary-dark disabled:opacity-50" onClick={onBack} disabled={saving || step === 1}>Back</button>
+              <button type="button" className="text-sm text-text-light hover:text-primary-dark disabled:opacity-50" onClick={() => { void onBack() }} disabled={saving || step === 1}>Back</button>
               <div className="flex items-center gap-2">
-                {step < 3 && (
-                  <button type="button" className="btn btn--primary text-sm px-4 py-2" disabled={saving} onClick={onNext}>
-                    Continue
+                {draftSavedAt && (
+                  <span className="text-xs text-text-light hidden sm:inline">
+                    Saved {new Date(draftSavedAt).toLocaleTimeString()}
+                  </span>
+                )}
+                {step < 4 && (
+                  <button type="button" className="btn btn--primary text-sm px-4 py-2" disabled={saving} onClick={() => { void onNext() }}>
+                    {saving ? 'Saving…' : 'Continue'}
                   </button>
                 )}
-                {step === 3 && (
+                {step === 4 && (
                   <button type="button" className="btn btn--primary text-sm px-4 py-2" disabled={saving} onClick={() => { void onCreate() }}>
                     {saving ? 'Creating…' : 'Create household workspaces'}
                   </button>

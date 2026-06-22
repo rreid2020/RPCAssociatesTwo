@@ -253,6 +253,16 @@ const STATEMENTS = [
   'ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS had_income_in_year BOOLEAN',
   `ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS tax_return_required VARCHAR(8) DEFAULT 'auto'`,
 
+  `CREATE TABLE IF NOT EXISTS taxgpt.household_interview_drafts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clerk_user_id TEXT NOT NULL UNIQUE,
+  current_step SMALLINT NOT NULL DEFAULT 1,
+  draft_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+)`,
+  'CREATE INDEX IF NOT EXISTS household_interview_drafts_clerk_idx ON taxgpt.household_interview_drafts(clerk_user_id)',
+
   `CREATE TABLE IF NOT EXISTS taxgpt.income_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   clerk_user_id TEXT NOT NULL,
@@ -1761,7 +1771,16 @@ const EVOLUTIONARY_STATEMENTS = [
   'ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS residence_province_dec31 VARCHAR(4)',
   'ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS marital_status VARCHAR(32)',
   'ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS had_income_in_year BOOLEAN',
-  `ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS tax_return_required VARCHAR(8) DEFAULT 'auto'`
+  `ALTER TABLE taxgpt.taxpayer_dependents ADD COLUMN IF NOT EXISTS tax_return_required VARCHAR(8) DEFAULT 'auto'`,
+  `CREATE TABLE IF NOT EXISTS taxgpt.household_interview_drafts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clerk_user_id TEXT NOT NULL UNIQUE,
+  current_step SMALLINT NOT NULL DEFAULT 1,
+  draft_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+)`,
+  'CREATE INDEX IF NOT EXISTS household_interview_drafts_clerk_idx ON taxgpt.household_interview_drafts(clerk_user_id)'
 ]
 
 async function runEvolutionaryMigrations (pool) {

@@ -1553,7 +1553,7 @@ const ReturnBuilder: FC = () => {
         description="Build and review T1 return data."
         canonical="/app/tax-intelligence/returns"
       />
-      <ClientPortalShell>
+      <ClientPortalShell wideContent>
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -1594,7 +1594,7 @@ const ReturnBuilder: FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-4">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,12rem)_minmax(0,1fr)]">
             <aside className="bg-white p-3 rounded-lg border border-border shadow-sm h-fit lg:sticky lg:top-20">
               <p className="text-xs font-semibold text-primary-dark mb-2">Interview and forms</p>
               <div className="space-y-1">

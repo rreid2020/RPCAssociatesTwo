@@ -55,7 +55,7 @@ export const TaxWorksheetRow: FC<{
           {boxCode || lineRef}
         </span>
       )}
-      <div className="w-full min-w-[10rem] sm:w-44">{children}</div>
+      <div className="w-full min-w-[10rem] sm:w-56 lg:w-64 xl:w-80">{children}</div>
       <TaxWorksheetHelpButton text={helpText} />
     </div>
   </div>

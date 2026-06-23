@@ -43,7 +43,6 @@ function computeSetupReadiness (r: TaxReturnSummary): { required: number; recomm
 
   if (missing(r.taxpayer_first_name)) issues.push({ severity: 'required' })
   if (missing(r.taxpayer_last_name)) issues.push({ severity: 'required' })
-  if (!sanitizeSin(String(r.taxpayer_sin || ''))) issues.push({ severity: 'required' })
   if (missing(r.taxpayer_date_of_birth)) issues.push({ severity: 'required' })
   if (missing(profile.mailingAddressLine1)) issues.push({ severity: 'required' })
   if (missing(profile.mailingCity)) issues.push({ severity: 'required' })
@@ -69,7 +68,6 @@ function computeSetupReadiness (r: TaxReturnSummary): { required: number; recomm
       if (missing(spouse.firstName)) issues.push({ severity: 'required' })
       if (missing(spouse.lastName)) issues.push({ severity: 'required' })
       if (missing(spouse.dateOfBirth)) issues.push({ severity: 'required' })
-      if (!sanitizeSin(String(spouse.fullSin || ''))) issues.push({ severity: 'required' })
     } else if (missing(spouse.fullName)) {
       issues.push({ severity: 'required' })
     }
@@ -657,12 +655,11 @@ const TaxReturns: FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Main taxpayer first name" value={mainFirstName} onChange={(e) => setMainFirstName(e.target.value)} disabled={saving} />
                   <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Main taxpayer last name" value={mainLastName} onChange={(e) => setMainLastName(e.target.value)} disabled={saving} />
-                  <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="SIN (9 digits)" value={mainSin} onChange={(e) => setMainSin(e.target.value.replace(/\D/g, '').slice(0, 9))} disabled={saving} />
+                  <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="SIN (9 digits, optional)" value={mainSin} onChange={(e) => setMainSin(e.target.value.replace(/\D/g, '').slice(0, 9))} disabled={saving} />
                   <input className="border border-border rounded-md px-3 py-2 text-sm" type="date" value={mainDateOfBirth} onChange={(e) => setMainDateOfBirth(e.target.value)} disabled={saving} />
                 </div>
-                <p className="text-sm font-medium text-primary-dark">Question 2: What tax year and province are we preparing for?</p>
+                <p className="text-sm font-medium text-primary-dark">Question 2: What tax year are we preparing for?</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Province on Dec 31 (e.g. ON)" value={mainProvinceCode} onChange={(e) => setMainProvinceCode(e.target.value.toUpperCase().slice(0, 4))} disabled={saving} />
                   <input className="border border-border rounded-md px-3 py-2 text-sm" type="number" min={2000} max={2100} value={taxYear} onChange={(e) => setTaxYear(Number(e.target.value))} disabled={saving} />
                 </div>
                 <p className="text-sm font-medium text-primary-dark">Question 3: Contact email (optional)</p>
@@ -676,6 +673,15 @@ const TaxReturns: FC = () => {
                 <div className="space-y-2 border border-border rounded-md p-3 bg-background/40">
                   <h3 className="text-sm font-semibold text-primary-dark">Question 5: CRA setup questions for main taxpayer</h3>
                   <div className="divide-y divide-border/70 rounded-md border border-border">
+                    <CraQuestionRow label="Province/territory of residence on Dec 31">
+                      <input
+                        className="border border-border rounded-md px-3 py-2 text-sm w-28"
+                        placeholder="e.g. ON"
+                        value={mainProvinceCode}
+                        onChange={(e) => setMainProvinceCode(e.target.value.toUpperCase().slice(0, 4))}
+                        disabled={saving}
+                      />
+                    </CraQuestionRow>
                     <CraQuestionRow label="Language of correspondence">
                       <select
                         className="border border-border rounded-md px-3 py-2 text-sm"
@@ -823,7 +829,7 @@ const TaxReturns: FC = () => {
                     <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Spouse first name" value={spouseFirstName} onChange={(e) => setSpouseFirstName(e.target.value)} disabled={saving} />
                     <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Spouse last name" value={spouseLastName} onChange={(e) => setSpouseLastName(e.target.value)} disabled={saving} />
                     <input className="border border-border rounded-md px-3 py-2 text-sm" type="date" value={spouseDateOfBirth} onChange={(e) => setSpouseDateOfBirth(e.target.value)} disabled={saving} />
-                    <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Spouse SIN (9 digits)" value={spouseSin} onChange={(e) => setSpouseSin(e.target.value.replace(/\D/g, '').slice(0, 9))} disabled={saving} />
+                    <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Spouse SIN (9 digits, optional)" value={spouseSin} onChange={(e) => setSpouseSin(e.target.value.replace(/\D/g, '').slice(0, 9))} disabled={saving} />
                     <input className="border border-border rounded-md px-3 py-2 text-sm md:col-span-2" type="email" placeholder="Spouse email (for CRA notifications)" value={spouseEmail} onChange={(e) => setSpouseEmail(e.target.value)} disabled={saving} />
                   </div>
                   <div className="space-y-2 border border-border rounded-md p-3 bg-background/40 mt-3">

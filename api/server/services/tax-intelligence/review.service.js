@@ -80,14 +80,6 @@ function buildDiagnosticMessages ({ taxReturn, incomeEntries, deductions, calcul
       reviewField: 'firstName'
     })
   }
-  if (!String(taxReturn.taxpayer_sin || profile.sin || '').trim()) {
-    messages.push({
-      severity: 'warning',
-      title: 'Taxpayer SIN is missing',
-      detail: 'A valid SIN is required for NETFILE and CRA processing.',
-      reviewField: 'sin'
-    })
-  }
   if (profile.first_time_filer == null && profile.firstTimeFiler == null) {
     messages.push({
       severity: 'warning',

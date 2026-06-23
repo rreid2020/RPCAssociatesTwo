@@ -212,7 +212,7 @@ const WORKFLOW_PAGES: Step[] = [
 
 const SIDEBAR_MENU_ITEMS: WorkflowMenuItem[] = [
   { id: 'setup-identity', label: 'Identification', step: 'Identity' },
-  { id: 'setup-mailing', label: 'Mailing & residence', step: 'Mailing' },
+  { id: 'setup-mailing', label: 'Mailing address', step: 'Mailing' },
   { id: 'setup-cra', label: 'CRA questions', step: 'Elections' },
   { id: 'setup-spouse', label: 'Spouse setup', step: 'Spouse' },
   { id: 'setup-dependents', label: 'Dependent setup', step: 'Dependents' },
@@ -741,7 +741,6 @@ const ReturnBuilder: FC = () => {
 
     if (missing(taxpayerProfile.firstName)) issues.push({ field: 'firstName', message: 'Taxpayer first name is missing.', severity: 'required' })
     if (missing(taxpayerProfile.lastName)) issues.push({ field: 'lastName', message: 'Taxpayer last name is missing.', severity: 'required' })
-    if (!sanitizeSin(taxpayerProfile.sin)) issues.push({ field: 'sin', message: 'Taxpayer SIN is missing or incomplete.', severity: 'required' })
     if (missing(taxpayerProfile.dateOfBirth)) issues.push({ field: 'dateOfBirth', message: 'Taxpayer date of birth is missing.', severity: 'required' })
     if (missing(taxpayerProfile.mailingAddressLine1)) issues.push({ field: 'mailingAddressLine1', message: 'Mailing address line is missing.', severity: 'required' })
     if (missing(taxpayerProfile.mailingCity)) issues.push({ field: 'mailingCity', message: 'Mailing city is missing.', severity: 'required' })
@@ -782,7 +781,6 @@ const ReturnBuilder: FC = () => {
         if (missing(taxpayerProfile.spouse.firstName)) issues.push({ field: 'spouse.firstName', message: 'Spouse first name is missing for full spouse return mode.', severity: 'required' })
         if (missing(taxpayerProfile.spouse.lastName)) issues.push({ field: 'spouse.lastName', message: 'Spouse last name is missing for full spouse return mode.', severity: 'required' })
         if (missing(taxpayerProfile.spouse.dateOfBirth)) issues.push({ field: 'spouse.dateOfBirth', message: 'Spouse date of birth is missing for full spouse return mode.', severity: 'required' })
-        if (!sanitizeSin(taxpayerProfile.spouse.fullSin)) issues.push({ field: 'spouse.fullSin', message: 'Spouse SIN is missing or incomplete for full spouse return mode.', severity: 'required' })
       } else if (missing(taxpayerProfile.spouse.fullName)) {
         issues.push({ field: 'spouse.fullName', message: 'Spouse full name is missing for summary spouse mode.', severity: 'required' })
       }
@@ -1371,17 +1369,18 @@ const ReturnBuilder: FC = () => {
       'organDonorConsent',
       'craEmailNotificationsConsent',
       'craEmailConfirmed',
-      'craHasForeignMailingAddress'
+      'craHasForeignMailingAddress',
+      'residenceProvinceDec31',
+      'languageCorrespondence',
+      'maritalStatusChangeDate',
+      'becameResidentDate',
+      'ceasedResidentDate',
+      'deceasedDate'
     ].includes(field)) return 'Elections'
     if (
       field.startsWith('mailing') ||
       field.startsWith('residence') ||
-      field === 'email' ||
-      field === 'languageCorrespondence' ||
-      field === 'maritalStatusChangeDate' ||
-      field === 'becameResidentDate' ||
-      field === 'ceasedResidentDate' ||
-      field === 'deceasedDate'
+      field === 'email'
     ) return 'Mailing'
     return 'Identity'
   }
@@ -1803,7 +1802,7 @@ const ReturnBuilder: FC = () => {
                   />
                 </label>
                 <label className="text-xs text-text-light">
-                  SIN (9 digits)
+                  SIN (9 digits, optional)
                   <input
                     className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
                     value={taxpayerProfile.sin}
@@ -1848,8 +1847,8 @@ const ReturnBuilder: FC = () => {
 
           {!loading && activeStep === 'Mailing' && (
             <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
-              <h2 className="text-lg font-semibold text-primary-dark">Mailing and residence information (T1 Step 1)</h2>
-              <p className="text-sm text-text-light">Mailing address, province of residence, and residency-related questions.</p>
+              <h2 className="text-lg font-semibold text-primary-dark">Mailing address (T1 Step 1)</h2>
+              <p className="text-sm text-text-light">Mailing address and related location details.</p>
               {profileSavedMsg && (
                 <p className="text-sm text-green-800 bg-green-50 border border-green-200 rounded-md px-3 py-2">{profileSavedMsg}</p>
               )}
@@ -1941,14 +1940,6 @@ const ReturnBuilder: FC = () => {
                       onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, mailingPostalCode: e.target.value.toUpperCase() }))}
                     />
                   </label>
-                  <label className="text-xs text-text-light">
-                    Province/territory of residence on Dec 31
-                    <input
-                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                      value={taxpayerProfile.residenceProvinceDec31}
-                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, residenceProvinceDec31: e.target.value.toUpperCase().slice(0, 8) }))}
-                    />
-                  </label>
                   <label className="text-xs text-text-light md:col-span-2">
                     Current residence province/territory if different from mailing address
                     <input
@@ -1965,105 +1956,6 @@ const ReturnBuilder: FC = () => {
                       onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, selfEmploymentProvinces: e.target.value }))}
                     />
                   </label>
-                  <label className="text-xs text-text-light">
-                    Language of correspondence
-                    <select
-                      className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                      value={taxpayerProfile.languageCorrespondence}
-                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, languageCorrespondence: e.target.value === 'fr' ? 'fr' : 'en' }))}
-                    >
-                      <option value="en">English</option>
-                      <option value="fr">French</option>
-                    </select>
-                  </label>
-                  <label className="text-xs text-text-light">
-                    Did marital status change during the year?
-                    <YesNoToggle
-                      value={taxpayerProfile.maritalStatusChangedInYear}
-                      onChange={(value) => setTaxpayerProfile((prev) => ({
-                        ...prev,
-                        maritalStatusChangedInYear: Boolean(value),
-                        maritalStatusChangeDate: value ? prev.maritalStatusChangeDate : ''
-                      }))}
-                    />
-                  </label>
-                  <label className="text-xs text-text-light">
-                    Became a resident of Canada this year?
-                    <YesNoToggle
-                      value={taxpayerProfile.becameResidentInYear}
-                      onChange={(value) => setTaxpayerProfile((prev) => ({
-                        ...prev,
-                        becameResidentInYear: Boolean(value),
-                        becameResidentDate: value ? prev.becameResidentDate : ''
-                      }))}
-                    />
-                  </label>
-                  <label className="text-xs text-text-light">
-                    Ceased residency in Canada this year?
-                    <YesNoToggle
-                      value={taxpayerProfile.ceasedResidentInYear}
-                      onChange={(value) => setTaxpayerProfile((prev) => ({
-                        ...prev,
-                        ceasedResidentInYear: Boolean(value),
-                        ceasedResidentDate: value ? prev.ceasedResidentDate : ''
-                      }))}
-                    />
-                  </label>
-                  <label className="text-xs text-text-light">
-                    Filing for a deceased person?
-                    <YesNoToggle
-                      value={taxpayerProfile.filingForDeceased}
-                      onChange={(value) => setTaxpayerProfile((prev) => ({
-                        ...prev,
-                        filingForDeceased: Boolean(value),
-                        deceasedDate: value ? prev.deceasedDate : ''
-                      }))}
-                    />
-                  </label>
-                  {taxpayerProfile.maritalStatusChangedInYear && (
-                    <label className="text-xs text-text-light">
-                      Date marital status changed (required when Yes)
-                      <input
-                        type="date"
-                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                        value={taxpayerProfile.maritalStatusChangeDate ? taxpayerProfile.maritalStatusChangeDate.slice(0, 10) : ''}
-                        onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, maritalStatusChangeDate: e.target.value }))}
-                      />
-                    </label>
-                  )}
-                  {taxpayerProfile.becameResidentInYear && (
-                    <label className="text-xs text-text-light">
-                      Date of entry to Canada (required when Yes)
-                      <input
-                        type="date"
-                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                        value={taxpayerProfile.becameResidentDate ? taxpayerProfile.becameResidentDate.slice(0, 10) : ''}
-                        onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, becameResidentDate: e.target.value }))}
-                      />
-                    </label>
-                  )}
-                  {taxpayerProfile.ceasedResidentInYear && (
-                    <label className="text-xs text-text-light">
-                      Date of departure from Canada (required when Yes)
-                      <input
-                        type="date"
-                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                        value={taxpayerProfile.ceasedResidentDate ? taxpayerProfile.ceasedResidentDate.slice(0, 10) : ''}
-                        onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, ceasedResidentDate: e.target.value }))}
-                      />
-                    </label>
-                  )}
-                  {taxpayerProfile.filingForDeceased && (
-                    <label className="text-xs text-text-light md:col-span-2">
-                      Date of death (required when Yes)
-                      <input
-                        type="date"
-                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                        value={taxpayerProfile.deceasedDate ? taxpayerProfile.deceasedDate.slice(0, 10) : ''}
-                        onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, deceasedDate: e.target.value }))}
-                      />
-                    </label>
-                  )}
                 </div>
               </div>
               <WorkflowPageNav
@@ -2080,8 +1972,109 @@ const ReturnBuilder: FC = () => {
           {!loading && activeStep === 'Elections' && (
             <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
               <h2 className="text-lg font-semibold text-primary-dark">CRA questions</h2>
-              <p className="text-sm text-text-light">T1 page 2 questions and elections.</p>
+              <p className="text-sm text-text-light">Province of residence, residency questions, and T1 page 2 elections.</p>
               <div id="rb-elections" className="divide-y divide-border/70 rounded-md border border-border">
+                <CraQuestionRow label="Province/territory of residence on Dec 31">
+                  <input
+                    className="border border-border rounded-md px-3 py-2 text-sm w-28"
+                    value={taxpayerProfile.residenceProvinceDec31}
+                    onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, residenceProvinceDec31: e.target.value.toUpperCase().slice(0, 8) }))}
+                  />
+                </CraQuestionRow>
+                <CraQuestionRow label="Language of correspondence">
+                  <select
+                    className="border border-border rounded-md px-3 py-2 text-sm"
+                    value={taxpayerProfile.languageCorrespondence}
+                    onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, languageCorrespondence: e.target.value === 'fr' ? 'fr' : 'en' }))}
+                  >
+                    <option value="en">English</option>
+                    <option value="fr">French</option>
+                  </select>
+                </CraQuestionRow>
+                <CraQuestionRow label="Did marital status change during the year?">
+                  <YesNoToggle
+                    className=""
+                    value={taxpayerProfile.maritalStatusChangedInYear}
+                    onChange={(value) => setTaxpayerProfile((prev) => ({
+                      ...prev,
+                      maritalStatusChangedInYear: Boolean(value),
+                      maritalStatusChangeDate: value ? prev.maritalStatusChangeDate : ''
+                    }))}
+                  />
+                </CraQuestionRow>
+                {taxpayerProfile.maritalStatusChangedInYear && (
+                  <CraQuestionRow label="Date marital status changed">
+                    <input
+                      type="date"
+                      className="border border-border rounded-md px-3 py-2 text-sm"
+                      value={taxpayerProfile.maritalStatusChangeDate ? taxpayerProfile.maritalStatusChangeDate.slice(0, 10) : ''}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, maritalStatusChangeDate: e.target.value }))}
+                    />
+                  </CraQuestionRow>
+                )}
+                <CraQuestionRow label="Became a resident of Canada this year?">
+                  <YesNoToggle
+                    className=""
+                    value={taxpayerProfile.becameResidentInYear}
+                    onChange={(value) => setTaxpayerProfile((prev) => ({
+                      ...prev,
+                      becameResidentInYear: Boolean(value),
+                      becameResidentDate: value ? prev.becameResidentDate : ''
+                    }))}
+                  />
+                </CraQuestionRow>
+                {taxpayerProfile.becameResidentInYear && (
+                  <CraQuestionRow label="Date of entry to Canada">
+                    <input
+                      type="date"
+                      className="border border-border rounded-md px-3 py-2 text-sm"
+                      value={taxpayerProfile.becameResidentDate ? taxpayerProfile.becameResidentDate.slice(0, 10) : ''}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, becameResidentDate: e.target.value }))}
+                    />
+                  </CraQuestionRow>
+                )}
+                <CraQuestionRow label="Ceased residency in Canada this year?">
+                  <YesNoToggle
+                    className=""
+                    value={taxpayerProfile.ceasedResidentInYear}
+                    onChange={(value) => setTaxpayerProfile((prev) => ({
+                      ...prev,
+                      ceasedResidentInYear: Boolean(value),
+                      ceasedResidentDate: value ? prev.ceasedResidentDate : ''
+                    }))}
+                  />
+                </CraQuestionRow>
+                {taxpayerProfile.ceasedResidentInYear && (
+                  <CraQuestionRow label="Date of departure from Canada">
+                    <input
+                      type="date"
+                      className="border border-border rounded-md px-3 py-2 text-sm"
+                      value={taxpayerProfile.ceasedResidentDate ? taxpayerProfile.ceasedResidentDate.slice(0, 10) : ''}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, ceasedResidentDate: e.target.value }))}
+                    />
+                  </CraQuestionRow>
+                )}
+                <CraQuestionRow label="Filing for a deceased person?">
+                  <YesNoToggle
+                    className=""
+                    value={taxpayerProfile.filingForDeceased}
+                    onChange={(value) => setTaxpayerProfile((prev) => ({
+                      ...prev,
+                      filingForDeceased: Boolean(value),
+                      deceasedDate: value ? prev.deceasedDate : ''
+                    }))}
+                  />
+                </CraQuestionRow>
+                {taxpayerProfile.filingForDeceased && (
+                  <CraQuestionRow label="Date of death">
+                    <input
+                      type="date"
+                      className="border border-border rounded-md px-3 py-2 text-sm"
+                      value={taxpayerProfile.deceasedDate ? taxpayerProfile.deceasedDate.slice(0, 10) : ''}
+                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, deceasedDate: e.target.value }))}
+                    />
+                  </CraQuestionRow>
+                )}
                 <CraQuestionRow label="Are you filing a CRA income tax return for the first time?">
                   <YesNoToggle
                     className=""
@@ -2224,7 +2217,7 @@ const ReturnBuilder: FC = () => {
                         <input className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={taxpayerProfile.spouse.fullName} onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, fullName: e.target.value } }))} />
                       </label>
                       <label className="text-xs text-text-light">
-                        SIN (9 digits)
+                        SIN (9 digits, optional)
                         <input className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={taxpayerProfile.spouse.fullSin} onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, fullSin: sanitizeSin(e.target.value) } }))} />
                       </label>
                       <label className="text-xs text-text-light">
@@ -2256,7 +2249,7 @@ const ReturnBuilder: FC = () => {
                           <input type="number" className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={Number(taxpayerProfile.spouseNetIncome23600 || 0)} onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouseNetIncome23600: Number(e.target.value || 0), spouse: { ...prev.spouse, netIncome: Number(e.target.value || 0) } }))} />
                         </label>
                         <label className="text-xs text-text-light">
-                          SIN (9 digits) (required)
+                          SIN (9 digits, optional)
                           <input className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full" value={taxpayerProfile.spouse.fullSin} onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, spouse: { ...prev.spouse, fullSin: sanitizeSin(e.target.value) } }))} />
                         </label>
                       </div>

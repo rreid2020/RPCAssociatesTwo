@@ -55,13 +55,32 @@ export function pickTopicSlipCode (item: InterviewArtifactItem): string | undefi
 export function sectionSlipCodes (section: InterviewArtifactSection | null | undefined): Set<string> {
   const codes = new Set<string>()
   if (!section) return codes
-  for (const item of section.items) {
-    for (const code of item.slipCodes) {
-      const normalized = String(code || '').trim().toUpperCase()
-      if (normalized) codes.add(normalized)
-    }
+  for (const entry of sectionSlipEntries(section)) {
+    codes.add(entry.slipCode)
   }
   return codes
+}
+
+export type SectionSlipEntry = {
+  slipCode: string
+  label: string
+  description: string
+}
+
+export function sectionSlipEntries (section: InterviewArtifactSection): SectionSlipEntry[] {
+  const seen = new Map<string, SectionSlipEntry>()
+  for (const item of section.items) {
+    for (const raw of item.slipCodes) {
+      const slipCode = String(raw || '').trim().toUpperCase()
+      if (!slipCode || seen.has(slipCode)) continue
+      seen.set(slipCode, {
+        slipCode,
+        label: item.label,
+        description: item.description
+      })
+    }
+  }
+  return Array.from(seen.values())
 }
 
 export function buildInterviewArtifactSections (

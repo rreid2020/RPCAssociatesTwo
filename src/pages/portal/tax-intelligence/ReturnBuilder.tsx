@@ -1,4 +1,4 @@
-import { FC, useEffect, useMemo, useRef, useState } from 'react'
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
@@ -970,7 +970,11 @@ const ReturnBuilder: FC = () => {
   }, [taxpayerProfile.maritalStatus, taxpayerProfile.spouseReturnMode])
 
   const addIncomeRow = (role: 'self' | 'spouse') => setIncomeRows((prev) => [...prev, { category: 'employment_income', description: '', amount: 0, taxpayerRole: role }])
-  const addSlipRow = () => setManualSlipRows((prev) => [...prev, { ...createSlipRow(newSlipCode), taxpayerRole: returnRole }])
+  const addSlipRow = (slipCode?: string) => {
+    const code = slipCode || newSlipCode
+    if (slipCode) setNewSlipCode(slipCode)
+    setManualSlipRows((prev) => [...prev, { ...createSlipRow(code), taxpayerRole: returnRole }])
+  }
   const addSuggestedSlipRow = (slipCode: string) => {
     setNewSlipCode(slipCode)
     setManualSlipRows((prev) => {
@@ -981,6 +985,21 @@ const ReturnBuilder: FC = () => {
       return [...prev, { ...createSlipRow(slipCode), taxpayerRole: returnRole }]
     })
   }
+  const ensureSectionSlipRows = useCallback((slipCodes: string[]) => {
+    setManualSlipRows((prev) => {
+      let next = prev
+      for (const slipCode of slipCodes) {
+        const exists = next.some((row) =>
+          row.taxpayerRole === returnRole && row.slipCode.toUpperCase() === slipCode.toUpperCase()
+        )
+        if (!exists) {
+          if (next === prev) next = [...prev]
+          next.push({ ...createSlipRow(slipCode), taxpayerRole: returnRole })
+        }
+      }
+      return next
+    })
+  }, [returnRole, slipSchemasByCode, data?.taxReturn?.tax_year])
 
   const focusInterviewTopicTarget = (anchor?: string, deductionKey?: string) => {
     window.setTimeout(() => {
@@ -2261,8 +2280,8 @@ const ReturnBuilder: FC = () => {
                 newSlipCode={newSlipCode}
                 setNewSlipCode={setNewSlipCode}
                 saving={saving}
-                onAddSlip={() => addSlipRow()}
-                onAddSuggestedSlip={addSuggestedSlipRow}
+                onAddSlip={addSlipRow}
+                onEnsureSlipRows={ensureSectionSlipRows}
                 onRemoveSlip={removeSlipRow}
                 onUpdateSlipRowCode={updateSlipRowCode}
                 onAddCustomBox={addCustomBoxToSlip}

@@ -87,21 +87,11 @@ export const TabbedArtifactLayout: FC<{
             role="tabpanel"
             className="flex-1 min-w-0"
           >
-            <div className="flex items-stretch min-h-[10rem]">
-              <div className="hidden sm:flex w-20 lg:w-24 shrink-0 bg-primary-dark text-white flex-col items-center justify-center px-2 py-6 text-center">
-                <span className="text-2xl leading-none" aria-hidden>{activeSection.icon}</span>
-                <span className="mt-2 text-[10px] font-semibold uppercase tracking-wide leading-tight">
-                  {activeSection.title}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="px-3 py-3 border-b border-border bg-background/40">
-                  <p className="text-sm text-text">{activeSection.summary}</p>
-                </div>
-                <div className="p-3 space-y-4">
-                  {children(activeSection)}
-                </div>
-              </div>
+            <div className="px-3 py-3 border-b border-border bg-background/40">
+              <p className="text-sm text-text">{activeSection.summary}</p>
+            </div>
+            <div className="p-3 space-y-4">
+              {children(activeSection)}
             </div>
           </section>
         )}

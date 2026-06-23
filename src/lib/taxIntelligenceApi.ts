@@ -224,6 +224,8 @@ export type TaxReturnSummary = {
     treatyExemptForeignService?: boolean | null
     foreignPropertyOver100k?: boolean | null
     organDonorConsent?: boolean | null
+    provincialElectionsCanadianCitizen?: boolean | null
+    provincialElectionsAuthorize?: boolean | null
     craEmailNotificationsConsent?: boolean | null
     craEmailConfirmed?: boolean | null
     craHasForeignMailingAddress?: boolean | null

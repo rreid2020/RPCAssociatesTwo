@@ -1,4 +1,4 @@
-export const INTERVIEW_TOPICS_VERSION = 2
+export const INTERVIEW_TOPICS_VERSION = 3
 
 /**
  * Tax situation interview topics — drives per-taxpayer workspace setup.
@@ -66,6 +66,70 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
         slipCodes: [],
         formCodes: ['T1013'],
         linkedStep: 'Setup'
+      }
+    ]
+  },
+  {
+    id: 'other_income',
+    title: 'Other income',
+    summary: 'Labour adjustments, grants, death benefits, lump-sum payments, and line 13000 income.',
+    icon: 'OI',
+    topics: [
+      {
+        id: 'other_income_labour_adjustment',
+        label: 'Labour adjustment benefits',
+        description: 'Provincial or federal labour adjustment benefits not reported on a T-slip.',
+        slipCodes: [],
+        formCodes: [],
+        linkedStep: 'Income'
+      },
+      {
+        id: 'other_income_grants_training',
+        label: 'Grants or training allowance',
+        description: 'Taxable grants, training allowances, and similar support payments.',
+        slipCodes: [],
+        formCodes: [],
+        linkedStep: 'Income'
+      },
+      {
+        id: 'other_income_spouse_death_benefit',
+        label: 'Death benefit received from employer upon death of your spouse',
+        description: 'Employer-paid death benefits related to a deceased spouse.',
+        slipCodes: ['T4A'],
+        formCodes: [],
+        linkedStep: 'Income'
+      },
+      {
+        id: 'other_income_t1198',
+        label: 'T1198 — Qualifying retroactive lump-sum payment',
+        description: 'Retroactive employment or pension income taxed in the current year.',
+        slipCodes: [],
+        formCodes: ['T1198'],
+        linkedStep: 'Income'
+      },
+      {
+        id: 'other_income_line_13000',
+        label: 'Other taxable income (federal line 13000)',
+        description: 'Miscellaneous taxable income not reported elsewhere.',
+        slipCodes: [],
+        formCodes: [],
+        linkedStep: 'Income'
+      }
+    ]
+  },
+  {
+    id: 'other_t_slips',
+    title: 'Information from other T-slips',
+    summary: 'Additional federal slips not covered in employment or pension sections.',
+    icon: 'TS',
+    topics: [
+      {
+        id: 'other_t_slips_rc210',
+        label: 'RC210 — Canada Workers Benefit advance payments statement (line 41500)',
+        description: 'Advance Canada Workers Benefit payments received during the year.',
+        slipCodes: ['RC210'],
+        formCodes: [],
+        linkedStep: 'Income'
       }
     ]
   },
@@ -349,27 +413,83 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
       },
       {
         id: 'self_employment_business',
-        label: 'Business or professional income (T2125)',
-        description: 'Self-employment, commissions, and professional fees.',
+        label: 'T2125 — Business income',
+        description: 'Self-employment business income and expenses.',
         slipCodes: ['T4A', 'T5018'],
         formCodes: ['T2125'],
         linkedStep: 'Income'
       },
       {
-        id: 'self_employment_farming',
-        label: 'Farming income (T2042)',
-        description: 'Farm income and expenses.',
+        id: 'self_employment_t2125p',
+        label: 'T2125P — Professional income',
+        description: 'Professional self-employment income and expenses.',
+        slipCodes: ['T4A'],
+        formCodes: ['T2125'],
+        linkedStep: 'Income'
+      },
+      {
+        id: 'self_employment_t2125c',
+        label: 'T2125C — Commission income',
+        description: 'Commission-based self-employment income.',
+        slipCodes: ['T4A', 'T5018'],
+        formCodes: ['T2125'],
+        linkedStep: 'Income'
+      },
+      {
+        id: 'self_employment_farming_cash',
+        label: 'T2042C — Farming income (cash basis)',
+        description: 'Farm income and expenses reported on a cash basis.',
         slipCodes: ['AGR-1'],
         formCodes: ['T2042'],
         linkedStep: 'Income'
       },
       {
+        id: 'self_employment_farming',
+        label: 'T2042 — Farming income (accrual basis)',
+        description: 'Farm income and expenses reported on an accrual basis.',
+        slipCodes: ['AGR-1'],
+        formCodes: ['T2042'],
+        linkedStep: 'Income'
+      },
+      {
+        id: 'self_employment_agristability_cash',
+        label: 'T1163C — AgriStability/AgriInvest farming income (cash basis)',
+        description: 'AgriStability and AgriInvest program amounts (cash basis).',
+        slipCodes: ['AGR-1'],
+        formCodes: ['T1163'],
+        linkedStep: 'Income'
+      },
+      {
+        id: 'self_employment_agristability',
+        label: 'T1163 — AgriStability/AgriInvest farming income (accrual basis)',
+        description: 'AgriStability and AgriInvest program amounts (accrual basis).',
+        slipCodes: ['AGR-1'],
+        formCodes: ['T1163'],
+        linkedStep: 'Income'
+      },
+      {
+        id: 'self_employment_farming_main_source',
+        label: 'Was farming the main source of income?',
+        description: 'Determines restricted farm loss rules and related calculations.',
+        slipCodes: [],
+        formCodes: [],
+        linkedStep: 'Income'
+      },
+      {
         id: 'self_employment_fishing',
-        label: 'Fishing income (T2121)',
+        label: 'T2121 — Fishing income',
         description: 'Fishing income and expenses.',
         slipCodes: [],
         formCodes: ['T2121'],
         linkedStep: 'Income'
+      },
+      {
+        id: 'self_employment_schedule_13',
+        label: 'Schedule 13 — EI premiums on self-employment and other eligible earnings',
+        description: 'Optional employment insurance participation for self-employed persons.',
+        slipCodes: [],
+        formCodes: ['Schedule 13'],
+        linkedStep: 'Review'
       },
       {
         id: 'self_employment_non_resident',
@@ -389,7 +509,7 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
     topics: [
       {
         id: 'student_t2202',
-        label: 'T2202 — tuition and enrolment certificate',
+        label: 'T2202 — Tuition and enrolment certificate (line 32300)',
         description: 'Eligible tuition fees and full-time or part-time months.',
         slipCodes: ['T2202'],
         formCodes: [],
@@ -397,15 +517,31 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
       },
       {
         id: 'student_loans',
-        label: 'Student loan interest',
+        label: 'Interest paid on your student loans (line 31900)',
         description: 'Interest paid on qualifying student loans.',
         slipCodes: [],
         formCodes: [],
         linkedStep: 'Deductions'
       },
       {
+        id: 'student_tuition_transfer_child',
+        label: 'Tuition amount transferred from a child (line 32400)',
+        description: 'Unused tuition transferred from a dependant whose return is filed separately.',
+        slipCodes: [],
+        formCodes: ['Schedule 11'],
+        linkedStep: 'Deductions'
+      },
+      {
+        id: 'student_part_time_scholarship',
+        label: 'Part-time program details for scholarship income (line 13010)',
+        description: 'Scholarship, fellowship, and bursary income requiring part-time enrolment details.',
+        slipCodes: ['T4A'],
+        formCodes: [],
+        linkedStep: 'Income'
+      },
+      {
         id: 'student_training_credit',
-        label: 'Canada training credit',
+        label: 'Canada training credit (CTC)',
         description: 'Training credit limit and eligible fees.',
         slipCodes: [],
         formCodes: [],
@@ -415,14 +551,46 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
   },
   {
     id: 'deductions',
-    title: 'Common tax deductions',
-    summary: 'Medical, disability, donations, and registered plans.',
+    title: 'Medical, disability and caregiver',
+    summary: 'Medical expenses, disability amounts, caregiver claims, and home accessibility.',
     icon: 'CD',
     topics: [
       {
+        id: 'deduction_medical_expenses',
+        label: 'Medical expenses',
+        description: 'Eligible medical and dental expenses for you and dependants.',
+        slipCodes: [],
+        formCodes: [],
+        linkedStep: 'Deductions'
+      },
+      {
+        id: 'deduction_medical_sharing',
+        label: 'Sharing of medical expenses',
+        description: 'Medical expenses shared between spouses or other claimants.',
+        slipCodes: [],
+        formCodes: [],
+        linkedStep: 'Deductions'
+      },
+      {
+        id: 'deduction_medical_last_date',
+        label: 'Last date of medical expenses',
+        description: '12-month period end date for medical expense claims.',
+        slipCodes: [],
+        formCodes: [],
+        linkedStep: 'Deductions'
+      },
+      {
         id: 'deduction_medical_bundle',
-        label: 'Medical expenses, disability, caregiver',
-        description: 'Medical and disability-related expenses for you and dependants.',
+        label: 'Medical expenses, disability, caregiver (summary)',
+        description: 'Combined medical and disability-related expenses for you and dependants.',
+        slipCodes: [],
+        formCodes: ['T2201'],
+        linkedStep: 'Deductions'
+      },
+      {
+        id: 'deduction_infirmity_disability_self',
+        label: 'Infirmity and disability amounts for yourself (line 31600)',
+        description: 'Disability amount claim for the taxpayer.',
         slipCodes: [],
         formCodes: ['T2201'],
         linkedStep: 'Deductions'
@@ -436,27 +604,123 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
         linkedStep: 'Deductions'
       },
       {
+        id: 'deduction_disability_supports',
+        label: 'Disability supports deduction (line 21500)',
+        description: 'Attendant care and other supports needed to earn income.',
+        slipCodes: [],
+        formCodes: [],
+        linkedStep: 'Deductions'
+      },
+      {
+        id: 'deduction_home_accessibility',
+        label: 'Home accessibility expenses (line 31285)',
+        description: 'Renovations to improve access or reduce risk of harm in the home.',
+        slipCodes: [],
+        formCodes: [],
+        linkedStep: 'Deductions'
+      },
+      {
         id: 'deduction_donations',
         label: 'Donations and political contributions',
         description: 'Donations and gifts to registered charities and political contributions.',
         slipCodes: [],
         formCodes: ['Schedule 9'],
         linkedStep: 'Deductions'
+      }
+    ]
+  },
+  {
+    id: 'retirement_plans',
+    title: 'HBP, LLP, FHSA and other plans',
+    summary: 'RRSP, FHSA, home buyers plan, lifelong learning plan, and other retirement contributions.',
+    icon: 'RP',
+    topics: [
+      {
+        id: 'deduction_hbp',
+        label: 'HBP — Participation in an RRSP Home Buyers\' Plan',
+        description: 'RRSP withdrawals and repayments under the Home Buyers\' Plan.',
+        slipCodes: ['T4RSP'],
+        formCodes: ['Schedule 7'],
+        linkedStep: 'Deductions'
       },
       {
-        id: 'deduction_rrsp_bundle',
-        label: 'RRSP, PRPP, SPP, FHSA, other plans and loans (HBP, LLP)',
-        description: 'RRSP contributions, FHSA, home buyers plan, and lifelong learning plan.',
-        slipCodes: ['T4RSP', 'T4FHSA'],
-        formCodes: ['Schedule 7', 'Schedule 15'],
+        id: 'deduction_llp',
+        label: 'LLP — Participation in a Lifelong Learning Plan',
+        description: 'RRSP withdrawals and repayments under the Lifelong Learning Plan.',
+        slipCodes: ['T4RSP'],
+        formCodes: ['Schedule 7'],
         linkedStep: 'Deductions'
       },
       {
         id: 'deduction_fhsa',
-        label: 'FHSA contributions or withdrawals',
-        description: 'First Home Savings Account contributions and taxable withdrawals.',
+        label: 'FHSA information and limit',
+        description: 'First Home Savings Account contributions, transfers, and taxable withdrawals.',
         slipCodes: ['T4FHSA'],
+        formCodes: ['Schedule 15'],
+        linkedStep: 'Deductions'
+      },
+      {
+        id: 'deduction_rrsp_bundle',
+        label: 'RRSP, PRPP, and SPP contributions',
+        description: 'Registered retirement savings and pension plan contributions.',
+        slipCodes: ['T4RSP'],
+        formCodes: ['Schedule 7'],
+        linkedStep: 'Deductions'
+      },
+      {
+        id: 'deduction_rpp_not_on_t4',
+        label: 'Contributions to a registered pension plan (not on a T4 slip)',
+        description: 'RPP contributions not reported on employment slips.',
+        slipCodes: [],
         formCodes: [],
+        linkedStep: 'Deductions'
+      },
+      {
+        id: 'deduction_rc267',
+        label: 'RC267 — Contributions to a US employer-sponsored retirement plan',
+        description: 'Cross-border retirement plan contributions for US plans.',
+        slipCodes: [],
+        formCodes: ['RC267'],
+        linkedStep: 'Deductions'
+      },
+      {
+        id: 'deduction_rc268',
+        label: 'RC268 — Contributions to a US retirement plan by a commuter from Canada',
+        description: 'US retirement plan contributions for Canadian commuters.',
+        slipCodes: [],
+        formCodes: ['RC268'],
+        linkedStep: 'Deductions'
+      },
+      {
+        id: 'deduction_rc269',
+        label: 'RC269 — Contributions to a FERPP or SSA other than US',
+        description: 'Foreign employer-sponsored retirement plan contributions.',
+        slipCodes: [],
+        formCodes: ['RC269'],
+        linkedStep: 'Deductions'
+      },
+      {
+        id: 'deduction_t5006',
+        label: 'T5006 — Registered labour-sponsored venture capital corporation',
+        description: 'Labour-sponsored fund tax credits and RLSP/LSVCC reporting.',
+        slipCodes: ['T5006'],
+        formCodes: [],
+        linkedStep: 'Deductions'
+      },
+      {
+        id: 'deduction_saskatchewan_pension_plan',
+        label: 'Contributions to the Saskatchewan Pension Plan',
+        description: 'Saskatchewan Pension Plan contributions.',
+        slipCodes: [],
+        formCodes: [],
+        linkedStep: 'Deductions'
+      },
+      {
+        id: 'deduction_t10_par',
+        label: 'T10 — Pension adjustment reversal (PAR)',
+        description: 'Pension adjustment reversal affecting RRSP room.',
+        slipCodes: [],
+        formCodes: ['T10'],
         linkedStep: 'Deductions'
       }
     ]
@@ -527,10 +791,74 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
   },
   {
     id: 'other',
-    title: 'Other topics',
-    summary: 'Moving expenses, income repayments, and miscellaneous items.',
+    title: 'Other deductions and credits',
+    summary: 'Northern residents, home buyers amount, miscellaneous deductions, and provincial credits.',
     icon: 'OT',
     topics: [
+      {
+        id: 'other_line_23200',
+        label: 'Federal line 23200 — Other deductions',
+        description: 'Deductions not claimed elsewhere on the return.',
+        slipCodes: [],
+        formCodes: [],
+        linkedStep: 'Deductions'
+      },
+      {
+        id: 'other_line_25500_northern',
+        label: 'Federal line 25500 — T2222 Northern residents deduction',
+        description: 'Deduction for living in a prescribed northern zone.',
+        slipCodes: [],
+        formCodes: ['T2222'],
+        linkedStep: 'Deductions'
+      },
+      {
+        id: 'other_line_25600_additional',
+        label: 'Federal line 25600 — Additional deductions',
+        description: 'Additional deductions such as legal fees and other allowable amounts.',
+        slipCodes: [],
+        formCodes: [],
+        linkedStep: 'Deductions'
+      },
+      {
+        id: 'other_clergy_religious_order',
+        label: 'Federal lines 23100, 25600 — Member of the clergy or religious order',
+        description: 'Clergy residence deduction and related religious order amounts.',
+        slipCodes: [],
+        formCodes: [],
+        linkedStep: 'Deductions'
+      },
+      {
+        id: 'other_home_buyers_amount',
+        label: 'Federal line 31270 — Home buyers\' amount',
+        description: 'First-time home buyers\' tax credit for a qualifying home purchase.',
+        slipCodes: [],
+        formCodes: [],
+        linkedStep: 'Deductions'
+      },
+      {
+        id: 'other_schedule_12_multigen',
+        label: 'Federal line 45355 — Schedule 12 multigenerational home renovation tax credit',
+        description: 'Renovation credit for secondary suites for seniors or persons with disabilities.',
+        slipCodes: [],
+        formCodes: ['Schedule 12'],
+        linkedStep: 'Deductions'
+      },
+      {
+        id: 'other_educator_school_supply',
+        label: 'Federal line 46900 — Eligible educator school supply tax credit',
+        description: 'Teaching supplies purchased by eligible educators.',
+        slipCodes: [],
+        formCodes: [],
+        linkedStep: 'Deductions'
+      },
+      {
+        id: 'other_on479_transit',
+        label: 'ON479 line 63100 — Ontario seniors\' public transit tax credit',
+        description: 'Ontario public transit expenses for seniors (Ontario residents).',
+        slipCodes: [],
+        formCodes: ['ON479'],
+        linkedStep: 'Deductions'
+      },
       {
         id: 'other_moving',
         label: 'Moving expenses',
@@ -541,7 +869,7 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
       },
       {
         id: 'other_deductions_credits',
-        label: 'Other deductions and credits (northern residents, home buyers amount, etc.)',
+        label: 'Other deductions and credits (summary)',
         description: 'Northern residents deduction, home buyers amount, and other miscellaneous claims.',
         slipCodes: [],
         formCodes: ['T2222'],
@@ -591,10 +919,26 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
   },
   {
     id: 'carryforward',
-    title: 'Carryforward amounts and prior year information',
-    summary: 'Losses and amounts carried forward from prior years.',
+    title: 'Prior year information',
+    summary: 'Loss carryforwards, AMT credits, and prior-year comparative information.',
     icon: 'CF',
     topics: [
+      {
+        id: 'carryforward_prior_year_instalment',
+        label: 'Prior year information (used for instalments)',
+        description: 'Prior-year tax balances used to calculate instalment payments.',
+        slipCodes: [],
+        formCodes: [],
+        linkedStep: 'Review'
+      },
+      {
+        id: 'carryforward_prior_year_comparative',
+        label: 'Line-by-line prior year comparative information',
+        description: 'Comparative summary against the prior-year return.',
+        slipCodes: [],
+        formCodes: [],
+        linkedStep: 'Review'
+      },
       {
         id: 'carryforward_losses',
         label: 'Non-capital or net capital losses from prior years',
@@ -613,7 +957,7 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
       },
       {
         id: 'carryforward_prior_year',
-        label: 'Prior year information and adjustments',
+        label: 'Prior year information and adjustments (summary)',
         description: 'Prior-year slips, reassessments, and balance adjustments.',
         slipCodes: [],
         formCodes: [],

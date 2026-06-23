@@ -10,7 +10,13 @@ import ReviewDiagnosticsPanel from './ReviewDiagnosticsPanel'
 import { getTaxBasePath } from './path'
 import { CraQuestionRow, toggleToYesNo, yesNoToToggle, YesNoToggle, type YesNo, DEFAULT_CRA_YES_NO } from './CraQuestionControls'
 import ProvinceSelect from './ProvinceSelect'
-import { isOntarioProvinceCode } from './dependentModel'
+import { ProvincialCraQuestionBlocks } from './ProvincialCraQuestionBlocks'
+import {
+  clearOrganDonorIfNotApplicable,
+  clearProvincialElectionsIfNotApplicable,
+  serializeOrganDonorConsent,
+  serializeProvincialElections
+} from './craProvinceQuestions.registry'
 import DependentIdentificationForm from './DependentIdentificationForm'
 import {
   createEmptyDependent,
@@ -60,6 +66,8 @@ type TaxReturnPayload = {
       indianActExemptIncome?: boolean
       foreignPropertyOver100k?: boolean | null
       organDonorConsent?: boolean | null
+      provincialElectionsCanadianCitizen?: boolean | null
+      provincialElectionsAuthorize?: boolean | null
       craEmailNotificationsConsent?: boolean | null
       craEmailConfirmed?: boolean | null
       craHasForeignMailingAddress?: boolean | null
@@ -165,6 +173,8 @@ type TaxpayerProfileState = {
   indianActExemptIncome: boolean
   foreignPropertyOver100k: YesNo
   organDonorConsent: YesNo
+  provincialElectionsCanadianCitizen: YesNo
+  provincialElectionsAuthorize: YesNo
   craEmailNotificationsConsent: YesNo
   craEmailConfirmed: YesNo
   craHasForeignMailingAddress: YesNo
@@ -593,6 +603,8 @@ const DEFAULT_TAXPAYER_PROFILE: TaxpayerProfileState = {
   indianActExemptIncome: false,
   foreignPropertyOver100k: DEFAULT_CRA_YES_NO,
   organDonorConsent: DEFAULT_CRA_YES_NO,
+  provincialElectionsCanadianCitizen: DEFAULT_CRA_YES_NO,
+  provincialElectionsAuthorize: DEFAULT_CRA_YES_NO,
   craEmailNotificationsConsent: DEFAULT_CRA_YES_NO,
   craEmailConfirmed: DEFAULT_CRA_YES_NO,
   craHasForeignMailingAddress: DEFAULT_CRA_YES_NO,
@@ -883,6 +895,8 @@ const ReturnBuilder: FC = () => {
         treatyExemptForeignService: setupTaxpayerProfile.treatyExemptForeignService ?? interviewCra.treatyExemptForeignService,
         foreignPropertyOver100k: setupTaxpayerProfile.foreignPropertyOver100k ?? interviewCra.foreignPropertyOver100k,
         organDonorConsent: setupTaxpayerProfile.organDonorConsent ?? interviewCra.organDonorConsent,
+        provincialElectionsCanadianCitizen: setupTaxpayerProfile.provincialElectionsCanadianCitizen ?? interviewCra.provincialElectionsCanadianCitizen,
+        provincialElectionsAuthorize: setupTaxpayerProfile.provincialElectionsAuthorize ?? interviewCra.provincialElectionsAuthorize,
         craEmailNotificationsConsent: setupTaxpayerProfile.craEmailNotificationsConsent ?? interviewCra.craEmailNotificationsConsent,
         craEmailConfirmed: setupTaxpayerProfile.craEmailConfirmed ?? interviewCra.craEmailConfirmed,
         craHasForeignMailingAddress: setupTaxpayerProfile.craHasForeignMailingAddress ?? interviewCra.craHasForeignMailingAddress,
@@ -933,6 +947,8 @@ const ReturnBuilder: FC = () => {
         indianActExemptIncome: Boolean(coerceNullableBoolean(dbProfile.indianActExemptIncome ?? setupProfile.indianActExemptIncome)),
         foreignPropertyOver100k: asYesNo(coerceNullableBoolean(dbProfile.foreignPropertyOver100k ?? setupProfile.foreignPropertyOver100k)),
         organDonorConsent: asYesNo(coerceNullableBoolean(dbProfile.organDonorConsent ?? setupProfile.organDonorConsent)),
+        provincialElectionsCanadianCitizen: asYesNo(coerceNullableBoolean(dbProfile.provincialElectionsCanadianCitizen ?? setupProfile.provincialElectionsCanadianCitizen)),
+        provincialElectionsAuthorize: asYesNo(coerceNullableBoolean(dbProfile.provincialElectionsAuthorize ?? setupProfile.provincialElectionsAuthorize)),
         craEmailNotificationsConsent: asYesNo(coerceNullableBoolean(dbProfile.craEmailNotificationsConsent ?? setupProfile.craEmailNotificationsConsent)),
         craEmailConfirmed: asYesNo(coerceNullableBoolean(dbProfile.craEmailConfirmed ?? setupProfile.craEmailConfirmed)),
         craHasForeignMailingAddress: asYesNo(coerceNullableBoolean(dbProfile.craHasForeignMailingAddress ?? setupProfile.craHasForeignMailingAddress)),
@@ -1363,6 +1379,8 @@ const ReturnBuilder: FC = () => {
       'electionsAuthorize',
       'foreignPropertyOver100k',
       'organDonorConsent',
+      'provincialElectionsCanadianCitizen',
+      'provincialElectionsAuthorize',
       'craEmailNotificationsConsent',
       'craEmailConfirmed',
       'craHasForeignMailingAddress',
@@ -1475,9 +1493,15 @@ const ReturnBuilder: FC = () => {
         treatyExemptForeignService: taxpayerProfile.treatyExemptForeignService === 'yes',
         indianActExemptIncome: Boolean(taxpayerProfile.indianActExemptIncome),
         foreignPropertyOver100k: taxpayerProfile.foreignPropertyOver100k === 'yes',
-        organDonorConsent: isOntarioProvinceCode(taxpayerProfile.residenceProvinceDec31)
-          ? taxpayerProfile.organDonorConsent === 'yes'
-          : false,
+        organDonorConsent: serializeOrganDonorConsent(
+          taxpayerProfile.residenceProvinceDec31,
+          taxpayerProfile.organDonorConsent
+        ),
+        ...serializeProvincialElections(
+          taxpayerProfile.residenceProvinceDec31,
+          taxpayerProfile.provincialElectionsCanadianCitizen,
+          taxpayerProfile.provincialElectionsAuthorize
+        ),
         craEmailNotificationsConsent: taxpayerProfile.craEmailNotificationsConsent === 'yes',
         craEmailConfirmed: taxpayerProfile.craEmailConfirmed === 'yes',
         craHasForeignMailingAddress: taxpayerProfile.craHasForeignMailingAddress === 'yes',
@@ -1957,11 +1981,18 @@ const ReturnBuilder: FC = () => {
                 <CraQuestionRow label="Province/territory of residence on Dec 31">
                   <ProvinceSelect
                     value={taxpayerProfile.residenceProvinceDec31 || 'ON'}
-                    onChange={(code) => setTaxpayerProfile((prev) => ({
-                      ...prev,
-                      residenceProvinceDec31: code,
-                      organDonorConsent: isOntarioProvinceCode(code) ? prev.organDonorConsent : 'no'
-                    }))}
+                    onChange={(code) => setTaxpayerProfile((prev) => {
+                      const clearedElections = clearProvincialElectionsIfNotApplicable(code, {
+                        provincialElectionsCanadianCitizen: prev.provincialElectionsCanadianCitizen,
+                        provincialElectionsAuthorize: prev.provincialElectionsAuthorize
+                      })
+                      return {
+                        ...prev,
+                        residenceProvinceDec31: code,
+                        organDonorConsent: clearOrganDonorIfNotApplicable(code, prev.organDonorConsent),
+                        ...clearedElections
+                      }
+                    })}
                   />
                 </CraQuestionRow>
                 <CraQuestionRow label="Language of correspondence">
@@ -2114,15 +2145,15 @@ const ReturnBuilder: FC = () => {
                     onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, foreignPropertyOver100k: toggleToYesNo(value) }))}
                   />
                 </CraQuestionRow>
-                {isOntarioProvinceCode(taxpayerProfile.residenceProvinceDec31) && (
-                  <CraQuestionRow label="Ontario organ/tissue donor contact sharing consent">
-                    <YesNoToggle
-                      className=""
-                      value={yesNoToToggle(taxpayerProfile.organDonorConsent)}
-                      onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, organDonorConsent: toggleToYesNo(value) }))}
-                    />
-                  </CraQuestionRow>
-                )}
+                <ProvincialCraQuestionBlocks
+                  provinceCode={taxpayerProfile.residenceProvinceDec31}
+                  organDonorConsent={taxpayerProfile.organDonorConsent}
+                  onOrganDonorConsentChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, organDonorConsent: value }))}
+                  provincialElectionsCanadianCitizen={taxpayerProfile.provincialElectionsCanadianCitizen}
+                  onProvincialElectionsCanadianCitizenChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, provincialElectionsCanadianCitizen: value }))}
+                  provincialElectionsAuthorize={taxpayerProfile.provincialElectionsAuthorize}
+                  onProvincialElectionsAuthorizeChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, provincialElectionsAuthorize: value }))}
+                />
                 <CraQuestionRow label="I accept CRA terms and choose to receive email notifications.">
                   <YesNoToggle
                     className=""

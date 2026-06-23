@@ -1,3 +1,8 @@
+import {
+  normalizeOrganDonorConsent,
+  normalizeProvincialElections
+} from '../../lib/tax-intelligence/craProvinceQuestions.js'
+
 function normalizeMaritalStatus (v) {
   const value = String(v || '').toLowerCase().trim()
   if (['single', 'married', 'common_law', 'separated', 'divorced', 'widowed'].includes(value)) return value
@@ -147,6 +152,8 @@ function readLegacyProfileFromSetup (setupJson) {
     indianActExemptIncome: Boolean(normalizeYesNo(p.indianActExemptIncome)),
     foreignPropertyOver100k: normalizeYesNo(p.foreignPropertyOver100k),
     organDonorConsent: normalizeYesNo(p.organDonorConsent),
+    provincialElectionsCanadianCitizen: normalizeYesNo(p.provincialElectionsCanadianCitizen),
+    provincialElectionsAuthorize: normalizeYesNo(p.provincialElectionsAuthorize),
     craEmailNotificationsConsent: normalizeYesNo(p.craEmailNotificationsConsent),
     craEmailConfirmed: normalizeYesNo(p.craEmailConfirmed),
     craHasForeignMailingAddress: normalizeYesNo(p.craHasForeignMailingAddress),
@@ -196,6 +203,8 @@ async function loadTaxpayerProfileFromTables (conn, clerkUserId, taxReturnId) {
     'pr.indian_act_exempt_income',
     'pr.foreign_property_over_100k',
     'pr.organ_donor_consent',
+    'pr.provincial_elections_canadian_citizen',
+    'pr.provincial_elections_authorize',
     selectExpr(profileColumns, 'cra_email_notifications_consent', 'boolean'),
     selectExpr(profileColumns, 'cra_email_confirmed', 'boolean'),
     selectExpr(profileColumns, 'cra_has_foreign_mailing_address', 'boolean'),
@@ -256,6 +265,8 @@ async function loadTaxpayerProfileFromTables (conn, clerkUserId, taxReturnId) {
     indianActExemptIncome: Boolean(profileRes.rows[0]?.indian_act_exempt_income),
     foreignPropertyOver100k: profileRes.rows[0]?.foreign_property_over_100k == null ? null : Boolean(profileRes.rows[0]?.foreign_property_over_100k),
     organDonorConsent: profileRes.rows[0]?.organ_donor_consent == null ? null : Boolean(profileRes.rows[0]?.organ_donor_consent),
+    provincialElectionsCanadianCitizen: profileRes.rows[0]?.provincial_elections_canadian_citizen == null ? null : Boolean(profileRes.rows[0]?.provincial_elections_canadian_citizen),
+    provincialElectionsAuthorize: profileRes.rows[0]?.provincial_elections_authorize == null ? null : Boolean(profileRes.rows[0]?.provincial_elections_authorize),
     craEmailNotificationsConsent: profileRes.rows[0]?.cra_email_notifications_consent == null ? null : Boolean(profileRes.rows[0]?.cra_email_notifications_consent),
     craEmailConfirmed: profileRes.rows[0]?.cra_email_confirmed == null ? null : Boolean(profileRes.rows[0]?.cra_email_confirmed),
     craHasForeignMailingAddress: profileRes.rows[0]?.cra_has_foreign_mailing_address == null ? null : Boolean(profileRes.rows[0]?.cra_has_foreign_mailing_address),
@@ -290,6 +301,14 @@ async function upsertTaxpayerProfileTables (client, clerkUserId, taxReturnId, ta
     return normalized
   }
 
+  const residenceProvince = String(profile.residenceProvinceDec31 || '').trim()
+  const organDonorConsent = normalizeOrganDonorConsent(residenceProvince, toBoolOrNull(profile.organDonorConsent))
+  const provincialElections = normalizeProvincialElections(
+    residenceProvince,
+    toBoolOrNull(profile.provincialElectionsCanadianCitizen),
+    toBoolOrNull(profile.provincialElectionsAuthorize)
+  )
+
   const profileColumns = await getColumnSet(client, 'taxpayer_profiles')
   const columnBindings = [
     ['marital_status', maritalStatus],
@@ -316,7 +335,9 @@ async function upsertTaxpayerProfileTables (client, clerkUserId, taxReturnId, ta
     ['treaty_exempt_foreign_service', toBoolOrNull(profile.treatyExemptForeignService)],
     ['indian_act_exempt_income', Boolean(profile.indianActExemptIncome)],
     ['foreign_property_over_100k', toBoolOrNull(profile.foreignPropertyOver100k)],
-    ['organ_donor_consent', toBoolOrNull(profile.organDonorConsent)],
+    ['organ_donor_consent', organDonorConsent],
+    ['provincial_elections_canadian_citizen', provincialElections.provincialElectionsCanadianCitizen],
+    ['provincial_elections_authorize', provincialElections.provincialElectionsAuthorize],
     ['cra_email_notifications_consent', toBoolOrNull(profile.craEmailNotificationsConsent)],
     ['cra_email_confirmed', toBoolOrNull(profile.craEmailConfirmed)],
     ['cra_has_foreign_mailing_address', toBoolOrNull(profile.craHasForeignMailingAddress)],
@@ -462,6 +483,8 @@ export async function listTaxReturns (pool, clerkUserId) {
             ${treatyExemptExpr},
             pr.foreign_property_over_100k,
             pr.organ_donor_consent,
+            pr.provincial_elections_canadian_citizen,
+            pr.provincial_elections_authorize,
             ${craEmailNotifExpr},
             ${craEmailConfirmedExpr},
             ${craForeignMailingExpr},
@@ -501,6 +524,8 @@ export async function listTaxReturns (pool, clerkUserId) {
       treatyExemptForeignService: row.treaty_exempt_foreign_service,
       foreignPropertyOver100k: row.foreign_property_over_100k,
       organDonorConsent: row.organ_donor_consent,
+      provincialElectionsCanadianCitizen: row.provincial_elections_canadian_citizen,
+      provincialElectionsAuthorize: row.provincial_elections_authorize,
       craEmailNotificationsConsent: row.cra_email_notifications_consent,
       craEmailConfirmed: row.cra_email_confirmed,
       craHasForeignMailingAddress: row.cra_has_foreign_mailing_address,
@@ -721,6 +746,8 @@ export async function createTaxReturn (pool, clerkUserId, payload) {
         treatyExemptForeignService: normalizeYesNo(cra.treatyExemptForeignService),
         foreignPropertyOver100k: normalizeYesNo(cra.foreignPropertyOver100k),
         organDonorConsent: normalizeYesNo(cra.organDonorConsent),
+        provincialElectionsCanadianCitizen: normalizeYesNo(cra.provincialElectionsCanadianCitizen),
+        provincialElectionsAuthorize: normalizeYesNo(cra.provincialElectionsAuthorize),
         craEmailNotificationsConsent: normalizeYesNo(cra.craEmailNotificationsConsent),
         craEmailConfirmed: normalizeYesNo(cra.craEmailConfirmed),
         craHasForeignMailingAddress: normalizeYesNo(cra.craHasForeignMailingAddress),
@@ -783,6 +810,8 @@ export async function createTaxReturn (pool, clerkUserId, payload) {
           treatyExemptForeignService: normalizeYesNo(spouseCraSameAsMain ? cra.treatyExemptForeignService : spouseCra.treatyExemptForeignService),
           foreignPropertyOver100k: normalizeYesNo(spouseCraSameAsMain ? cra.foreignPropertyOver100k : spouseCra.foreignPropertyOver100k),
           organDonorConsent: normalizeYesNo(spouseCraSameAsMain ? cra.organDonorConsent : spouseCra.organDonorConsent),
+          provincialElectionsCanadianCitizen: normalizeYesNo(spouseCraSameAsMain ? cra.provincialElectionsCanadianCitizen : spouseCra.provincialElectionsCanadianCitizen),
+          provincialElectionsAuthorize: normalizeYesNo(spouseCraSameAsMain ? cra.provincialElectionsAuthorize : spouseCra.provincialElectionsAuthorize),
           craEmailNotificationsConsent: normalizeYesNo(spouseCraSameAsMain ? cra.craEmailNotificationsConsent : spouseCra.craEmailNotificationsConsent),
           craEmailConfirmed: normalizeYesNo(spouseCraSameAsMain ? cra.craEmailConfirmed : spouseCra.craEmailConfirmed),
           craHasForeignMailingAddress: normalizeYesNo(spouseCraSameAsMain ? cra.craHasForeignMailingAddress : spouseCra.craHasForeignMailingAddress),
@@ -844,6 +873,8 @@ export async function createTaxReturn (pool, clerkUserId, payload) {
           treatyExemptForeignService: normalizeYesNo(cra.treatyExemptForeignService),
           foreignPropertyOver100k: normalizeYesNo(cra.foreignPropertyOver100k),
           organDonorConsent: normalizeYesNo(cra.organDonorConsent),
+          provincialElectionsCanadianCitizen: normalizeYesNo(cra.provincialElectionsCanadianCitizen),
+          provincialElectionsAuthorize: normalizeYesNo(cra.provincialElectionsAuthorize),
           craEmailNotificationsConsent: normalizeYesNo(cra.craEmailNotificationsConsent),
           craEmailConfirmed: normalizeYesNo(cra.craEmailConfirmed),
           craHasForeignMailingAddress: normalizeYesNo(cra.craHasForeignMailingAddress),

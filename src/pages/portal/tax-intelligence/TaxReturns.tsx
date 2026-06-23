@@ -10,12 +10,18 @@ import DependentIdentificationForm from './DependentIdentificationForm'
 import {
   createEmptyDependent,
   dependentRequiresFullReturn,
-  isOntarioProvinceCode,
   serializeDependent,
   validateDependentIdentification,
   type DependentRecord
 } from './dependentModel'
 import ProvinceSelect from './ProvinceSelect'
+import { ProvincialCraQuestionBlocks } from './ProvincialCraQuestionBlocks'
+import {
+  clearOrganDonorIfNotApplicable,
+  clearProvincialElectionsIfNotApplicable,
+  serializeOrganDonorConsent,
+  serializeProvincialElections
+} from './craProvinceQuestions.registry'
 import {
   buildHouseholdInterviewDraftForm,
   deserializeHouseholdInterviewDraft,
@@ -95,6 +101,8 @@ const TaxReturns: FC = () => {
   const [electionsAuthorize, setElectionsAuthorize] = useState<YesNo>(DEFAULT_CRA_YES_NO)
   const [foreignPropertyOver100k, setForeignPropertyOver100k] = useState<YesNo>(DEFAULT_CRA_YES_NO)
   const [organDonorConsent, setOrganDonorConsent] = useState<YesNo>(DEFAULT_CRA_YES_NO)
+  const [provincialElectionsCanadianCitizen, setProvincialElectionsCanadianCitizen] = useState<YesNo>(DEFAULT_CRA_YES_NO)
+  const [provincialElectionsAuthorize, setProvincialElectionsAuthorize] = useState<YesNo>(DEFAULT_CRA_YES_NO)
   const [craEmailNotificationsConsent, setCraEmailNotificationsConsent] = useState<YesNo>(DEFAULT_CRA_YES_NO)
   const [craEmailConfirmed, setCraEmailConfirmed] = useState<YesNo>(DEFAULT_CRA_YES_NO)
   const [craHasForeignMailingAddress, setCraHasForeignMailingAddress] = useState<YesNo>(DEFAULT_CRA_YES_NO)
@@ -121,6 +129,8 @@ const TaxReturns: FC = () => {
   const [spouseElectionsAuthorize, setSpouseElectionsAuthorize] = useState<YesNo>(DEFAULT_CRA_YES_NO)
   const [spouseForeignPropertyOver100k, setSpouseForeignPropertyOver100k] = useState<YesNo>(DEFAULT_CRA_YES_NO)
   const [spouseOrganDonorConsent, setSpouseOrganDonorConsent] = useState<YesNo>(DEFAULT_CRA_YES_NO)
+  const [spouseProvincialElectionsCanadianCitizen, setSpouseProvincialElectionsCanadianCitizen] = useState<YesNo>(DEFAULT_CRA_YES_NO)
+  const [spouseProvincialElectionsAuthorize, setSpouseProvincialElectionsAuthorize] = useState<YesNo>(DEFAULT_CRA_YES_NO)
   const [spouseCraEmailNotificationsConsent, setSpouseCraEmailNotificationsConsent] = useState<YesNo>(DEFAULT_CRA_YES_NO)
   const [spouseCraEmailConfirmed, setSpouseCraEmailConfirmed] = useState<YesNo>(DEFAULT_CRA_YES_NO)
   const [spouseCraHasForeignMailingAddress, setSpouseCraHasForeignMailingAddress] = useState<YesNo>(DEFAULT_CRA_YES_NO)
@@ -155,6 +165,8 @@ const TaxReturns: FC = () => {
     setElectionsAuthorize(form.electionsAuthorize)
     setForeignPropertyOver100k(form.foreignPropertyOver100k)
     setOrganDonorConsent(form.organDonorConsent)
+    setProvincialElectionsCanadianCitizen(form.provincialElectionsCanadianCitizen)
+    setProvincialElectionsAuthorize(form.provincialElectionsAuthorize)
     setCraEmailNotificationsConsent(form.craEmailNotificationsConsent)
     setCraEmailConfirmed(form.craEmailConfirmed)
     setCraHasForeignMailingAddress(form.craHasForeignMailingAddress)
@@ -181,6 +193,8 @@ const TaxReturns: FC = () => {
     setSpouseElectionsAuthorize(form.spouseElectionsAuthorize)
     setSpouseForeignPropertyOver100k(form.spouseForeignPropertyOver100k)
     setSpouseOrganDonorConsent(form.spouseOrganDonorConsent)
+    setSpouseProvincialElectionsCanadianCitizen(form.spouseProvincialElectionsCanadianCitizen)
+    setSpouseProvincialElectionsAuthorize(form.spouseProvincialElectionsAuthorize)
     setSpouseCraEmailNotificationsConsent(form.spouseCraEmailNotificationsConsent)
     setSpouseCraEmailConfirmed(form.spouseCraEmailConfirmed)
     setSpouseCraHasForeignMailingAddress(form.spouseCraHasForeignMailingAddress)
@@ -209,6 +223,8 @@ const TaxReturns: FC = () => {
       electionsAuthorize,
       foreignPropertyOver100k,
       organDonorConsent,
+      provincialElectionsCanadianCitizen,
+      provincialElectionsAuthorize,
       craEmailNotificationsConsent,
       craEmailConfirmed,
       craHasForeignMailingAddress,
@@ -235,6 +251,8 @@ const TaxReturns: FC = () => {
       spouseElectionsAuthorize,
       spouseForeignPropertyOver100k,
       spouseOrganDonorConsent,
+      spouseProvincialElectionsCanadianCitizen,
+      spouseProvincialElectionsAuthorize,
       spouseCraEmailNotificationsConsent,
       spouseCraEmailConfirmed,
       spouseCraHasForeignMailingAddress,
@@ -484,9 +502,15 @@ const TaxReturns: FC = () => {
                         soldPrincipalResidence: toBoolOrNull(spouseSoldPrincipalResidence),
                         treatyExemptForeignService: toBoolOrNull(spouseTreatyExemptForeignService),
                         foreignPropertyOver100k: toBoolOrNull(spouseForeignPropertyOver100k),
-                        organDonorConsent: isOntarioProvinceCode(spouseSameAddress ? mainProvinceCode : spouseMailingProvinceCode)
-                          ? toBoolOrNull(spouseOrganDonorConsent)
-                          : false,
+                        organDonorConsent: serializeOrganDonorConsent(
+                          spouseSameAddress ? mainProvinceCode : spouseMailingProvinceCode,
+                          spouseOrganDonorConsent
+                        ),
+                        ...serializeProvincialElections(
+                          spouseSameAddress ? mainProvinceCode : spouseMailingProvinceCode,
+                          spouseProvincialElectionsCanadianCitizen,
+                          spouseProvincialElectionsAuthorize
+                        ),
                         craEmailNotificationsConsent: toBoolOrNull(spouseCraEmailNotificationsConsent),
                         craEmailConfirmed: toBoolOrNull(spouseCraEmailConfirmed),
                         craHasForeignMailingAddress: toBoolOrNull(spouseCraHasForeignMailingAddress)
@@ -505,7 +529,12 @@ const TaxReturns: FC = () => {
               soldPrincipalResidence: toBoolOrNull(soldPrincipalResidence),
               treatyExemptForeignService: toBoolOrNull(treatyExemptForeignService),
               foreignPropertyOver100k: toBoolOrNull(foreignPropertyOver100k),
-              organDonorConsent: isOntarioProvinceCode(mainProvinceCode) ? toBoolOrNull(organDonorConsent) : false,
+              organDonorConsent: serializeOrganDonorConsent(mainProvinceCode, organDonorConsent),
+              ...serializeProvincialElections(
+                mainProvinceCode,
+                provincialElectionsCanadianCitizen,
+                provincialElectionsAuthorize
+              ),
               craEmailNotificationsConsent: toBoolOrNull(craEmailNotificationsConsent),
               craEmailConfirmed: toBoolOrNull(craEmailConfirmed),
               craHasForeignMailingAddress: toBoolOrNull(craHasForeignMailingAddress)
@@ -648,7 +677,13 @@ const TaxReturns: FC = () => {
                         value={mainProvinceCode}
                         onChange={(code) => {
                           setMainProvinceCode(code)
-                          if (!isOntarioProvinceCode(code)) setOrganDonorConsent('no')
+                          setOrganDonorConsent(clearOrganDonorIfNotApplicable(code, organDonorConsent))
+                          const cleared = clearProvincialElectionsIfNotApplicable(code, {
+                            provincialElectionsCanadianCitizen,
+                            provincialElectionsAuthorize
+                          })
+                          setProvincialElectionsCanadianCitizen(cleared.provincialElectionsCanadianCitizen)
+                          setProvincialElectionsAuthorize(cleared.provincialElectionsAuthorize)
                         }}
                         disabled={saving}
                       />
@@ -717,16 +752,16 @@ const TaxReturns: FC = () => {
                         disabled={saving}
                       />
                     </CraQuestionRow>
-                    {isOntarioProvinceCode(mainProvinceCode) && (
-                      <CraQuestionRow label="Ontario organ/tissue donor contact sharing consent">
-                        <YesNoToggle
-                          className=""
-                          value={yesNoToToggle(organDonorConsent)}
-                          onChange={(value) => setOrganDonorConsent(toggleToYesNo(value))}
-                          disabled={saving}
-                        />
-                      </CraQuestionRow>
-                    )}
+                    <ProvincialCraQuestionBlocks
+                      provinceCode={mainProvinceCode}
+                      organDonorConsent={organDonorConsent}
+                      onOrganDonorConsentChange={setOrganDonorConsent}
+                      provincialElectionsCanadianCitizen={provincialElectionsCanadianCitizen}
+                      onProvincialElectionsCanadianCitizenChange={setProvincialElectionsCanadianCitizen}
+                      provincialElectionsAuthorize={provincialElectionsAuthorize}
+                      onProvincialElectionsAuthorizeChange={setProvincialElectionsAuthorize}
+                      disabled={saving}
+                    />
                     <CraQuestionRow label="CRA email notifications consent?">
                       <YesNoToggle
                         className=""
@@ -810,7 +845,13 @@ const TaxReturns: FC = () => {
                           value={spouseMailingProvinceCode}
                           onChange={(code) => {
                             setSpouseMailingProvinceCode(code)
-                            if (!isOntarioProvinceCode(code)) setSpouseOrganDonorConsent('no')
+                            setSpouseOrganDonorConsent(clearOrganDonorIfNotApplicable(code, spouseOrganDonorConsent))
+                            const cleared = clearProvincialElectionsIfNotApplicable(code, {
+                              provincialElectionsCanadianCitizen: spouseProvincialElectionsCanadianCitizen,
+                              provincialElectionsAuthorize: spouseProvincialElectionsAuthorize
+                            })
+                            setSpouseProvincialElectionsCanadianCitizen(cleared.provincialElectionsCanadianCitizen)
+                            setSpouseProvincialElectionsAuthorize(cleared.provincialElectionsAuthorize)
                           }}
                           disabled={saving}
                         />
@@ -893,16 +934,16 @@ const TaxReturns: FC = () => {
                             disabled={saving}
                           />
                         </CraQuestionRow>
-                        {isOntarioProvinceCode(spouseSameAddress ? mainProvinceCode : spouseMailingProvinceCode) && (
-                          <CraQuestionRow label="Ontario organ/tissue donor contact sharing consent">
-                            <YesNoToggle
-                              className=""
-                              value={yesNoToToggle(spouseOrganDonorConsent)}
-                              onChange={(value) => setSpouseOrganDonorConsent(toggleToYesNo(value))}
-                              disabled={saving}
-                            />
-                          </CraQuestionRow>
-                        )}
+                        <ProvincialCraQuestionBlocks
+                          provinceCode={spouseSameAddress ? mainProvinceCode : spouseMailingProvinceCode}
+                          organDonorConsent={spouseOrganDonorConsent}
+                          onOrganDonorConsentChange={setSpouseOrganDonorConsent}
+                          provincialElectionsCanadianCitizen={spouseProvincialElectionsCanadianCitizen}
+                          onProvincialElectionsCanadianCitizenChange={setSpouseProvincialElectionsCanadianCitizen}
+                          provincialElectionsAuthorize={spouseProvincialElectionsAuthorize}
+                          onProvincialElectionsAuthorizeChange={setSpouseProvincialElectionsAuthorize}
+                          disabled={saving}
+                        />
                         <CraQuestionRow label="CRA email notifications consent?">
                           <YesNoToggle
                             className=""

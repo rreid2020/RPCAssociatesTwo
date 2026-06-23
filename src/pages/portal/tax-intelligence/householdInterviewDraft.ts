@@ -26,6 +26,8 @@ export type HouseholdInterviewDraftForm = {
   electionsAuthorize: YesNo
   foreignPropertyOver100k: YesNo
   organDonorConsent: YesNo
+  provincialElectionsCanadianCitizen: YesNo
+  provincialElectionsAuthorize: YesNo
   craEmailNotificationsConsent: YesNo
   craEmailConfirmed: YesNo
   craHasForeignMailingAddress: YesNo
@@ -52,6 +54,8 @@ export type HouseholdInterviewDraftForm = {
   spouseElectionsAuthorize: YesNo
   spouseForeignPropertyOver100k: YesNo
   spouseOrganDonorConsent: YesNo
+  spouseProvincialElectionsCanadianCitizen: YesNo
+  spouseProvincialElectionsAuthorize: YesNo
   spouseCraEmailNotificationsConsent: YesNo
   spouseCraEmailConfirmed: YesNo
   spouseCraHasForeignMailingAddress: YesNo
@@ -144,6 +148,8 @@ export function deserializeHouseholdInterviewDraft (
     electionsAuthorize: normalizeYesNo(draft.electionsAuthorize),
     foreignPropertyOver100k: normalizeYesNo(draft.foreignPropertyOver100k),
     organDonorConsent: normalizeYesNo(draft.organDonorConsent),
+    provincialElectionsCanadianCitizen: normalizeYesNo(draft.provincialElectionsCanadianCitizen),
+    provincialElectionsAuthorize: normalizeYesNo(draft.provincialElectionsAuthorize),
     craEmailNotificationsConsent: normalizeYesNo(draft.craEmailNotificationsConsent),
     craEmailConfirmed: normalizeYesNo(draft.craEmailConfirmed),
     craHasForeignMailingAddress: normalizeYesNo(draft.craHasForeignMailingAddress),
@@ -170,6 +176,8 @@ export function deserializeHouseholdInterviewDraft (
     spouseElectionsAuthorize: normalizeYesNo(draft.spouseElectionsAuthorize),
     spouseForeignPropertyOver100k: normalizeYesNo(draft.spouseForeignPropertyOver100k),
     spouseOrganDonorConsent: normalizeYesNo(draft.spouseOrganDonorConsent),
+    spouseProvincialElectionsCanadianCitizen: normalizeYesNo(draft.spouseProvincialElectionsCanadianCitizen),
+    spouseProvincialElectionsAuthorize: normalizeYesNo(draft.spouseProvincialElectionsAuthorize),
     spouseCraEmailNotificationsConsent: normalizeYesNo(draft.spouseCraEmailNotificationsConsent),
     spouseCraEmailConfirmed: normalizeYesNo(draft.spouseCraEmailConfirmed),
     spouseCraHasForeignMailingAddress: normalizeYesNo(draft.spouseCraHasForeignMailingAddress),
@@ -201,6 +209,8 @@ export function createEmptyHouseholdInterviewDraft (): HouseholdInterviewDraftFo
     electionsAuthorize: 'no',
     foreignPropertyOver100k: 'no',
     organDonorConsent: 'no',
+    provincialElectionsCanadianCitizen: 'no',
+    provincialElectionsAuthorize: 'no',
     craEmailNotificationsConsent: 'no',
     craEmailConfirmed: 'no',
     craHasForeignMailingAddress: 'no',
@@ -227,6 +237,8 @@ export function createEmptyHouseholdInterviewDraft (): HouseholdInterviewDraftFo
     spouseElectionsAuthorize: 'no',
     spouseForeignPropertyOver100k: 'no',
     spouseOrganDonorConsent: 'no',
+    spouseProvincialElectionsCanadianCitizen: 'no',
+    spouseProvincialElectionsAuthorize: 'no',
     spouseCraEmailNotificationsConsent: 'no',
     spouseCraEmailConfirmed: 'no',
     spouseCraHasForeignMailingAddress: 'no',

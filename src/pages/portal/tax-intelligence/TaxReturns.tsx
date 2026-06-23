@@ -1,5 +1,5 @@
 import { FC, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
@@ -83,6 +83,7 @@ function computeSetupReadiness (r: TaxReturnSummary): { required: number; recomm
 
 const TaxReturns: FC = () => {
   const { getToken } = useAuth()
+  const navigate = useNavigate()
   const basePath = useMemo(() => getTaxBasePath(), [])
   const [returns, setReturns] = useState<TaxReturnSummary[]>([])
   const [step, setStep] = useState<InterviewStep>(1)
@@ -141,6 +142,7 @@ const TaxReturns: FC = () => {
   const [createdInfo, setCreatedInfo] = useState<string | null>(null)
   const [draftResumedAt, setDraftResumedAt] = useState<string | null>(null)
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null)
+  const [showCreateInterview, setShowCreateInterview] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
   const applyInterviewDraft = (form: HouseholdInterviewDraftForm) => {
@@ -293,11 +295,17 @@ const TaxReturns: FC = () => {
           .catch(() => ({ draft: null }))
       ])
       setReturns(returnsData.returns || [])
+      const primaryReturns = (returnsData.returns || []).filter((r) => !r.parent_tax_return_id)
       const restored = deserializeHouseholdInterviewDraft(draftData.draft || undefined)
       if (restored) {
         applyInterviewDraft(restored)
+        setShowCreateInterview(true)
         setDraftResumedAt(draftData.draft?.updatedAt ? String(draftData.draft.updatedAt) : null)
         setDraftSavedAt(draftData.draft?.updatedAt ? String(draftData.draft.updatedAt) : null)
+      } else {
+        setShowCreateInterview(primaryReturns.length === 0)
+        setDraftResumedAt(null)
+        setDraftSavedAt(null)
       }
       setErr(null)
     } catch (e) {
@@ -326,8 +334,20 @@ const TaxReturns: FC = () => {
   const startInterviewOver = async () => {
     await clearInterviewDraft()
     resetInterview()
+    setShowCreateInterview(true)
     setErr(null)
     setCreatedInfo(null)
+    setDraftResumedAt(null)
+    setDraftSavedAt(null)
+  }
+
+  const beginNewHouseholdInterview = () => {
+    resetInterview()
+    setShowCreateInterview(true)
+    setErr(null)
+    setCreatedInfo(null)
+    setDraftResumedAt(null)
+    setDraftSavedAt(null)
   }
 
   const addDependent = () => {
@@ -526,6 +546,7 @@ const TaxReturns: FC = () => {
         })
       })
       const linkedCount = payload.taxReturn?.createdLinkedWorkspaces?.length || 0
+      const primaryReturnId = payload.taxReturn?.id
       if (linkedCount > 0) {
         setCreatedInfo(`Created primary return plus ${linkedCount} linked workspace${linkedCount > 1 ? 's' : ''}.`)
       } else {
@@ -533,6 +554,13 @@ const TaxReturns: FC = () => {
       }
       await clearInterviewDraft()
       resetInterview()
+      setShowCreateInterview(false)
+      setDraftResumedAt(null)
+      setDraftSavedAt(null)
+      if (primaryReturnId) {
+        navigate(`${basePath}/returns/${primaryReturnId}?step=Setup&setupFocus=all`)
+        return
+      }
       await load()
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not create tax return')
@@ -584,13 +612,26 @@ const TaxReturns: FC = () => {
       />
       <ClientPortalShell>
         <div className="space-y-6">
-          <header>
-            <h1 className="text-3xl font-bold text-primary-dark">Tax Returns</h1>
-            <p className="text-sm text-text-light mt-1">
-              Create and manage Canadian T1 return workspaces.
-            </p>
+          <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-primary-dark">Tax Returns</h1>
+              <p className="text-sm text-text-light mt-1">
+                Create and manage Canadian T1 return workspaces.
+              </p>
+            </div>
+            {!showCreateInterview && grouped.roots.length > 0 && (
+              <button
+                type="button"
+                className="btn btn--secondary text-sm px-4 py-2 shrink-0"
+                onClick={beginNewHouseholdInterview}
+                disabled={saving || loading}
+              >
+                Create another household return
+              </button>
+            )}
           </header>
 
+          {showCreateInterview && (
           <section className="bg-white p-4 rounded-lg border border-border shadow-sm">
             <h2 className="text-lg font-semibold text-primary-dark mb-1">Create return interview</h2>
             <p className="text-xs text-text-light mb-4">Step {step} of 4 — answer a few questions to build the household workspace.</p>
@@ -1014,12 +1055,16 @@ const TaxReturns: FC = () => {
               <p className="mt-3 text-sm text-green-800 bg-green-50 border border-green-200 rounded-md px-3 py-2">{createdInfo}</p>
             )}
           </section>
+          )}
 
           <section className="bg-white p-4 rounded-lg border border-border shadow-sm">
             <h2 className="text-lg font-semibold text-primary-dark mb-3">Existing returns</h2>
             {loading && <p className="text-sm text-text-light">Loading…</p>}
-            {!loading && returns.length === 0 && (
-              <p className="text-sm text-text-light">No returns yet. Create your first return above.</p>
+            {!loading && returns.length === 0 && showCreateInterview && (
+              <p className="text-sm text-text-light">No returns yet. Complete the household interview above to create your first return workspace.</p>
+            )}
+            {!loading && returns.length === 0 && !showCreateInterview && (
+              <p className="text-sm text-text-light">No returns yet.</p>
             )}
             {!loading && returns.length > 0 && (
               <ul className="divide-y divide-border">

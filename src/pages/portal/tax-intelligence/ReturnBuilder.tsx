@@ -8,7 +8,9 @@ import RequiredFormsPanel from './RequiredFormsPanel'
 import InterviewTopicsSetup, { type InterviewTopicsSetupHandle } from './InterviewTopicsSetup'
 import ReviewDiagnosticsPanel from './ReviewDiagnosticsPanel'
 import { getTaxBasePath } from './path'
-import { CraQuestionRow, YesNoToggle } from './CraQuestionControls'
+import { CraQuestionRow, toggleToYesNo, yesNoToToggle, YesNoToggle, type YesNo, DEFAULT_CRA_YES_NO } from './CraQuestionControls'
+import ProvinceSelect from './ProvinceSelect'
+import { isOntarioProvinceCode } from './dependentModel'
 import DependentIdentificationForm from './DependentIdentificationForm'
 import {
   createEmptyDependent,
@@ -155,17 +157,17 @@ type TaxpayerProfileState = {
   ceasedResidentDate: string
   maritalStatusChangeDate: string
   deceasedDate: string
-  electionsCanadianCitizen: '' | 'yes' | 'no'
-  electionsAuthorize: '' | 'yes' | 'no'
-  firstTimeFiler: '' | 'yes' | 'no'
-  soldPrincipalResidence: '' | 'yes' | 'no'
-  treatyExemptForeignService: '' | 'yes' | 'no'
+  electionsCanadianCitizen: YesNo
+  electionsAuthorize: YesNo
+  firstTimeFiler: YesNo
+  soldPrincipalResidence: YesNo
+  treatyExemptForeignService: YesNo
   indianActExemptIncome: boolean
-  foreignPropertyOver100k: '' | 'yes' | 'no'
-  organDonorConsent: '' | 'yes' | 'no'
-  craEmailNotificationsConsent: '' | 'yes' | 'no'
-  craEmailConfirmed: '' | 'yes' | 'no'
-  craHasForeignMailingAddress: '' | 'yes' | 'no'
+  foreignPropertyOver100k: YesNo
+  organDonorConsent: YesNo
+  craEmailNotificationsConsent: YesNo
+  craEmailConfirmed: YesNo
+  craHasForeignMailingAddress: YesNo
   spouseSameAddress: boolean
   maritalStatus: 'single' | 'married' | 'common_law' | 'separated' | 'divorced' | 'widowed'
   spouseReturnMode: 'summary' | 'full'
@@ -210,7 +212,7 @@ const WORKFLOW_PAGES: Step[] = [
   'Netfile'
 ]
 
-const SIDEBAR_MENU_ITEMS: WorkflowMenuItem[] = [
+const ALL_WORKFLOW_MENU_ITEMS: WorkflowMenuItem[] = [
   { id: 'setup-identity', label: 'Identification', step: 'Identity' },
   { id: 'setup-mailing', label: 'Mailing address', step: 'Mailing' },
   { id: 'setup-cra', label: 'CRA questions', step: 'Elections' },
@@ -224,6 +226,12 @@ const SIDEBAR_MENU_ITEMS: WorkflowMenuItem[] = [
   { id: 'netfile', label: 'NETFILE', step: 'Netfile' }
 ]
 
+const HIDDEN_SIDEBAR_STEPS = new Set<Step>(['Spouse', 'Dependents', 'Netfile'])
+
+const SIDEBAR_MENU_ITEMS: WorkflowMenuItem[] = ALL_WORKFLOW_MENU_ITEMS.filter(
+  (item) => !HIDDEN_SIDEBAR_STEPS.has(item.step)
+)
+
 function workflowNeighbors (step: Step): { previous: Step | null; next: Step | null } {
   const index = WORKFLOW_PAGES.indexOf(step)
   if (index < 0) return { previous: null, next: null }
@@ -234,7 +242,7 @@ function workflowNeighbors (step: Step): { previous: Step | null; next: Step | n
 }
 
 function stepLabel (step: Step): string {
-  return SIDEBAR_MENU_ITEMS.find((item) => item.step === step)?.label || step
+  return ALL_WORKFLOW_MENU_ITEMS.find((item) => item.step === step)?.label || step
 }
 
 type WorkflowPageNavProps = {
@@ -536,8 +544,8 @@ function coerceNullableBoolean (value: unknown): boolean | null {
   return null
 }
 
-function asYesNo (value: boolean | null): '' | 'yes' | 'no' {
-  if (value == null) return ''
+function asYesNo (value: boolean | null | undefined): YesNo {
+  if (value == null) return DEFAULT_CRA_YES_NO
   return value ? 'yes' : 'no'
 }
 
@@ -563,9 +571,9 @@ const DEFAULT_TAXPAYER_PROFILE: TaxpayerProfileState = {
   mailingPoBox: '',
   mailingRR: '',
   mailingCity: '',
-  mailingProvinceCode: '',
+  mailingProvinceCode: 'ON',
   mailingPostalCode: '',
-  residenceProvinceDec31: '',
+  residenceProvinceDec31: 'ON',
   residenceProvinceCurrent: '',
   selfEmploymentProvinces: '',
   languageCorrespondence: 'en',
@@ -577,17 +585,17 @@ const DEFAULT_TAXPAYER_PROFILE: TaxpayerProfileState = {
   ceasedResidentDate: '',
   maritalStatusChangeDate: '',
   deceasedDate: '',
-  electionsCanadianCitizen: '',
-  electionsAuthorize: '',
-  firstTimeFiler: '',
-  soldPrincipalResidence: '',
-  treatyExemptForeignService: '',
+  electionsCanadianCitizen: DEFAULT_CRA_YES_NO,
+  electionsAuthorize: DEFAULT_CRA_YES_NO,
+  firstTimeFiler: DEFAULT_CRA_YES_NO,
+  soldPrincipalResidence: DEFAULT_CRA_YES_NO,
+  treatyExemptForeignService: DEFAULT_CRA_YES_NO,
   indianActExemptIncome: false,
-  foreignPropertyOver100k: '',
-  organDonorConsent: '',
-  craEmailNotificationsConsent: '',
-  craEmailConfirmed: '',
-  craHasForeignMailingAddress: '',
+  foreignPropertyOver100k: DEFAULT_CRA_YES_NO,
+  organDonorConsent: DEFAULT_CRA_YES_NO,
+  craEmailNotificationsConsent: DEFAULT_CRA_YES_NO,
+  craEmailConfirmed: DEFAULT_CRA_YES_NO,
+  craHasForeignMailingAddress: DEFAULT_CRA_YES_NO,
   spouseSameAddress: true,
   maritalStatus: 'single',
   spouseReturnMode: 'summary',
@@ -760,21 +768,9 @@ const ReturnBuilder: FC = () => {
       issues.push({ field: 'deceasedDate', message: 'Deceased filing is marked Yes, but date of death is missing.', severity: 'required' })
     }
     if (missing(taxpayerProfile.languageCorrespondence)) issues.push({ field: 'languageCorrespondence', message: 'Language of correspondence is required.', severity: 'required' })
-    if (taxpayerProfile.firstTimeFiler === '') issues.push({ field: 'firstTimeFiler', message: 'First-time filer CRA question is unanswered.', severity: 'required' })
-    if (taxpayerProfile.soldPrincipalResidence === '') issues.push({ field: 'soldPrincipalResidence', message: 'Principal residence sale CRA question is unanswered.', severity: 'required' })
-    if (taxpayerProfile.treatyExemptForeignService === '') issues.push({ field: 'treatyExemptForeignService', message: 'Foreign-service treaty exemption CRA question is unanswered.', severity: 'required' })
-    if (taxpayerProfile.electionsCanadianCitizen === '') issues.push({ field: 'electionsCanadianCitizen', message: 'Elections Canada citizenship question is unanswered.', severity: 'required' })
-    if (taxpayerProfile.electionsCanadianCitizen === 'yes' && taxpayerProfile.electionsAuthorize === '') {
-      issues.push({ field: 'electionsAuthorize', message: 'Elections Canada authorization question is unanswered.', severity: 'required' })
-    }
-    if (taxpayerProfile.foreignPropertyOver100k === '') issues.push({ field: 'foreignPropertyOver100k', message: 'Foreign property question is unanswered.', severity: 'required' })
-    if (taxpayerProfile.organDonorConsent === '') issues.push({ field: 'organDonorConsent', message: 'Organ/tissue donor consent question is unanswered.', severity: 'required' })
-    if (taxpayerProfile.craEmailNotificationsConsent === '') issues.push({ field: 'craEmailNotificationsConsent', message: 'CRA email notification consent question is unanswered.', severity: 'required' })
     if (taxpayerProfile.craEmailNotificationsConsent === 'yes' && missing(taxpayerProfile.email)) {
       issues.push({ field: 'email', message: 'CRA email notifications are enabled, but email address is missing.', severity: 'required' })
     }
-    if (taxpayerProfile.craEmailConfirmed === '') issues.push({ field: 'craEmailConfirmed', message: 'CRA email confirmation question is unanswered.', severity: 'required' })
-    if (taxpayerProfile.craHasForeignMailingAddress === '') issues.push({ field: 'craHasForeignMailingAddress', message: 'CRA foreign mailing address question is unanswered.', severity: 'required' })
 
     if (married) {
       if (spouseMode === 'full') {
@@ -915,9 +911,9 @@ const ReturnBuilder: FC = () => {
         mailingPoBox: String(dbProfile.mailingPoBox || setupProfile.mailingPoBox || ''),
         mailingRR: String(dbProfile.mailingRR || setupProfile.mailingRR || ''),
         mailingCity: String(dbProfile.mailingCity || setupProfile.mailingCity || ''),
-        mailingProvinceCode: String(dbProfile.mailingProvinceCode || setupProfile.mailingProvinceCode || ''),
+        mailingProvinceCode: String(dbProfile.mailingProvinceCode || setupProfile.mailingProvinceCode || 'ON').trim().toUpperCase().slice(0, 4) || 'ON',
         mailingPostalCode: String(dbProfile.mailingPostalCode || setupProfile.mailingPostalCode || ''),
-        residenceProvinceDec31: String(dbProfile.residenceProvinceDec31 || setupProfile.residenceProvinceDec31 || ''),
+        residenceProvinceDec31: String(dbProfile.residenceProvinceDec31 || setupProfile.residenceProvinceDec31 || 'ON').trim().toUpperCase().slice(0, 4) || 'ON',
         residenceProvinceCurrent: String(dbProfile.residenceProvinceCurrent || setupProfile.residenceProvinceCurrent || ''),
         selfEmploymentProvinces: String(dbProfile.selfEmploymentProvinces || setupProfile.selfEmploymentProvinces || ''),
         languageCorrespondence: String(dbProfile.languageCorrespondence || setupProfile.languageCorrespondence || 'en') === 'fr' ? 'fr' : 'en',
@@ -1472,37 +1468,19 @@ const ReturnBuilder: FC = () => {
         ceasedResidentDate: taxpayerProfile.ceasedResidentInYear ? (taxpayerProfile.ceasedResidentDate || null) : null,
         maritalStatusChangeDate: taxpayerProfile.maritalStatusChangedInYear ? (taxpayerProfile.maritalStatusChangeDate || null) : null,
         deceasedDate: taxpayerProfile.filingForDeceased ? (taxpayerProfile.deceasedDate || null) : null,
-        electionsCanadianCitizen: taxpayerProfile.electionsCanadianCitizen === ''
-          ? null
-          : taxpayerProfile.electionsCanadianCitizen === 'yes',
-        electionsAuthorize: taxpayerProfile.electionsAuthorize === ''
-          ? null
-          : taxpayerProfile.electionsAuthorize === 'yes',
-        firstTimeFiler: taxpayerProfile.firstTimeFiler === ''
-          ? null
-          : taxpayerProfile.firstTimeFiler === 'yes',
-        soldPrincipalResidence: taxpayerProfile.soldPrincipalResidence === ''
-          ? null
-          : taxpayerProfile.soldPrincipalResidence === 'yes',
-        treatyExemptForeignService: taxpayerProfile.treatyExemptForeignService === ''
-          ? null
-          : taxpayerProfile.treatyExemptForeignService === 'yes',
+        electionsCanadianCitizen: taxpayerProfile.electionsCanadianCitizen === 'yes',
+        electionsAuthorize: taxpayerProfile.electionsAuthorize === 'yes',
+        firstTimeFiler: taxpayerProfile.firstTimeFiler === 'yes',
+        soldPrincipalResidence: taxpayerProfile.soldPrincipalResidence === 'yes',
+        treatyExemptForeignService: taxpayerProfile.treatyExemptForeignService === 'yes',
         indianActExemptIncome: Boolean(taxpayerProfile.indianActExemptIncome),
-        foreignPropertyOver100k: taxpayerProfile.foreignPropertyOver100k === ''
-          ? null
-          : taxpayerProfile.foreignPropertyOver100k === 'yes',
-        organDonorConsent: taxpayerProfile.organDonorConsent === ''
-          ? null
-          : taxpayerProfile.organDonorConsent === 'yes',
-        craEmailNotificationsConsent: taxpayerProfile.craEmailNotificationsConsent === ''
-          ? null
-          : taxpayerProfile.craEmailNotificationsConsent === 'yes',
-        craEmailConfirmed: taxpayerProfile.craEmailConfirmed === ''
-          ? null
-          : taxpayerProfile.craEmailConfirmed === 'yes',
-        craHasForeignMailingAddress: taxpayerProfile.craHasForeignMailingAddress === ''
-          ? null
-          : taxpayerProfile.craHasForeignMailingAddress === 'yes',
+        foreignPropertyOver100k: taxpayerProfile.foreignPropertyOver100k === 'yes',
+        organDonorConsent: isOntarioProvinceCode(taxpayerProfile.residenceProvinceDec31)
+          ? taxpayerProfile.organDonorConsent === 'yes'
+          : false,
+        craEmailNotificationsConsent: taxpayerProfile.craEmailNotificationsConsent === 'yes',
+        craEmailConfirmed: taxpayerProfile.craEmailConfirmed === 'yes',
+        craHasForeignMailingAddress: taxpayerProfile.craHasForeignMailingAddress === 'yes',
         spouseSameAddress: Boolean(taxpayerProfile.spouseSameAddress),
         spouseSelfEmployed: Boolean(taxpayerProfile.spouseSelfEmployed),
         spouseHasUccbAdjustments: Boolean(taxpayerProfile.spouseHasUccbAdjustments),
@@ -1926,10 +1904,10 @@ const ReturnBuilder: FC = () => {
                   </label>
                   <label className="text-xs text-text-light">
                     Province/Territory
-                    <input
+                    <ProvinceSelect
                       className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                      value={taxpayerProfile.mailingProvinceCode}
-                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, mailingProvinceCode: e.target.value.toUpperCase().slice(0, 8) }))}
+                      value={taxpayerProfile.mailingProvinceCode || 'ON'}
+                      onChange={(code) => setTaxpayerProfile((prev) => ({ ...prev, mailingProvinceCode: code }))}
                     />
                   </label>
                   <label className="text-xs text-text-light">
@@ -1942,10 +1920,12 @@ const ReturnBuilder: FC = () => {
                   </label>
                   <label className="text-xs text-text-light md:col-span-2">
                     Current residence province/territory if different from mailing address
-                    <input
+                    <ProvinceSelect
                       className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
                       value={taxpayerProfile.residenceProvinceCurrent}
-                      onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, residenceProvinceCurrent: e.target.value.toUpperCase().slice(0, 8) }))}
+                      onChange={(code) => setTaxpayerProfile((prev) => ({ ...prev, residenceProvinceCurrent: code }))}
+                      allowEmpty
+                      emptyLabel="Same as mailing address"
                     />
                   </label>
                   <label className="text-xs text-text-light md:col-span-2">
@@ -1975,10 +1955,13 @@ const ReturnBuilder: FC = () => {
               <p className="text-sm text-text-light">Province of residence, residency questions, and T1 page 2 elections.</p>
               <div id="rb-elections" className="divide-y divide-border/70 rounded-md border border-border">
                 <CraQuestionRow label="Province/territory of residence on Dec 31">
-                  <input
-                    className="border border-border rounded-md px-3 py-2 text-sm w-28"
-                    value={taxpayerProfile.residenceProvinceDec31}
-                    onChange={(e) => setTaxpayerProfile((prev) => ({ ...prev, residenceProvinceDec31: e.target.value.toUpperCase().slice(0, 8) }))}
+                  <ProvinceSelect
+                    value={taxpayerProfile.residenceProvinceDec31 || 'ON'}
+                    onChange={(code) => setTaxpayerProfile((prev) => ({
+                      ...prev,
+                      residenceProvinceDec31: code,
+                      organDonorConsent: isOntarioProvinceCode(code) ? prev.organDonorConsent : 'no'
+                    }))}
                   />
                 </CraQuestionRow>
                 <CraQuestionRow label="Language of correspondence">
@@ -2078,36 +2061,32 @@ const ReturnBuilder: FC = () => {
                 <CraQuestionRow label="Are you filing a CRA income tax return for the first time?">
                   <YesNoToggle
                     className=""
-                    value={taxpayerProfile.firstTimeFiler === '' ? null : taxpayerProfile.firstTimeFiler === 'yes'}
-                    allowUnset
-                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, firstTimeFiler: value == null ? '' : (value ? 'yes' : 'no') }))}
+                    value={yesNoToToggle(taxpayerProfile.firstTimeFiler)}
+                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, firstTimeFiler: toggleToYesNo(value) }))}
                   />
                 </CraQuestionRow>
                 <CraQuestionRow label="Did you sell a principal residence in the tax year?">
                   <YesNoToggle
                     className=""
-                    value={taxpayerProfile.soldPrincipalResidence === '' ? null : taxpayerProfile.soldPrincipalResidence === 'yes'}
-                    allowUnset
-                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, soldPrincipalResidence: value == null ? '' : (value ? 'yes' : 'no') }))}
+                    value={yesNoToToggle(taxpayerProfile.soldPrincipalResidence)}
+                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, soldPrincipalResidence: toggleToYesNo(value) }))}
                   />
                 </CraQuestionRow>
                 <CraQuestionRow label="Are you (or eligible household member) exempt from tax under a treaty because of foreign service/diplomatic status?">
                   <YesNoToggle
                     className=""
-                    value={taxpayerProfile.treatyExemptForeignService === '' ? null : taxpayerProfile.treatyExemptForeignService === 'yes'}
-                    allowUnset
-                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, treatyExemptForeignService: value == null ? '' : (value ? 'yes' : 'no') }))}
+                    value={yesNoToToggle(taxpayerProfile.treatyExemptForeignService)}
+                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, treatyExemptForeignService: toggleToYesNo(value) }))}
                   />
                 </CraQuestionRow>
                 <CraQuestionRow label="Elections Canada - Are you a Canadian citizen?">
                   <YesNoToggle
                     className=""
-                    value={taxpayerProfile.electionsCanadianCitizen === '' ? null : taxpayerProfile.electionsCanadianCitizen === 'yes'}
-                    allowUnset
+                    value={yesNoToToggle(taxpayerProfile.electionsCanadianCitizen)}
                     onChange={(value) => setTaxpayerProfile((prev) => ({
                       ...prev,
-                      electionsCanadianCitizen: value == null ? '' : (value ? 'yes' : 'no'),
-                      electionsAuthorize: value === true ? prev.electionsAuthorize : ''
+                      electionsCanadianCitizen: toggleToYesNo(value),
+                      electionsAuthorize: value ? prev.electionsAuthorize : 'no'
                     }))}
                   />
                 </CraQuestionRow>
@@ -2115,9 +2094,8 @@ const ReturnBuilder: FC = () => {
                   <CraQuestionRow label="Elections Canada authorization to share information with Elections Canada">
                     <YesNoToggle
                       className=""
-                      value={taxpayerProfile.electionsAuthorize === '' ? null : taxpayerProfile.electionsAuthorize === 'yes'}
-                      allowUnset
-                      onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, electionsAuthorize: value == null ? '' : (value ? 'yes' : 'no') }))}
+                      value={yesNoToToggle(taxpayerProfile.electionsAuthorize)}
+                      onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, electionsAuthorize: toggleToYesNo(value) }))}
                     />
                   </CraQuestionRow>
                 )}
@@ -2132,41 +2110,38 @@ const ReturnBuilder: FC = () => {
                 <CraQuestionRow label="Did you own/hold specified foreign property above CAD 100,000 at any point in the year?">
                   <YesNoToggle
                     className=""
-                    value={taxpayerProfile.foreignPropertyOver100k === '' ? null : taxpayerProfile.foreignPropertyOver100k === 'yes'}
-                    allowUnset
-                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, foreignPropertyOver100k: value == null ? '' : (value ? 'yes' : 'no') }))}
+                    value={yesNoToToggle(taxpayerProfile.foreignPropertyOver100k)}
+                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, foreignPropertyOver100k: toggleToYesNo(value) }))}
                   />
                 </CraQuestionRow>
-                <CraQuestionRow label="Ontario organ/tissue donor contact sharing consent">
-                  <YesNoToggle
-                    className=""
-                    value={taxpayerProfile.organDonorConsent === '' ? null : taxpayerProfile.organDonorConsent === 'yes'}
-                    allowUnset
-                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, organDonorConsent: value == null ? '' : (value ? 'yes' : 'no') }))}
-                  />
-                </CraQuestionRow>
+                {isOntarioProvinceCode(taxpayerProfile.residenceProvinceDec31) && (
+                  <CraQuestionRow label="Ontario organ/tissue donor contact sharing consent">
+                    <YesNoToggle
+                      className=""
+                      value={yesNoToToggle(taxpayerProfile.organDonorConsent)}
+                      onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, organDonorConsent: toggleToYesNo(value) }))}
+                    />
+                  </CraQuestionRow>
+                )}
                 <CraQuestionRow label="I accept CRA terms and choose to receive email notifications.">
                   <YesNoToggle
                     className=""
-                    value={taxpayerProfile.craEmailNotificationsConsent === '' ? null : taxpayerProfile.craEmailNotificationsConsent === 'yes'}
-                    allowUnset
-                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, craEmailNotificationsConsent: value == null ? '' : (value ? 'yes' : 'no') }))}
+                    value={yesNoToToggle(taxpayerProfile.craEmailNotificationsConsent)}
+                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, craEmailNotificationsConsent: toggleToYesNo(value) }))}
                   />
                 </CraQuestionRow>
                 <CraQuestionRow label="I confirm the CRA email address is correct.">
                   <YesNoToggle
                     className=""
-                    value={taxpayerProfile.craEmailConfirmed === '' ? null : taxpayerProfile.craEmailConfirmed === 'yes'}
-                    allowUnset
-                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, craEmailConfirmed: value == null ? '' : (value ? 'yes' : 'no') }))}
+                    value={yesNoToToggle(taxpayerProfile.craEmailConfirmed)}
+                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, craEmailConfirmed: toggleToYesNo(value) }))}
                   />
                 </CraQuestionRow>
                 <CraQuestionRow label="Do you have a foreign mailing address on file with CRA?">
                   <YesNoToggle
                     className=""
-                    value={taxpayerProfile.craHasForeignMailingAddress === '' ? null : taxpayerProfile.craHasForeignMailingAddress === 'yes'}
-                    allowUnset
-                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, craHasForeignMailingAddress: value == null ? '' : (value ? 'yes' : 'no') }))}
+                    value={yesNoToToggle(taxpayerProfile.craHasForeignMailingAddress)}
+                    onChange={(value) => setTaxpayerProfile((prev) => ({ ...prev, craHasForeignMailingAddress: toggleToYesNo(value) }))}
                   />
                 </CraQuestionRow>
               </div>

@@ -4,7 +4,7 @@ export type InterviewStep = 1 | 2 | 3 | 4
 export const HOUSEHOLD_INTERVIEW_DRAFT_VERSION = 2
 export type MaritalStatus = 'single' | 'married' | 'common_law'
 export type SpouseMode = 'summary' | 'full'
-export type YesNo = '' | 'yes' | 'no'
+export type YesNo = 'yes' | 'no'
 
 export type HouseholdInterviewDraftForm = {
   step: InterviewStep
@@ -79,8 +79,7 @@ function normalizeStep (value: unknown, draftVersion = HOUSEHOLD_INTERVIEW_DRAFT
 
 function normalizeYesNo (value: unknown): YesNo {
   if (value === true || value === 'yes') return 'yes'
-  if (value === false || value === 'no') return 'no'
-  return ''
+  return 'no'
 }
 
 function normalizeMaritalStatus (value: unknown): MaritalStatus {
@@ -195,16 +194,16 @@ export function createEmptyHouseholdInterviewDraft (): HouseholdInterviewDraftFo
     mailingPostalCode: '',
     mainProvinceCode: 'ON',
     languageCorrespondence: 'en',
-    firstTimeFiler: '',
-    soldPrincipalResidence: '',
-    treatyExemptForeignService: '',
-    electionsCanadianCitizen: '',
-    electionsAuthorize: '',
-    foreignPropertyOver100k: '',
-    organDonorConsent: '',
-    craEmailNotificationsConsent: '',
-    craEmailConfirmed: '',
-    craHasForeignMailingAddress: '',
+    firstTimeFiler: 'no',
+    soldPrincipalResidence: 'no',
+    treatyExemptForeignService: 'no',
+    electionsCanadianCitizen: 'no',
+    electionsAuthorize: 'no',
+    foreignPropertyOver100k: 'no',
+    organDonorConsent: 'no',
+    craEmailNotificationsConsent: 'no',
+    craEmailConfirmed: 'no',
+    craHasForeignMailingAddress: 'no',
     spouseApplicable: false,
     maritalStatus: 'single',
     spouseReturnMode: 'summary',
@@ -221,16 +220,16 @@ export function createEmptyHouseholdInterviewDraft (): HouseholdInterviewDraftFo
     spouseMailingPostalCode: '',
     spouseLanguageCorrespondence: 'en',
     spouseCraSameAsMain: true,
-    spouseFirstTimeFiler: '',
-    spouseSoldPrincipalResidence: '',
-    spouseTreatyExemptForeignService: '',
-    spouseElectionsCanadianCitizen: '',
-    spouseElectionsAuthorize: '',
-    spouseForeignPropertyOver100k: '',
-    spouseOrganDonorConsent: '',
-    spouseCraEmailNotificationsConsent: '',
-    spouseCraEmailConfirmed: '',
-    spouseCraHasForeignMailingAddress: '',
+    spouseFirstTimeFiler: 'no',
+    spouseSoldPrincipalResidence: 'no',
+    spouseTreatyExemptForeignService: 'no',
+    spouseElectionsCanadianCitizen: 'no',
+    spouseElectionsAuthorize: 'no',
+    spouseForeignPropertyOver100k: 'no',
+    spouseOrganDonorConsent: 'no',
+    spouseCraEmailNotificationsConsent: 'no',
+    spouseCraEmailConfirmed: 'no',
+    spouseCraHasForeignMailingAddress: 'no',
     dependentsApplicable: false,
     dependents: []
   }

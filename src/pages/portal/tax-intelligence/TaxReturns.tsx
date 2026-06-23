@@ -5,15 +5,17 @@ import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
 import { taxFetch, type TaxReturnSummary } from '../../../lib/taxIntelligenceApi'
 import { getTaxBasePath } from './path'
-import { CraQuestionRow, toggleToYesNo, yesNoToToggle, YesNoToggle } from './CraQuestionControls'
+import { CraQuestionRow, DEFAULT_CRA_YES_NO, toggleToYesNo, yesNoToToggle, YesNoToggle } from './CraQuestionControls'
 import DependentIdentificationForm from './DependentIdentificationForm'
 import {
   createEmptyDependent,
   dependentRequiresFullReturn,
+  isOntarioProvinceCode,
   serializeDependent,
   validateDependentIdentification,
   type DependentRecord
 } from './dependentModel'
+import ProvinceSelect from './ProvinceSelect'
 import {
   buildHouseholdInterviewDraftForm,
   deserializeHouseholdInterviewDraft,
@@ -51,17 +53,7 @@ function computeSetupReadiness (r: TaxReturnSummary): { required: number; recomm
   if (missing(profile.residenceProvinceDec31)) issues.push({ severity: 'required' })
 
   if (missing(profile.languageCorrespondence)) issues.push({ severity: 'required' })
-  if (profile.firstTimeFiler == null) issues.push({ severity: 'required' })
-  if (profile.soldPrincipalResidence == null) issues.push({ severity: 'required' })
-  if (profile.treatyExemptForeignService == null) issues.push({ severity: 'required' })
-  if (profile.electionsCanadianCitizen == null) issues.push({ severity: 'required' })
-  if (profile.electionsCanadianCitizen === true && profile.electionsAuthorize == null) issues.push({ severity: 'required' })
-  if (profile.foreignPropertyOver100k == null) issues.push({ severity: 'required' })
-  if (profile.organDonorConsent == null) issues.push({ severity: 'required' })
-  if (profile.craEmailNotificationsConsent == null) issues.push({ severity: 'required' })
   if (profile.craEmailNotificationsConsent === true && missing(profile.email)) issues.push({ severity: 'required' })
-  if (profile.craEmailConfirmed == null) issues.push({ severity: 'required' })
-  if (profile.craHasForeignMailingAddress == null) issues.push({ severity: 'required' })
 
   if (married) {
     if (spouseMode === 'full') {
@@ -96,16 +88,16 @@ const TaxReturns: FC = () => {
   const [mailingPostalCode, setMailingPostalCode] = useState('')
   const [mainProvinceCode, setMainProvinceCode] = useState('ON')
   const [languageCorrespondence, setLanguageCorrespondence] = useState<'en' | 'fr'>('en')
-  const [firstTimeFiler, setFirstTimeFiler] = useState<YesNo>('')
-  const [soldPrincipalResidence, setSoldPrincipalResidence] = useState<YesNo>('')
-  const [treatyExemptForeignService, setTreatyExemptForeignService] = useState<YesNo>('')
-  const [electionsCanadianCitizen, setElectionsCanadianCitizen] = useState<YesNo>('')
-  const [electionsAuthorize, setElectionsAuthorize] = useState<YesNo>('')
-  const [foreignPropertyOver100k, setForeignPropertyOver100k] = useState<YesNo>('')
-  const [organDonorConsent, setOrganDonorConsent] = useState<YesNo>('')
-  const [craEmailNotificationsConsent, setCraEmailNotificationsConsent] = useState<YesNo>('')
-  const [craEmailConfirmed, setCraEmailConfirmed] = useState<YesNo>('')
-  const [craHasForeignMailingAddress, setCraHasForeignMailingAddress] = useState<YesNo>('')
+  const [firstTimeFiler, setFirstTimeFiler] = useState<YesNo>(DEFAULT_CRA_YES_NO)
+  const [soldPrincipalResidence, setSoldPrincipalResidence] = useState<YesNo>(DEFAULT_CRA_YES_NO)
+  const [treatyExemptForeignService, setTreatyExemptForeignService] = useState<YesNo>(DEFAULT_CRA_YES_NO)
+  const [electionsCanadianCitizen, setElectionsCanadianCitizen] = useState<YesNo>(DEFAULT_CRA_YES_NO)
+  const [electionsAuthorize, setElectionsAuthorize] = useState<YesNo>(DEFAULT_CRA_YES_NO)
+  const [foreignPropertyOver100k, setForeignPropertyOver100k] = useState<YesNo>(DEFAULT_CRA_YES_NO)
+  const [organDonorConsent, setOrganDonorConsent] = useState<YesNo>(DEFAULT_CRA_YES_NO)
+  const [craEmailNotificationsConsent, setCraEmailNotificationsConsent] = useState<YesNo>(DEFAULT_CRA_YES_NO)
+  const [craEmailConfirmed, setCraEmailConfirmed] = useState<YesNo>(DEFAULT_CRA_YES_NO)
+  const [craHasForeignMailingAddress, setCraHasForeignMailingAddress] = useState<YesNo>(DEFAULT_CRA_YES_NO)
   const [spouseApplicable, setSpouseApplicable] = useState(false)
   const [maritalStatus, setMaritalStatus] = useState<MaritalStatus>('single')
   const [spouseReturnMode, setSpouseReturnMode] = useState<SpouseMode>('summary')
@@ -122,16 +114,16 @@ const TaxReturns: FC = () => {
   const [spouseMailingPostalCode, setSpouseMailingPostalCode] = useState('')
   const [spouseLanguageCorrespondence, setSpouseLanguageCorrespondence] = useState<'en' | 'fr'>('en')
   const [spouseCraSameAsMain, setSpouseCraSameAsMain] = useState(true)
-  const [spouseFirstTimeFiler, setSpouseFirstTimeFiler] = useState<YesNo>('')
-  const [spouseSoldPrincipalResidence, setSpouseSoldPrincipalResidence] = useState<YesNo>('')
-  const [spouseTreatyExemptForeignService, setSpouseTreatyExemptForeignService] = useState<YesNo>('')
-  const [spouseElectionsCanadianCitizen, setSpouseElectionsCanadianCitizen] = useState<YesNo>('')
-  const [spouseElectionsAuthorize, setSpouseElectionsAuthorize] = useState<YesNo>('')
-  const [spouseForeignPropertyOver100k, setSpouseForeignPropertyOver100k] = useState<YesNo>('')
-  const [spouseOrganDonorConsent, setSpouseOrganDonorConsent] = useState<YesNo>('')
-  const [spouseCraEmailNotificationsConsent, setSpouseCraEmailNotificationsConsent] = useState<YesNo>('')
-  const [spouseCraEmailConfirmed, setSpouseCraEmailConfirmed] = useState<YesNo>('')
-  const [spouseCraHasForeignMailingAddress, setSpouseCraHasForeignMailingAddress] = useState<YesNo>('')
+  const [spouseFirstTimeFiler, setSpouseFirstTimeFiler] = useState<YesNo>(DEFAULT_CRA_YES_NO)
+  const [spouseSoldPrincipalResidence, setSpouseSoldPrincipalResidence] = useState<YesNo>(DEFAULT_CRA_YES_NO)
+  const [spouseTreatyExemptForeignService, setSpouseTreatyExemptForeignService] = useState<YesNo>(DEFAULT_CRA_YES_NO)
+  const [spouseElectionsCanadianCitizen, setSpouseElectionsCanadianCitizen] = useState<YesNo>(DEFAULT_CRA_YES_NO)
+  const [spouseElectionsAuthorize, setSpouseElectionsAuthorize] = useState<YesNo>(DEFAULT_CRA_YES_NO)
+  const [spouseForeignPropertyOver100k, setSpouseForeignPropertyOver100k] = useState<YesNo>(DEFAULT_CRA_YES_NO)
+  const [spouseOrganDonorConsent, setSpouseOrganDonorConsent] = useState<YesNo>(DEFAULT_CRA_YES_NO)
+  const [spouseCraEmailNotificationsConsent, setSpouseCraEmailNotificationsConsent] = useState<YesNo>(DEFAULT_CRA_YES_NO)
+  const [spouseCraEmailConfirmed, setSpouseCraEmailConfirmed] = useState<YesNo>(DEFAULT_CRA_YES_NO)
+  const [spouseCraHasForeignMailingAddress, setSpouseCraHasForeignMailingAddress] = useState<YesNo>(DEFAULT_CRA_YES_NO)
   const [dependentsApplicable, setDependentsApplicable] = useState(false)
   const [dependents, setDependents] = useState<Array<DependentRecord & { id: string }>>([])
   const [loading, setLoading] = useState(true)
@@ -319,11 +311,7 @@ const TaxReturns: FC = () => {
   }, [])
 
   const isMarried = spouseApplicable && (maritalStatus === 'married' || maritalStatus === 'common_law')
-  const toBoolOrNull = (value: YesNo): boolean | null => {
-    if (value === 'yes') return true
-    if (value === 'no') return false
-    return null
-  }
+  const toBoolOrNull = (value: YesNo): boolean => value === 'yes'
 
   const resetInterview = () => {
     applyInterviewDraft(buildHouseholdInterviewDraftForm({ step: 1, taxYear: new Date().getFullYear() }))
@@ -375,17 +363,7 @@ const TaxReturns: FC = () => {
       if (!mailingCity.trim()) return 'Mailing city is required.'
       if (!mainProvinceCode.trim()) return 'Province on Dec 31 is required.'
       if (!mailingPostalCode.trim()) return 'Mailing postal code is required.'
-      if (firstTimeFiler === '') return 'Answer the first-time filer CRA question.'
-      if (soldPrincipalResidence === '') return 'Answer the principal residence sale CRA question.'
-      if (treatyExemptForeignService === '') return 'Answer the treaty-exempt foreign service CRA question.'
-      if (electionsCanadianCitizen === '') return 'Answer the Elections Canada citizenship question.'
-      if (electionsCanadianCitizen === 'yes' && electionsAuthorize === '') return 'Answer the Elections Canada authorization question.'
-      if (foreignPropertyOver100k === '') return 'Answer the foreign property CRA question.'
-      if (organDonorConsent === '') return 'Answer the organ and tissue donor consent question.'
-      if (craEmailNotificationsConsent === '') return 'Answer the CRA email notification consent question.'
       if (craEmailNotificationsConsent === 'yes' && !mainEmail.trim()) return 'Email address is required when CRA email notifications are enabled.'
-      if (craEmailConfirmed === '') return 'Answer the CRA email confirmation question.'
-      if (craHasForeignMailingAddress === '') return 'Answer the CRA foreign mailing address question.'
       return null
     }
     if (step === 2) {
@@ -402,17 +380,7 @@ const TaxReturns: FC = () => {
             if (!spouseMailingPostalCode.trim()) return 'Spouse mailing postal code is required when spouse resides elsewhere.'
           }
           if (!spouseCraSameAsMain) {
-            if (spouseFirstTimeFiler === '') return 'Answer spouse first-time filer CRA question.'
-            if (spouseSoldPrincipalResidence === '') return 'Answer spouse principal residence sale CRA question.'
-            if (spouseTreatyExemptForeignService === '') return 'Answer spouse treaty-exempt foreign service CRA question.'
-            if (spouseElectionsCanadianCitizen === '') return 'Answer spouse Elections Canada citizenship question.'
-            if (spouseElectionsCanadianCitizen === 'yes' && spouseElectionsAuthorize === '') return 'Answer spouse Elections Canada authorization question.'
-            if (spouseForeignPropertyOver100k === '') return 'Answer spouse foreign property CRA question.'
-            if (spouseOrganDonorConsent === '') return 'Answer spouse organ and tissue donor consent question.'
-            if (spouseCraEmailNotificationsConsent === '') return 'Answer spouse CRA email notification consent question.'
             if (spouseCraEmailNotificationsConsent === 'yes' && !spouseEmail.trim()) return 'Spouse email is required when spouse CRA email notifications are enabled.'
-            if (spouseCraEmailConfirmed === '') return 'Answer spouse CRA email confirmation question.'
-            if (spouseCraHasForeignMailingAddress === '') return 'Answer spouse CRA foreign mailing address question.'
           }
         }
       }
@@ -516,7 +484,9 @@ const TaxReturns: FC = () => {
                         soldPrincipalResidence: toBoolOrNull(spouseSoldPrincipalResidence),
                         treatyExemptForeignService: toBoolOrNull(spouseTreatyExemptForeignService),
                         foreignPropertyOver100k: toBoolOrNull(spouseForeignPropertyOver100k),
-                        organDonorConsent: toBoolOrNull(spouseOrganDonorConsent),
+                        organDonorConsent: isOntarioProvinceCode(spouseSameAddress ? mainProvinceCode : spouseMailingProvinceCode)
+                          ? toBoolOrNull(spouseOrganDonorConsent)
+                          : false,
                         craEmailNotificationsConsent: toBoolOrNull(spouseCraEmailNotificationsConsent),
                         craEmailConfirmed: toBoolOrNull(spouseCraEmailConfirmed),
                         craHasForeignMailingAddress: toBoolOrNull(spouseCraHasForeignMailingAddress)
@@ -535,7 +505,7 @@ const TaxReturns: FC = () => {
               soldPrincipalResidence: toBoolOrNull(soldPrincipalResidence),
               treatyExemptForeignService: toBoolOrNull(treatyExemptForeignService),
               foreignPropertyOver100k: toBoolOrNull(foreignPropertyOver100k),
-              organDonorConsent: toBoolOrNull(organDonorConsent),
+              organDonorConsent: isOntarioProvinceCode(mainProvinceCode) ? toBoolOrNull(organDonorConsent) : false,
               craEmailNotificationsConsent: toBoolOrNull(craEmailNotificationsConsent),
               craEmailConfirmed: toBoolOrNull(craEmailConfirmed),
               craHasForeignMailingAddress: toBoolOrNull(craHasForeignMailingAddress)
@@ -674,11 +644,12 @@ const TaxReturns: FC = () => {
                   <h3 className="text-sm font-semibold text-primary-dark">Question 5: CRA setup questions for main taxpayer</h3>
                   <div className="divide-y divide-border/70 rounded-md border border-border">
                     <CraQuestionRow label="Province/territory of residence on Dec 31">
-                      <input
-                        className="border border-border rounded-md px-3 py-2 text-sm w-28"
-                        placeholder="e.g. ON"
+                      <ProvinceSelect
                         value={mainProvinceCode}
-                        onChange={(e) => setMainProvinceCode(e.target.value.toUpperCase().slice(0, 4))}
+                        onChange={(code) => {
+                          setMainProvinceCode(code)
+                          if (!isOntarioProvinceCode(code)) setOrganDonorConsent('no')
+                        }}
                         disabled={saving}
                       />
                     </CraQuestionRow>
@@ -697,7 +668,6 @@ const TaxReturns: FC = () => {
                       <YesNoToggle
                         className=""
                         value={yesNoToToggle(firstTimeFiler)}
-                        allowUnset
                         onChange={(value) => setFirstTimeFiler(toggleToYesNo(value))}
                         disabled={saving}
                       />
@@ -706,7 +676,6 @@ const TaxReturns: FC = () => {
                       <YesNoToggle
                         className=""
                         value={yesNoToToggle(soldPrincipalResidence)}
-                        allowUnset
                         onChange={(value) => setSoldPrincipalResidence(toggleToYesNo(value))}
                         disabled={saving}
                       />
@@ -715,7 +684,6 @@ const TaxReturns: FC = () => {
                       <YesNoToggle
                         className=""
                         value={yesNoToToggle(treatyExemptForeignService)}
-                        allowUnset
                         onChange={(value) => setTreatyExemptForeignService(toggleToYesNo(value))}
                         disabled={saving}
                       />
@@ -724,10 +692,9 @@ const TaxReturns: FC = () => {
                       <YesNoToggle
                         className=""
                         value={yesNoToToggle(electionsCanadianCitizen)}
-                        allowUnset
                         onChange={(value) => {
                           setElectionsCanadianCitizen(toggleToYesNo(value))
-                          if (value !== true) setElectionsAuthorize('')
+                          if (value !== true) setElectionsAuthorize('no')
                         }}
                         disabled={saving}
                       />
@@ -737,7 +704,6 @@ const TaxReturns: FC = () => {
                         <YesNoToggle
                           className=""
                           value={yesNoToToggle(electionsAuthorize)}
-                          allowUnset
                           onChange={(value) => setElectionsAuthorize(toggleToYesNo(value))}
                           disabled={saving}
                         />
@@ -747,25 +713,24 @@ const TaxReturns: FC = () => {
                       <YesNoToggle
                         className=""
                         value={yesNoToToggle(foreignPropertyOver100k)}
-                        allowUnset
                         onChange={(value) => setForeignPropertyOver100k(toggleToYesNo(value))}
                         disabled={saving}
                       />
                     </CraQuestionRow>
-                    <CraQuestionRow label="Organ/tissue donor consent?">
-                      <YesNoToggle
-                        className=""
-                        value={yesNoToToggle(organDonorConsent)}
-                        allowUnset
-                        onChange={(value) => setOrganDonorConsent(toggleToYesNo(value))}
-                        disabled={saving}
-                      />
-                    </CraQuestionRow>
+                    {isOntarioProvinceCode(mainProvinceCode) && (
+                      <CraQuestionRow label="Ontario organ/tissue donor contact sharing consent">
+                        <YesNoToggle
+                          className=""
+                          value={yesNoToToggle(organDonorConsent)}
+                          onChange={(value) => setOrganDonorConsent(toggleToYesNo(value))}
+                          disabled={saving}
+                        />
+                      </CraQuestionRow>
+                    )}
                     <CraQuestionRow label="CRA email notifications consent?">
                       <YesNoToggle
                         className=""
                         value={yesNoToToggle(craEmailNotificationsConsent)}
-                        allowUnset
                         onChange={(value) => setCraEmailNotificationsConsent(toggleToYesNo(value))}
                         disabled={saving}
                       />
@@ -774,7 +739,6 @@ const TaxReturns: FC = () => {
                       <YesNoToggle
                         className=""
                         value={yesNoToToggle(craEmailConfirmed)}
-                        allowUnset
                         onChange={(value) => setCraEmailConfirmed(toggleToYesNo(value))}
                         disabled={saving}
                       />
@@ -783,7 +747,6 @@ const TaxReturns: FC = () => {
                       <YesNoToggle
                         className=""
                         value={yesNoToToggle(craHasForeignMailingAddress)}
-                        allowUnset
                         onChange={(value) => setCraHasForeignMailingAddress(toggleToYesNo(value))}
                         disabled={saving}
                       />
@@ -843,7 +806,14 @@ const TaxReturns: FC = () => {
                         <input className="border border-border rounded-md px-3 py-2 text-sm md:col-span-2" placeholder="Spouse mailing address line 1" value={spouseMailingAddressLine1} onChange={(e) => setSpouseMailingAddressLine1(e.target.value)} disabled={saving} />
                         <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Spouse mailing city" value={spouseMailingCity} onChange={(e) => setSpouseMailingCity(e.target.value)} disabled={saving} />
                         <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Spouse mailing postal code" value={spouseMailingPostalCode} onChange={(e) => setSpouseMailingPostalCode(e.target.value.toUpperCase())} disabled={saving} />
-                        <input className="border border-border rounded-md px-3 py-2 text-sm" placeholder="Spouse mailing province" value={spouseMailingProvinceCode} onChange={(e) => setSpouseMailingProvinceCode(e.target.value.toUpperCase().slice(0, 4))} disabled={saving} />
+                        <ProvinceSelect
+                          value={spouseMailingProvinceCode}
+                          onChange={(code) => {
+                            setSpouseMailingProvinceCode(code)
+                            if (!isOntarioProvinceCode(code)) setSpouseOrganDonorConsent('no')
+                          }}
+                          disabled={saving}
+                        />
                       </div>
                     )}
                   </div>
@@ -874,7 +844,6 @@ const TaxReturns: FC = () => {
                           <YesNoToggle
                             className=""
                             value={yesNoToToggle(spouseFirstTimeFiler)}
-                            allowUnset
                             onChange={(value) => setSpouseFirstTimeFiler(toggleToYesNo(value))}
                             disabled={saving}
                           />
@@ -883,7 +852,6 @@ const TaxReturns: FC = () => {
                           <YesNoToggle
                             className=""
                             value={yesNoToToggle(spouseSoldPrincipalResidence)}
-                            allowUnset
                             onChange={(value) => setSpouseSoldPrincipalResidence(toggleToYesNo(value))}
                             disabled={saving}
                           />
@@ -892,7 +860,6 @@ const TaxReturns: FC = () => {
                           <YesNoToggle
                             className=""
                             value={yesNoToToggle(spouseTreatyExemptForeignService)}
-                            allowUnset
                             onChange={(value) => setSpouseTreatyExemptForeignService(toggleToYesNo(value))}
                             disabled={saving}
                           />
@@ -901,10 +868,9 @@ const TaxReturns: FC = () => {
                           <YesNoToggle
                             className=""
                             value={yesNoToToggle(spouseElectionsCanadianCitizen)}
-                            allowUnset
                             onChange={(value) => {
                               setSpouseElectionsCanadianCitizen(toggleToYesNo(value))
-                              if (value !== true) setSpouseElectionsAuthorize('')
+                              if (value !== true) setSpouseElectionsAuthorize('no')
                             }}
                             disabled={saving}
                           />
@@ -914,7 +880,6 @@ const TaxReturns: FC = () => {
                             <YesNoToggle
                               className=""
                               value={yesNoToToggle(spouseElectionsAuthorize)}
-                              allowUnset
                               onChange={(value) => setSpouseElectionsAuthorize(toggleToYesNo(value))}
                               disabled={saving}
                             />
@@ -924,25 +889,24 @@ const TaxReturns: FC = () => {
                           <YesNoToggle
                             className=""
                             value={yesNoToToggle(spouseForeignPropertyOver100k)}
-                            allowUnset
                             onChange={(value) => setSpouseForeignPropertyOver100k(toggleToYesNo(value))}
                             disabled={saving}
                           />
                         </CraQuestionRow>
-                        <CraQuestionRow label="Organ/tissue donor consent?">
-                          <YesNoToggle
-                            className=""
-                            value={yesNoToToggle(spouseOrganDonorConsent)}
-                            allowUnset
-                            onChange={(value) => setSpouseOrganDonorConsent(toggleToYesNo(value))}
-                            disabled={saving}
-                          />
-                        </CraQuestionRow>
+                        {isOntarioProvinceCode(spouseSameAddress ? mainProvinceCode : spouseMailingProvinceCode) && (
+                          <CraQuestionRow label="Ontario organ/tissue donor contact sharing consent">
+                            <YesNoToggle
+                              className=""
+                              value={yesNoToToggle(spouseOrganDonorConsent)}
+                              onChange={(value) => setSpouseOrganDonorConsent(toggleToYesNo(value))}
+                              disabled={saving}
+                            />
+                          </CraQuestionRow>
+                        )}
                         <CraQuestionRow label="CRA email notifications consent?">
                           <YesNoToggle
                             className=""
                             value={yesNoToToggle(spouseCraEmailNotificationsConsent)}
-                            allowUnset
                             onChange={(value) => setSpouseCraEmailNotificationsConsent(toggleToYesNo(value))}
                             disabled={saving}
                           />
@@ -951,7 +915,6 @@ const TaxReturns: FC = () => {
                           <YesNoToggle
                             className=""
                             value={yesNoToToggle(spouseCraEmailConfirmed)}
-                            allowUnset
                             onChange={(value) => setSpouseCraEmailConfirmed(toggleToYesNo(value))}
                             disabled={saving}
                           />
@@ -960,7 +923,6 @@ const TaxReturns: FC = () => {
                           <YesNoToggle
                             className=""
                             value={yesNoToToggle(spouseCraHasForeignMailingAddress)}
-                            allowUnset
                             onChange={(value) => setSpouseCraHasForeignMailingAddress(toggleToYesNo(value))}
                             disabled={saving}
                           />

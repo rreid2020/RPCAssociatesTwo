@@ -1,5 +1,5 @@
 export type DependentTaxReturnRequired = 'auto' | 'yes' | 'no'
-export type DependentYesNo = '' | 'yes' | 'no'
+export type DependentYesNo = 'yes' | 'no'
 export type DependentMaritalStatus = 'single' | 'married' | 'common_law' | 'separated' | 'divorced' | 'widowed'
 
 export type DependentRecord = {
@@ -33,6 +33,10 @@ export const DEPENDENT_MARITAL_STATUS_OPTIONS: Array<{ value: DependentMaritalSt
   { value: 'divorced', label: 'Divorced' },
   { value: 'widowed', label: 'Widowed' }
 ]
+
+export function isOntarioProvinceCode (value: string): boolean {
+  return String(value || '').trim().toUpperCase() === 'ON'
+}
 
 export const CANADIAN_PROVINCE_OPTIONS = [
   { value: 'AB', label: 'Alberta' },
@@ -72,7 +76,7 @@ export function createEmptyDependent (defaults?: Partial<DependentRecord>): Depe
     netfileAccessCode: '',
     residenceProvinceDec31: 'ON',
     maritalStatus: 'single',
-    hadIncomeInYear: '',
+    hadIncomeInYear: 'no',
     taxReturnRequired: 'auto',
     disability: false,
     ...defaults
@@ -87,9 +91,7 @@ export function dependentFromLegacy (value: Record<string, unknown>): DependentR
   const hadIncomeRaw = value.hadIncomeInYear
   const hadIncomeInYear: DependentYesNo = hadIncomeRaw === true || hadIncomeRaw === 'yes'
     ? 'yes'
-    : hadIncomeRaw === false || hadIncomeRaw === 'no'
-      ? 'no'
-      : ''
+    : 'no'
   const taxReturnRequiredRaw = String(value.taxReturnRequired || 'auto').toLowerCase()
   const taxReturnRequired: DependentTaxReturnRequired = taxReturnRequiredRaw === 'yes' || taxReturnRequiredRaw === 'no'
     ? taxReturnRequiredRaw
@@ -123,7 +125,7 @@ export function serializeDependent (dep: DependentRecord) {
     netfileAccessCode: dep.netfileAccessCode.trim(),
     residenceProvinceDec31: dep.residenceProvinceDec31.trim(),
     maritalStatus: dep.maritalStatus,
-    hadIncomeInYear: dep.hadIncomeInYear === '' ? null : dep.hadIncomeInYear === 'yes',
+    hadIncomeInYear: dep.hadIncomeInYear === 'yes',
     taxReturnRequired: dep.taxReturnRequired,
     disability: dep.disability,
     createWorkspace: dependentRequiresFullReturn(dep)
@@ -137,7 +139,6 @@ export function validateDependentIdentification (dep: DependentRecord, taxYear: 
   if (!dep.dateOfBirth) return 'Each dependant needs a date of birth.'
   if (!dep.residenceProvinceDec31.trim()) return `Each dependant needs a province of residence on December 31, ${taxYear}.`
   if (!dep.maritalStatus) return `Each dependant needs a marital status on December 31, ${taxYear}.`
-  if (dep.hadIncomeInYear === '') return `Answer whether each dependant had income in ${taxYear}.`
   if (!dep.taxReturnRequired) return 'Indicate whether each dependant requires a tax return.'
   return null
 }

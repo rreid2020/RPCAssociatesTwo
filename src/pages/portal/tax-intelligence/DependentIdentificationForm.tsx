@@ -151,7 +151,6 @@ const DependentIdentificationForm: FC<DependentIdentificationFormProps> = ({
           <YesNoToggle
             className=""
             value={yesNoToToggle(value.hadIncomeInYear)}
-            allowUnset
             onChange={(next) => onChange({ hadIncomeInYear: toggleToYesNo(next) as DependentYesNo })}
             disabled={disabled}
           />

@@ -1,12 +1,11 @@
 import { FC, ReactNode } from 'react'
 
 export const YesNoToggle: FC<{
-  value: boolean | null
-  onChange: (value: boolean | null) => void
-  allowUnset?: boolean
+  value: boolean
+  onChange: (value: boolean) => void
   className?: string
   disabled?: boolean
-}> = ({ value, onChange, allowUnset = false, className = 'mt-1', disabled = false }) => (
+}> = ({ value, onChange, className = 'mt-1', disabled = false }) => (
   <div className={`inline-flex items-center gap-1 rounded-md border border-border bg-white p-1 ${className}`}>
     <button
       type="button"
@@ -24,16 +23,6 @@ export const YesNoToggle: FC<{
     >
       No
     </button>
-    {allowUnset && (
-      <button
-        type="button"
-        className={`px-2 py-1 text-xs rounded ${value == null ? 'bg-primary-dark text-white' : 'text-text'}`}
-        onClick={() => onChange(null)}
-        disabled={disabled}
-      >
-        Unset
-      </button>
-    )}
   </div>
 )
 
@@ -47,16 +36,14 @@ export const CraQuestionRow: FC<{
   </div>
 )
 
-export type YesNo = '' | 'yes' | 'no'
+export type YesNo = 'yes' | 'no'
 
-export function yesNoToToggle (value: YesNo): boolean | null {
-  if (value === 'yes') return true
-  if (value === 'no') return false
-  return null
+export function yesNoToToggle (value: YesNo | ''): boolean {
+  return value === 'yes'
 }
 
-export function toggleToYesNo (value: boolean | null): YesNo {
-  if (value === true) return 'yes'
-  if (value === false) return 'no'
-  return ''
+export function toggleToYesNo (value: boolean): YesNo {
+  return value ? 'yes' : 'no'
 }
+
+export const DEFAULT_CRA_YES_NO: YesNo = 'no'

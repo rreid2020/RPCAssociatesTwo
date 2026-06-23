@@ -61,6 +61,13 @@ function normalizeSlipCode (value: string): string {
   return String(value || '').trim().toUpperCase()
 }
 
+function pickPrimaryFormCode (topic: InterviewTopicItem): string | undefined {
+  const forms = (topic.formCodes || []).map(normalizeSlipCode).filter(Boolean)
+  if (forms.length === 0) return undefined
+  if (BUNDLE_SLIP_TOPIC_IDS.has(topic.id)) return undefined
+  return forms[0]
+}
+
 function pickPrimarySlipCode (topic: InterviewTopicItem): string | undefined {
   const slips = (topic.slipCodes || []).map(normalizeSlipCode).filter(Boolean)
   if (slips.length === 0) return undefined
@@ -90,7 +97,7 @@ export function resolveInterviewTopicNavigation (topic: InterviewTopicItem): Int
   if (topic.linkedStep === 'Income') {
     return {
       step: 'Income',
-      slipCode: pickPrimarySlipCode(topic),
+      slipCode: pickPrimaryFormCode(topic) || pickPrimarySlipCode(topic),
       focusAnchor: 'rb-income-slips'
     }
   }

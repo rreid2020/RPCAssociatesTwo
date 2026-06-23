@@ -1016,7 +1016,7 @@ const ReturnBuilder: FC = () => {
     if (!saved) return
 
     const target = resolveInterviewTopicNavigation(topic)
-    if (target.slipCode) {
+    if (target.slipCode && slipSchemasByCode[target.slipCode.toUpperCase()]) {
       addSuggestedSlipRow(target.slipCode)
     }
     pendingTopicFocusRef.current = {
@@ -2263,6 +2263,7 @@ const ReturnBuilder: FC = () => {
               <IncomeSlipsSetup
                 taxpayerName={data?.taxReturn?.taxpayer_name || 'this workspace'}
                 returnRole={returnRole}
+                returnId={id}
                 interviewSetup={interviewSetup}
                 manualSlipRows={manualSlipRows}
                 setManualSlipRows={setManualSlipRows}

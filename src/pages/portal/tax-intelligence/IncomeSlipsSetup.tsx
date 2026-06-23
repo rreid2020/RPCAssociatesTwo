@@ -13,6 +13,7 @@ import { SlipWorksheetForm, slipBoxEntriesForRow, type SlipRow } from './slipEnt
 export type IncomeSlipsSetupProps = {
   taxpayerName: string
   returnRole: 'self' | 'spouse'
+  returnId?: string
   interviewSetup: ReturnInterviewTopicsResponse | null
   manualSlipRows: SlipRow[]
   setManualSlipRows: React.Dispatch<React.SetStateAction<SlipRow[]>>
@@ -42,6 +43,7 @@ export type IncomeSlipsSetupProps = {
 export const IncomeSlipsSetup: FC<IncomeSlipsSetupProps> = ({
   taxpayerName,
   returnRole,
+  returnId,
   interviewSetup,
   manualSlipRows,
   setManualSlipRows,
@@ -169,13 +171,14 @@ export const IncomeSlipsSetup: FC<IncomeSlipsSetupProps> = ({
             sectionMeta={(section) => {
               const total = sectionSlipCodes(section).size
               const added = countSectionSlipsAdded(section, addedSlipCodes)
-              return total > 0 ? `${added}/${total} slip type(s)` : `${section.items.length} topic(s)`
+              return total > 0 ? `${added}/${total} form or slip type(s)` : `${section.items.length} topic(s)`
             }}
           >
             {(activeSection: InterviewArtifactSection) => (
               <CategorySlipFormTabs
                 key={activeSection.id}
                 section={activeSection}
+                returnId={returnId}
                 roleSlipRows={roleSlipRows}
                 slipSchemasByCode={slipSchemasByCode}
                 filteredSlipSchemas={filteredSlipSchemas}

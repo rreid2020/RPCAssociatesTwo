@@ -43,6 +43,40 @@ const BUNDLE_TOPIC_IDS = new Set([
   'other_income_line_13000'
 ])
 
+/** Slips that may accompany a schedule topic but are not separate entry tabs when a form is selected. */
+const SUPPORTING_SLIP_CODES = new Set(['T4A', 'T5018', 'AGR-1', 'RL6'])
+
+function normalizeArtifactCode (value: string): string {
+  return String(value || '').trim().toUpperCase()
+}
+
+export function shouldIncludeTopicSlipCodes (item: Pick<InterviewArtifactItem, 'topicId' | 'slipCodes' | 'formCodes'>): boolean {
+  if (BUNDLE_TOPIC_IDS.has(item.topicId)) return true
+  const forms = (item.formCodes || []).map(normalizeArtifactCode).filter(Boolean)
+  const slips = (item.slipCodes || []).map(normalizeArtifactCode).filter(Boolean)
+  if (forms.length === 0) return slips.length > 0
+  if (slips.length === 0) return false
+  return !slips.every((code) => SUPPORTING_SLIP_CODES.has(code))
+}
+
+export function topicArtifactDisplayCodes (
+  item: Pick<InterviewArtifactItem, 'topicId' | 'slipCodes' | 'formCodes'>
+): string[] {
+  const forms = (item.formCodes || []).map((code) => String(code || '').trim()).filter(Boolean)
+  const slips = (item.slipCodes || []).map((code) => String(code || '').trim()).filter(Boolean)
+  if (BUNDLE_TOPIC_IDS.has(item.topicId)) {
+    return [...slips, ...forms]
+  }
+  if (!shouldIncludeTopicSlipCodes(item)) {
+    return forms
+  }
+  const formSet = new Set(forms.map(normalizeArtifactCode))
+  return [
+    ...slips.filter((code) => !formSet.has(normalizeArtifactCode(code))),
+    ...forms
+  ]
+}
+
 export function pickTopicSlipCode (item: InterviewArtifactItem): string | undefined {
   const slips = item.slipCodes.map((code) => String(code || '').trim().toUpperCase()).filter(Boolean)
   if (slips.length === 0) return undefined
@@ -61,31 +95,51 @@ export function sectionSlipCodes (section: InterviewArtifactSection | null | und
   return codes
 }
 
+export type SectionArtifactKind = 'slip' | 'form'
+
 export type SectionSlipEntry = {
   slipCode: string
   label: string
   description: string
+  entryKind: SectionArtifactKind
+}
+
+function addSectionArtifactEntry (
+  seen: Map<string, SectionSlipEntry>,
+  code: string,
+  item: InterviewArtifactItem,
+  entryKind: SectionArtifactKind
+) {
+  if (!code || seen.has(code)) return
+  seen.set(code, {
+    slipCode: code,
+    label: item.label,
+    description: item.description,
+    entryKind
+  })
 }
 
 export function sectionSlipEntries (section: InterviewArtifactSection): SectionSlipEntry[] {
-  const seen = new Map<string, SectionSlipEntry>()
+  const forms = new Map<string, SectionSlipEntry>()
+  const slips = new Map<string, SectionSlipEntry>()
   const items = [...section.items].sort((a, b) => {
     const aBundle = BUNDLE_TOPIC_IDS.has(a.topicId) ? 1 : 0
     const bBundle = BUNDLE_TOPIC_IDS.has(b.topicId) ? 1 : 0
     return aBundle - bBundle
   })
   for (const item of items) {
-    for (const raw of item.slipCodes) {
-      const slipCode = String(raw || '').trim().toUpperCase()
-      if (!slipCode || seen.has(slipCode)) continue
-      seen.set(slipCode, {
-        slipCode,
-        label: item.label,
-        description: item.description
-      })
+    for (const raw of item.formCodes || []) {
+      const formCode = normalizeArtifactCode(raw)
+      addSectionArtifactEntry(forms, formCode, item, 'form')
+    }
+    if (!shouldIncludeTopicSlipCodes(item)) continue
+    for (const raw of item.slipCodes || []) {
+      const slipCode = normalizeArtifactCode(raw)
+      if (forms.has(slipCode)) continue
+      addSectionArtifactEntry(slips, slipCode, item, 'slip')
     }
   }
-  return Array.from(seen.values())
+  return [...forms.values(), ...slips.values()]
 }
 
 export function buildInterviewArtifactSections (

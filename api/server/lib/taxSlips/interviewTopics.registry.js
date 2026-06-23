@@ -407,7 +407,7 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
         id: 'tax_shelter_credits',
         label: 'Tax shelter and tax credits',
         description: 'Tax shelter investments and related credit claims.',
-        slipCodes: ['T5003'],
+        slipCodes: [],
         formCodes: ['T5003'],
         linkedStep: 'Review'
       },
@@ -415,7 +415,7 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
         id: 'self_employment_business',
         label: 'T2125 — Business income',
         description: 'Self-employment business income and expenses.',
-        slipCodes: ['T4A', 'T5018'],
+        slipCodes: [],
         formCodes: ['T2125'],
         linkedStep: 'Income'
       },
@@ -423,7 +423,7 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
         id: 'self_employment_t2125p',
         label: 'T2125P — Professional income',
         description: 'Professional self-employment income and expenses.',
-        slipCodes: ['T4A'],
+        slipCodes: [],
         formCodes: ['T2125'],
         linkedStep: 'Income'
       },
@@ -431,7 +431,7 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
         id: 'self_employment_t2125c',
         label: 'T2125C — Commission income',
         description: 'Commission-based self-employment income.',
-        slipCodes: ['T4A', 'T5018'],
+        slipCodes: [],
         formCodes: ['T2125'],
         linkedStep: 'Income'
       },
@@ -439,7 +439,7 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
         id: 'self_employment_farming_cash',
         label: 'T2042C — Farming income (cash basis)',
         description: 'Farm income and expenses reported on a cash basis.',
-        slipCodes: ['AGR-1'],
+        slipCodes: [],
         formCodes: ['T2042'],
         linkedStep: 'Income'
       },
@@ -447,7 +447,7 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
         id: 'self_employment_farming',
         label: 'T2042 — Farming income (accrual basis)',
         description: 'Farm income and expenses reported on an accrual basis.',
-        slipCodes: ['AGR-1'],
+        slipCodes: [],
         formCodes: ['T2042'],
         linkedStep: 'Income'
       },
@@ -455,7 +455,7 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
         id: 'self_employment_agristability_cash',
         label: 'T1163C — AgriStability/AgriInvest farming income (cash basis)',
         description: 'AgriStability and AgriInvest program amounts (cash basis).',
-        slipCodes: ['AGR-1'],
+        slipCodes: [],
         formCodes: ['T1163'],
         linkedStep: 'Income'
       },
@@ -463,7 +463,7 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
         id: 'self_employment_agristability',
         label: 'T1163 — AgriStability/AgriInvest farming income (accrual basis)',
         description: 'AgriStability and AgriInvest program amounts (accrual basis).',
-        slipCodes: ['AGR-1'],
+        slipCodes: [],
         formCodes: ['T1163'],
         linkedStep: 'Income'
       },

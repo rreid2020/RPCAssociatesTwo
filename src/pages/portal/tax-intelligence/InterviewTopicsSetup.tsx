@@ -9,6 +9,7 @@ import {
   interviewTopicNavigationLabel,
   resolveInterviewTopicNavigation
 } from './interviewTopicNavigation'
+import { topicArtifactDisplayCodes } from './interviewArtifactSections'
 import { HorizontalScrollTabBar } from './HorizontalScrollTabBar'
 
 export type InterviewTopicsSetupHandle = {
@@ -209,10 +210,11 @@ const InterviewTopicsSetup = forwardRef<InterviewTopicsSetupHandle, Props>(({ ta
               <ul className="divide-y divide-border">
                 {activeCategory.topics.map((topic) => {
                   const checked = selected.has(topic.id)
-                  const refs = [
-                    ...(topic.slipCodes || []),
-                    ...(topic.formCodes || [])
-                  ].filter(Boolean)
+                  const refs = topicArtifactDisplayCodes({
+                    topicId: topic.id,
+                    slipCodes: topic.slipCodes || [],
+                    formCodes: topic.formCodes || []
+                  })
                   const navTarget = resolveInterviewTopicNavigation(topic)
                   const navLabel = interviewTopicNavigationLabel(navTarget)
                   const isNavigating = navigatingTopicId === topic.id

@@ -5,6 +5,7 @@ import {
   type InterviewArtifactSection
 } from './interviewArtifactSections'
 import { HorizontalScrollTabBar } from './HorizontalScrollTabBar'
+import { ScheduleFormWorksheet } from './ScheduleFormWorksheet'
 import { SlipWorksheetForm, slipBoxEntriesForRow, type SlipRow } from './slipEntryUi'
 
 type RowRef = { row: SlipRow; idx: number }
@@ -15,6 +16,7 @@ export const CategorySlipFormTabs: FC<{
   slipSchemasByCode: Record<string, SlipSchema>
   filteredSlipSchemas: SlipSchema[]
   saving: boolean
+  returnId?: string
   setManualSlipRows: React.Dispatch<React.SetStateAction<SlipRow[]>>
   onAddSlip: (slipCode: string) => void
   onEnsureSlipRow: (slipCode: string) => void
@@ -27,6 +29,7 @@ export const CategorySlipFormTabs: FC<{
   slipSchemasByCode,
   filteredSlipSchemas,
   saving,
+  returnId,
   setManualSlipRows,
   onAddSlip,
   onEnsureSlipRow,
@@ -38,16 +41,17 @@ export const CategorySlipFormTabs: FC<{
     const entries = sectionSlipEntries(section)
     return entries.map((entry) => {
       const schema = slipSchemasByCode[entry.slipCode.toUpperCase()]
+      const isForm = entry.entryKind === 'form'
       return {
         ...entry,
         tabTitle: entry.slipCode,
-        tabMeta: schema?.name || entry.label
+        tabMeta: isForm ? 'Schedule' : (schema?.name || entry.label)
       }
     })
   }, [section, slipSchemasByCode])
 
-  const topicsWithoutSlips = useMemo(
-    () => section.items.filter((item) => item.slipCodes.length === 0),
+  const topicsWithoutArtifacts = useMemo(
+    () => section.items.filter((item) => item.slipCodes.length === 0 && item.formCodes.length === 0),
     [section]
   )
 
@@ -71,14 +75,21 @@ export const CategorySlipFormTabs: FC<{
     return roleSlipRows.filter(({ row }) => row.slipCode.toUpperCase() === activeFormCode.toUpperCase())
   }, [roleSlipRows, activeFormCode])
 
-  const ensureActiveFormRow = useCallback(() => {
-    if (!activeFormCode) return
+  const activeEntry = formEntries.find((entry) => entry.slipCode === activeFormCode)
+  const activeEntryIsSlip = activeEntry?.entryKind === 'slip'
+  const activeInstance = activeEntryIsSlip
+    ? (instancesForActiveForm.find(({ row }) => row.manualSlipId === activeInstanceId)
+      || instancesForActiveForm[0])
+    : undefined
+
+  const ensureActiveSlipRow = useCallback(() => {
+    if (!activeFormCode || !activeEntryIsSlip) return
     onEnsureSlipRow(activeFormCode)
-  }, [activeFormCode, onEnsureSlipRow])
+  }, [activeFormCode, activeEntryIsSlip, onEnsureSlipRow])
 
   useLayoutEffect(() => {
-    ensureActiveFormRow()
-  }, [ensureActiveFormRow])
+    ensureActiveSlipRow()
+  }, [ensureActiveSlipRow])
 
   useEffect(() => {
     if (instancesForActiveForm.length > prevInstanceCountRef.current) {
@@ -101,19 +112,18 @@ export const CategorySlipFormTabs: FC<{
 
   const handleFormChange = useCallback((slipCode: string) => {
     setActiveFormCode(slipCode)
-    onEnsureSlipRow(slipCode)
-  }, [onEnsureSlipRow])
+    const entry = formEntries.find((candidate) => candidate.slipCode === slipCode)
+    if (entry?.entryKind === 'slip') {
+      onEnsureSlipRow(slipCode)
+    }
+  }, [formEntries, onEnsureSlipRow])
 
   const handleAddInstance = useCallback(() => {
-    if (!activeFormCode) return
+    if (!activeFormCode || !activeEntryIsSlip) return
     onAddSlip(activeFormCode)
-  }, [activeFormCode, onAddSlip])
+  }, [activeFormCode, activeEntryIsSlip, onAddSlip])
 
-  const activeEntry = formEntries.find((entry) => entry.slipCode === activeFormCode)
-  const activeInstance = instancesForActiveForm.find(({ row }) => row.manualSlipId === activeInstanceId)
-    || instancesForActiveForm[0]
-
-  if (formEntries.length === 0 && topicsWithoutSlips.length === 0) {
+  if (formEntries.length === 0 && topicsWithoutArtifacts.length === 0) {
     return (
       <p className="text-xs text-text-light border border-dashed border-border rounded-md p-3">
         No income slips are required for this category based on your interview selections.
@@ -127,6 +137,13 @@ export const CategorySlipFormTabs: FC<{
         <div className="overflow-hidden rounded-lg border border-border bg-background/30 shadow-sm">
           <HorizontalScrollTabBar
             tabs={formEntries.map((entry) => {
+              if (entry.entryKind === 'form') {
+                return {
+                  id: entry.slipCode,
+                  title: entry.tabTitle,
+                  meta: entry.tabMeta
+                }
+              }
               const count = roleSlipRows.filter(({ row }) => row.slipCode.toUpperCase() === entry.slipCode.toUpperCase()).length
               return {
                 id: entry.slipCode,
@@ -144,7 +161,11 @@ export const CategorySlipFormTabs: FC<{
               <p className="text-xs text-text-light">{activeEntry.description}</p>
             )}
 
-            {instancesForActiveForm.length > 1 && (
+            {activeEntry?.entryKind === 'form' && activeEntry && (
+              <ScheduleFormWorksheet entry={activeEntry} returnId={returnId} />
+            )}
+
+            {activeEntryIsSlip && instancesForActiveForm.length > 1 && (
               <HorizontalScrollTabBar
                 tabs={instancesForActiveForm.map(({ row }, index) => ({
                   id: row.manualSlipId || `instance-${index}`,
@@ -157,7 +178,7 @@ export const CategorySlipFormTabs: FC<{
               />
             )}
 
-            {activeInstance && activeFormCode && (() => {
+            {activeEntryIsSlip && activeInstance && activeFormCode && (() => {
               const def = slipSchemasByCode[activeFormCode.toUpperCase()]
               if (!def) {
                 return (
@@ -208,7 +229,7 @@ export const CategorySlipFormTabs: FC<{
               )
             })()}
 
-            {activeFormCode && (
+            {activeEntryIsSlip && activeFormCode && (
               <div className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
                 <button
                   type="button"
@@ -224,7 +245,7 @@ export const CategorySlipFormTabs: FC<{
         </div>
       )}
 
-      {topicsWithoutSlips.map((item) => (
+      {topicsWithoutArtifacts.map((item) => (
         <div key={item.topicId} className="rounded-lg border border-border bg-background/40 p-3">
           <p className="text-sm font-medium text-text">{item.label}</p>
           <p className="mt-0.5 text-xs text-text-light">{item.description}</p>

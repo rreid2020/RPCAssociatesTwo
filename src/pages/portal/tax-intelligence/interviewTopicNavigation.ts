@@ -70,13 +70,20 @@ function pickPrimarySlipCode (topic: InterviewTopicItem): string | undefined {
   return specific || slips[0]
 }
 
-function resolveDeductionKey (topic: InterviewTopicItem): string | undefined {
-  if (TOPIC_DEDUCTION_KEY[topic.id]) return TOPIC_DEDUCTION_KEY[topic.id]
-  for (const formCode of topic.formCodes || []) {
+export function resolveDeductionKeyForTopic (
+  topicId: string,
+  formCodes: string[] = []
+): string | undefined {
+  if (TOPIC_DEDUCTION_KEY[topicId]) return TOPIC_DEDUCTION_KEY[topicId]
+  for (const formCode of formCodes) {
     const mapped = FORM_TO_DEDUCTION_KEY[formCode]
     if (mapped) return mapped
   }
   return undefined
+}
+
+function resolveDeductionKey (topic: InterviewTopicItem): string | undefined {
+  return resolveDeductionKeyForTopic(topic.id, topic.formCodes || [])
 }
 
 export function resolveInterviewTopicNavigation (topic: InterviewTopicItem): InterviewTopicNavigationTarget {

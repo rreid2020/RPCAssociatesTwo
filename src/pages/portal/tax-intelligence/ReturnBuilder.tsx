@@ -10,6 +10,16 @@ import {
   resolveInterviewTopicNavigation
 } from './interviewTopicNavigation'
 import type { InterviewTopicItem } from '../../../lib/taxIntelligenceApi'
+import { IncomeSlipsSetup } from './IncomeSlipsSetup'
+import { DeductionsFormsSetup } from './DeductionsFormsSetup'
+import {
+  SlipBoxFieldGrid,
+  buildDefaultBoxes,
+  createManualSlipId,
+  resolveManualSlipIdFromMeta,
+  slipBoxEntriesForRow,
+  type SlipRow
+} from './slipEntryUi'
 import ReviewDiagnosticsPanel from './ReviewDiagnosticsPanel'
 import { getTaxBasePath } from './path'
 import { CraQuestionRow, toggleToYesNo, yesNoToToggle, YesNoToggle, type YesNo, DEFAULT_CRA_YES_NO } from './CraQuestionControls'
@@ -315,15 +325,6 @@ const WorkflowPageNav: FC<WorkflowPageNavProps> = ({
   )
 }
 
-type SlipRow = {
-  slipCode: string
-  payerName: string
-  taxYear: number
-  taxpayerRole: 'self' | 'spouse'
-  boxes: Record<string, number>
-  manualSlipId?: string
-}
-
 type ExtractionPreviewState = {
   extractionId: string | null
   documentId: string
@@ -345,118 +346,6 @@ function compareSlipSchemas (a: SlipSchema, b: SlipSchema): number {
   const rank = slipSchemaSortRank(a) - slipSchemaSortRank(b)
   if (rank !== 0) return rank
   return a.code.localeCompare(b.code)
-}
-
-function buildDefaultBoxes (schema?: SlipSchema): Record<string, number> {
-  if (!schema?.boxes?.length) return {}
-  return {}
-}
-
-function formatSlipBoxDisplay (value: number | undefined): string {
-  if (value == null || !Number.isFinite(value) || value === 0) return ''
-  return String(value)
-}
-
-function parseSlipBoxInput (raw: string, boxType: 'currency' | 'number'): number | undefined {
-  const trimmed = raw.trim().replace(/,/g, '')
-  if (!trimmed) return undefined
-  if (boxType === 'number') {
-    const digits = trimmed.replace(/\D/g, '')
-    if (!digits) return undefined
-    const parsed = Number(digits)
-    return Number.isFinite(parsed) ? parsed : undefined
-  }
-  const parsed = Number(trimmed)
-  return Number.isFinite(parsed) ? parsed : undefined
-}
-
-type SlipBoxFieldDef = { code: string; label: string; type: 'currency' | 'number' }
-
-const SlipBoxAmountInput: FC<{
-  boxType: 'currency' | 'number'
-  value: number | undefined
-  onChange: (value: number | undefined) => void
-}> = ({ boxType, value, onChange }) => {
-  const [draft, setDraft] = useState(() => formatSlipBoxDisplay(value))
-
-  useEffect(() => {
-    setDraft(formatSlipBoxDisplay(value))
-  }, [value])
-
-  const commitDraft = (raw: string) => {
-    onChange(parseSlipBoxInput(raw, boxType))
-  }
-
-  return (
-    <input
-      type="text"
-      inputMode={boxType === 'currency' ? 'decimal' : 'numeric'}
-      autoComplete="off"
-      className="block w-full rounded-md border border-border px-3 py-2 text-right text-sm tabular-nums"
-      placeholder={boxType === 'currency' ? '0.00' : '0'}
-      value={draft}
-      onChange={(e) => {
-        const raw = e.target.value
-        if (raw === '') {
-          setDraft('')
-          onChange(undefined)
-          return
-        }
-        if (boxType === 'number' && !/^\d*$/.test(raw)) return
-        if (boxType === 'currency' && !/^\d*\.?\d{0,2}$/.test(raw)) return
-        setDraft(raw)
-        if (!(boxType === 'currency' && raw.endsWith('.'))) {
-          commitDraft(raw)
-        }
-      }}
-      onBlur={() => {
-        commitDraft(draft)
-        setDraft(formatSlipBoxDisplay(parseSlipBoxInput(draft, boxType)))
-      }}
-    />
-  )
-}
-
-const SlipBoxFieldGrid: FC<{
-  boxes: Record<string, number>
-  boxFields: SlipBoxFieldDef[]
-  keyPrefix: string
-  onBoxChange: (boxCode: string, value: number | undefined) => void
-}> = ({ boxes, boxFields, keyPrefix, onBoxChange }) => (
-  <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-4">
-    {boxFields.map((box) => (
-      <div key={`${keyPrefix}-${box.code}`} className="flex min-w-0 flex-col gap-1.5">
-        <span className="block min-h-[2.75rem] text-xs leading-snug text-text-light">
-          <span className="font-medium text-text">Box {box.code}</span> {box.label}
-        </span>
-        <SlipBoxAmountInput
-          boxType={box.type}
-          value={boxes[box.code]}
-          onChange={(nextValue) => onBoxChange(box.code, nextValue)}
-        />
-      </div>
-    ))}
-  </div>
-)
-
-function resolveManualSlipIdFromMeta (
-  meta: Record<string, unknown>,
-  entryId: string,
-  slipType: string
-): string {
-  if (meta.manualSlipId) return String(meta.manualSlipId)
-  const payer = String(meta.payerName || '').trim()
-  const year = String(meta.taxYear || '')
-  const role = String(meta.taxpayerRole || 'self')
-  if (payer || year) {
-    return `legacy-${slipType}-${payer}-${year}-${role}`.replace(/\s+/g, '_')
-  }
-  return `${slipType}-${entryId}`
-}
-
-function createManualSlipId (): string {
-  if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID()
-  return `slip-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 }
 
 function buildSlipRowsFromReturnData (
@@ -503,19 +392,6 @@ function buildSlipRowsFromReturnData (
   }
 
   return Array.from(grouped.values())
-}
-
-function slipBoxEntriesForRow (row: SlipRow, schema?: SlipSchema): Array<{ code: string; label: string; type: 'currency' | 'number' }> {
-  const fromSchema = (schema?.boxes || []).map((box) => ({
-    code: box.code,
-    label: box.label,
-    type: box.type
-  }))
-  const extraCodes = Object.keys(row.boxes).filter((code) => !fromSchema.some((box) => box.code === code))
-  return [
-    ...fromSchema,
-    ...extraCodes.map((code) => ({ code, label: `Box ${code}`, type: 'currency' as const }))
-  ]
 }
 
 type LineMappingRow = {
@@ -751,13 +627,6 @@ const ReturnBuilder: FC = () => {
     })
   }, [allReturns, householdRootId])
   const interviewMenuItems = useMemo<WorkflowMenuItem[]>(() => SIDEBAR_MENU_ITEMS, [])
-  const suggestedSlipSchemas = useMemo(() => {
-    const codes = new Set((interviewSetup?.resolvedSlipCodes || []).map((code) => code.toUpperCase()))
-    if (codes.size === 0) return []
-    return slipSchemas
-      .filter((schema) => codes.has(schema.code.toUpperCase()))
-      .sort(compareSlipSchemas)
-  }, [interviewSetup, slipSchemas])
   const setupCompletenessIssues = useMemo<CompletenessIssue[]>(() => {
     const issues: CompletenessIssue[] = []
     const married = taxpayerProfile.maritalStatus === 'married' || taxpayerProfile.maritalStatus === 'common_law'
@@ -1101,13 +970,15 @@ const ReturnBuilder: FC = () => {
   }, [taxpayerProfile.maritalStatus, taxpayerProfile.spouseReturnMode])
 
   const addIncomeRow = (role: 'self' | 'spouse') => setIncomeRows((prev) => [...prev, { category: 'employment_income', description: '', amount: 0, taxpayerRole: role }])
-  const addSlipRow = () => setManualSlipRows((prev) => [...prev, { ...createSlipRow(newSlipCode), taxpayerRole: 'self' }])
+  const addSlipRow = () => setManualSlipRows((prev) => [...prev, { ...createSlipRow(newSlipCode), taxpayerRole: returnRole }])
   const addSuggestedSlipRow = (slipCode: string) => {
     setNewSlipCode(slipCode)
     setManualSlipRows((prev) => {
-      const exists = prev.some((row) => row.slipCode.toUpperCase() === slipCode.toUpperCase())
+      const exists = prev.some((row) =>
+        row.taxpayerRole === returnRole && row.slipCode.toUpperCase() === slipCode.toUpperCase()
+      )
       if (exists) return prev
-      return [...prev, { ...createSlipRow(slipCode), taxpayerRole: 'self' }]
+      return [...prev, { ...createSlipRow(slipCode), taxpayerRole: returnRole }]
     })
   }
 
@@ -2373,259 +2244,109 @@ const ReturnBuilder: FC = () => {
 
           {!loading && activeStep === 'Income' && (
             <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
-              <h2 className="text-lg font-semibold text-primary-dark">Income</h2>
-              <p className="text-xs text-text-light">
-                Entering income for <span className="font-semibold text-text">{data?.taxReturn?.taxpayer_name || 'this workspace'}</span>.
-                Use household workspace tabs above to switch to another person&apos;s return.
-              </p>
-              {suggestedSlipSchemas.length > 0 && (
-                <div className="border border-primary-dark/20 rounded-md p-3 bg-primary-dark/5 space-y-2">
-                  <h3 className="text-sm font-semibold text-primary-dark">Suggested slips from tax situation setup</h3>
-                  <p className="text-xs text-text-light">
-                    Based on topics selected for this taxpayer. Add a slip row to start entering box amounts.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {suggestedSlipSchemas.map((schema) => {
-                      const alreadyAdded = manualSlipRows.some((row) => row.slipCode.toUpperCase() === schema.code.toUpperCase())
-                      return (
-                        <button
-                          key={`suggested-${schema.code}`}
-                          type="button"
-                          className={`text-xs px-2 py-1 rounded border ${alreadyAdded ? 'border-green-600 bg-green-50 text-green-800' : 'border-border bg-white hover:bg-background'}`}
-                          onClick={() => { if (!alreadyAdded) addSuggestedSlipRow(schema.code) }}
-                          disabled={alreadyAdded || saving}
-                          title={schema.name}
-                        >
-                          {alreadyAdded ? `${schema.code} added` : `+ ${schema.code}`}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-              <div className="flex flex-col md:flex-row gap-2">
-                <select
-                  className="border border-border rounded-md px-3 py-2 text-sm flex-1"
-                  value={selectedDocumentId}
-                  onChange={(e) => setSelectedDocumentId(e.target.value)}
-                >
-                  <option value="">Import from Documents…</option>
-                  {documents.map((d) => <option key={d.id} value={d.id}>{d.file_name}</option>)}
-                </select>
-                <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={() => { void importFromDocument() }} disabled={saving || !selectedDocumentId}>
-                  {saving && selectedDocumentId ? 'Extracting…' : 'Extract from document'}
-                </button>
-              </div>
-              {extractionPreview && (() => {
-                const previewSchema = slipSchemasByCode[extractionPreview.slipType.toUpperCase()]
-                const previewRow: SlipRow = {
-                  slipCode: extractionPreview.slipType,
-                  payerName: '',
-                  taxYear: data?.taxReturn?.tax_year || new Date().getFullYear(),
-                  taxpayerRole: 'self',
-                  boxes: extractionPreview.boxes
-                }
-                const previewBoxFields = slipBoxEntriesForRow(previewRow, previewSchema)
-                const selectedDoc = documents.find((d) => d.id === extractionPreview.documentId)
-                return (
-                  <div className="border border-primary-dark/30 rounded-md p-3 bg-primary-dark/5 space-y-3">
-                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
-                      <div>
-                        <h3 className="text-sm font-semibold text-primary-dark">Extraction preview</h3>
-                        <p className="text-xs text-text-light mt-1">
-                          {selectedDoc?.file_name || 'Selected document'} · confidence {(extractionPreview.confidence * 100).toFixed(0)}%
-                          {extractionPreview.ocrMethod ? ` · ${extractionPreview.ocrMethod}` : ''}
-                        </p>
-                        {extractionPreview.ocrWarning && (
-                          <p className="text-xs text-amber-700 mt-1">{extractionPreview.ocrWarning}</p>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={() => setExtractionPreview(null)}>
-                          Dismiss
-                        </button>
-                        <button type="button" className="btn btn--primary text-sm px-3 py-2" onClick={() => { void applyExtractionPreview() }}>
-                          Apply to slip rows
-                        </button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      <label className="text-xs text-text-light">
-                        Detected slip type
-                        <select
-                          className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                          value={extractionPreview.slipType}
-                          onChange={(e) => setExtractionPreview((prev) => prev ? { ...prev, slipType: e.target.value } : prev)}
-                        >
-                          <option value="UNKNOWN">Unknown — select slip type</option>
-                          {slipSchemas.map((schema) => (
-                            <option key={schema.code} value={schema.code}>
-                              {schema.code} - {schema.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <p className="text-xs text-text-light self-end pb-2">
-                        Review box values below, then apply to add a slip row. Save income when finished.
-                      </p>
-                    </div>
-                    {previewBoxFields.length === 0 ? (
-                      <p className="text-xs text-amber-700">No box values were detected. Choose a slip type and enter values manually after applying, or dismiss and add a slip manually.</p>
-                    ) : (
-                      <SlipBoxFieldGrid
-                        keyPrefix="preview"
-                        boxes={extractionPreview.boxes}
-                        boxFields={previewBoxFields}
-                        onBoxChange={(boxCode, nextValue) => {
-                          setExtractionPreview((prev) => {
-                            if (!prev) return prev
-                            const boxes = { ...prev.boxes }
-                            if (nextValue == null) delete boxes[boxCode]
-                            else boxes[boxCode] = nextValue
-                            return { ...prev, boxes }
-                          })
-                        }}
-                      />
-                    )}
-                  </div>
-                )
-              })()}
-              <div id="rb-income-slips" className="border border-border rounded-md p-3 bg-background/50 space-y-3">
-                <div>
-                  <h3 className="text-sm font-semibold text-primary-dark">CRA slip entry</h3>
-                  <p className="text-xs text-text-light mt-1">
-                    Choose a slip with predefined boxes when available, or add a catalog slip and enter box codes manually.
-                  </p>
-                </div>
-                <div className="flex flex-col md:flex-row gap-2">
-                  <input
-                    className="border border-border rounded-md px-3 py-2 text-sm flex-1"
-                    placeholder="Search slips by code or name"
-                    value={slipSearch}
-                    onChange={(e) => setSlipSearch(e.target.value)}
-                  />
-                  <select
-                    className="border border-border rounded-md px-3 py-2 text-sm flex-1"
-                    value={newSlipCode}
-                    onChange={(e) => setNewSlipCode(e.target.value)}
-                    disabled={loadingSlipSchemas || filteredSlipSchemas.length === 0}
-                  >
-                    {completeSlipSchemas.length > 0 && (
-                      <optgroup label="Ready — predefined boxes">
-                        {completeSlipSchemas.map((def) => (
-                          <option key={def.code} value={def.code}>
-                            {def.code} - {def.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-                    {catalogOnlySlipSchemas.length > 0 && (
-                      <optgroup label="Catalog only — add boxes manually">
-                        {catalogOnlySlipSchemas.map((def) => (
-                          <option key={def.code} value={def.code}>
-                            {def.code} - {def.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-                  </select>
-                  <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={() => addSlipRow()} disabled={loadingSlipSchemas || !newSlipCode}>
-                    Add slip
-                  </button>
-                </div>
-                {loadingSlipSchemas && (
-                  <p className="text-xs text-text-light">Loading CRA slip catalog…</p>
-                )}
-                {!loadingSlipSchemas && slipSchemas.length === 0 && (
-                  <p className="text-xs text-amber-700">No slip schemas are available yet. Try refreshing the page.</p>
-                )}
-                {manualSlipRows.map((row, idx) => {
-                  const def = slipSchemasByCode[row.slipCode.toUpperCase()]
-                  if (!def) return null
-                  const boxFields = slipBoxEntriesForRow(row, def)
+              <IncomeSlipsSetup
+                taxpayerName={data?.taxReturn?.taxpayer_name || 'this workspace'}
+                returnRole={returnRole}
+                interviewSetup={interviewSetup}
+                manualSlipRows={manualSlipRows}
+                setManualSlipRows={setManualSlipRows}
+                slipSchemas={slipSchemas}
+                slipSchemasByCode={slipSchemasByCode}
+                filteredSlipSchemas={filteredSlipSchemas}
+                completeSlipSchemas={completeSlipSchemas}
+                catalogOnlySlipSchemas={catalogOnlySlipSchemas}
+                loadingSlipSchemas={loadingSlipSchemas}
+                slipSearch={slipSearch}
+                setSlipSearch={setSlipSearch}
+                newSlipCode={newSlipCode}
+                setNewSlipCode={setNewSlipCode}
+                saving={saving}
+                onAddSlip={() => addSlipRow()}
+                onAddSuggestedSlip={addSuggestedSlipRow}
+                onRemoveSlip={removeSlipRow}
+                onUpdateSlipRowCode={updateSlipRowCode}
+                onAddCustomBox={addCustomBoxToSlip}
+                documents={documents}
+                selectedDocumentId={selectedDocumentId}
+                setSelectedDocumentId={setSelectedDocumentId}
+                onImportFromDocument={() => { void importFromDocument() }}
+                extractionPreview={extractionPreview && (() => {
+                  const previewSchema = slipSchemasByCode[extractionPreview.slipType.toUpperCase()]
+                  const previewRow: SlipRow = {
+                    slipCode: extractionPreview.slipType,
+                    payerName: '',
+                    taxYear: data?.taxReturn?.tax_year || new Date().getFullYear(),
+                    taxpayerRole: returnRole,
+                    boxes: extractionPreview.boxes
+                  }
+                  const previewBoxFields = slipBoxEntriesForRow(previewRow, previewSchema)
+                  const selectedDoc = documents.find((d) => d.id === extractionPreview.documentId)
                   return (
-                  <div key={`slip-${row.manualSlipId || idx}`} className="border border-border rounded-md p-3 bg-white space-y-2">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      <input
-                        className="border border-border rounded-md px-3 py-2 text-sm"
-                        placeholder={def.payerLabel}
-                        value={row.payerName}
-                        onChange={(e) => {
-                          const next = [...manualSlipRows]
-                          next[idx].payerName = e.target.value
-                          setManualSlipRows(next)
-                        }}
-                      />
-                      <input
-                        type="number"
-                        className="border border-border rounded-md px-3 py-2 text-sm"
-                        placeholder="Tax year"
-                        value={row.taxYear}
-                        onChange={(e) => {
-                          const next = [...manualSlipRows]
-                          next[idx].taxYear = Number(e.target.value)
-                          setManualSlipRows(next)
-                        }}
-                      />
-                    </div>
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                      <label className="text-xs text-text-light flex-1">
-                        Slip type
-                        <select
-                          className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                          value={row.slipCode}
-                          onChange={(e) => updateSlipRowCode(idx, e.target.value)}
-                        >
-                          {filteredSlipSchemas.map((schema) => (
-                            <option key={schema.code} value={schema.code}>
-                              {schema.code} - {schema.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <button
-                        type="button"
-                        className="btn btn--secondary text-sm px-3 py-2 md:self-end"
-                        onClick={() => { void removeSlipRow({ idx, manualSlipId: row.manualSlipId }) }}
-                        disabled={saving}
-                      >
-                        {saving ? 'Saving…' : 'Delete slip'}
-                      </button>
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs text-text-light font-medium">{def.code} - {def.name}</p>
-                      {def.schemaStatus === 'complete' && (
-                        <span className="text-xs text-green-700">Predefined boxes</span>
+                    <div className="border border-primary-dark/30 rounded-md p-3 bg-primary-dark/5 space-y-3">
+                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
+                        <div>
+                          <h3 className="text-sm font-semibold text-primary-dark">Extraction preview</h3>
+                          <p className="text-xs text-text-light mt-1">
+                            {selectedDoc?.file_name || 'Selected document'} · confidence {(extractionPreview.confidence * 100).toFixed(0)}%
+                            {extractionPreview.ocrMethod ? ` · ${extractionPreview.ocrMethod}` : ''}
+                          </p>
+                          {extractionPreview.ocrWarning && (
+                            <p className="text-xs text-amber-700 mt-1">{extractionPreview.ocrWarning}</p>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={() => setExtractionPreview(null)}>
+                            Dismiss
+                          </button>
+                          <button type="button" className="btn btn--primary text-sm px-3 py-2" onClick={() => { void applyExtractionPreview() }}>
+                            Apply to slip rows
+                          </button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <label className="text-xs text-text-light">
+                          Detected slip type
+                          <select
+                            className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
+                            value={extractionPreview.slipType}
+                            onChange={(e) => setExtractionPreview((prev) => prev ? { ...prev, slipType: e.target.value } : prev)}
+                          >
+                            <option value="UNKNOWN">Unknown — select slip type</option>
+                            {slipSchemas.map((schema) => (
+                              <option key={schema.code} value={schema.code}>
+                                {schema.code} - {schema.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <p className="text-xs text-text-light self-end pb-2">
+                          Review box values below, then apply to add a slip row. Save income when finished.
+                        </p>
+                      </div>
+                      {previewBoxFields.length === 0 ? (
+                        <p className="text-xs text-amber-700">No box values were detected. Choose a slip type and enter values manually after applying, or dismiss and add a slip manually.</p>
+                      ) : (
+                        <SlipBoxFieldGrid
+                          keyPrefix="preview"
+                          boxes={extractionPreview.boxes}
+                          boxFields={previewBoxFields}
+                          onBoxChange={(boxCode, nextValue) => {
+                            setExtractionPreview((prev) => {
+                              if (!prev) return prev
+                              const boxes = { ...prev.boxes }
+                              if (nextValue == null) delete boxes[boxCode]
+                              else boxes[boxCode] = nextValue
+                              return { ...prev, boxes }
+                            })
+                          }}
+                        />
                       )}
-                      {def.schemaStatus === 'catalog_only' && (
-                        <button type="button" className="text-xs text-primary-dark underline" onClick={() => addCustomBoxToSlip(idx)}>
-                          Add box
-                        </button>
-                      )}
                     </div>
-                    {def.schemaStatus === 'catalog_only' && boxFields.length === 0 && (
-                      <p className="text-xs text-amber-700">This slip is in the catalog but does not have predefined boxes yet. Use Add box to enter values from your slip.</p>
-                    )}
-                    <SlipBoxFieldGrid
-                      keyPrefix={`${row.slipCode}-${idx}`}
-                      boxes={row.boxes}
-                      boxFields={boxFields}
-                      onBoxChange={(boxCode, nextValue) => {
-                        setManualSlipRows((prev) => {
-                          const next = [...prev]
-                          const boxes = { ...next[idx].boxes }
-                          if (nextValue == null) delete boxes[boxCode]
-                          else boxes[boxCode] = nextValue
-                          next[idx] = { ...next[idx], boxes }
-                          return next
-                        })
-                      }}
-                    />
-                  </div>
                   )
-                })}
-              </div>
+                })()}
+              />
               <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-primary-dark">Other income (line 13000)</h3>
                 {incomeRows.map((row, idx) => (
                   row.taxpayerRole !== returnRole ? null : (
                   <div key={`income-${idx}`} className="grid grid-cols-1 md:grid-cols-4 gap-2">
@@ -2660,41 +2381,17 @@ const ReturnBuilder: FC = () => {
 
           {!loading && activeStep === 'Deductions' && (
             <section className="bg-white p-4 rounded-lg border border-border shadow-sm space-y-3">
-              <h2 className="text-lg font-semibold text-primary-dark">Deductions</h2>
+              <h2 className="text-lg font-semibold text-primary-dark">Deductions &amp; credits</h2>
               <div className="text-xs text-text-light">
                 Editing deductions for: <span className="font-semibold text-text">{returnRole === 'self' ? 'Taxpayer' : 'Spouse'}</span>
               </div>
-              <div id="rb-deductions" className="border border-border rounded-md p-3 bg-background/50 space-y-3">
-                <div>
-                  <h3 className="text-sm font-semibold text-primary-dark">T1 deduction and credit inputs</h3>
-                  <p className="text-xs text-text-light mt-1">Enter common deduction/credit lines from T1 General Step 3 and Step 5.</p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {T1_DEDUCTION_FIELDS.map((field) => (
-                    <label key={field.key} className="text-xs text-text-light border border-border rounded-md p-2 bg-white">
-                      <span className="font-medium text-text block">Line {field.lineRef} - {field.label}</span>
-                      <span className="block text-[11px] mt-0.5">{field.isCredit ? 'Non-refundable credit input' : 'Net income deduction input'}</span>
-                      <input
-                        type="number"
-                        data-deduction-key={field.key}
-                        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-                        value={Number(deductionFormValues[field.key]?.[returnRole] || 0)}
-                        onChange={(e) => {
-                          const n = Number(e.target.value)
-                          setDeductionFormValues((prev) => ({
-                            ...prev,
-                            [field.key]: {
-                              self: Number(prev[field.key]?.self || 0),
-                              spouse: Number(prev[field.key]?.spouse || 0),
-                              [returnRole]: Number.isFinite(n) ? n : 0
-                            }
-                          }))
-                        }}
-                      />
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <DeductionsFormsSetup
+                returnRole={returnRole}
+                interviewSetup={interviewSetup}
+                deductionFields={T1_DEDUCTION_FIELDS}
+                deductionFormValues={deductionFormValues}
+                setDeductionFormValues={setDeductionFormValues}
+              />
               <h3 className="text-sm font-semibold text-primary-dark">Additional custom deductions/credits</h3>
               <div className="space-y-2">
                 {deductionRows.map((row, idx) => (

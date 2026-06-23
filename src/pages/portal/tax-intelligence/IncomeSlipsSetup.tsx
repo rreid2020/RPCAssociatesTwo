@@ -1,14 +1,13 @@
-import { FC, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { FC, useEffect, useMemo, useState } from 'react'
 import type { ReturnInterviewTopicsResponse, SlipSchema } from '../../../lib/taxIntelligenceApi'
 import {
   buildInterviewArtifactSections,
   countSectionSlipsAdded,
   sectionSlipCodes,
-  sectionSlipEntries,
-  type InterviewArtifactSection,
-  type SectionSlipEntry
+  type InterviewArtifactSection
 } from './interviewArtifactSections'
 import { TabbedArtifactLayout } from './TabbedArtifactLayout'
+import { CategorySlipFormTabs } from './CategorySlipFormTabs'
 import { SlipWorksheetForm, slipBoxEntriesForRow, type SlipRow } from './slipEntryUi'
 
 export type IncomeSlipsSetupProps = {
@@ -29,7 +28,7 @@ export type IncomeSlipsSetupProps = {
   setNewSlipCode: (value: string) => void
   saving: boolean
   onAddSlip: (slipCode: string) => void
-  onEnsureSlipRows: (slipCodes: string[]) => void
+  onEnsureSlipRow: (slipCode: string) => void
   onRemoveSlip: (target: { idx: number; manualSlipId?: string }) => void
   onUpdateSlipRowCode: (idx: number, slipCode: string) => void
   onAddCustomBox: (idx: number) => void
@@ -38,131 +37,6 @@ export type IncomeSlipsSetupProps = {
   setSelectedDocumentId: (value: string) => void
   onImportFromDocument: () => void
   extractionPreview: React.ReactNode
-}
-
-const SlipEntryCard: FC<{
-  row: SlipRow
-  idx: number
-  def: SlipSchema
-  filteredSlipSchemas: SlipSchema[]
-  saving: boolean
-  setManualSlipRows: React.Dispatch<React.SetStateAction<SlipRow[]>>
-  onUpdateSlipRowCode: (idx: number, slipCode: string) => void
-  onRemoveSlip: (target: { idx: number; manualSlipId?: string }) => void
-  onAddCustomBox: (idx: number) => void
-  showDelete: boolean
-}> = ({
-  row,
-  idx,
-  def,
-  filteredSlipSchemas,
-  saving,
-  setManualSlipRows,
-  onUpdateSlipRowCode,
-  onRemoveSlip,
-  onAddCustomBox,
-  showDelete
-}) => {
-  const boxFields = slipBoxEntriesForRow(row, def)
-  return (
-    <SlipWorksheetForm
-      schema={def}
-      row={row}
-      boxFields={boxFields}
-      filteredSlipSchemas={filteredSlipSchemas}
-      saving={saving}
-      showDelete={showDelete}
-      onPayerNameChange={(value) => {
-        setManualSlipRows((prev) => {
-          const next = [...prev]
-          next[idx] = { ...next[idx], payerName: value }
-          return next
-        })
-      }}
-      onTaxYearChange={(value) => {
-        setManualSlipRows((prev) => {
-          const next = [...prev]
-          next[idx] = { ...next[idx], taxYear: value }
-          return next
-        })
-      }}
-      onSlipCodeChange={(slipCode) => onUpdateSlipRowCode(idx, slipCode)}
-      onBoxChange={(boxCode, nextValue) => {
-        setManualSlipRows((prev) => {
-          const next = [...prev]
-          const boxes = { ...next[idx].boxes }
-          if (nextValue == null) delete boxes[boxCode]
-          else boxes[boxCode] = nextValue
-          next[idx] = { ...next[idx], boxes }
-          return next
-        })
-      }}
-      onRemove={() => { void onRemoveSlip({ idx, manualSlipId: row.manualSlipId }) }}
-      onAddCustomBox={() => onAddCustomBox(idx)}
-    />
-  )
-}
-
-const SectionSlipGroup: FC<{
-  entry: SectionSlipEntry
-  rows: Array<{ row: SlipRow; idx: number }>
-  slipSchemasByCode: Record<string, SlipSchema>
-  filteredSlipSchemas: SlipSchema[]
-  saving: boolean
-  setManualSlipRows: React.Dispatch<React.SetStateAction<SlipRow[]>>
-  onAddSlip: (slipCode: string) => void
-  onUpdateSlipRowCode: (idx: number, slipCode: string) => void
-  onRemoveSlip: (target: { idx: number; manualSlipId?: string }) => void
-  onAddCustomBox: (idx: number) => void
-}> = ({
-  entry,
-  rows,
-  slipSchemasByCode,
-  filteredSlipSchemas,
-  saving,
-  setManualSlipRows,
-  onAddSlip,
-  onUpdateSlipRowCode,
-  onRemoveSlip,
-  onAddCustomBox
-}) => {
-  const def = slipSchemasByCode[entry.slipCode.toUpperCase()]
-  if (!def) {
-    return (
-      <div className="border border-amber-200 rounded-md p-3 bg-amber-50">
-        <p className="text-sm font-medium text-text">{entry.slipCode}</p>
-        <p className="text-xs text-amber-800 mt-1">Slip schema not loaded yet. Refresh the page or add this slip from the catalog below.</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-2">
-      {rows.map(({ row, idx }) => (
-        <SlipEntryCard
-          key={row.manualSlipId || `slip-${idx}`}
-          row={row}
-          idx={idx}
-          def={def}
-          filteredSlipSchemas={filteredSlipSchemas}
-          saving={saving}
-          setManualSlipRows={setManualSlipRows}
-          onUpdateSlipRowCode={onUpdateSlipRowCode}
-          onRemoveSlip={onRemoveSlip}
-          onAddCustomBox={onAddCustomBox}
-          showDelete={rows.length > 1}
-        />
-      ))}
-      <button
-        type="button"
-        className="text-xs text-primary-dark underline"
-        onClick={() => onAddSlip(entry.slipCode)}
-        disabled={saving}
-      >
-        Add another {entry.slipCode}
-      </button>
-    </div>
-  )
 }
 
 export const IncomeSlipsSetup: FC<IncomeSlipsSetupProps> = ({
@@ -183,7 +57,7 @@ export const IncomeSlipsSetup: FC<IncomeSlipsSetupProps> = ({
   setNewSlipCode,
   saving,
   onAddSlip,
-  onEnsureSlipRows,
+  onEnsureSlipRow,
   onRemoveSlip,
   onUpdateSlipRowCode,
   onAddCustomBox,
@@ -199,11 +73,6 @@ export const IncomeSlipsSetup: FC<IncomeSlipsSetupProps> = ({
   )
   const [activeSectionId, setActiveSectionId] = useState<string | null>(sections[0]?.id || null)
 
-  const activeSection = useMemo(
-    () => sections.find((section) => section.id === activeSectionId) || sections[0] || null,
-    [sections, activeSectionId]
-  )
-
   useEffect(() => {
     if (!sections.length) {
       setActiveSectionId(null)
@@ -213,25 +82,6 @@ export const IncomeSlipsSetup: FC<IncomeSlipsSetupProps> = ({
       setActiveSectionId(sections[0].id)
     }
   }, [sections, activeSectionId])
-
-  const ensureActiveSectionSlips = useCallback(() => {
-    if (!activeSection) return
-    const codes = sectionSlipEntries(activeSection).map((entry) => entry.slipCode)
-    if (codes.length > 0) onEnsureSlipRows(codes)
-  }, [activeSection, onEnsureSlipRows])
-
-  useLayoutEffect(() => {
-    ensureActiveSectionSlips()
-  }, [ensureActiveSectionSlips, returnRole])
-
-  const handleSectionChange = useCallback((sectionId: string) => {
-    setActiveSectionId(sectionId)
-    const section = sections.find((item) => item.id === sectionId)
-    if (section) {
-      const codes = sectionSlipEntries(section).map((entry) => entry.slipCode)
-      if (codes.length > 0) onEnsureSlipRows(codes)
-    }
-  }, [sections, onEnsureSlipRows])
 
   const roleSlipRows = useMemo(
     () => manualSlipRows
@@ -248,51 +98,7 @@ export const IncomeSlipsSetup: FC<IncomeSlipsSetupProps> = ({
     return codes
   }, [roleSlipRows])
 
-  const renderSectionSlips = (section: InterviewArtifactSection) => {
-    const entries = sectionSlipEntries(section)
-    const topicsWithoutSlips = section.items.filter((item) => item.slipCodes.length === 0)
-
-    if (entries.length === 0 && topicsWithoutSlips.length === 0) {
-      return (
-        <p className="text-xs text-text-light border border-dashed border-border rounded-md p-3">
-          No income slips are required for this category based on your interview selections.
-        </p>
-      )
-    }
-
-    return (
-      <div className="space-y-6">
-        {entries.map((entry) => {
-          const rows = roleSlipRows.filter(({ row }) => row.slipCode.toUpperCase() === entry.slipCode.toUpperCase())
-          return (
-            <SectionSlipGroup
-              key={entry.slipCode}
-              entry={entry}
-              rows={rows}
-              slipSchemasByCode={slipSchemasByCode}
-              filteredSlipSchemas={filteredSlipSchemas}
-              saving={saving}
-              setManualSlipRows={setManualSlipRows}
-              onAddSlip={onAddSlip}
-              onUpdateSlipRowCode={onUpdateSlipRowCode}
-              onRemoveSlip={onRemoveSlip}
-              onAddCustomBox={onAddCustomBox}
-            />
-          )
-        })}
-        {topicsWithoutSlips.map((item) => (
-          <div key={item.topicId} className="border border-border rounded-md p-3 bg-background/40">
-            <p className="text-sm font-medium text-text">{item.label}</p>
-            <p className="text-xs text-text-light mt-0.5">{item.description}</p>
-            <p className="text-xs text-text-light mt-1">Enter amounts in the other income section below (line 13000).</p>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  const renderSlipCards = (section: InterviewArtifactSection | null) => {
-    if (section) return renderSectionSlips(section)
+  const renderFallbackSlips = () => {
     if (roleSlipRows.length === 0) {
       return (
         <p className="text-xs text-text-light border border-dashed border-border rounded-md p-3">
@@ -304,18 +110,41 @@ export const IncomeSlipsSetup: FC<IncomeSlipsSetupProps> = ({
       const def = slipSchemasByCode[row.slipCode.toUpperCase()]
       if (!def) return null
       return (
-        <SlipEntryCard
+        <SlipWorksheetForm
           key={row.manualSlipId || `slip-${idx}`}
+          schema={def}
           row={row}
-          idx={idx}
-          def={def}
+          boxFields={slipBoxEntriesForRow(row, def)}
           filteredSlipSchemas={filteredSlipSchemas}
           saving={saving}
-          setManualSlipRows={setManualSlipRows}
-          onUpdateSlipRowCode={onUpdateSlipRowCode}
-          onRemoveSlip={onRemoveSlip}
-          onAddCustomBox={onAddCustomBox}
           showDelete
+          onPayerNameChange={(value) => {
+            setManualSlipRows((prev) => {
+              const next = [...prev]
+              next[idx] = { ...next[idx], payerName: value }
+              return next
+            })
+          }}
+          onTaxYearChange={(value) => {
+            setManualSlipRows((prev) => {
+              const next = [...prev]
+              next[idx] = { ...next[idx], taxYear: value }
+              return next
+            })
+          }}
+          onSlipCodeChange={(slipCode) => onUpdateSlipRowCode(idx, slipCode)}
+          onBoxChange={(boxCode, nextValue) => {
+            setManualSlipRows((prev) => {
+              const next = [...prev]
+              const boxes = { ...next[idx].boxes }
+              if (nextValue == null) delete boxes[boxCode]
+              else boxes[boxCode] = nextValue
+              next[idx] = { ...next[idx], boxes }
+              return next
+            })
+          }}
+          onRemove={() => { void onRemoveSlip({ idx, manualSlipId: row.manualSlipId }) }}
+          onAddCustomBox={() => onAddCustomBox(idx)}
         />
       )
     })
@@ -327,7 +156,7 @@ export const IncomeSlipsSetup: FC<IncomeSlipsSetupProps> = ({
         <h2 className="text-lg font-semibold text-primary-dark">Income &amp; CRA slips</h2>
         <p className="text-xs text-text-light mt-1">
           Entering income for <span className="font-semibold text-text">{taxpayerName}</span>.
-          Complete each slip form under the categories you selected in interview setup.
+          Choose a category, then complete each slip form you selected in interview setup.
         </p>
       </div>
 
@@ -336,14 +165,29 @@ export const IncomeSlipsSetup: FC<IncomeSlipsSetupProps> = ({
           <TabbedArtifactLayout
             sections={sections}
             activeSectionId={activeSectionId}
-            onSectionChange={handleSectionChange}
+            onSectionChange={setActiveSectionId}
             sectionMeta={(section) => {
               const total = sectionSlipCodes(section).size
               const added = countSectionSlipsAdded(section, addedSlipCodes)
               return total > 0 ? `${added}/${total} slip type(s)` : `${section.items.length} topic(s)`
             }}
           >
-            {(activeSection) => renderSectionSlips(activeSection)}
+            {(activeSection: InterviewArtifactSection) => (
+              <CategorySlipFormTabs
+                key={activeSection.id}
+                section={activeSection}
+                roleSlipRows={roleSlipRows}
+                slipSchemasByCode={slipSchemasByCode}
+                filteredSlipSchemas={filteredSlipSchemas}
+                saving={saving}
+                setManualSlipRows={setManualSlipRows}
+                onAddSlip={onAddSlip}
+                onEnsureSlipRow={onEnsureSlipRow}
+                onRemoveSlip={onRemoveSlip}
+                onUpdateSlipRowCode={onUpdateSlipRowCode}
+                onAddCustomBox={onAddCustomBox}
+              />
+            )}
           </TabbedArtifactLayout>
         </div>
       ) : (
@@ -351,7 +195,7 @@ export const IncomeSlipsSetup: FC<IncomeSlipsSetupProps> = ({
           <p className="text-sm text-text-light">
             Complete interview setup to see organized slip categories, or add slips manually below.
           </p>
-          {renderSlipCards(null)}
+          {renderFallbackSlips()}
         </div>
       )}
 

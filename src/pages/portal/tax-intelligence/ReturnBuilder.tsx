@@ -985,19 +985,13 @@ const ReturnBuilder: FC = () => {
       return [...prev, { ...createSlipRow(slipCode), taxpayerRole: returnRole }]
     })
   }
-  const ensureSectionSlipRows = useCallback((slipCodes: string[]) => {
+  const ensureSectionSlipRow = useCallback((slipCode: string) => {
     setManualSlipRows((prev) => {
-      let next = prev
-      for (const slipCode of slipCodes) {
-        const exists = next.some((row) =>
-          row.taxpayerRole === returnRole && row.slipCode.toUpperCase() === slipCode.toUpperCase()
-        )
-        if (!exists) {
-          if (next === prev) next = [...prev]
-          next.push({ ...createSlipRow(slipCode), taxpayerRole: returnRole })
-        }
-      }
-      return next
+      const exists = prev.some((row) =>
+        row.taxpayerRole === returnRole && row.slipCode.toUpperCase() === slipCode.toUpperCase()
+      )
+      if (exists) return prev
+      return [...prev, { ...createSlipRow(slipCode), taxpayerRole: returnRole }]
     })
   }, [returnRole, slipSchemasByCode, data?.taxReturn?.tax_year])
 
@@ -2284,7 +2278,7 @@ const ReturnBuilder: FC = () => {
                 setNewSlipCode={setNewSlipCode}
                 saving={saving}
                 onAddSlip={addSlipRow}
-                onEnsureSlipRows={ensureSectionSlipRows}
+                onEnsureSlipRow={ensureSectionSlipRow}
                 onRemoveSlip={removeSlipRow}
                 onUpdateSlipRowCode={updateSlipRowCode}
                 onAddCustomBox={addCustomBoxToSlip}

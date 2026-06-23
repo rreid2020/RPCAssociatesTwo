@@ -69,7 +69,12 @@ export type SectionSlipEntry = {
 
 export function sectionSlipEntries (section: InterviewArtifactSection): SectionSlipEntry[] {
   const seen = new Map<string, SectionSlipEntry>()
-  for (const item of section.items) {
+  const items = [...section.items].sort((a, b) => {
+    const aBundle = BUNDLE_TOPIC_IDS.has(a.topicId) ? 1 : 0
+    const bBundle = BUNDLE_TOPIC_IDS.has(b.topicId) ? 1 : 0
+    return aBundle - bBundle
+  })
+  for (const item of items) {
     for (const raw of item.slipCodes) {
       const slipCode = String(raw || '').trim().toUpperCase()
       if (!slipCode || seen.has(slipCode)) continue

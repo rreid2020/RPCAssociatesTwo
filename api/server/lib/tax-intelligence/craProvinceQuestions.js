@@ -4,15 +4,15 @@ const PROVINCIAL_ELECTIONS_REQUIRES_CITIZEN = new Set(['AB', 'BC'])
 
 const PROVINCIAL_ELECTIONS_PROVINCES = new Set(['AB', 'BC', 'NS', 'NL', 'PE', 'SK'])
 
-function normalizeProvinceCode (value) {
+export function normalizeProvinceCode (value) {
   return String(value || '').trim().toUpperCase().slice(0, 4)
 }
 
-function hasOrganDonorQuestion (provinceCode) {
+export function hasOrganDonorQuestion (provinceCode) {
   return ORGAN_DONOR_PROVINCES.has(normalizeProvinceCode(provinceCode))
 }
 
-function hasProvincialElectionsQuestions (provinceCode) {
+export function hasProvincialElectionsQuestions (provinceCode) {
   return PROVINCIAL_ELECTIONS_PROVINCES.has(normalizeProvinceCode(provinceCode))
 }
 
@@ -20,13 +20,13 @@ function provincialElectionsRequiresCitizen (provinceCode) {
   return PROVINCIAL_ELECTIONS_REQUIRES_CITIZEN.has(normalizeProvinceCode(provinceCode))
 }
 
-function normalizeOrganDonorConsent (provinceCode, value) {
+export function normalizeOrganDonorConsent (provinceCode, value) {
   if (!hasOrganDonorQuestion(provinceCode)) return false
   if (value == null || value === '') return null
   return Boolean(value)
 }
 
-function normalizeProvincialElections (provinceCode, citizenValue, authorizeValue) {
+export function normalizeProvincialElections (provinceCode, citizenValue, authorizeValue) {
   if (!hasProvincialElectionsQuestions(provinceCode)) {
     return { provincialElectionsCanadianCitizen: null, provincialElectionsAuthorize: null }
   }
@@ -41,12 +41,4 @@ function normalizeProvincialElections (provinceCode, citizenValue, authorizeValu
     provincialElectionsCanadianCitizen: null,
     provincialElectionsAuthorize: authorizeValue == null || authorizeValue === '' ? null : Boolean(authorizeValue)
   }
-}
-
-export {
-  normalizeProvinceCode,
-  hasOrganDonorQuestion,
-  hasProvincialElectionsQuestions,
-  normalizeOrganDonorConsent,
-  normalizeProvincialElections
 }

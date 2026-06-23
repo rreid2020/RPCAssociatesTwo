@@ -2,11 +2,17 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'r
 import {
   taxFetch,
   type InterviewTopicCategory,
+  type InterviewTopicItem,
   type ReturnInterviewTopicsResponse
 } from '../../../lib/taxIntelligenceApi'
+import {
+  interviewTopicNavigationLabel,
+  resolveInterviewTopicNavigation
+} from './interviewTopicNavigation'
 
 export type InterviewTopicsSetupHandle = {
   save: () => Promise<boolean>
+  saveSelection: (selectedTopicIds: string[]) => Promise<boolean>
 }
 
 type Props = {
@@ -14,6 +20,7 @@ type Props = {
   taxpayerName: string
   getToken: () => Promise<string | null>
   onSaved?: (response: ReturnInterviewTopicsResponse) => void
+  onNavigateTopic?: (topic: InterviewTopicItem, selectedTopicIds: string[]) => Promise<void>
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -38,9 +45,10 @@ function categorySelectedCount (category: InterviewTopicCategory, selected: Set<
   return category.topics.filter((topic) => selected.has(topic.id)).length
 }
 
-const InterviewTopicsSetup = forwardRef<InterviewTopicsSetupHandle, Props>(({ taxReturnId, taxpayerName, getToken, onSaved }, ref) => {
+const InterviewTopicsSetup = forwardRef<InterviewTopicsSetupHandle, Props>(({ taxReturnId, taxpayerName, getToken, onSaved, onNavigateTopic }, ref) => {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [navigatingTopicId, setNavigatingTopicId] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [savedMsg, setSavedMsg] = useState<string | null>(null)
   const [data, setData] = useState<ReturnInterviewTopicsResponse | null>(null)
@@ -95,7 +103,7 @@ const InterviewTopicsSetup = forwardRef<InterviewTopicsSetupHandle, Props>(({ ta
     setSavedMsg(null)
   }
 
-  const save = async (): Promise<boolean> => {
+  const saveSelection = async (selectedTopicIds: string[]): Promise<boolean> => {
     if (!taxReturnId) return true
     setSaving(true)
     setErr(null)
@@ -106,12 +114,11 @@ const InterviewTopicsSetup = forwardRef<InterviewTopicsSetupHandle, Props>(({ ta
         getToken,
         {
           method: 'PUT',
-          body: JSON.stringify({ selectedTopicIds: Array.from(selected) })
+          body: JSON.stringify({ selectedTopicIds })
         }
       )
       setData(response)
       setSelected(new Set(response.selectedTopicIds || []))
-      setSavedMsg(`Saved interview setup for ${taxpayerName || 'this taxpayer'}.`)
       onSaved?.(response)
       return true
     } catch (e) {
@@ -122,7 +129,23 @@ const InterviewTopicsSetup = forwardRef<InterviewTopicsSetupHandle, Props>(({ ta
     }
   }
 
-  useImperativeHandle(ref, () => ({ save }), [taxReturnId, selected, taxpayerName, getToken, onSaved])
+  const save = async (): Promise<boolean> => saveSelection(Array.from(selected))
+
+  const openTopic = async (topic: InterviewTopicItem) => {
+    if (!onNavigateTopic) return
+    const nextSelected = new Set(selected)
+    if (!nextSelected.has(topic.id)) nextSelected.add(topic.id)
+    setSelected(nextSelected)
+    setSavedMsg(null)
+    setNavigatingTopicId(topic.id)
+    try {
+      await onNavigateTopic(topic, Array.from(nextSelected))
+    } finally {
+      setNavigatingTopicId(null)
+    }
+  }
+
+  useImperativeHandle(ref, () => ({ save, saveSelection }), [taxReturnId, selected, getToken, onSaved])
 
   if (loading) {
     return <p className="text-sm text-text-light">Loading interview setup…</p>
@@ -133,14 +156,13 @@ const InterviewTopicsSetup = forwardRef<InterviewTopicsSetupHandle, Props>(({ ta
       <div>
         <h2 className="text-xl font-bold text-primary-dark">Interview setup</h2>
         <p className="text-sm text-text-light mt-2">
-          Select a section tab, then tick any items that apply to <strong className="text-text">{taxpayerName || 'this taxpayer'}</strong>.
-          Complete this checklist on each household workspace before entering slips.
+          Select a section tab, then tick items that apply to <strong className="text-text">{taxpayerName || 'this taxpayer'}</strong> or use the arrow to open setup or data entry for that topic.
         </p>
       </div>
 
       <div className="rounded-md border border-sky-300 bg-sky-50 px-4 py-3 text-sm text-sky-950">
         <p>
-          <span className="font-semibold">Tip:</span> Use the section tabs to browse topics. If you are not sure whether you need a form or slip, tick the topic anyway — you can clear it later. Selections drive suggested slips and required CRA forms on Review.
+          <span className="font-semibold">Tip:</span> Use the section tabs to browse topics. Tick a box to include it in this return, or click the arrow to jump to the matching setup screen or data entry page. Selections drive suggested slips and required CRA forms on Review.
         </p>
       </div>
 
@@ -261,6 +283,9 @@ const InterviewTopicsSetup = forwardRef<InterviewTopicsSetupHandle, Props>(({ ta
                           ...(topic.slipCodes || []),
                           ...(topic.formCodes || [])
                         ].filter(Boolean)
+                        const navTarget = resolveInterviewTopicNavigation(topic)
+                        const navLabel = interviewTopicNavigationLabel(navTarget)
+                        const isNavigating = navigatingTopicId === topic.id
                         return (
                           <li key={topic.id} className="flex items-start gap-3 px-3 py-2.5 hover:bg-background/50">
                             <input
@@ -269,6 +294,7 @@ const InterviewTopicsSetup = forwardRef<InterviewTopicsSetupHandle, Props>(({ ta
                               className="mt-1 h-4 w-4 shrink-0"
                               checked={checked}
                               onChange={() => toggleTopic(topic.id)}
+                              disabled={saving || isNavigating}
                             />
                             <label htmlFor={`topic-${topic.id}`} className="flex-1 cursor-pointer min-w-0">
                               <span className="text-sm text-text font-medium">{topic.label}</span>
@@ -276,6 +302,18 @@ const InterviewTopicsSetup = forwardRef<InterviewTopicsSetupHandle, Props>(({ ta
                                 <span className="ml-2 text-[11px] text-text-light">({refs.join(', ')})</span>
                               )}
                             </label>
+                            {onNavigateTopic && (
+                              <button
+                                type="button"
+                                className="shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary-dark text-white hover:bg-primary-dark/90 disabled:opacity-60"
+                                title={navLabel}
+                                aria-label={navLabel}
+                                onClick={() => { void openTopic(topic) }}
+                                disabled={saving || isNavigating}
+                              >
+                                <span className="text-sm leading-none" aria-hidden>→</span>
+                              </button>
+                            )}
                             <button
                               type="button"
                               className="shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-full border border-border text-[10px] text-text-light hover:bg-background"
@@ -297,7 +335,7 @@ const InterviewTopicsSetup = forwardRef<InterviewTopicsSetupHandle, Props>(({ ta
       )}
 
       <div className="flex flex-wrap items-center gap-2 pt-1">
-        <button type="button" className="btn btn--primary text-sm px-4 py-2" onClick={() => { void save() }} disabled={saving}>
+        <button type="button" className="btn btn--primary text-sm px-4 py-2" onClick={() => { void save().then((ok) => { if (ok) setSavedMsg(`Saved interview setup for ${taxpayerName || 'this taxpayer'}.`) }) }} disabled={saving}>
           {saving ? 'Saving…' : 'Save interview setup'}
         </button>
         <button type="button" className="btn btn--secondary text-sm px-3 py-2" onClick={() => { void load() }} disabled={saving || loading}>

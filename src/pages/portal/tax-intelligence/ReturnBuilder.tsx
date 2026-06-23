@@ -6,6 +6,10 @@ import ClientPortalShell from '../../../components/ClientPortalShell'
 import { taxFetch, type DocumentExtractResponse, type RequiredFormsResponse, type ReturnInterviewTopicsResponse, type SlipSchema, type SlipSchemasResponse, type TaxReturnSummary } from '../../../lib/taxIntelligenceApi'
 import RequiredFormsPanel from './RequiredFormsPanel'
 import InterviewTopicsSetup, { type InterviewTopicsSetupHandle } from './InterviewTopicsSetup'
+import {
+  resolveInterviewTopicNavigation
+} from './interviewTopicNavigation'
+import type { InterviewTopicItem } from '../../../lib/taxIntelligenceApi'
 import ReviewDiagnosticsPanel from './ReviewDiagnosticsPanel'
 import { getTaxBasePath } from './path'
 import { CraQuestionRow, toggleToYesNo, yesNoToToggle, YesNoToggle, type YesNo, DEFAULT_CRA_YES_NO } from './CraQuestionControls'
@@ -660,6 +664,7 @@ const ReturnBuilder: FC = () => {
   const [creatingDependentIdx, setCreatingDependentIdx] = useState<number | null>(null)
   const [interviewSetup, setInterviewSetup] = useState<ReturnInterviewTopicsResponse | null>(null)
   const interviewSetupRef = useRef<InterviewTopicsSetupHandle>(null)
+  const pendingTopicFocusRef = useRef<{ anchor?: string; deductionKey?: string } | null>(null)
 
   const requestedStep = useMemo<Step | null>(() => {
     const value = new URLSearchParams(location.search).get('step')
@@ -1099,8 +1104,47 @@ const ReturnBuilder: FC = () => {
   const addSlipRow = () => setManualSlipRows((prev) => [...prev, { ...createSlipRow(newSlipCode), taxpayerRole: 'self' }])
   const addSuggestedSlipRow = (slipCode: string) => {
     setNewSlipCode(slipCode)
-    setManualSlipRows((prev) => [...prev, { ...createSlipRow(slipCode), taxpayerRole: 'self' }])
+    setManualSlipRows((prev) => {
+      const exists = prev.some((row) => row.slipCode.toUpperCase() === slipCode.toUpperCase())
+      if (exists) return prev
+      return [...prev, { ...createSlipRow(slipCode), taxpayerRole: 'self' }]
+    })
   }
+
+  const focusInterviewTopicTarget = (anchor?: string, deductionKey?: string) => {
+    window.setTimeout(() => {
+      if (anchor) {
+        document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+      if (deductionKey) {
+        const input = document.querySelector(`[data-deduction-key="${deductionKey}"]`) as HTMLInputElement | null
+        input?.focus()
+        input?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    }, 80)
+  }
+
+  const handleInterviewTopicNavigate = async (topic: InterviewTopicItem, selectedTopicIds: string[]) => {
+    const saved = await (interviewSetupRef.current?.saveSelection(selectedTopicIds) ?? Promise.resolve(true))
+    if (!saved) return
+
+    const target = resolveInterviewTopicNavigation(topic)
+    if (target.slipCode) {
+      addSuggestedSlipRow(target.slipCode)
+    }
+    pendingTopicFocusRef.current = {
+      anchor: target.focusAnchor,
+      deductionKey: target.deductionKey
+    }
+    navigateWorkflowStep(target.step as Step)
+  }
+
+  useEffect(() => {
+    const pending = pendingTopicFocusRef.current
+    if (!pending) return
+    pendingTopicFocusRef.current = null
+    focusInterviewTopicTarget(pending.anchor, pending.deductionKey)
+  }, [activeStep])
   const removeSlipRow = async (target: { idx: number; manualSlipId?: string }) => {
     const row = manualSlipRows[target.idx]
     if (!row) return
@@ -1692,6 +1736,7 @@ const ReturnBuilder: FC = () => {
                   taxpayerName={data?.taxReturn?.taxpayer_name || 'this taxpayer'}
                   getToken={getToken}
                   onSaved={(response) => setInterviewSetup(response)}
+                  onNavigateTopic={handleInterviewTopicNavigate}
                 />
               ) : (
                 <p className="text-sm text-text-light">Select a household workspace tab to begin interview setup.</p>
@@ -2631,6 +2676,7 @@ const ReturnBuilder: FC = () => {
                       <span className="block text-[11px] mt-0.5">{field.isCredit ? 'Non-refundable credit input' : 'Net income deduction input'}</span>
                       <input
                         type="number"
+                        data-deduction-key={field.key}
                         className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
                         value={Number(deductionFormValues[field.key]?.[returnRole] || 0)}
                         onChange={(e) => {

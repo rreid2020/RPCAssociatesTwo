@@ -43,7 +43,7 @@ function normalizeProvincialElections (provinceCode, citizenValue, authorizeValu
   }
 }
 
-module.exports = {
+export {
   normalizeProvinceCode,
   hasOrganDonorQuestion,
   hasProvincialElectionsQuestions,

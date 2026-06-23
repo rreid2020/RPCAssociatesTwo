@@ -1,5 +1,10 @@
 import { FC, useEffect, useMemo, useState } from 'react'
-import type { ReturnInterviewTopicsResponse, SlipSchema } from '../../../lib/taxIntelligenceApi'
+import type {
+  FormWorksheetSchema,
+  FormWorksheetValuesState,
+  ReturnInterviewTopicsResponse,
+  SlipSchema
+} from '../../../lib/taxIntelligenceApi'
 import {
   buildInterviewArtifactSections,
   countSectionSlipsAdded,
@@ -13,12 +18,15 @@ import { SlipWorksheetForm, slipBoxEntriesForRow, type SlipRow } from './slipEnt
 export type IncomeSlipsSetupProps = {
   taxpayerName: string
   returnRole: 'self' | 'spouse'
-  returnId?: string
   interviewSetup: ReturnInterviewTopicsResponse | null
   manualSlipRows: SlipRow[]
   setManualSlipRows: React.Dispatch<React.SetStateAction<SlipRow[]>>
   slipSchemas: SlipSchema[]
   slipSchemasByCode: Record<string, SlipSchema>
+  formSchemasByCode: Record<string, FormWorksheetSchema>
+  loadingFormWorksheets: boolean
+  formWorksheetValues: FormWorksheetValuesState
+  onFormWorksheetChange: (formCode: string, fieldCode: string, value: string | number | undefined) => void
   filteredSlipSchemas: SlipSchema[]
   completeSlipSchemas: SlipSchema[]
   catalogOnlySlipSchemas: SlipSchema[]
@@ -43,12 +51,15 @@ export type IncomeSlipsSetupProps = {
 export const IncomeSlipsSetup: FC<IncomeSlipsSetupProps> = ({
   taxpayerName,
   returnRole,
-  returnId,
   interviewSetup,
   manualSlipRows,
   setManualSlipRows,
   slipSchemas,
   slipSchemasByCode,
+  formSchemasByCode,
+  loadingFormWorksheets,
+  formWorksheetValues,
+  onFormWorksheetChange,
   filteredSlipSchemas,
   completeSlipSchemas,
   catalogOnlySlipSchemas,
@@ -178,12 +189,16 @@ export const IncomeSlipsSetup: FC<IncomeSlipsSetupProps> = ({
               <CategorySlipFormTabs
                 key={activeSection.id}
                 section={activeSection}
-                returnId={returnId}
                 roleSlipRows={roleSlipRows}
+                returnRole={returnRole}
                 slipSchemasByCode={slipSchemasByCode}
+                formSchemasByCode={formSchemasByCode}
+                loadingFormWorksheets={loadingFormWorksheets}
+                formWorksheetValues={formWorksheetValues}
                 filteredSlipSchemas={filteredSlipSchemas}
                 saving={saving}
                 setManualSlipRows={setManualSlipRows}
+                onFormWorksheetChange={onFormWorksheetChange}
                 onAddSlip={onAddSlip}
                 onEnsureSlipRow={onEnsureSlipRow}
                 onRemoveSlip={onRemoveSlip}

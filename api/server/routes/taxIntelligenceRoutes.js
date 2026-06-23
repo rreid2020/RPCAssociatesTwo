@@ -24,6 +24,13 @@ import { inferRequiredFormsForReturn } from '../services/tax-intelligence/requir
 import { listSlipSchemasForReturnBuilder, getSlipSchema } from '../services/tax-intelligence/slipSchema.service.js'
 import { saveReturnSlipsAndIncome } from '../services/tax-intelligence/slipEntry.service.js'
 import {
+  ensureFormWorksheetSchemasSeeded,
+  getFormWorksheetSchema,
+  listFormWorksheetValuesForReturn,
+  listFormWorksheetsForReturnBuilder,
+  saveReturnFormWorksheetsBatch
+} from '../services/tax-intelligence/formWorksheet.service.js'
+import {
   getInterviewTopicsCatalog,
   getReturnInterviewTopics,
   saveReturnInterviewTopics
@@ -113,12 +120,19 @@ export function createTaxIntelligenceRouter (pool) {
     try {
       const taxReturn = await getTaxReturnById(pool, session.userId, id)
       if (!taxReturn) return res.status(404).json({ error: 'Not found' })
-      const [incomeEntries, deductions, calculation] = await Promise.all([
+      const [incomeEntries, deductions, calculation, formWorksheetValues] = await Promise.all([
         listIncomeEntries(pool, session.userId, id),
         listDeductions(pool, session.userId, id),
-        getSavedCalculation(pool, session.userId, id)
+        getSavedCalculation(pool, session.userId, id),
+        listFormWorksheetValuesForReturn(pool, session.userId, id)
       ])
-      res.json({ taxReturn, incomeEntries: incomeEntries || [], deductions: deductions || [], calculation })
+      res.json({
+        taxReturn,
+        incomeEntries: incomeEntries || [],
+        deductions: deductions || [],
+        calculation,
+        formWorksheetValues: formWorksheetValues || {}
+      })
     } catch (e) {
       console.error('GET /tax-returns/:id', e)
       res.status(500).json({ error: 'Could not load tax return' })
@@ -195,6 +209,51 @@ export function createTaxIntelligenceRouter (pool) {
     } catch (e) {
       console.error('GET /slip-schemas/:formNumber', e)
       res.status(500).json({ error: 'Could not load slip schema' })
+    }
+  })
+
+  r.get('/form-worksheets', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const schemas = await listFormWorksheetsForReturnBuilder(pool)
+      res.json({ schemas })
+    } catch (e) {
+      console.error('GET /form-worksheets', e)
+      res.status(500).json({ error: 'Could not load form worksheets' })
+    }
+  })
+
+  r.get('/form-worksheets/:formNumber', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const formNumber = String(req.params.formNumber || '').trim()
+    if (!formNumber) return res.status(400).json({ error: 'formNumber is required' })
+    try {
+      const schema = await getFormWorksheetSchema(pool, formNumber)
+      if (!schema) return res.status(404).json({ error: 'Form worksheet schema not found' })
+      res.json({ schema })
+    } catch (e) {
+      console.error('GET /form-worksheets/:formNumber', e)
+      res.status(500).json({ error: 'Could not load form worksheet schema' })
+    }
+  })
+
+  r.put('/tax-returns/:id/form-worksheets', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    const id = parseUuid(req.params.id)
+    if (!id) return res.status(400).json({ error: 'Invalid id' })
+    try {
+      const values = req.body?.formWorksheetValues && typeof req.body.formWorksheetValues === 'object'
+        ? req.body.formWorksheetValues
+        : {}
+      const result = await saveReturnFormWorksheetsBatch(pool, session.userId, id, values)
+      if (!result) return res.status(404).json({ error: 'Not found' })
+      res.json(result)
+    } catch (e) {
+      console.error('PUT /tax-returns/:id/form-worksheets', e)
+      res.status(500).json({ error: 'Could not save form worksheets' })
     }
   })
 

@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import SEO from '../../../components/SEO'
 import ClientPortalShell from '../../../components/ClientPortalShell'
-import { taxFetch, type DocumentExtractResponse, type RequiredFormsResponse, type ReturnInterviewTopicsResponse, type SlipSchema, type SlipSchemasResponse, type TaxReturnSummary } from '../../../lib/taxIntelligenceApi'
+import { taxFetch, type DocumentExtractResponse, type FormWorksheetSchema, type FormWorksheetSchemasResponse, type FormWorksheetValuesState, type RequiredFormsResponse, type ReturnInterviewTopicsResponse, type SlipSchema, type SlipSchemasResponse, type TaxReturnSummary } from '../../../lib/taxIntelligenceApi'
 import RequiredFormsPanel from './RequiredFormsPanel'
 import InterviewTopicsSetup, { type InterviewTopicsSetupHandle } from './InterviewTopicsSetup'
 import {
@@ -123,6 +123,7 @@ type TaxReturnPayload = {
     is_credit: boolean
     metadata?: Record<string, unknown>
   }>
+  formWorksheetValues?: FormWorksheetValuesState
   calculation?: {
     taxable_income: number
     total_payable: number
@@ -532,6 +533,9 @@ const ReturnBuilder: FC = () => {
   const [newSlipCode, setNewSlipCode] = useState('T4')
   const [slipSchemas, setSlipSchemas] = useState<SlipSchema[]>([])
   const [loadingSlipSchemas, setLoadingSlipSchemas] = useState(true)
+  const [formWorksheetSchemas, setFormWorksheetSchemas] = useState<FormWorksheetSchema[]>([])
+  const [loadingFormWorksheets, setLoadingFormWorksheets] = useState(true)
+  const [formWorksheetValues, setFormWorksheetValues] = useState<FormWorksheetValuesState>({})
   const [slipSearch, setSlipSearch] = useState('')
   const [requiredForms, setRequiredForms] = useState<RequiredFormsResponse | null>(null)
   const [loadingRequiredForms, setLoadingRequiredForms] = useState(false)
@@ -568,6 +572,10 @@ const ReturnBuilder: FC = () => {
   const slipSchemasByCode = useMemo(
     () => Object.fromEntries(slipSchemas.map((schema) => [schema.code.toUpperCase(), schema])) as Record<string, SlipSchema>,
     [slipSchemas]
+  )
+  const formSchemasByCode = useMemo(
+    () => Object.fromEntries(formWorksheetSchemas.map((schema) => [schema.code.toUpperCase(), schema])) as Record<string, FormWorksheetSchema>,
+    [formWorksheetSchemas]
   )
   const filteredSlipSchemas = useMemo(() => {
     const query = slipSearch.trim().toLowerCase()
@@ -851,7 +859,12 @@ const ReturnBuilder: FC = () => {
         dependents: dependentsRaw.map((d) => dependentFromLegacy(d as Record<string, unknown>))
       })
       const nonSlipEntries = (returnData.incomeEntries || []).filter(
-        (r) => !(r.source_type === 'manual_slip' || r.source_type === 'manual_t4' || String(r?.metadata?.slipType || '').length > 0)
+        (r) => !(
+          r.source_type === 'manual_slip' ||
+          r.source_type === 'manual_t4' ||
+          r.source_type === 'form_worksheet' ||
+          String(r?.metadata?.slipType || '').length > 0
+        )
       )
       setIncomeRows(nonSlipEntries.map((r) => ({
         category: r.category,
@@ -859,6 +872,7 @@ const ReturnBuilder: FC = () => {
         amount: Number(r.amount || 0),
         taxpayerRole: String((r.metadata || {}).taxpayerRole || 'self') === 'spouse' ? 'spouse' : 'self'
       })))
+      setFormWorksheetValues(returnData.formWorksheetValues || {})
       setManualSlipRows(buildSlipRowsFromReturnData(
         returnData.incomeEntries || [],
         returnData.deductions || [],
@@ -918,6 +932,18 @@ const ReturnBuilder: FC = () => {
       }
     }
     void loadSlipSchemas()
+    const loadFormWorksheets = async () => {
+      setLoadingFormWorksheets(true)
+      try {
+        const response = await taxFetch<FormWorksheetSchemasResponse>('/form-worksheets', getToken)
+        setFormWorksheetSchemas(response.schemas || [])
+      } catch (e) {
+        setErr((prev) => prev || (e instanceof Error ? e.message : 'Could not load form worksheets'))
+      } finally {
+        setLoadingFormWorksheets(false)
+      }
+    }
+    void loadFormWorksheets()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -1126,14 +1152,38 @@ const ReturnBuilder: FC = () => {
     return rows
   }, [data?.incomeEntries, slipSchemasByCode])
 
+  const handleFormWorksheetChange = useCallback((formCode: string, fieldCode: string, value: string | number | undefined) => {
+    const code = formCode.toUpperCase()
+    setFormWorksheetValues((prev) => {
+      const current = prev[code] || { self: {}, spouse: {} }
+      const roleBucket = { ...current[returnRole] }
+      if (value == null || value === '') delete roleBucket[fieldCode]
+      else roleBucket[fieldCode] = value
+      return {
+        ...prev,
+        [code]: {
+          ...current,
+          [returnRole]: roleBucket
+        }
+      }
+    })
+  }, [returnRole])
+
   const saveIncome = async (overrides?: { slips?: SlipRow[]; reload?: boolean }): Promise<boolean> => {
     setSaving(true)
     try {
       const slips = (overrides?.slips ?? manualSlipRows).map((row) => ({
         ...row,
         manualSlipId: row.manualSlipId || createManualSlipId(),
-        taxpayerRole: 'self' as const
+        taxpayerRole: row.taxpayerRole || 'self'
       }))
+      const formResult = await taxFetch<{
+        formWorksheetValues: FormWorksheetValuesState
+        incomeEntries: TaxReturnPayload['incomeEntries']
+      }>(`/tax-returns/${id}/form-worksheets`, getToken, {
+        method: 'PUT',
+        body: JSON.stringify({ formWorksheetValues })
+      })
       const result = await taxFetch<{ incomeEntries: TaxReturnPayload['incomeEntries']; deductions: TaxReturnPayload['deductions'] }>(`/tax-returns/${id}/slips`, getToken, {
         method: 'POST',
         body: JSON.stringify({
@@ -1141,16 +1191,19 @@ const ReturnBuilder: FC = () => {
           slips
         })
       })
+      const mergedIncomeEntries = result.incomeEntries || []
+      setFormWorksheetValues(formResult.formWorksheetValues || formWorksheetValues)
       if (overrides?.reload === false) {
         setManualSlipRows(buildSlipRowsFromReturnData(
-          result.incomeEntries || [],
+          mergedIncomeEntries,
           result.deductions || [],
           slipSchemasByCode
         ))
         setData((prev) => prev ? {
           ...prev,
-          incomeEntries: result.incomeEntries || [],
-          deductions: result.deductions || []
+          incomeEntries: mergedIncomeEntries,
+          deductions: result.deductions || [],
+          formWorksheetValues: formResult.formWorksheetValues || formWorksheetValues
         } : prev)
       } else {
         await load()
@@ -2263,12 +2316,15 @@ const ReturnBuilder: FC = () => {
               <IncomeSlipsSetup
                 taxpayerName={data?.taxReturn?.taxpayer_name || 'this workspace'}
                 returnRole={returnRole}
-                returnId={id}
                 interviewSetup={interviewSetup}
                 manualSlipRows={manualSlipRows}
                 setManualSlipRows={setManualSlipRows}
                 slipSchemas={slipSchemas}
                 slipSchemasByCode={slipSchemasByCode}
+                formSchemasByCode={formSchemasByCode}
+                loadingFormWorksheets={loadingFormWorksheets}
+                formWorksheetValues={formWorksheetValues}
+                onFormWorksheetChange={handleFormWorksheetChange}
                 filteredSlipSchemas={filteredSlipSchemas}
                 completeSlipSchemas={completeSlipSchemas}
                 catalogOnlySlipSchemas={catalogOnlySlipSchemas}

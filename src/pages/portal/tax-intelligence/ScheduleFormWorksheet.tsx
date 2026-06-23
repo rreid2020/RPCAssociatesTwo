@@ -1,8 +1,14 @@
-import { FC } from 'react'
-import { Link } from 'react-router-dom'
+import { FC, useEffect, useMemo, useState } from 'react'
+import type { FormWorksheetSchema } from '../../../lib/taxIntelligenceApi'
 import type { SectionSlipEntry } from './interviewArtifactSections'
-import { TaxWorksheetSectionHeader } from './TaxWorksheet'
-import { getTaxBasePath } from './path'
+import {
+  TaxWorksheetCurrencyInput,
+  TaxWorksheetGroupHeader,
+  TaxWorksheetRow,
+  TaxWorksheetSectionHeader,
+  TaxWorksheetTextInput
+} from './TaxWorksheet'
+import { computeT2125Totals, resolveComputedFormFieldValue } from './formWorksheetUtils'
 
 const FORM_TITLES: Record<string, string> = {
   T2125: 'Statement of Business or Professional Activities',
@@ -18,38 +24,130 @@ function resolveFormTitle (formCode: string, fallbackLabel: string): string {
   return FORM_TITLES[normalized] || fallbackLabel || normalized
 }
 
+function formatCurrency (value: number | undefined): string {
+  if (value == null || !Number.isFinite(value) || value === 0) return '—'
+  return value.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 export const ScheduleFormWorksheet: FC<{
   entry: SectionSlipEntry
-  returnId?: string
-}> = ({ entry, returnId }) => {
-  const basePath = getTaxBasePath()
-  const formCode = entry.slipCode
+  schema?: FormWorksheetSchema | null
+  returnRole: 'self' | 'spouse'
+  values: Record<string, string | number>
+  onChange: (fieldCode: string, value: string | number | undefined) => void
+  loading?: boolean
+}> = ({ entry, schema, returnRole, values, onChange, loading = false }) => {
+  const formCode = entry.slipCode.toUpperCase()
   const title = resolveFormTitle(formCode, entry.label)
-  const formsHref = returnId
-    ? `${basePath}/forms-schedules?returnId=${encodeURIComponent(returnId)}`
-    : `${basePath}/forms-schedules`
+  const [draftValues, setDraftValues] = useState(values)
+
+  useEffect(() => {
+    setDraftValues(values)
+  }, [values])
+
+  const totals = useMemo(() => (
+    formCode === 'T2125' ? computeT2125Totals(draftValues) : null
+  ), [draftValues, formCode])
+
+  if (loading) {
+    return (
+      <div className="rounded-lg border border-border bg-white p-4 text-sm text-text-light">
+        Loading {formCode} worksheet…
+      </div>
+    )
+  }
+
+  if (!schema || schema.sections.length === 0) {
+    return (
+      <div className="overflow-hidden rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <p className="text-sm font-medium text-text">{formCode} — {title}</p>
+        <p className="mt-1 text-xs text-amber-800">
+          The worksheet schema for this form is not available yet. Refresh the page or contact support if this persists.
+        </p>
+      </div>
+    )
+  }
+
+  const resolvedValue = (fieldCode: string, fieldType: string, compute?: string | null) => {
+    if (fieldType === 'computed' || compute) {
+      return resolveComputedFormFieldValue(formCode, fieldCode, draftValues)
+    }
+    return draftValues[fieldCode]
+  }
+
+  const handleFieldChange = (fieldCode: string, nextValue: string | number | undefined) => {
+    setDraftValues((prev) => {
+      const next = { ...prev }
+      if (nextValue == null || nextValue === '') delete next[fieldCode]
+      else next[fieldCode] = nextValue
+      return next
+    })
+    onChange(fieldCode, nextValue)
+  }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-white shadow-sm">
-      <TaxWorksheetSectionHeader
-        title={`${formCode} — ${title}`}
-        description={entry.description}
-      />
-      <div className="space-y-3 px-4 py-4 text-sm text-text">
-        <p>
-          Complete this CRA schedule to report income and expenses for your selected interview topic.
-        </p>
-        <p className="text-xs text-text-light">
-          Schedule worksheets are entered here in Return Builder. Use the Forms &amp; Schedules workspace
-          to review required forms, line totals, and filing package completeness.
-        </p>
-        <Link
-          className="inline-flex text-sm font-medium text-accent hover:underline"
-          to={formsHref}
-        >
-          Open Forms &amp; Schedules
-        </Link>
-      </div>
+    <div className="space-y-4">
+      {schema.sections.map((section) => (
+        <div key={section.id} className="overflow-hidden rounded-lg border border-border bg-white shadow-sm">
+          <TaxWorksheetSectionHeader title={section.title} description={section.description} />
+          <div className="divide-y divide-border/80">
+            {section.fields.map((field, index) => {
+              const isComputed = field.type === 'computed' || Boolean(field.compute)
+              const value = resolvedValue(field.code, field.type, field.compute)
+              return (
+                <TaxWorksheetRow
+                  key={field.code}
+                  label={field.label}
+                  lineRef={field.lineRef || field.code}
+                  helpText={isComputed ? 'Calculated from the entries above.' : undefined}
+                  striped={index % 2 === 1}
+                >
+                  {isComputed ? (
+                    <div className="rounded-md border border-border bg-slate-50 px-3 py-2 text-right text-sm font-medium tabular-nums text-text">
+                      {formatCurrency(typeof value === 'number' ? value : Number(value || 0))}
+                    </div>
+                  ) : field.type === 'text' ? (
+                    <TaxWorksheetTextInput
+                      value={String(draftValues[field.code] || '')}
+                      onChange={(next) => handleFieldChange(field.code, next)}
+                      placeholder={field.placeholder}
+                    />
+                  ) : (
+                    <TaxWorksheetCurrencyInput
+                      value={typeof value === 'number' ? value : Number(value || 0) || undefined}
+                      onChange={(nextValue) => handleFieldChange(field.code, nextValue)}
+                    />
+                  )}
+                </TaxWorksheetRow>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+
+      {formCode === 'T2125' && totals && (
+        <div className="overflow-hidden rounded-lg border border-border bg-background/40">
+          <TaxWorksheetGroupHeader title="Worksheet summary" />
+          <div className="grid gap-2 px-4 py-3 text-sm sm:grid-cols-3">
+            <div>
+              <p className="text-xs text-text-light">Gross income</p>
+              <p className="font-medium tabular-nums">{formatCurrency(totals.grossIncome)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-text-light">Total expenses</p>
+              <p className="font-medium tabular-nums">{formatCurrency(totals.totalExpenses)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-text-light">Net income (line 13500)</p>
+              <p className="font-semibold tabular-nums text-primary-dark">{formatCurrency(totals.netIncome)}</p>
+            </div>
+          </div>
+          <p className="border-t border-border px-4 py-2 text-xs text-text-light">
+            Entering data for <span className="font-medium text-text">{returnRole === 'spouse' ? 'Spouse' : 'Taxpayer'}</span>.
+            Net business income is saved to federal line 13500 when you save income.
+          </p>
+        </div>
+      )}
     </div>
   )
 }

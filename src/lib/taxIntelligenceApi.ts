@@ -126,6 +126,44 @@ export type SlipSchemasResponse = {
   schemas: SlipSchema[]
 }
 
+export type FormWorksheetFieldSchema = {
+  code: string
+  label: string
+  type: 'currency' | 'number' | 'text' | 'computed'
+  lineRef?: string
+  targets?: SlipSchemaTarget[]
+  compute?: string | null
+  readOnly?: boolean
+  placeholder?: string
+}
+
+export type FormWorksheetSectionSchema = {
+  id: string
+  title: string
+  description?: string
+  fields: FormWorksheetFieldSchema[]
+}
+
+export type FormWorksheetSchema = {
+  code: string
+  name: string
+  formFamily: string
+  schemaStatus: 'complete' | 'catalog_only' | 'partial'
+  landingUrl?: string | null
+  sections: FormWorksheetSectionSchema[]
+}
+
+export type FormWorksheetSchemasResponse = {
+  schemas: FormWorksheetSchema[]
+}
+
+export type FormWorksheetRoleValues = Record<string, string | number>
+export type FormWorksheetValuesByRole = {
+  self: FormWorksheetRoleValues
+  spouse: FormWorksheetRoleValues
+}
+export type FormWorksheetValuesState = Record<string, FormWorksheetValuesByRole>
+
 export type DocumentExtractionRecord = {
   id: string
   document_id: string

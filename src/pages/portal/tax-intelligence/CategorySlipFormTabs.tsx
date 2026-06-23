@@ -1,5 +1,5 @@
 import { FC, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { SlipSchema } from '../../../lib/taxIntelligenceApi'
+import type { FormWorksheetSchema, FormWorksheetValuesState, SlipSchema } from '../../../lib/taxIntelligenceApi'
 import {
   sectionSlipEntries,
   type InterviewArtifactSection
@@ -14,10 +14,14 @@ export const CategorySlipFormTabs: FC<{
   section: InterviewArtifactSection
   roleSlipRows: RowRef[]
   slipSchemasByCode: Record<string, SlipSchema>
+  formSchemasByCode: Record<string, FormWorksheetSchema>
+  loadingFormWorksheets: boolean
+  formWorksheetValues: FormWorksheetValuesState
+  returnRole: 'self' | 'spouse'
   filteredSlipSchemas: SlipSchema[]
   saving: boolean
-  returnId?: string
   setManualSlipRows: React.Dispatch<React.SetStateAction<SlipRow[]>>
+  onFormWorksheetChange: (formCode: string, fieldCode: string, value: string | number | undefined) => void
   onAddSlip: (slipCode: string) => void
   onEnsureSlipRow: (slipCode: string) => void
   onRemoveSlip: (target: { idx: number; manualSlipId?: string }) => void
@@ -27,10 +31,14 @@ export const CategorySlipFormTabs: FC<{
   section,
   roleSlipRows,
   slipSchemasByCode,
+  formSchemasByCode,
+  loadingFormWorksheets,
+  formWorksheetValues,
+  returnRole,
   filteredSlipSchemas,
   saving,
-  returnId,
   setManualSlipRows,
+  onFormWorksheetChange,
   onAddSlip,
   onEnsureSlipRow,
   onRemoveSlip,
@@ -118,6 +126,17 @@ export const CategorySlipFormTabs: FC<{
     }
   }, [formEntries, onEnsureSlipRow])
 
+  const activeFormValues = useMemo(() => {
+    if (!activeFormCode) return {}
+    const bucket = formWorksheetValues[activeFormCode.toUpperCase()]
+    return bucket?.[returnRole] || {}
+  }, [formWorksheetValues, activeFormCode, returnRole])
+
+  const handleFormWorksheetFieldChange = useCallback((fieldCode: string, value: string | number | undefined) => {
+    if (!activeFormCode) return
+    onFormWorksheetChange(activeFormCode, fieldCode, value)
+  }, [activeFormCode, onFormWorksheetChange])
+
   const handleAddInstance = useCallback(() => {
     if (!activeFormCode || !activeEntryIsSlip) return
     onAddSlip(activeFormCode)
@@ -162,7 +181,14 @@ export const CategorySlipFormTabs: FC<{
             )}
 
             {activeEntry?.entryKind === 'form' && activeEntry && (
-              <ScheduleFormWorksheet entry={activeEntry} returnId={returnId} />
+              <ScheduleFormWorksheet
+                entry={activeEntry}
+                schema={formSchemasByCode[activeEntry.slipCode.toUpperCase()] || null}
+                returnRole={returnRole}
+                values={activeFormValues}
+                loading={loadingFormWorksheets}
+                onChange={handleFormWorksheetFieldChange}
+              />
             )}
 
             {activeEntryIsSlip && instancesForActiveForm.length > 1 && (

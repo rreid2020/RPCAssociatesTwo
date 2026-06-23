@@ -1758,6 +1758,53 @@ const EVOLUTIONARY_STATEMENTS = [
   CONSTRAINT slip_box_schemas_slip_box_key UNIQUE (slip_schema_id, box_code)
 )`,
   'CREATE INDEX IF NOT EXISTS slip_box_schemas_slip_idx ON taxgpt.slip_box_schemas(slip_schema_id, sort_order)',
+  `CREATE TABLE IF NOT EXISTS taxgpt.form_worksheet_schemas (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  form_number VARCHAR(64) NOT NULL,
+  title TEXT NOT NULL,
+  form_family VARCHAR(32) NOT NULL DEFAULT 't1_form',
+  schema_status VARCHAR(32) NOT NULL DEFAULT 'complete',
+  landing_url TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now(),
+  CONSTRAINT form_worksheet_schemas_form_number_key UNIQUE (form_number)
+)`,
+  'CREATE INDEX IF NOT EXISTS form_worksheet_schemas_status_idx ON taxgpt.form_worksheet_schemas(schema_status, form_number)',
+  `CREATE TABLE IF NOT EXISTS taxgpt.form_worksheet_fields (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  form_worksheet_schema_id UUID NOT NULL REFERENCES taxgpt.form_worksheet_schemas(id) ON DELETE CASCADE,
+  section_id VARCHAR(64) NOT NULL,
+  section_title TEXT NOT NULL,
+  section_description TEXT,
+  field_code VARCHAR(32) NOT NULL,
+  label TEXT NOT NULL,
+  field_type VARCHAR(16) NOT NULL DEFAULT 'currency',
+  line_ref VARCHAR(16),
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  targets JSONB NOT NULL DEFAULT '[]'::jsonb,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now(),
+  CONSTRAINT form_worksheet_fields_schema_field_key UNIQUE (form_worksheet_schema_id, field_code)
+)`,
+  'CREATE INDEX IF NOT EXISTS form_worksheet_fields_schema_idx ON taxgpt.form_worksheet_fields(form_worksheet_schema_id, sort_order)',
+  `CREATE TABLE IF NOT EXISTS taxgpt.form_worksheet_values (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clerk_user_id TEXT NOT NULL,
+  tax_return_id UUID NOT NULL REFERENCES taxgpt.tax_returns(id) ON DELETE CASCADE,
+  form_code VARCHAR(64) NOT NULL,
+  taxpayer_role VARCHAR(16) NOT NULL DEFAULT 'self',
+  field_code VARCHAR(32) NOT NULL,
+  field_type VARCHAR(16) NOT NULL DEFAULT 'currency',
+  amount NUMERIC(14, 2),
+  text_value TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now(),
+  CONSTRAINT form_worksheet_values_unique_key UNIQUE (tax_return_id, form_code, taxpayer_role, field_code)
+)`,
+  'CREATE INDEX IF NOT EXISTS form_worksheet_values_return_idx ON taxgpt.form_worksheet_values(tax_return_id, form_code, taxpayer_role)',
   `ALTER TABLE taxgpt.accounting_workspaces
    DROP CONSTRAINT IF EXISTS accounting_workspaces_workspace_type_chk`,
   `ALTER TABLE taxgpt.accounting_workspaces

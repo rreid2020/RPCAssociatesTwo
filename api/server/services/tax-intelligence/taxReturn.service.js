@@ -1,7 +1,10 @@
-import {
+import { createRequire } from 'node:module'
+
+const require = createRequire(import.meta.url)
+const {
   normalizeOrganDonorConsent,
   normalizeProvincialElections
-} from '../../lib/tax-intelligence/craProvinceQuestions.js'
+} = require('../../lib/tax-intelligence/craProvinceQuestions.cjs')
 
 function normalizeMaritalStatus (v) {
   const value = String(v || '').toLowerCase().trim()

@@ -201,10 +201,10 @@ async function loadTaxpayerProfileFromTables (conn, clerkUserId, taxReturnId) {
     selectExpr(profileColumns, 'sold_principal_residence', 'boolean'),
     selectExpr(profileColumns, 'treaty_exempt_foreign_service', 'boolean'),
     'pr.indian_act_exempt_income',
-    'pr.foreign_property_over_100k',
-    'pr.organ_donor_consent',
-    'pr.provincial_elections_canadian_citizen',
-    'pr.provincial_elections_authorize',
+    selectExpr(profileColumns, 'foreign_property_over_100k', 'boolean'),
+    selectExpr(profileColumns, 'organ_donor_consent', 'boolean'),
+    selectExpr(profileColumns, 'provincial_elections_canadian_citizen', 'boolean'),
+    selectExpr(profileColumns, 'provincial_elections_authorize', 'boolean'),
     selectExpr(profileColumns, 'cra_email_notifications_consent', 'boolean'),
     selectExpr(profileColumns, 'cra_email_confirmed', 'boolean'),
     selectExpr(profileColumns, 'cra_has_foreign_mailing_address', 'boolean'),
@@ -460,6 +460,9 @@ export async function listTaxReturns (pool, clerkUserId) {
   const craEmailNotifExpr = selectExpr(profileColumns, 'cra_email_notifications_consent', 'boolean')
   const craEmailConfirmedExpr = selectExpr(profileColumns, 'cra_email_confirmed', 'boolean')
   const craForeignMailingExpr = selectExpr(profileColumns, 'cra_has_foreign_mailing_address', 'boolean')
+  const provincialElectionsCitizenExpr = selectExpr(profileColumns, 'provincial_elections_canadian_citizen', 'boolean')
+  const provincialElectionsAuthorizeExpr = selectExpr(profileColumns, 'provincial_elections_authorize', 'boolean')
+  const organDonorConsentExpr = selectExpr(profileColumns, 'organ_donor_consent', 'boolean')
   const { rows } = await pool.query(
     `SELECT tr.*,
             tp.full_name AS taxpayer_name,
@@ -482,9 +485,9 @@ export async function listTaxReturns (pool, clerkUserId) {
             ${soldPrincipalResidenceExpr},
             ${treatyExemptExpr},
             pr.foreign_property_over_100k,
-            pr.organ_donor_consent,
-            pr.provincial_elections_canadian_citizen,
-            pr.provincial_elections_authorize,
+            ${organDonorConsentExpr},
+            ${provincialElectionsCitizenExpr},
+            ${provincialElectionsAuthorizeExpr},
             ${craEmailNotifExpr},
             ${craEmailConfirmedExpr},
             ${craForeignMailingExpr},

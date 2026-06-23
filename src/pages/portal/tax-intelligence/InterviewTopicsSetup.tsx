@@ -9,6 +9,7 @@ import {
   interviewTopicNavigationLabel,
   resolveInterviewTopicNavigation
 } from './interviewTopicNavigation'
+import { HorizontalScrollTabBar } from './HorizontalScrollTabBar'
 
 export type InterviewTopicsSetupHandle = {
   save: () => Promise<boolean>
@@ -179,158 +180,84 @@ const InterviewTopicsSetup = forwardRef<InterviewTopicsSetupHandle, Props>(({ ta
         <p className="text-sm text-text-light">No interview sections are available.</p>
       ) : (
         <div className="border border-border rounded-md overflow-hidden bg-white shadow-sm">
-          <div
-            className="flex gap-1 overflow-x-auto border-b border-border bg-background/60 p-2 md:hidden"
-            role="tablist"
-            aria-label="Interview sections"
-          >
-            {categories.map((category) => {
-              const icon = CATEGORY_ICONS[category.id] || category.icon
-              const count = categorySelectedCount(category, selected)
-              const isActive = activeCategory?.id === category.id
-              return (
-                <button
-                  key={category.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  aria-controls={`interview-panel-${category.id}`}
-                  id={`interview-tab-${category.id}`}
-                  className={`shrink-0 rounded-md px-3 py-2 text-left text-xs transition-colors ${
-                    isActive
-                      ? 'bg-primary-dark text-white'
-                      : 'border border-border bg-white text-text hover:bg-background'
-                  }`}
-                  onClick={() => setActiveCategoryId(category.id)}
-                >
-                  <span className="mr-1" aria-hidden>{icon}</span>
-                  <span className="font-medium">{category.title}</span>
-                  {count > 0 && (
-                    <span className={`ml-1.5 rounded px-1.5 py-0.5 text-[10px] ${isActive ? 'bg-white/20' : 'bg-primary-dark/10 text-primary-dark'}`}>
-                      {count}
-                    </span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
+          <HorizontalScrollTabBar
+            tabs={categories.map((category) => ({
+              id: category.id,
+              title: category.title,
+              icon: CATEGORY_ICONS[category.id] || category.icon,
+              meta: `${categorySelectedCount(category, selected)} of ${category.topics.length} selected`
+            }))}
+            activeId={activeCategory?.id || null}
+            onChange={setActiveCategoryId}
+            ariaLabel="Interview sections"
+          />
 
-          <div className="flex flex-col md:flex-row md:items-stretch">
-            <nav
-              className="hidden md:flex md:w-56 lg:w-64 shrink-0 flex-col border-b md:border-b-0 md:border-r border-border bg-background/30"
-              role="tablist"
-              aria-label="Interview sections"
+          {activeCategory && (
+            <section
+              key={activeCategory.id}
+              id={`interview-panel-${activeCategory.id}`}
+              role="tabpanel"
+              aria-labelledby={`interview-tab-${activeCategory.id}`}
+              className="w-full min-w-0"
             >
-              {categories.map((category) => {
-                const icon = CATEGORY_ICONS[category.id] || category.icon
-                const count = categorySelectedCount(category, selected)
-                const isActive = activeCategory?.id === category.id
-                return (
-                  <button
-                    key={category.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    aria-controls={`interview-panel-${category.id}`}
-                    id={`interview-tab-${category.id}`}
-                    className={`flex items-start gap-2 border-b border-border/70 px-3 py-3 text-left text-sm transition-colors last:border-b-0 ${
-                      isActive
-                        ? 'bg-primary-dark text-white'
-                        : 'text-text hover:bg-white'
-                    }`}
-                    onClick={() => setActiveCategoryId(category.id)}
-                  >
-                    <span className="text-lg leading-none mt-0.5 shrink-0" aria-hidden>{icon}</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block font-semibold leading-snug">{category.title}</span>
-                      <span className={`mt-0.5 block text-[11px] leading-tight ${isActive ? 'text-white/80' : 'text-text-light'}`}>
-                        {count} of {category.topics.length} selected
-                      </span>
-                    </span>
-                  </button>
-                )
-              })}
-            </nav>
-
-            {activeCategory && (
-              <section
-                key={activeCategory.id}
-                id={`interview-panel-${activeCategory.id}`}
-                role="tabpanel"
-                aria-labelledby={`interview-tab-${activeCategory.id}`}
-                className="flex-1 min-w-0"
-              >
-                <div className="flex items-stretch min-h-[12rem]">
-                  <div className="hidden sm:flex w-20 lg:w-24 shrink-0 bg-primary-dark text-white flex-col items-center justify-center px-2 py-6 text-center">
-                    <span className="text-2xl leading-none" aria-hidden>
-                      {CATEGORY_ICONS[activeCategory.id] || activeCategory.icon}
-                    </span>
-                    <span className="mt-2 text-[10px] font-semibold uppercase tracking-wide leading-tight">
-                      {activeCategory.title}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="px-3 py-3 border-b border-border bg-background/40">
-                      <p className="text-sm text-text">{activeCategory.summary}</p>
-                      <p className="text-[11px] text-text-light mt-1">
-                        {categorySelectedCount(activeCategory, selected)} of {activeCategory.topics.length} selected in this section
-                      </p>
-                    </div>
-                    <ul className="divide-y divide-border">
-                      {activeCategory.topics.map((topic) => {
-                        const checked = selected.has(topic.id)
-                        const refs = [
-                          ...(topic.slipCodes || []),
-                          ...(topic.formCodes || [])
-                        ].filter(Boolean)
-                        const navTarget = resolveInterviewTopicNavigation(topic)
-                        const navLabel = interviewTopicNavigationLabel(navTarget)
-                        const isNavigating = navigatingTopicId === topic.id
-                        return (
-                          <li key={topic.id} className="flex items-start gap-3 px-3 py-2.5 hover:bg-background/50">
-                            <input
-                              id={`topic-${topic.id}`}
-                              type="checkbox"
-                              className="mt-1 h-4 w-4 shrink-0"
-                              checked={checked}
-                              onChange={() => toggleTopic(topic.id)}
-                              disabled={saving || isNavigating}
-                            />
-                            <label htmlFor={`topic-${topic.id}`} className="flex-1 cursor-pointer min-w-0">
-                              <span className="text-sm text-text font-medium">{topic.label}</span>
-                              {refs.length > 0 && (
-                                <span className="ml-2 text-[11px] text-text-light">({refs.join(', ')})</span>
-                              )}
-                            </label>
-                            {onNavigateTopic && (
-                              <button
-                                type="button"
-                                className="shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary-dark text-white hover:bg-primary-dark/90 disabled:opacity-60"
-                                title={navLabel}
-                                aria-label={navLabel}
-                                onClick={() => { void openTopic(topic) }}
-                                disabled={saving || isNavigating}
-                              >
-                                <span className="text-sm leading-none" aria-hidden>→</span>
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              className="shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-full border border-border text-[10px] text-text-light hover:bg-background"
-                              title={topic.description}
-                              aria-label={topic.description}
-                            >
-                              ?
-                            </button>
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </div>
-                </div>
-              </section>
-            )}
-          </div>
+              <div className="border-b border-border bg-background/40 px-4 py-3">
+                <p className="text-sm text-text">{activeCategory.summary}</p>
+                <p className="mt-1 text-[11px] text-text-light">
+                  {categorySelectedCount(activeCategory, selected)} of {activeCategory.topics.length} selected in this section
+                </p>
+              </div>
+              <ul className="divide-y divide-border">
+                {activeCategory.topics.map((topic) => {
+                  const checked = selected.has(topic.id)
+                  const refs = [
+                    ...(topic.slipCodes || []),
+                    ...(topic.formCodes || [])
+                  ].filter(Boolean)
+                  const navTarget = resolveInterviewTopicNavigation(topic)
+                  const navLabel = interviewTopicNavigationLabel(navTarget)
+                  const isNavigating = navigatingTopicId === topic.id
+                  return (
+                    <li key={topic.id} className="flex items-start gap-3 px-4 py-2.5 hover:bg-background/50">
+                      <input
+                        id={`topic-${topic.id}`}
+                        type="checkbox"
+                        className="mt-1 h-4 w-4 shrink-0"
+                        checked={checked}
+                        onChange={() => toggleTopic(topic.id)}
+                        disabled={saving || isNavigating}
+                      />
+                      <label htmlFor={`topic-${topic.id}`} className="flex-1 cursor-pointer min-w-0">
+                        <span className="text-sm text-text font-medium">{topic.label}</span>
+                        {refs.length > 0 && (
+                          <span className="ml-2 text-[11px] text-text-light">({refs.join(', ')})</span>
+                        )}
+                      </label>
+                      {onNavigateTopic && (
+                        <button
+                          type="button"
+                          className="shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary-dark text-white hover:bg-primary-dark/90 disabled:opacity-60"
+                          title={navLabel}
+                          aria-label={navLabel}
+                          onClick={() => { void openTopic(topic) }}
+                          disabled={saving || isNavigating}
+                        >
+                          <span className="text-sm leading-none" aria-hidden>→</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-full border border-border text-[10px] text-text-light hover:bg-background"
+                        title={topic.description}
+                        aria-label={topic.description}
+                      >
+                        ?
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+          )}
         </div>
       )}
 

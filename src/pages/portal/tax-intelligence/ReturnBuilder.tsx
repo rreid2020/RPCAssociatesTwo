@@ -1007,7 +1007,10 @@ const ReturnBuilder: FC = () => {
         document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }
       if (deductionKey) {
-        const input = document.querySelector(`[data-deduction-key="${deductionKey}"]`) as HTMLInputElement | null
+        const target = document.querySelector(`[data-deduction-key="${deductionKey}"]`)
+        const input = (target instanceof HTMLInputElement
+          ? target
+          : target?.querySelector('input')) as HTMLInputElement | null
         input?.focus()
         input?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       }

@@ -9,7 +9,7 @@ import {
   type SectionSlipEntry
 } from './interviewArtifactSections'
 import { TabbedArtifactLayout } from './TabbedArtifactLayout'
-import { SlipBoxFieldGrid, slipBoxEntriesForRow, type SlipRow } from './slipEntryUi'
+import { SlipWorksheetForm, slipBoxEntriesForRow, type SlipRow } from './slipEntryUi'
 
 export type IncomeSlipsSetupProps = {
   taxpayerName: string
@@ -65,90 +65,41 @@ const SlipEntryCard: FC<{
 }) => {
   const boxFields = slipBoxEntriesForRow(row, def)
   return (
-    <div className="border border-border rounded-md p-3 bg-white space-y-2">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <input
-          className="border border-border rounded-md px-3 py-2 text-sm"
-          placeholder={def.payerLabel}
-          value={row.payerName}
-          onChange={(e) => {
-            setManualSlipRows((prev) => {
-              const next = [...prev]
-              next[idx] = { ...next[idx], payerName: e.target.value }
-              return next
-            })
-          }}
-        />
-        <input
-          type="number"
-          className="border border-border rounded-md px-3 py-2 text-sm"
-          placeholder="Tax year"
-          value={row.taxYear}
-          onChange={(e) => {
-            setManualSlipRows((prev) => {
-              const next = [...prev]
-              next[idx] = { ...next[idx], taxYear: Number(e.target.value) }
-              return next
-            })
-          }}
-        />
-      </div>
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-        <label className="text-xs text-text-light flex-1">
-          Slip type
-          <select
-            className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-            value={row.slipCode}
-            onChange={(e) => onUpdateSlipRowCode(idx, e.target.value)}
-          >
-            {filteredSlipSchemas.map((schema) => (
-              <option key={schema.code} value={schema.code}>
-                {schema.code} - {schema.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {showDelete && (
-          <button
-            type="button"
-            className="btn btn--secondary text-sm px-3 py-2 md:self-end"
-            onClick={() => { void onRemoveSlip({ idx, manualSlipId: row.manualSlipId }) }}
-            disabled={saving}
-          >
-            {saving ? 'Saving…' : 'Delete slip'}
-          </button>
-        )}
-      </div>
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-text-light font-medium">{def.code} - {def.name}</p>
-        {def.schemaStatus === 'complete' && (
-          <span className="text-xs text-green-700">Predefined boxes</span>
-        )}
-        {def.schemaStatus === 'catalog_only' && (
-          <button type="button" className="text-xs text-primary-dark underline" onClick={() => onAddCustomBox(idx)}>
-            Add box
-          </button>
-        )}
-      </div>
-      {def.schemaStatus === 'catalog_only' && boxFields.length === 0 && (
-        <p className="text-xs text-amber-700">This slip is in the catalog but does not have predefined boxes yet. Use Add box to enter values from your slip.</p>
-      )}
-      <SlipBoxFieldGrid
-        keyPrefix={`${row.slipCode}-${idx}`}
-        boxes={row.boxes}
-        boxFields={boxFields}
-        onBoxChange={(boxCode, nextValue) => {
-          setManualSlipRows((prev) => {
-            const next = [...prev]
-            const boxes = { ...next[idx].boxes }
-            if (nextValue == null) delete boxes[boxCode]
-            else boxes[boxCode] = nextValue
-            next[idx] = { ...next[idx], boxes }
-            return next
-          })
-        }}
-      />
-    </div>
+    <SlipWorksheetForm
+      schema={def}
+      row={row}
+      boxFields={boxFields}
+      filteredSlipSchemas={filteredSlipSchemas}
+      saving={saving}
+      showDelete={showDelete}
+      onPayerNameChange={(value) => {
+        setManualSlipRows((prev) => {
+          const next = [...prev]
+          next[idx] = { ...next[idx], payerName: value }
+          return next
+        })
+      }}
+      onTaxYearChange={(value) => {
+        setManualSlipRows((prev) => {
+          const next = [...prev]
+          next[idx] = { ...next[idx], taxYear: value }
+          return next
+        })
+      }}
+      onSlipCodeChange={(slipCode) => onUpdateSlipRowCode(idx, slipCode)}
+      onBoxChange={(boxCode, nextValue) => {
+        setManualSlipRows((prev) => {
+          const next = [...prev]
+          const boxes = { ...next[idx].boxes }
+          if (nextValue == null) delete boxes[boxCode]
+          else boxes[boxCode] = nextValue
+          next[idx] = { ...next[idx], boxes }
+          return next
+        })
+      }}
+      onRemove={() => { void onRemoveSlip({ idx, manualSlipId: row.manualSlipId }) }}
+      onAddCustomBox={() => onAddCustomBox(idx)}
+    />
   )
 }
 
@@ -187,10 +138,6 @@ const SectionSlipGroup: FC<{
 
   return (
     <div className="space-y-2">
-      <div>
-        <h3 className="text-sm font-semibold text-primary-dark">{entry.slipCode} — {entry.label}</h3>
-        <p className="text-xs text-text-light mt-0.5">{entry.description}</p>
-      </div>
       {rows.map(({ row, idx }) => (
         <SlipEntryCard
           key={row.manualSlipId || `slip-${idx}`}

@@ -3,6 +3,11 @@ import type { ReturnInterviewTopicsResponse } from '../../../lib/taxIntelligence
 import { buildInterviewArtifactSections, type InterviewArtifactSection } from './interviewArtifactSections'
 import { resolveDeductionKeyForTopic } from './interviewTopicNavigation'
 import { TabbedArtifactLayout } from './TabbedArtifactLayout'
+import {
+  TaxWorksheetCurrencyInput,
+  TaxWorksheetRow,
+  TaxWorksheetSectionHeader
+} from './TaxWorksheet'
 
 export type T1DeductionField = {
   key: string
@@ -62,31 +67,39 @@ export const DeductionsFormsSetup: FC<DeductionsFormsSetupProps> = ({
     return keys
   }, [sections])
 
-  const renderField = (field: T1DeductionField) => (
-    <label
+  const renderField = (field: T1DeductionField, striped: boolean) => (
+    <TaxWorksheetRow
       key={field.key}
-      data-deduction-key={field.key}
-      className="text-xs text-text-light border border-border rounded-md p-2 bg-white"
+      label={field.label}
+      lineRef={field.lineRef}
+      helpText={field.isCredit ? 'Non-refundable credit amount for this line.' : 'Deduction amount for this line.'}
+      striped={striped}
     >
-      <span className="font-medium text-text block">Line {field.lineRef} - {field.label}</span>
-      <span className="block text-[11px] mt-0.5">{field.isCredit ? 'Non-refundable credit input' : 'Net income deduction input'}</span>
-      <input
-        type="number"
-        className="mt-1 border border-border rounded-md px-3 py-2 text-sm w-full"
-        value={Number(deductionFormValues[field.key]?.[returnRole] || 0)}
-        onChange={(e) => {
-          const n = Number(e.target.value)
-          setDeductionFormValues((prev) => ({
-            ...prev,
-            [field.key]: {
-              self: Number(prev[field.key]?.self || 0),
-              spouse: Number(prev[field.key]?.spouse || 0),
-              [returnRole]: Number.isFinite(n) ? n : 0
-            }
-          }))
-        }}
-      />
-    </label>
+      <div data-deduction-key={field.key}>
+        <TaxWorksheetCurrencyInput
+          value={Number(deductionFormValues[field.key]?.[returnRole] || 0) || undefined}
+          onChange={(nextValue) => {
+            setDeductionFormValues((prev) => ({
+              ...prev,
+              [field.key]: {
+                self: Number(prev[field.key]?.self || 0),
+                spouse: Number(prev[field.key]?.spouse || 0),
+                [returnRole]: Number(nextValue || 0)
+              }
+            }))
+          }}
+        />
+      </div>
+    </TaxWorksheetRow>
+  )
+
+  const renderWorksheet = (title: string, description: string, fields: readonly T1DeductionField[]) => (
+    <div className="overflow-hidden rounded-lg border border-border bg-white shadow-sm">
+      <TaxWorksheetSectionHeader title={title} description={description} />
+      <div className="divide-y divide-border/80">
+        {fields.map((field, index) => renderField(field, index % 2 === 1))}
+      </div>
+    </div>
   )
 
   const renderSectionFields = (section: InterviewArtifactSection) => {
@@ -97,23 +110,28 @@ export const DeductionsFormsSetup: FC<DeductionsFormsSetupProps> = ({
     return (
       <>
         {fields.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {fields.map(renderField)}
-          </div>
+          renderWorksheet(
+            'T1 deduction and credit inputs',
+            'Enter amounts for the deduction and credit lines selected in interview setup.',
+            fields
+          )
         ) : (
           <p className="text-xs text-text-light">No T1 line inputs are mapped for this category yet.</p>
         )}
         {unmappedItems.length > 0 && (
-          <div className="border border-border rounded-md p-3 bg-background/40 space-y-2">
-            <h4 className="text-xs font-semibold text-primary-dark">Related schedules and forms</h4>
-            <ul className="space-y-1">
+          <div className="overflow-hidden rounded-lg border border-border bg-background/40">
+            <TaxWorksheetSectionHeader
+              title="Related schedules and forms"
+              description="These interview topics reference schedules or forms that are not entered on a single T1 line in this screen."
+            />
+            <ul className="divide-y divide-border px-4 py-2">
               {unmappedItems.map((item) => (
-                <li key={item.topicId} className="text-xs text-text-light">
+                <li key={item.topicId} className="py-2 text-xs text-text-light">
                   <span className="font-medium text-text">{item.label}</span>
                   {item.formCodes.length > 0 && (
                     <span className="ml-1">({item.formCodes.join(', ')})</span>
                   )}
-                  <span className="block mt-0.5">{item.description}</span>
+                  <span className="mt-0.5 block">{item.description}</span>
                 </li>
               ))}
             </ul>
@@ -137,33 +155,22 @@ export const DeductionsFormsSetup: FC<DeductionsFormsSetupProps> = ({
             return keys.size > 0 ? `${keys.size} line input(s)` : `${section.items.length} topic(s)`
           }}
         >
-          {(activeSection) => (
-            <div>
-              <h3 className="text-sm font-semibold text-primary-dark mb-2">T1 deduction and credit inputs</h3>
-              {renderSectionFields(activeSection)}
-            </div>
-          )}
+          {(activeSection) => renderSectionFields(activeSection)}
         </TabbedArtifactLayout>
       ) : (
-        <div className="border border-border rounded-md p-3 bg-background/50 space-y-3">
-          <div>
-            <h3 className="text-sm font-semibold text-primary-dark">T1 deduction and credit inputs</h3>
-            <p className="text-xs text-text-light mt-1">Complete interview setup to organize deductions by category, or enter all lines below.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {deductionFields.map(renderField)}
-          </div>
-        </div>
+        renderWorksheet(
+          'T1 deduction and credit inputs',
+          'Complete interview setup to organize deductions by category, or enter common lines below.',
+          deductionFields
+        )
       )}
 
       {sections.length > 0 && otherFields.length > 0 && (
-        <div className="border border-border rounded-md p-3 bg-background/50 space-y-2">
-          <h3 className="text-sm font-semibold text-primary-dark">Other deduction and credit lines</h3>
-          <p className="text-xs text-text-light">Common lines not tied to your selected interview topics.</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {otherFields.map(renderField)}
-          </div>
-        </div>
+        renderWorksheet(
+          'Other deduction and credit lines',
+          'Common lines not tied to your selected interview topics.',
+          otherFields
+        )
       )}
     </div>
   )

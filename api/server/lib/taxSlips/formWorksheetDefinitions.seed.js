@@ -101,7 +101,7 @@ COMPLETE_FORM_WORKSHEET_DEFINITIONS.push(
         fields: [
           txt('property_address', 'Rental property address'),
           txt('units', 'Number of units', { type: 'text' }),
-          txt('ownership_percent', 'Your % of ownership')
+          txt('ownership_percent', 'Percentage of ownership (%)')
         ]
       },
       {

@@ -9,6 +9,7 @@ import {
   TaxWorksheetTextInput
 } from './TaxWorksheet'
 import { computeFormWorksheetTotals, resolveComputedFormFieldValue } from './formWorksheetUtils'
+import { isCraWorksheetLineOrBoxRef } from './taxWorksheetDisplay'
 
 const FORM_TITLES: Record<string, string> = {
   T2125: 'Statement of Business or Professional Activities',
@@ -141,7 +142,7 @@ export const ScheduleFormWorksheet: FC<{
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       {schema.sections.map((section) => (
         <div key={section.id} className="overflow-hidden rounded-lg border border-border bg-white shadow-sm">
           <TaxWorksheetSectionHeader title={section.title} description={section.description} />
@@ -153,12 +154,12 @@ export const ScheduleFormWorksheet: FC<{
                 <TaxWorksheetRow
                   key={field.code}
                   label={field.label}
-                  lineRef={field.lineRef || field.code}
+                  lineRef={isCraWorksheetLineOrBoxRef(field.lineRef) ? field.lineRef : undefined}
                   helpText={isComputed ? 'Calculated from the entries above.' : undefined}
                   striped={index % 2 === 1}
                 >
                   {isComputed ? (
-                    <div className="rounded-md border border-border bg-slate-50 px-3 py-2 text-right text-sm font-medium tabular-nums text-text">
+                    <div className="rounded border border-border bg-slate-50 px-2 py-1 text-right text-sm font-medium tabular-nums text-text">
                       {formatCurrency(typeof value === 'number' ? value : Number(value || 0))}
                     </div>
                   ) : field.type === 'text' ? (

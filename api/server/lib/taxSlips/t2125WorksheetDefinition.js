@@ -35,24 +35,24 @@ export const T2125_WORKSHEET_DEFINITION = {
       id: 'part1_identification',
       title: 'Part 1 — Identification',
       fields: [
-        txt('taxpayer_name', 'Your name'),
+        txt('taxpayer_name', 'Taxpayer name'),
         txt('sin', 'Social insurance number'),
         txt('business_name', 'Business name'),
         txt('business_number', 'Business number (BN)'),
-        txt('business_address', 'Business address'),
+        txt('business_address', 'Address'),
         txt('business_city', 'City'),
         txt('business_province', 'Prov./Terr.'),
         txt('business_postal', 'Postal code'),
-        txt('fiscal_period_from', 'Fiscal period from (YYYYMMDD)'),
-        txt('fiscal_period_to', 'Fiscal period to (YYYYMMDD)'),
-        txt('last_year_of_business', 'Was this your last year of business? (yes/no)'),
+        txt('fiscal_period_from', 'Fiscal period — from (YYYYMMDD)'),
+        txt('fiscal_period_to', 'Fiscal period — to (YYYYMMDD)'),
+        txt('last_year_of_business', 'Last year of business? (yes/no)'),
         txt('main_product_service', 'Main product or service'),
         txt('industry_code', 'Industry code (NAICS)'),
         txt('accounting_method', 'Accounting method (cash/accrual)'),
         txt('tax_shelter_id', 'Tax shelter identification number'),
-        txt('partnership_bn', 'Partnership business number'),
-        txt('partnership_percent', 'Your percentage of the partnership (%)'),
-        txt('preparer_name_address', 'Name and address of person or firm preparing this form')
+        txt('partnership_bn', 'Partnership business number (BN)'),
+        txt('partnership_percent', 'Percentage of the partnership (%)'),
+        txt('preparer_name_address', 'Name and address of person or firm who prepared this form')
       ]
     },
     {
@@ -161,16 +161,16 @@ export const T2125_WORKSHEET_DEFINITION = {
     },
     {
       id: 'part5_net_income',
-      title: 'Part 5 — Your net income (loss)',
+      title: 'Part 5 — Net income (loss)',
       fields: [
-        cur('5A', 'Your share of line 9369 or T5013 partnership amount', { lineRef: '5A' }),
+        cur('5A', 'Share of line 9369 or T5013 partnership amount', { lineRef: '5A' }),
         cur('5B', 'Canadian journalism labour tax credit (T5013 box 236)', { lineRef: '5B' }),
         cur('9974', 'GST/HST rebate for partners received in the year', { lineRef: '9974' }),
         computed('5C', 'Total: 5A + 5B + 9974', { lineRef: '5C', compute: 't2125_5c' }),
         cur('9943', 'Other amounts deductible from partnership income (Part 6)', { lineRef: '9943' }),
         computed('5D', 'Net income after adjustments: 5C minus 9943', { lineRef: '5D', compute: 't2125_5d' }),
         cur('9945', 'Business-use-of-home expenses (Part 7 amount 7P)', { lineRef: '9945' }),
-        computed('9946', 'Your net income (loss): 5D minus 9945', {
+        computed('9946', 'Net income (loss): line 5D minus line 9945', {
           lineRef: '9946',
           compute: 'net_income',
           targets: [{ kind: 'income', category: 'business_income', lineRef: '13500', scheduleRef: 'T2125' }]

@@ -94,7 +94,6 @@ const SlipWorksheetBoxRow: FC<{
     <TaxWorksheetRow
       label={box.label}
       boxCode={box.code}
-      lineRef={box.lineRef}
       helpText={boxHelpText(box)}
       striped={striped}
     >
@@ -214,7 +213,7 @@ export const SlipWorksheetForm: FC<{
     </div>
 
     {schema.schemaStatus === 'catalog_only' && boxFields.length === 0 ? (
-      <div className="space-y-3 px-4 py-4">
+      <div className="space-y-2 px-3 py-3">
         <p className="text-xs text-amber-700">
           This slip is in the catalog but does not have predefined boxes yet. Use Add box to enter values from your slip.
         </p>
@@ -233,7 +232,7 @@ export const SlipWorksheetForm: FC<{
       />
     )}
 
-    <div className="flex flex-col gap-2 border-t border-border bg-background/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-2 border-t border-border bg-background/40 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
       {!lockSlipType && (
         <label className="min-w-0 flex-1 text-xs text-text-light">
           Slip type

@@ -1,5 +1,6 @@
 import { FC, ReactNode, useEffect, useState } from 'react'
 import { CANADIAN_PROVINCE_OPTIONS } from './dependentModel'
+import { worksheetLineOrBoxBadge } from './taxWorksheetDisplay'
 
 export const T4_PROVINCE_NUMERIC: Record<string, number> = {
   NL: 1,
@@ -24,7 +25,7 @@ export const T4_NUMERIC_PROVINCE: Record<number, string> = Object.fromEntries(
 export const TaxWorksheetHelpButton: FC<{ text?: string }> = ({ text }) => (
   <button
     type="button"
-    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-white text-[11px] font-semibold text-text-light hover:bg-background hover:text-text"
+    className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border bg-white text-[10px] font-semibold text-text-light hover:bg-background hover:text-text"
     title={text || 'Field help'}
     aria-label={text || 'Field help'}
   >
@@ -39,27 +40,31 @@ export const TaxWorksheetRow: FC<{
   helpText?: string
   striped?: boolean
   children: ReactNode
-}> = ({ label, boxCode, lineRef, helpText, striped = false, children }) => (
-  <div
-    className={`flex flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 ${
-      striped ? 'bg-slate-50/90' : 'bg-white'
-    }`}
-  >
-    <span className="min-w-0 flex-1 text-sm text-text">{label}</span>
-    <div className="flex items-center justify-end gap-2 sm:shrink-0">
-      {(boxCode || lineRef) && (
-        <span
-          className="inline-flex h-9 min-w-[2.25rem] items-center justify-center rounded border border-border bg-white px-1.5 text-xs font-semibold text-text"
-          aria-hidden
-        >
-          {boxCode || lineRef}
-        </span>
-      )}
-      <div className="w-full min-w-[10rem] sm:w-56 lg:w-64 xl:w-80">{children}</div>
-      <TaxWorksheetHelpButton text={helpText} />
+}> = ({ label, boxCode, lineRef, helpText, striped = false, children }) => {
+  const badge = worksheetLineOrBoxBadge(boxCode, lineRef)
+
+  return (
+    <div
+      className={`grid grid-cols-1 items-center gap-x-2 gap-y-1 px-3 py-1.5 sm:grid-cols-[minmax(0,1fr)_auto] ${
+        striped ? 'bg-slate-50/90' : 'bg-white'
+      }`}
+    >
+      <span className="min-w-0 text-sm leading-snug text-text">{label}</span>
+      <div className="flex items-center justify-end gap-1.5 sm:shrink-0">
+        {badge && (
+          <span
+            className="inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded border border-border bg-white px-1 text-[11px] font-semibold tabular-nums text-text"
+            aria-hidden
+          >
+            {badge}
+          </span>
+        )}
+        <div className="w-full min-w-[8rem] sm:w-44 md:w-52 lg:w-60">{children}</div>
+        {helpText ? <TaxWorksheetHelpButton text={helpText} /> : null}
+      </div>
     </div>
-  </div>
-)
+  )
+}
 
 export const TaxWorksheetCurrencyInput: FC<{
   value: number | undefined
@@ -77,12 +82,12 @@ export const TaxWorksheetCurrencyInput: FC<{
 
   return (
     <div className="relative">
-      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-light">$</span>
+      <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-text-light">$</span>
       <input
         type="text"
         inputMode="decimal"
         autoComplete="off"
-        className="block w-full rounded-md border border-border bg-white py-2 pl-7 pr-3 text-right text-sm tabular-nums"
+        className="block w-full rounded border border-border bg-white py-1 pl-6 pr-2 text-right text-sm tabular-nums"
         placeholder="0.00"
         value={draft}
         onChange={(e) => {
@@ -113,7 +118,7 @@ export const TaxWorksheetNumberInput: FC<{
     type="text"
     inputMode="numeric"
     autoComplete="off"
-    className="block w-full rounded-md border border-border bg-white px-3 py-2 text-right text-sm tabular-nums"
+    className="block w-full rounded border border-border bg-white px-2 py-1 text-right text-sm tabular-nums"
     placeholder="0"
     value={value == null || value === 0 ? '' : String(value)}
     onChange={(e) => {
@@ -136,7 +141,7 @@ export const TaxWorksheetTextInput: FC<{
   <input
     type="text"
     autoComplete="off"
-    className="block w-full rounded-md border border-border bg-white px-3 py-2 text-sm"
+    className="block w-full rounded border border-border bg-white px-2 py-1 text-sm"
     placeholder={placeholder}
     value={value}
     onChange={(e) => onChange(e.target.value)}
@@ -150,7 +155,7 @@ export const TaxWorksheetProvinceSelect: FC<{
   const alpha = value != null ? T4_NUMERIC_PROVINCE[value] || '' : ''
   return (
     <select
-      className="block w-full rounded-md border border-border bg-white px-3 py-2 text-sm"
+      className="block w-full rounded border border-border bg-white px-2 py-1 text-sm"
       value={alpha}
       onChange={(e) => {
         const next = e.target.value
@@ -173,15 +178,15 @@ export const TaxWorksheetSectionHeader: FC<{
   title: string
   description?: string
 }> = ({ title, description }) => (
-  <div className="border-b border-border bg-white px-4 py-3">
-    <h3 className="text-base font-bold text-primary-dark">{title}</h3>
-    {description && <p className="mt-1 text-xs leading-relaxed text-text-light">{description}</p>}
+  <div className="border-b border-border bg-white px-3 py-2">
+    <h3 className="text-sm font-bold text-primary-dark">{title}</h3>
+    {description && <p className="mt-0.5 text-xs leading-snug text-text-light">{description}</p>}
   </div>
 )
 
 export const TaxWorksheetGroupHeader: FC<{ title: string }> = ({ title }) => (
-  <div className="border-y border-border bg-background px-4 py-2">
-    <h4 className="text-[11px] font-bold uppercase tracking-wide text-text">{title}</h4>
+  <div className="border-y border-border bg-background px-3 py-1.5">
+    <h4 className="text-[10px] font-bold uppercase tracking-wide text-text">{title}</h4>
   </div>
 )
 

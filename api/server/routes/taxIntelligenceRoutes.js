@@ -31,6 +31,7 @@ import {
   listFormWorksheetsForReturnBuilder,
   saveReturnFormWorksheetsBatch
 } from '../services/tax-intelligence/formWorksheet.service.js'
+import { getRegistryCoverageReport } from '../services/tax-intelligence/registryCoverage.service.js'
 import {
   getInterviewTopicsCatalog,
   getReturnInterviewTopics,
@@ -222,6 +223,18 @@ export function createTaxIntelligenceRouter (pool) {
     } catch (e) {
       console.error('GET /form-worksheets', e)
       res.status(500).json({ error: 'Could not load form worksheets' })
+    }
+  })
+
+  r.get('/registry-coverage', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const coverage = await getRegistryCoverageReport(pool)
+      res.json(coverage)
+    } catch (e) {
+      console.error('GET /registry-coverage', e)
+      res.status(500).json({ error: 'Could not load registry worksheet coverage' })
     }
   })
 

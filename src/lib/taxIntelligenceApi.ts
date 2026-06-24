@@ -155,6 +155,35 @@ export type FormWorksheetSchema = {
   sections: FormWorksheetSectionSchema[]
 }
 
+export type RegistryCoverageResponse = {
+  summary: {
+    registryTotal: number
+    requiresWorksheet: number
+    complete: number
+    catalogOnly: number
+    missing: number
+    incomplete: number
+    guidesExcluded: number
+    slipComplete: number
+    slipPending: number
+    formComplete: number
+    formPending: number
+    percentComplete: number
+  }
+  entries: Array<{
+    formNumber: string
+    title: string
+    landingUrl: string
+    worksheetKind: string
+    worksheetStore: string | null
+    requiresWorksheet: boolean
+    status: string
+    schemaStatus: string | null
+    fieldCount: number
+  }>
+  pending: RegistryCoverageResponse['entries']
+}
+
 export type FormWorksheetCoverageResponse = {
   totalRegistered: number
   complete: number

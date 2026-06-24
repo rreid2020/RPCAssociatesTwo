@@ -6,6 +6,7 @@ import {
   getFormWorksheetCoverageSummary
 } from '../../lib/taxSlips/formWorksheetComputations.js'
 import { buildT1ReturnFormsManifest } from '../../lib/taxSlips/t1ReturnForms.manifest.js'
+import { classifyRegistryWorksheet } from '../../lib/taxSlips/registryWorksheetClassifier.js'
 import { listIncomeEntries, listDeductions } from './income.service.js'
 import {
   getFormWorksheetSchemaByFormNumber,
@@ -139,11 +140,64 @@ export async function seedCatalogFormWorksheetSchemas (pool) {
   }
 }
 
+export async function seedRegistryCatalogFormWorksheetSchemas (pool) {
+  const completeCodes = new Set(
+    COMPLETE_FORM_WORKSHEET_DEFINITIONS.map((definition) => String(definition.code).toUpperCase().replace(/\s+/g, ''))
+  )
+
+  let rows = []
+  try {
+    const result = await pool.query(
+      `SELECT form_number, title, landing_url
+       FROM taxgpt.form_registry
+       WHERE status = 'active'
+       ORDER BY form_number ASC`
+    )
+    rows = result.rows
+  } catch (error) {
+    if (error?.code !== '42P01') throw error
+    return
+  }
+
+  for (const row of rows) {
+    const classification = classifyRegistryWorksheet(row)
+    if (!classification.requiresWorksheet || classification.worksheetKind === 'slip') continue
+
+    const code = classification.formNumber
+    const normalized = String(code).toUpperCase().replace(/\s+/g, '')
+    if (completeCodes.has(normalized) || completeCodes.has(code.toUpperCase())) continue
+
+    const existing = await getFormWorksheetSchemaByFormNumber(pool, code)
+    if (existing?.schema_status === 'complete') continue
+
+    await upsertFormRegistryEntry(pool, {
+      formNumber: code,
+      title: classification.title,
+      landingUrl: classification.landingUrl || row.landing_url,
+      formFamily: classification.artifactKind === 't1_schedule' ? 't1_schedule' : 't1_form',
+      metadata: { registryCatalog: true, artifactKind: classification.artifactKind }
+    })
+
+    await upsertFormWorksheetSchema(pool, {
+      formNumber: code,
+      title: classification.title,
+      formFamily: classification.artifactKind === 't1_schedule' ? 't1_schedule' : 't1_form',
+      schemaStatus: 'catalog_only',
+      landingUrl: classification.landingUrl || row.landing_url,
+      metadata: {
+        seededFrom: 'form_registry_catalog_v1',
+        artifactKind: classification.artifactKind
+      }
+    })
+  }
+}
+
 export async function ensureFormWorksheetSchemasSeeded (pool) {
   if (!formWorksheetSeedPromise) {
     formWorksheetSeedPromise = (async () => {
       await seedCompleteFormWorksheetSchemas(pool)
       await seedCatalogFormWorksheetSchemas(pool)
+      await seedRegistryCatalogFormWorksheetSchemas(pool)
     })().catch((error) => {
       formWorksheetSeedPromise = null
       throw error

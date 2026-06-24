@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto'
+import { canonicalSlipCode } from '../../lib/taxSlips/slipCodeCanonical.js'
 import { listDeductions, listIncomeEntries } from './income.service.js'
 import { getSlipSchemasByCode } from './slipSchema.service.js'
 
@@ -17,7 +18,7 @@ async function assertReturnOwnership (pool, clerkUserId, taxReturnId) {
 
 function buildSlipBaseMeta (slip, manualSlipId) {
   return {
-    slipType: slip.slipCode,
+    slipType: canonicalSlipCode(slip.slipCode),
     payerName: slip.payerName || null,
     taxYear: Number(slip.taxYear || new Date().getFullYear()),
     taxpayerRole: slip.taxpayerRole || 'self',
@@ -46,8 +47,8 @@ export function mapSlipInstancesToEntries (slips = [], schemasByCode = {}) {
   const deductionEntries = []
 
   for (const slip of slips) {
-    const slipCode = String(slip.slipCode || '').toUpperCase()
-    const schema = schemasByCode[slipCode]
+    const slipCode = canonicalSlipCode(slip.slipCode)
+    const schema = schemasByCode[slipCode] || schemasByCode[slipCode.toUpperCase()]
     const manualSlipId = slip.manualSlipId || randomUUID()
     const baseMeta = buildSlipBaseMeta(slip, manualSlipId)
     const boxes = slip.boxes && typeof slip.boxes === 'object' ? slip.boxes : {}
@@ -276,7 +277,7 @@ export function buildSlipInstancesFromReturnData (incomeEntries = [], deductions
 
   const absorbEntry = (entry) => {
     const meta = entry.metadata && typeof entry.metadata === 'object' ? entry.metadata : {}
-    const slipType = String(meta.slipType || '')
+    const slipType = canonicalSlipCode(meta.slipType || '')
     if (!slipType) return
     const manualSlipId = resolveManualSlipId(meta, entry.id, slipType)
     const boxCode = String(meta.boxCode || '')

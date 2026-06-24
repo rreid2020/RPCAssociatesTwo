@@ -20,6 +20,7 @@ import {
   slipBoxEntriesForRow,
   type SlipRow
 } from './slipEntryUi'
+import { canonicalSlipCode } from './slipCodeCanonical'
 import ReviewDiagnosticsPanel from './ReviewDiagnosticsPanel'
 import { getTaxBasePath } from './path'
 import { CraQuestionRow, toggleToYesNo, yesNoToToggle, YesNoToggle, type YesNo, DEFAULT_CRA_YES_NO } from './CraQuestionControls'
@@ -597,9 +598,10 @@ const ReturnBuilder: FC = () => {
     [filteredSlipSchemas]
   )
   const createSlipRow = (slipCode: string): SlipRow => {
-    const schema = slipSchemasByCode[slipCode.toUpperCase()]
+    const code = canonicalSlipCode(slipCode)
+    const schema = slipSchemasByCode[code.toUpperCase()]
     return {
-      slipCode,
+      slipCode: code,
       payerName: '',
       taxYear: data?.taxReturn?.tax_year || new Date().getFullYear(),
       taxpayerRole: 'self',
@@ -1005,7 +1007,7 @@ const ReturnBuilder: FC = () => {
     setNewSlipCode(slipCode)
     setManualSlipRows((prev) => {
       const exists = prev.some((row) =>
-        row.taxpayerRole === returnRole && row.slipCode.toUpperCase() === slipCode.toUpperCase()
+        row.taxpayerRole === returnRole && canonicalSlipCode(row.slipCode) === canonicalSlipCode(slipCode)
       )
       if (exists) return prev
       return [...prev, { ...createSlipRow(slipCode), taxpayerRole: returnRole }]
@@ -1014,7 +1016,7 @@ const ReturnBuilder: FC = () => {
   const ensureSectionSlipRow = useCallback((slipCode: string) => {
     setManualSlipRows((prev) => {
       const exists = prev.some((row) =>
-        row.taxpayerRole === returnRole && row.slipCode.toUpperCase() === slipCode.toUpperCase()
+        row.taxpayerRole === returnRole && canonicalSlipCode(row.slipCode) === canonicalSlipCode(slipCode)
       )
       if (exists) return prev
       return [...prev, { ...createSlipRow(slipCode), taxpayerRole: returnRole }]

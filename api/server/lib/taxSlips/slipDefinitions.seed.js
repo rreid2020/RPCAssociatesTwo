@@ -1,3 +1,5 @@
+import { DEPRECATED_SLIP_FORM_NUMBERS } from './slipCodeCanonical.js'
+
 const noTarget = []
 
 function cur (code, label, targets, hints) {
@@ -34,7 +36,6 @@ function quebecWithheld (code = '23') {
   }])
 }
 
-/** Forms in form_registry that are not taxpayer information slips for box entry. */
 export const EXCLUDED_SLIP_FORM_NUMBERS = new Set([
   'T400A',
   'T4004',
@@ -44,7 +45,8 @@ export const EXCLUDED_SLIP_FORM_NUMBERS = new Set([
   'T2201',
   'T2209',
   'T2033',
-  'T2036'
+  'T2036',
+  ...DEPRECATED_SLIP_FORM_NUMBERS
 ])
 
 const T4AOAS_BOXES = [
@@ -427,22 +429,10 @@ export const COMPLETE_SLIP_DEFINITIONS = [
     ]
   },
   {
-    code: 'T4AOAS',
-    name: 'Statement of Old Age Security',
-    payerLabel: 'Issuer name',
-    boxes: T4AOAS_BOXES
-  },
-  {
     code: 'T4A(OAS)',
     name: 'Statement of Old Age Security',
     payerLabel: 'Issuer name',
     boxes: T4AOAS_BOXES
-  },
-  {
-    code: 'T4AP',
-    name: 'Statement of Canada Pension Plan Benefits',
-    payerLabel: 'Issuer name',
-    boxes: T4AP_BOXES
   },
   {
     code: 'T4A(P)',
@@ -552,9 +542,7 @@ export const COMPLETE_SLIP_MIN_BOX_COUNTS = {
   T4PS: 7,
   T4FHSA: 6,
   NR4: 8,
-  T4AOAS: 6,
   'T4A(OAS)': 6,
-  T4AP: 8,
   'T4A(P)': 8,
   RL1: 6,
   RL2: 4,

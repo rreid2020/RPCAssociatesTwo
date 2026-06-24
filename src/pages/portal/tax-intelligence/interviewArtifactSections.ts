@@ -1,4 +1,5 @@
 import type { InterviewTopicItem, ReturnInterviewTopicsResponse } from '../../../lib/taxIntelligenceApi'
+import { canonicalSlipCode } from './slipCodeCanonical'
 
 export const INTERVIEW_CATEGORY_ICONS: Record<string, string> = {
   specific_situations: '👥',
@@ -110,9 +111,10 @@ function addSectionArtifactEntry (
   item: InterviewArtifactItem,
   entryKind: SectionArtifactKind
 ) {
-  if (!code || seen.has(code)) return
-  seen.set(code, {
-    slipCode: code,
+  const slipCode = canonicalSlipCode(code)
+  if (!slipCode || seen.has(slipCode)) return
+  seen.set(slipCode, {
+    slipCode,
     label: item.label,
     description: item.description,
     entryKind
@@ -134,7 +136,7 @@ export function sectionSlipEntries (section: InterviewArtifactSection): SectionS
     }
     if (!shouldIncludeTopicSlipCodes(item)) continue
     for (const raw of item.slipCodes || []) {
-      const slipCode = normalizeArtifactCode(raw)
+      const slipCode = canonicalSlipCode(raw)
       if (forms.has(slipCode)) continue
       addSectionArtifactEntry(slips, slipCode, item, 'slip')
     }

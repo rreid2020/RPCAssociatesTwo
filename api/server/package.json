@@ -13,6 +13,7 @@
     "test-email": "node scripts/test-email.js",
     "seed:portal": "node scripts/seed-portal.js",
     "db:ensure-portal": "node scripts/ensure-portal-schema.js",
+    "audit:slip-duplicates": "node scripts/audit-slip-code-duplicates.mjs",
     "audit:registry-coverage": "node scripts/audit-registry-coverage.mjs",
     "sync:worksheets-from-cra": "node scripts/sync-worksheets-from-cra.mjs"
   },

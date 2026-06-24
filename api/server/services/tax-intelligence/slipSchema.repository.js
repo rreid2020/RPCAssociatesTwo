@@ -1,4 +1,5 @@
 import { EXCLUDED_SLIP_FORM_NUMBERS } from '../../lib/taxSlips/slipDefinitions.seed.js'
+import { canonicalSlipCode, DEPRECATED_SLIP_FORM_NUMBERS, isDeprecatedSlipAlias } from '../../lib/taxSlips/slipCodeCanonical.js'
 import { isOutOfScopeForm, isPersonalInformationSlip } from '../../lib/taxSlips/formScope.js'
 
 const SCHEDULE_FORM_NUMBERS = new Set([
@@ -48,7 +49,7 @@ const EXCLUDED_SLIP_TITLE_PATTERNS = [
 
 export function isExcludedSlipForm (formNumber, title = '') {
   const code = normalizeFormNumber(formNumber)
-  if (EXCLUDED_SLIP_FORM_NUMBERS.has(code)) return true
+  if (EXCLUDED_SLIP_FORM_NUMBERS.has(code) || isDeprecatedSlipAlias(code)) return true
   const normalizedTitle = String(title || '').trim()
   return EXCLUDED_SLIP_TITLE_PATTERNS.some((pattern) => pattern.test(normalizedTitle))
 }
@@ -166,7 +167,7 @@ export async function listSlipSchemasWithBoxes (pool, { schemaStatus } = {}) {
 }
 
 export async function getSlipSchemaByFormNumber (pool, formNumber) {
-  const normalized = normalizeFormNumber(formNumber)
+  const normalized = canonicalSlipCode(formNumber)
   const { rows } = await pool.query(
     `SELECT
       s.id,
@@ -215,4 +216,10 @@ export async function countSlipSchemas (pool) {
     `SELECT count(*)::int AS total FROM taxgpt.slip_schemas`
   )
   return rows[0]?.total || 0
+}
+
+export async function removeDeprecatedAliasSlipSchemas (pool) {
+  for (const alias of DEPRECATED_SLIP_FORM_NUMBERS) {
+    await pool.query('DELETE FROM taxgpt.slip_schemas WHERE form_number = $1', [alias])
+  }
 }

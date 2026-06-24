@@ -1,3 +1,5 @@
+import { dedupeCanonicalSlipCodes } from './slipCodeCanonical.js'
+
 export const INTERVIEW_TOPICS_VERSION = 3
 
 /**
@@ -223,7 +225,7 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
         id: 'pension_income_bundle',
         label: 'Pension income, other income and split income (CPP, OAS, T4A, T4A(P), T4A(RCA), T4RIF, T4RSP, etc.)',
         description: 'Retirement, annuity, CPP, OAS, RRSP, and RRIF income slips.',
-        slipCodes: ['T4A', 'T4AP', 'T4A(P)', 'T4AOAS', 'T4A(OAS)', 'T4RIF', 'T4RSP', 'T4A-RCA', 'T737-RCA', 'RL2'],
+        slipCodes: ['T4A', 'T4A(P)', 'T4A(OAS)', 'T4RIF', 'T4RSP', 'T4A-RCA', 'T737-RCA', 'RL2'],
         formCodes: ['T1032'],
         linkedStep: 'Income'
       },
@@ -239,7 +241,7 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
         id: 'pension_t4ap',
         label: 'T4A(P) — Canada Pension Plan benefits',
         description: 'CPP retirement, survivor, disability, and related benefits.',
-        slipCodes: ['T4AP', 'T4A(P)'],
+        slipCodes: ['T4A(P)'],
         formCodes: [],
         linkedStep: 'Income'
       },
@@ -247,7 +249,7 @@ export const INTERVIEW_TOPIC_CATEGORIES = [
         id: 'pension_t4aoas',
         label: 'T4A(OAS) — Old Age Security',
         description: 'OAS pension, supplements, recovery, and tax withheld.',
-        slipCodes: ['T4AOAS', 'T4A(OAS)', 'NR4OAS'],
+        slipCodes: ['T4A(OAS)', 'NR4OAS'],
         formCodes: [],
         linkedStep: 'Income'
       },
@@ -987,7 +989,7 @@ export function listInterviewTopicCatalog () {
         categoryId: category.id,
         label: topic.label,
         description: topic.description,
-        slipCodes: topic.slipCodes,
+        slipCodes: dedupeCanonicalSlipCodes(topic.slipCodes),
         formCodes: topic.formCodes,
         linkedStep: topic.linkedStep
       }))
@@ -1023,7 +1025,7 @@ export function resolveInterviewTopicArtifacts (selectedTopicIds) {
       categoryId: topic.categoryId,
       categoryTitle: topic.categoryTitle
     })
-    for (const code of topic.slipCodes || []) slipCodes.add(String(code).toUpperCase())
+    for (const code of dedupeCanonicalSlipCodes(topic.slipCodes || [])) slipCodes.add(code)
     for (const code of topic.formCodes || []) formCodes.add(String(code).trim())
   }
 

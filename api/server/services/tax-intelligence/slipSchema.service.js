@@ -1,11 +1,17 @@
 import { COMPLETE_SLIP_DEFINITIONS } from '../../lib/taxSlips/slipDefinitions.seed.js'
 import {
+  attachSlipSchemaAliases,
+  canonicalSlipCode,
+  isDeprecatedSlipAlias
+} from '../../lib/taxSlips/slipCodeCanonical.js'
+import {
   countSlipSchemas,
   getSlipSchemaByFormNumber,
   inferPayerLabel,
   isExcludedSlipForm,
   listCatalogSlipCandidates,
   listSlipSchemasWithBoxes,
+  removeDeprecatedAliasSlipSchemas,
   replaceSlipBoxSchemas,
   upsertSlipSchema
 } from './slipSchema.repository.js'
@@ -46,10 +52,11 @@ export async function seedCompleteSlipSchemas (pool) {
       slipKind: 'information_slip',
       schemaStatus: 'complete',
       catalogTitle: definition.name,
-      metadata: { seededFrom: 'complete_definitions_v6' }
+      metadata: { seededFrom: 'complete_definitions_v7' }
     })
     await replaceSlipBoxSchemas(pool, schema.id, definition.boxes)
   }
+  await removeDeprecatedAliasSlipSchemas(pool)
 }
 
 export async function seedCatalogSlipSchemas (pool) {
@@ -62,6 +69,7 @@ export async function seedCatalogSlipSchemas (pool) {
 
   for (const candidate of catalogCandidates) {
     const formNumber = String(candidate.form_number || '')
+    if (isDeprecatedSlipAlias(formNumber)) continue
     const title = String(candidate.title || formNumber)
     const alreadyComplete = COMPLETE_SLIP_DEFINITIONS.some((d) => d.code === formNumber)
     if (alreadyComplete) continue
@@ -100,5 +108,6 @@ export async function getSlipSchema (pool, formNumber) {
 
 export async function getSlipSchemasByCode (pool) {
   const schemas = await listSlipSchemasForReturnBuilder(pool)
-  return Object.fromEntries(schemas.map((schema) => [String(schema.code).toUpperCase(), schema]))
+  const byCode = Object.fromEntries(schemas.map((schema) => [String(schema.code).toUpperCase(), schema]))
+  return attachSlipSchemaAliases(byCode)
 }

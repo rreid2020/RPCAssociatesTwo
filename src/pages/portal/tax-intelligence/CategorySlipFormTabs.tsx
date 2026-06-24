@@ -7,6 +7,7 @@ import {
 import { HorizontalScrollTabBar } from './HorizontalScrollTabBar'
 import { ScheduleFormWorksheet } from './ScheduleFormWorksheet'
 import { SlipWorksheetForm, slipBoxEntriesForRow, type SlipRow } from './slipEntryUi'
+import { canonicalSlipCode } from './slipCodeCanonical'
 
 type RowRef = { row: SlipRow; idx: number }
 
@@ -80,7 +81,8 @@ export const CategorySlipFormTabs: FC<{
 
   const instancesForActiveForm = useMemo(() => {
     if (!activeFormCode) return []
-    return roleSlipRows.filter(({ row }) => row.slipCode.toUpperCase() === activeFormCode.toUpperCase())
+    const active = canonicalSlipCode(activeFormCode)
+    return roleSlipRows.filter(({ row }) => canonicalSlipCode(row.slipCode) === active)
   }, [roleSlipRows, activeFormCode])
 
   const activeEntry = formEntries.find((entry) => entry.slipCode === activeFormCode)

@@ -10,7 +10,12 @@ export async function upsertFormWorksheetSchema (pool, row) {
     ON CONFLICT (form_number) DO UPDATE SET
       title = EXCLUDED.title,
       form_family = EXCLUDED.form_family,
-      schema_status = EXCLUDED.schema_status,
+      schema_status = CASE
+        WHEN taxgpt.form_worksheet_schemas.schema_status = 'complete' AND EXCLUDED.schema_status = 'catalog_only'
+          THEN taxgpt.form_worksheet_schemas.schema_status
+        WHEN EXCLUDED.schema_status = 'complete' THEN 'complete'
+        ELSE COALESCE(EXCLUDED.schema_status, taxgpt.form_worksheet_schemas.schema_status)
+      END,
       landing_url = COALESCE(EXCLUDED.landing_url, taxgpt.form_worksheet_schemas.landing_url),
       metadata = taxgpt.form_worksheet_schemas.metadata || EXCLUDED.metadata,
       updated_at = now()

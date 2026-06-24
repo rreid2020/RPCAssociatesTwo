@@ -150,7 +150,28 @@ export type FormWorksheetSchema = {
   formFamily: string
   schemaStatus: 'complete' | 'catalog_only' | 'partial'
   landingUrl?: string | null
+  metadata?: Record<string, unknown>
+  fieldCount?: number
   sections: FormWorksheetSectionSchema[]
+}
+
+export type FormWorksheetCoverageResponse = {
+  totalRegistered: number
+  complete: number
+  catalogOnly: number
+  pendingFieldSchemas: number
+  manifestTotal: number
+  completeFormCodes: string[]
+  byArtifactKind: Record<string, number>
+  manifestForms: Array<{
+    code: string
+    title: string
+    artifactKind: string
+    lineRefs: string[]
+    schemaStatus: string
+    fieldCount: number
+    landingUrl: string | null
+  }>
 }
 
 export type FormWorksheetSchemasResponse = {

@@ -8,12 +8,15 @@ import {
   TaxWorksheetSectionHeader,
   TaxWorksheetTextInput
 } from './TaxWorksheet'
-import { computeT2125Totals, resolveComputedFormFieldValue } from './formWorksheetUtils'
+import { computeFormWorksheetTotals, resolveComputedFormFieldValue } from './formWorksheetUtils'
 
 const FORM_TITLES: Record<string, string> = {
   T2125: 'Statement of Business or Professional Activities',
+  T776: 'Statement of Real Estate Rentals',
+  T777: 'Statement of Employment Expenses',
   T2042: 'Statement of Farming Activities',
   T2121: 'Statement of Fishing Activities',
+  T778: 'Child Care Expenses Deduction',
   T1163: 'Statement A — AgriStability and AgriInvest Programs Information',
   T1164: 'Statement B — AgriStability and AgriInvest Programs Information',
   'SCHEDULE 13': 'Schedule 13 — Employment Insurance Premiums on Self-Employment and Other Eligible Earnings'
@@ -45,9 +48,9 @@ export const ScheduleFormWorksheet: FC<{
     setDraftValues(values)
   }, [values])
 
-  const totals = useMemo(() => (
-    formCode === 'T2125' ? computeT2125Totals(draftValues) : null
-  ), [draftValues, formCode])
+  const totals = useMemo(() => computeFormWorksheetTotals(formCode, draftValues), [draftValues, formCode])
+  const lineRefs = (schema?.metadata?.lineRefs as string[] | undefined) || []
+  const isCatalogOnly = schema?.schemaStatus === 'catalog_only'
 
   if (loading) {
     return (
@@ -57,7 +60,53 @@ export const ScheduleFormWorksheet: FC<{
     )
   }
 
-  if (!schema || schema.sections.length === 0) {
+  if (!schema) {
+    return (
+      <div className="overflow-hidden rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <p className="text-sm font-medium text-text">{formCode} — {title}</p>
+        <p className="mt-1 text-xs text-amber-800">
+          This form is not registered in the worksheet catalog yet.
+        </p>
+      </div>
+    )
+  }
+
+  if (isCatalogOnly || schema.sections.length === 0) {
+    return (
+      <div className="overflow-hidden rounded-lg border border-border bg-white shadow-sm">
+        <TaxWorksheetSectionHeader
+          title={`${formCode} — ${title}`}
+          description={entry.description}
+        />
+        <div className="space-y-3 px-4 py-4 text-sm text-text">
+          <p className="inline-flex rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-900">
+            Registered — line fields in development
+          </p>
+          <p>
+            This CRA form is registered in the T1 Return Builder catalog and will appear when selected in interview setup.
+            Line-by-line worksheet fields are being built form by form.
+          </p>
+          {lineRefs.length > 0 && (
+            <p className="text-xs text-text-light">
+              Related T1 lines: {lineRefs.map((line) => `Line ${line}`).join(', ')}
+            </p>
+          )}
+          {schema.landingUrl && (
+            <a
+              className="inline-flex text-sm font-medium text-accent hover:underline"
+              href={schema.landingUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              View official CRA form
+            </a>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  if (schema.sections.every((section) => section.fields.length === 0)) {
     return (
       <div className="overflow-hidden rounded-lg border border-amber-200 bg-amber-50 p-4">
         <p className="text-sm font-medium text-text">{formCode} — {title}</p>
@@ -125,26 +174,34 @@ export const ScheduleFormWorksheet: FC<{
         </div>
       ))}
 
-      {formCode === 'T2125' && totals && (
+      {totals && (totals.netIncome != null || totals.totalClaim != null) && (
         <div className="overflow-hidden rounded-lg border border-border bg-background/40">
           <TaxWorksheetGroupHeader title="Worksheet summary" />
           <div className="grid gap-2 px-4 py-3 text-sm sm:grid-cols-3">
+            {totals.grossIncome != null && totals.grossIncome !== 0 && (
+              <div>
+                <p className="text-xs text-text-light">Gross income</p>
+                <p className="font-medium tabular-nums">{formatCurrency(totals.grossIncome)}</p>
+              </div>
+            )}
+            {totals.totalExpenses != null && totals.totalExpenses !== 0 && (
+              <div>
+                <p className="text-xs text-text-light">Total expenses</p>
+                <p className="font-medium tabular-nums">{formatCurrency(totals.totalExpenses)}</p>
+              </div>
+            )}
             <div>
-              <p className="text-xs text-text-light">Gross income</p>
-              <p className="font-medium tabular-nums">{formatCurrency(totals.grossIncome)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-text-light">Total expenses</p>
-              <p className="font-medium tabular-nums">{formatCurrency(totals.totalExpenses)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-text-light">Net income (line 13500)</p>
-              <p className="font-semibold tabular-nums text-primary-dark">{formatCurrency(totals.netIncome)}</p>
+              <p className="text-xs text-text-light">
+                {formCode === 'T778' ? 'Deduction claim' : 'Net amount'}
+              </p>
+              <p className="font-semibold tabular-nums text-primary-dark">
+                {formatCurrency(totals.netIncome ?? totals.totalClaim)}
+              </p>
             </div>
           </div>
           <p className="border-t border-border px-4 py-2 text-xs text-text-light">
             Entering data for <span className="font-medium text-text">{returnRole === 'spouse' ? 'Spouse' : 'Taxpayer'}</span>.
-            Net business income is saved to federal line 13500 when you save income.
+            Saved amounts flow to the mapped T1 line when you save income.
           </p>
         </div>
       )}

@@ -1,8 +1,12 @@
 import {
-  COMPLETE_FORM_WORKSHEET_DEFINITIONS,
-  computeT2125Totals
+  COMPLETE_FORM_WORKSHEET_DEFINITIONS
 } from '../../lib/taxSlips/formWorksheetDefinitions.seed.js'
-import { listIncomeEntries } from './income.service.js'
+import {
+  buildFormWorksheetLedgerEntry,
+  getFormWorksheetCoverageSummary
+} from '../../lib/taxSlips/formWorksheetComputations.js'
+import { buildT1ReturnFormsManifest } from '../../lib/taxSlips/t1ReturnForms.manifest.js'
+import { listIncomeEntries, listDeductions } from './income.service.js'
 import {
   getFormWorksheetSchemaByFormNumber,
   listFormWorksheetSchemasWithFields,
@@ -48,12 +52,15 @@ function groupFieldsIntoSections (fields = []) {
 
 function mapSchemaRow (row) {
   if (!row) return null
+  const metadata = typeof row.metadata === 'string' ? JSON.parse(row.metadata) : (row.metadata || {})
   return {
     code: row.form_number,
     name: row.title,
     formFamily: row.form_family,
     schemaStatus: row.schema_status,
     landingUrl: row.landing_url,
+    metadata,
+    fieldCount: Array.isArray(row.fields) ? row.fields.length : 0,
     sections: groupFieldsIntoSections(row.fields || [])
   }
 }
@@ -80,15 +87,64 @@ export async function seedCompleteFormWorksheetSchemas (pool) {
       formFamily: definition.formFamily || 't1_form',
       schemaStatus: 'complete',
       landingUrl: definition.landingUrl,
-      metadata: { seededFrom: 'complete_form_worksheet_definitions_v1' }
+      metadata: {
+        seededFrom: 'complete_form_worksheet_definitions_v2',
+        artifactKind: 't1_form'
+      }
     })
     await replaceFormWorksheetFields(pool, schema.id, definition.sections)
   }
 }
 
+export async function seedCatalogFormWorksheetSchemas (pool) {
+  const completeCodes = new Set(
+    COMPLETE_FORM_WORKSHEET_DEFINITIONS.map((definition) => String(definition.code).toUpperCase())
+  )
+  const manifest = buildT1ReturnFormsManifest()
+
+  for (const entry of manifest) {
+    const code = String(entry.code || '').toUpperCase()
+    if (completeCodes.has(code)) continue
+
+    const existing = await getFormWorksheetSchemaByFormNumber(pool, code)
+    if (existing?.schema_status === 'complete') continue
+
+    await upsertFormRegistryEntry(pool, {
+      formNumber: code,
+      title: entry.title,
+      landingUrl: entry.landingUrl,
+      formFamily: entry.artifactKind === 't1_schedule' ? 't1_schedule' : 't1_form',
+      metadata: {
+        lineRefs: entry.lineRefs,
+        artifactKind: entry.artifactKind,
+        t1Steps: entry.t1Steps,
+        sources: entry.sources
+      }
+    })
+
+    await upsertFormWorksheetSchema(pool, {
+      formNumber: code,
+      title: entry.title,
+      formFamily: entry.artifactKind === 't1_schedule' ? 't1_schedule' : 't1_form',
+      schemaStatus: 'catalog_only',
+      landingUrl: entry.landingUrl,
+      metadata: {
+        seededFrom: 't1_return_forms_manifest_v1',
+        lineRefs: entry.lineRefs,
+        artifactKind: entry.artifactKind,
+        t1Steps: entry.t1Steps,
+        sources: entry.sources
+      }
+    })
+  }
+}
+
 export async function ensureFormWorksheetSchemasSeeded (pool) {
   if (!formWorksheetSeedPromise) {
-    formWorksheetSeedPromise = seedCompleteFormWorksheetSchemas(pool).catch((error) => {
+    formWorksheetSeedPromise = (async () => {
+      await seedCompleteFormWorksheetSchemas(pool)
+      await seedCatalogFormWorksheetSchemas(pool)
+    })().catch((error) => {
       formWorksheetSeedPromise = null
       throw error
     })
@@ -106,6 +162,29 @@ export async function getFormWorksheetSchema (pool, formNumber) {
   await ensureFormWorksheetSchemasSeeded(pool)
   const row = await getFormWorksheetSchemaByFormNumber(pool, formNumber)
   return mapSchemaRow(row)
+}
+
+export async function getFormWorksheetCoverage (pool) {
+  await ensureFormWorksheetSchemasSeeded(pool)
+  const schemas = await listFormWorksheetsForReturnBuilder(pool)
+  const manifest = buildT1ReturnFormsManifest()
+  const summary = getFormWorksheetCoverageSummary(schemas)
+  return {
+    ...summary,
+    manifestTotal: manifest.length,
+    manifestForms: manifest.map((entry) => {
+      const schema = schemas.find((row) => String(row.code).toUpperCase() === String(entry.code).toUpperCase())
+      return {
+        code: entry.code,
+        title: entry.title,
+        artifactKind: entry.artifactKind,
+        lineRefs: entry.lineRefs,
+        schemaStatus: schema?.schemaStatus || 'missing',
+        fieldCount: schema?.fieldCount || 0,
+        landingUrl: schema?.landingUrl || entry.landingUrl || null
+      }
+    })
+  }
 }
 
 export function valuesMapFromRows (rows = []) {
@@ -128,28 +207,6 @@ export async function listFormWorksheetValuesForReturn (pool, clerkUserId, taxRe
   if (!ok) return null
   const rows = await queryFormWorksheetValuesForReturn(pool, taxReturnId, clerkUserId)
   return valuesMapFromRows(rows)
-}
-
-function buildT2125IncomeEntry (formCode, role, values, totals) {
-  const net = Number(totals.netIncome || 0)
-  if (!Number.isFinite(net) || net === 0) return null
-  return {
-    category: 'business_income',
-    description: `${formCode} net business income (line 13500)`,
-    amount: net,
-    sourceType: 'form_worksheet',
-    isManual: true,
-    metadata: {
-      source: 'form_worksheet',
-      formCode,
-      fieldCode: '9946',
-      lineRef: '13500',
-      scheduleRef: formCode,
-      taxpayerRole: role,
-      grossIncome: totals.grossIncome,
-      totalExpenses: totals.totalExpenses
-    }
-  }
 }
 
 export async function saveReturnFormWorksheet (
@@ -181,29 +238,51 @@ export async function saveReturnFormWorksheet (
            AND COALESCE(metadata->>'taxpayerRole', 'self') = $4`,
         [taxReturnId, clerkUserId, formCode, role]
       )
+      await client.query(
+        `DELETE FROM taxgpt.deductions
+         WHERE tax_return_id = $1::uuid
+           AND clerk_user_id = $2
+           AND COALESCE(metadata->>'source', '') = 'form_worksheet'
+           AND COALESCE(metadata->>'formCode', '') = $3
+           AND COALESCE(metadata->>'taxpayerRole', 'self') = $4`,
+        [taxReturnId, clerkUserId, formCode, role]
+      )
 
-      if (formCode === 'T2125') {
-        const totals = computeT2125Totals(values)
-        const incomeEntry = buildT2125IncomeEntry(formCode, role, values, totals)
-        if (incomeEntry) {
-          await client.query(
-            `INSERT INTO taxgpt.income_entries
-             (clerk_user_id, tax_return_id, source_type, source_ref_id, category, description, amount, currency, is_manual, metadata, updated_at)
-             VALUES ($1, $2::uuid, $3, $4::uuid, $5, $6, $7, $8, $9, $10::jsonb, now())`,
-            [
-              clerkUserId,
-              taxReturnId,
-              incomeEntry.sourceType,
-              null,
-              incomeEntry.category,
-              incomeEntry.description,
-              incomeEntry.amount,
-              'CAD',
-              true,
-              JSON.stringify(incomeEntry.metadata)
-            ]
-          )
-        }
+      const ledgerEntry = buildFormWorksheetLedgerEntry(formCode, role, values)
+      if (!ledgerEntry) continue
+
+      if (ledgerEntry.isDeduction) {
+        await client.query(
+          `INSERT INTO taxgpt.deductions
+           (clerk_user_id, tax_return_id, category, description, amount, is_credit, metadata, updated_at)
+           VALUES ($1, $2::uuid, $3, $4, $5, false, $6::jsonb, now())`,
+          [
+            clerkUserId,
+            taxReturnId,
+            ledgerEntry.category,
+            ledgerEntry.description,
+            ledgerEntry.amount,
+            JSON.stringify(ledgerEntry.metadata)
+          ]
+        )
+      } else {
+        await client.query(
+          `INSERT INTO taxgpt.income_entries
+           (clerk_user_id, tax_return_id, source_type, source_ref_id, category, description, amount, currency, is_manual, metadata, updated_at)
+           VALUES ($1, $2::uuid, $3, $4::uuid, $5, $6, $7, $8, $9, $10::jsonb, now())`,
+          [
+            clerkUserId,
+            taxReturnId,
+            ledgerEntry.sourceType,
+            null,
+            ledgerEntry.category,
+            ledgerEntry.description,
+            ledgerEntry.amount,
+            'CAD',
+            true,
+            JSON.stringify(ledgerEntry.metadata)
+          ]
+        )
       }
     }
 
@@ -215,11 +294,16 @@ export async function saveReturnFormWorksheet (
     client.release()
   }
 
-  const [values, incomeEntries] = await Promise.all([
+  const [values, incomeEntries, deductions] = await Promise.all([
     listFormWorksheetValuesForReturn(pool, clerkUserId, taxReturnId),
-    listIncomeEntries(pool, clerkUserId, taxReturnId)
+    listIncomeEntries(pool, clerkUserId, taxReturnId),
+    listDeductions(pool, clerkUserId, taxReturnId)
   ])
-  return { formWorksheetValues: values, incomeEntries: incomeEntries || [] }
+  return {
+    formWorksheetValues: values,
+    incomeEntries: incomeEntries || [],
+    deductions: deductions || []
+  }
 }
 
 export async function saveReturnFormWorksheetsBatch (

@@ -25,6 +25,7 @@ import { listSlipSchemasForReturnBuilder, getSlipSchema } from '../services/tax-
 import { saveReturnSlipsAndIncome } from '../services/tax-intelligence/slipEntry.service.js'
 import {
   ensureFormWorksheetSchemasSeeded,
+  getFormWorksheetCoverage,
   getFormWorksheetSchema,
   listFormWorksheetValuesForReturn,
   listFormWorksheetsForReturnBuilder,
@@ -221,6 +222,18 @@ export function createTaxIntelligenceRouter (pool) {
     } catch (e) {
       console.error('GET /form-worksheets', e)
       res.status(500).json({ error: 'Could not load form worksheets' })
+    }
+  })
+
+  r.get('/form-worksheets/coverage', async (req, res) => {
+    const session = await getClerkUser(req, res)
+    if (!session) return
+    try {
+      const coverage = await getFormWorksheetCoverage(pool)
+      res.json(coverage)
+    } catch (e) {
+      console.error('GET /form-worksheets/coverage', e)
+      res.status(500).json({ error: 'Could not load form worksheet coverage' })
     }
   })
 

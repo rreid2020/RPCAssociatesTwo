@@ -1180,6 +1180,7 @@ const ReturnBuilder: FC = () => {
       const formResult = await taxFetch<{
         formWorksheetValues: FormWorksheetValuesState
         incomeEntries: TaxReturnPayload['incomeEntries']
+        deductions: TaxReturnPayload['deductions']
       }>(`/tax-returns/${id}/form-worksheets`, getToken, {
         method: 'PUT',
         body: JSON.stringify({ formWorksheetValues })
@@ -1192,17 +1193,18 @@ const ReturnBuilder: FC = () => {
         })
       })
       const mergedIncomeEntries = result.incomeEntries || []
+      const mergedDeductions = result.deductions || []
       setFormWorksheetValues(formResult.formWorksheetValues || formWorksheetValues)
       if (overrides?.reload === false) {
         setManualSlipRows(buildSlipRowsFromReturnData(
           mergedIncomeEntries,
-          result.deductions || [],
+          mergedDeductions,
           slipSchemasByCode
         ))
         setData((prev) => prev ? {
           ...prev,
           incomeEntries: mergedIncomeEntries,
-          deductions: result.deductions || [],
+          deductions: mergedDeductions,
           formWorksheetValues: formResult.formWorksheetValues || formWorksheetValues
         } : prev)
       } else {

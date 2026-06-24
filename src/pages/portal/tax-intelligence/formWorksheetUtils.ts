@@ -23,11 +23,29 @@ export const T2042_INCOME_FIELD_CODES = ['8299', '8230']
 
 export const T778_CLAIM_FIELD_CODES = ['total_eligible', 'total_disabled', 'total_overnight']
 
+export const SCHEDULE_3_GAIN_FIELD_CODES = [
+  'gain_loss_1', 'gain_loss_2', 'gain_loss_3', 'capital_gains_dividends', 'other_capital_gains'
+]
+export const SCHEDULE_3_LOSS_FIELD_CODES = ['allowable_capital_loss', 'prior_year_losses_applied']
+
+export const SCHEDULE_7_CONTRIBUTION_FIELD_CODES = [
+  'rrsp_contributions_current_year', 'rrsp_contributions_first_60_days', 'rrsp_spousal_contributions'
+]
+
+export const SCHEDULE_9_DONATION_FIELD_CODES = ['donations_cash', 'donations_kind', 'donations_carryforward']
+
+export const SCHEDULE_11_TUITION_FIELD_CODES = ['tuition_eligible', 'tuition_received_transfer']
+
+export const ON479_CREDIT_FIELD_CODES = [
+  'line_61010', 'line_61070', 'line_61500', 'line_63100', 'line_63640', 'line_63800'
+]
+
 type Totals = {
   grossIncome?: number
   totalExpenses?: number
   netIncome?: number
   totalClaim?: number
+  totalDeduction?: number
 }
 
 function sumFieldCodes (values: Record<string, string | number | undefined>, codes: string[]) {
@@ -73,13 +91,47 @@ export function computeT778Totals (values: Record<string, string | number | unde
   return { totalClaim, netIncome: totalClaim, grossIncome: 0, totalExpenses: totalClaim }
 }
 
+export function computeSchedule3Totals (values: Record<string, string | number | undefined> = {}) {
+  const totalGains = sumFieldCodes(values, SCHEDULE_3_GAIN_FIELD_CODES)
+  const totalLosses = sumFieldCodes(values, SCHEDULE_3_LOSS_FIELD_CODES)
+  const netIncome = totalGains - totalLosses
+  return { grossIncome: totalGains, totalExpenses: totalLosses, netIncome: Math.max(0, netIncome) }
+}
+
+export function computeSchedule7Totals (values: Record<string, string | number | undefined> = {}) {
+  const totalDeduction = Number(values.rrsp_deduction_claimed || 0) || sumFieldCodes(values, SCHEDULE_7_CONTRIBUTION_FIELD_CODES)
+  return { totalDeduction, netIncome: totalDeduction, grossIncome: 0, totalExpenses: totalDeduction }
+}
+
+export function computeSchedule9Totals (values: Record<string, string | number | undefined> = {}) {
+  const totalClaim = sumFieldCodes(values, SCHEDULE_9_DONATION_FIELD_CODES)
+  return { totalClaim, netIncome: totalClaim, grossIncome: 0, totalExpenses: totalClaim }
+}
+
+export function computeSchedule11Totals (values: Record<string, string | number | undefined> = {}) {
+  const eligible = sumFieldCodes(values, SCHEDULE_11_TUITION_FIELD_CODES)
+  const transferredOut = Number(values.tuition_transferred_out || 0)
+  const totalClaim = Math.max(0, eligible - transferredOut)
+  return { totalClaim, netIncome: totalClaim, grossIncome: 0, totalExpenses: totalClaim }
+}
+
+export function computeOn479Totals (values: Record<string, string | number | undefined> = {}) {
+  const totalClaim = sumFieldCodes(values, ON479_CREDIT_FIELD_CODES)
+  return { totalClaim, netIncome: totalClaim, grossIncome: 0, totalExpenses: totalClaim }
+}
+
 const FORM_COMPUTE: Record<string, (values: Record<string, string | number | undefined>) => Totals> = {
   T2125: computeT2125Totals,
   T776: computeT776Totals,
   T777: computeT777Totals,
   T2121: computeT2121Totals,
   T2042: computeT2042Totals,
-  T778: computeT778Totals
+  T778: computeT778Totals,
+  'SCHEDULE 3': computeSchedule3Totals,
+  'SCHEDULE 7': computeSchedule7Totals,
+  'SCHEDULE 9': computeSchedule9Totals,
+  'SCHEDULE 11': computeSchedule11Totals,
+  ON479: computeOn479Totals
 }
 
 export function computeFormWorksheetTotals (
@@ -106,6 +158,12 @@ export function resolveComputedFormFieldValue (
     return totals.netIncome ?? undefined
   }
   if (fieldCode === 'total_claim') {
+    return totals.totalClaim ?? totals.netIncome ?? undefined
+  }
+  if (fieldCode === 'taxable_capital_gains') {
+    return totals.netIncome ?? undefined
+  }
+  if (fieldCode === 'total_donations_claim' || fieldCode === 'total_ontario_credits' || fieldCode === 'tuition_amount_claimed') {
     return totals.totalClaim ?? totals.netIncome ?? undefined
   }
 

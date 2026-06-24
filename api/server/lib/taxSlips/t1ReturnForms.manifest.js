@@ -60,7 +60,8 @@ export const T1_FORM_TITLES = {
   'Schedule 14': 'Climate Action Incentive',
   'Schedule 15': 'FHSA Contributions, Transfers, and Withdrawals',
   '428': 'Provincial or Territorial Tax',
-  '479': 'Provincial or Territorial Tax Credits'
+  '479': 'Provincial or Territorial Tax Credits',
+  ON479: 'Ontario Tax Credits'
 }
 
 function normalizeFormCode (value) {

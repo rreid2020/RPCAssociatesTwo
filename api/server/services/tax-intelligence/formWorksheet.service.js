@@ -255,13 +255,14 @@ export async function saveReturnFormWorksheet (
         await client.query(
           `INSERT INTO taxgpt.deductions
            (clerk_user_id, tax_return_id, category, description, amount, is_credit, metadata, updated_at)
-           VALUES ($1, $2::uuid, $3, $4, $5, false, $6::jsonb, now())`,
+           VALUES ($1, $2::uuid, $3, $4, $5, $6, $7::jsonb, now())`,
           [
             clerkUserId,
             taxReturnId,
             ledgerEntry.category,
             ledgerEntry.description,
             ledgerEntry.amount,
+            Boolean(ledgerEntry.isCredit),
             JSON.stringify(ledgerEntry.metadata)
           ]
         )

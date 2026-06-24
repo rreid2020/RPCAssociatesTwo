@@ -14,9 +14,15 @@ const FORM_TITLES: Record<string, string> = {
   T2125: 'Statement of Business or Professional Activities',
   T776: 'Statement of Real Estate Rentals',
   T777: 'Statement of Employment Expenses',
+  T2200: 'Declaration of Conditions of Employment',
   T2042: 'Statement of Farming Activities',
   T2121: 'Statement of Fishing Activities',
   T778: 'Child Care Expenses Deduction',
+  'SCHEDULE 3': 'Schedule 3 — Capital Gains (or Losses)',
+  'SCHEDULE 7': 'Schedule 7 — RRSP, PRPP, and SPP',
+  'SCHEDULE 9': 'Schedule 9 — Donations and Gifts',
+  'SCHEDULE 11': 'Schedule 11 — Tuition Amounts',
+  ON479: 'ON479 — Ontario Tax Credits',
   T1163: 'Statement A — AgriStability and AgriInvest Programs Information',
   T1164: 'Statement B — AgriStability and AgriInvest Programs Information',
   'SCHEDULE 13': 'Schedule 13 — Employment Insurance Premiums on Self-Employment and Other Eligible Earnings'
@@ -174,28 +180,28 @@ export const ScheduleFormWorksheet: FC<{
         </div>
       ))}
 
-      {totals && (totals.netIncome != null || totals.totalClaim != null) && (
+      {totals && (totals.netIncome != null || totals.totalClaim != null || totals.totalDeduction != null) && (
         <div className="overflow-hidden rounded-lg border border-border bg-background/40">
           <TaxWorksheetGroupHeader title="Worksheet summary" />
           <div className="grid gap-2 px-4 py-3 text-sm sm:grid-cols-3">
             {totals.grossIncome != null && totals.grossIncome !== 0 && (
               <div>
-                <p className="text-xs text-text-light">Gross income</p>
+                <p className="text-xs text-text-light">Gross income / gains</p>
                 <p className="font-medium tabular-nums">{formatCurrency(totals.grossIncome)}</p>
               </div>
             )}
             {totals.totalExpenses != null && totals.totalExpenses !== 0 && (
               <div>
-                <p className="text-xs text-text-light">Total expenses</p>
+                <p className="text-xs text-text-light">Losses / expenses</p>
                 <p className="font-medium tabular-nums">{formatCurrency(totals.totalExpenses)}</p>
               </div>
             )}
             <div>
               <p className="text-xs text-text-light">
-                {formCode === 'T778' ? 'Deduction claim' : 'Net amount'}
+                {formCode === 'T778' ? 'Deduction claim' : formCode === 'SCHEDULE 9' || formCode === 'SCHEDULE 11' || formCode === 'ON479' ? 'Credit claim' : formCode === 'SCHEDULE 7' ? 'Deduction claimed' : 'Net amount'}
               </p>
               <p className="font-semibold tabular-nums text-primary-dark">
-                {formatCurrency(totals.netIncome ?? totals.totalClaim)}
+                {formatCurrency(totals.netIncome ?? totals.totalClaim ?? totals.totalDeduction)}
               </p>
             </div>
           </div>

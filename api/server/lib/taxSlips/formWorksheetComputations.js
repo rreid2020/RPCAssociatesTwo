@@ -1,5 +1,10 @@
 import {
   COMPLETE_FORM_WORKSHEET_DEFINITIONS,
+  computeOn479Totals,
+  computeSchedule11Totals,
+  computeSchedule3Totals,
+  computeSchedule7Totals,
+  computeSchedule9Totals,
   computeT2042Totals,
   computeT2121Totals,
   computeT2125Totals,
@@ -52,6 +57,45 @@ export const FORM_WORKSHEET_INCOME_MAPPINGS = {
     category: 'child_care_expenses',
     description: 'child care expenses deduction',
     kind: 'deduction'
+  },
+  'SCHEDULE 3': {
+    compute: computeSchedule3Totals,
+    netField: 'taxable_capital_gains',
+    t1LineRef: '12700',
+    category: 'capital_gains',
+    description: 'taxable capital gains'
+  },
+  'SCHEDULE 7': {
+    compute: computeSchedule7Totals,
+    netField: 'rrsp_deduction_claimed',
+    t1LineRef: '20800',
+    category: 'rrsp',
+    description: 'RRSP deduction',
+    kind: 'deduction'
+  },
+  'SCHEDULE 9': {
+    compute: computeSchedule9Totals,
+    netField: 'total_donations_claim',
+    t1LineRef: '34900',
+    category: 'donations',
+    description: 'donations and gifts',
+    kind: 'credit'
+  },
+  'SCHEDULE 11': {
+    compute: computeSchedule11Totals,
+    netField: 'tuition_amount_claimed',
+    t1LineRef: '32300',
+    category: 'tuition_amount',
+    description: 'tuition amount',
+    kind: 'credit'
+  },
+  ON479: {
+    compute: computeOn479Totals,
+    netField: 'total_ontario_credits',
+    t1LineRef: '47900',
+    category: 'provincial_tax_credits',
+    description: 'Ontario tax credits',
+    kind: 'credit'
   }
 }
 
@@ -61,27 +105,30 @@ export function buildFormWorksheetLedgerEntry (formCode, role, values = {}) {
   if (!mapping) return null
 
   const totals = mapping.compute(values)
-  const net = Number(totals.netIncome ?? totals.totalClaim ?? totals.totalExpenses ?? 0)
+  const net = Number(totals.netIncome ?? totals.totalClaim ?? totals.totalDeduction ?? totals.totalExpenses ?? 0)
   if (!Number.isFinite(net) || net === 0) return null
 
   const isDeduction = mapping.kind === 'deduction'
+  const isCredit = mapping.kind === 'credit'
   return {
     category: mapping.category,
-    description: `${code} ${mapping.description} (line ${mapping.t1LineRef})`,
+    description: `${String(formCode || '').trim()} ${mapping.description} (line ${mapping.t1LineRef})`,
     amount: Math.abs(net),
     sourceType: 'form_worksheet',
     isManual: true,
     isDeduction,
+    isCredit,
     metadata: {
       source: 'form_worksheet',
       formCode: code,
       fieldCode: mapping.netField,
       lineRef: mapping.t1LineRef,
-      scheduleRef: code,
+      scheduleRef: String(formCode || '').trim(),
       taxpayerRole: role,
       grossIncome: totals.grossIncome,
       totalExpenses: totals.totalExpenses,
-      totalClaim: totals.totalClaim
+      totalClaim: totals.totalClaim,
+      totalDeduction: totals.totalDeduction
     }
   }
 }

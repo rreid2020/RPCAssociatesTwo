@@ -403,3 +403,240 @@ COMPLETE_FORM_WORKSHEET_DEFINITIONS.push(
     ]
   }
 )
+
+export const SCHEDULE_3_GAIN_FIELD_CODES = [
+  'gain_loss_1', 'gain_loss_2', 'gain_loss_3', 'capital_gains_dividends', 'other_capital_gains'
+]
+export const SCHEDULE_3_LOSS_FIELD_CODES = ['allowable_capital_loss', 'prior_year_losses_applied']
+
+export function computeSchedule3Totals (values = {}) {
+  const totalGains = sumFieldCodes(values, SCHEDULE_3_GAIN_FIELD_CODES)
+  const totalLosses = sumFieldCodes(values, SCHEDULE_3_LOSS_FIELD_CODES)
+  const netIncome = totalGains - totalLosses
+  return { grossIncome: totalGains, totalExpenses: totalLosses, netIncome: Math.max(0, netIncome) }
+}
+
+export const SCHEDULE_7_CONTRIBUTION_FIELD_CODES = [
+  'rrsp_contributions_current_year', 'rrsp_contributions_first_60_days', 'rrsp_spousal_contributions'
+]
+
+export function computeSchedule7Totals (values = {}) {
+  const totalDeduction = Number(values.rrsp_deduction_claimed || 0) || sumFieldCodes(values, SCHEDULE_7_CONTRIBUTION_FIELD_CODES)
+  return { totalDeduction, netIncome: totalDeduction, grossIncome: 0, totalExpenses: totalDeduction }
+}
+
+export const SCHEDULE_9_DONATION_FIELD_CODES = ['donations_cash', 'donations_kind', 'donations_carryforward']
+
+export function computeSchedule9Totals (values = {}) {
+  const totalClaim = sumFieldCodes(values, SCHEDULE_9_DONATION_FIELD_CODES)
+  return { totalClaim, netIncome: totalClaim, grossIncome: 0, totalExpenses: totalClaim }
+}
+
+export const SCHEDULE_11_TUITION_FIELD_CODES = ['tuition_eligible', 'tuition_received_transfer']
+
+export function computeSchedule11Totals (values = {}) {
+  const eligible = sumFieldCodes(values, SCHEDULE_11_TUITION_FIELD_CODES)
+  const transferredOut = Number(values.tuition_transferred_out || 0)
+  const totalClaim = Math.max(0, eligible - transferredOut)
+  return { totalClaim, netIncome: totalClaim, grossIncome: 0, totalExpenses: totalClaim }
+}
+
+export const ON479_CREDIT_FIELD_CODES = [
+  'line_61010', 'line_61070', 'line_61500', 'line_63100', 'line_63640', 'line_63800'
+]
+
+export function computeOn479Totals (values = {}) {
+  const totalClaim = sumFieldCodes(values, ON479_CREDIT_FIELD_CODES)
+  return { totalClaim, netIncome: totalClaim, grossIncome: 0, totalExpenses: totalClaim }
+}
+
+COMPLETE_FORM_WORKSHEET_DEFINITIONS.push(
+  {
+    code: 'Schedule 3',
+    name: 'Capital Gains (or Losses)',
+    registryTitle: 'Schedule 3 Capital Gains (or Losses)',
+    landingUrl: 'https://www.canada.ca/en/revenue-agency/services/forms-publications/tax-packages-archives/general-income-tax-benefit-package/5000-s3.html',
+    formFamily: 't1_schedule',
+    sections: [
+      {
+        id: 'dispositions',
+        title: 'Capital property dispositions',
+        description: 'Summary of capital gains and losses for the year.',
+        fields: [
+          txt('property_1', 'Property 1 — description'),
+          cur('gain_loss_1', 'Property 1 — gain (loss)', { lineRef: 'gain_loss' }),
+          txt('property_2', 'Property 2 — description'),
+          cur('gain_loss_2', 'Property 2 — gain (loss)', { lineRef: 'gain_loss' }),
+          txt('property_3', 'Property 3 — description'),
+          cur('gain_loss_3', 'Property 3 — gain (loss)', { lineRef: 'gain_loss' }),
+          cur('capital_gains_dividends', 'Capital gains dividends', { lineRef: 'capital_gains_dividends' }),
+          cur('other_capital_gains', 'Other capital gains', { lineRef: 'other_capital_gains' })
+        ]
+      },
+      {
+        id: 'losses',
+        title: 'Capital losses',
+        fields: [
+          cur('allowable_capital_loss', 'Allowable capital loss', { lineRef: 'allowable_capital_loss' }),
+          cur('prior_year_losses_applied', 'Prior-year net capital losses applied', { lineRef: 'prior_year_losses' })
+        ]
+      },
+      {
+        id: 'summary',
+        title: 'Taxable capital gains',
+        fields: [
+          computed('taxable_capital_gains', 'Taxable capital gains (T1 line 12700)', {
+            lineRef: '12700',
+            compute: 'net_income',
+            targets: [{ kind: 'income', category: 'capital_gains', lineRef: '12700', scheduleRef: 'Schedule 3' }]
+          })
+        ]
+      }
+    ]
+  },
+  {
+    code: 'Schedule 7',
+    name: 'RRSP, PRPP, and SPP Unused Contributions and HBP/LLP',
+    registryTitle: 'Schedule 7 RRSP and PRPP',
+    landingUrl: 'https://www.canada.ca/en/revenue-agency/services/forms-publications/tax-packages-archives/general-income-tax-benefit-package/5000-s7.html',
+    formFamily: 't1_schedule',
+    sections: [
+      {
+        id: 'room',
+        title: 'RRSP deduction room',
+        fields: [
+          cur('rrsp_unused_at_start', 'Unused RRSP contributions at start of year', { lineRef: 'unused_start' }),
+          cur('pension_adjustment', 'Pension adjustment', { lineRef: 'pension_adjustment' }),
+          cur('rrsp_deduction_limit', 'RRSP deduction limit for the year', { lineRef: 'deduction_limit' })
+        ]
+      },
+      {
+        id: 'contributions',
+        title: 'Contributions',
+        fields: [
+          cur('rrsp_contributions_current_year', 'Contributions made in the year', { lineRef: 'contributions' }),
+          cur('rrsp_contributions_first_60_days', 'Contributions in first 60 days of next year', { lineRef: 'contributions_60_days' }),
+          cur('rrsp_spousal_contributions', 'Spousal RRSP contributions', { lineRef: 'spousal_contributions' })
+        ]
+      },
+      {
+        id: 'claim',
+        title: 'RRSP deduction claimed',
+        fields: [
+          cur('rrsp_deduction_claimed', 'RRSP deduction claimed this year', {
+            lineRef: '20800',
+            targets: [{ kind: 'deduction', category: 'rrsp', lineRef: '20800', scheduleRef: 'Schedule 7' }]
+          })
+        ]
+      }
+    ]
+  },
+  {
+    code: 'Schedule 9',
+    name: 'Donations and Gifts',
+    registryTitle: 'Schedule 9 Donations and Gifts',
+    landingUrl: 'https://www.canada.ca/en/revenue-agency/services/forms-publications/tax-packages-archives/general-income-tax-benefit-package/5000-s9.html',
+    formFamily: 't1_schedule',
+    sections: [
+      {
+        id: 'donations',
+        title: 'Donations and gifts',
+        description: 'Eligible charitable donations and gifts for the non-refundable tax credit (line 34900).',
+        fields: [
+          cur('donations_cash', 'Cash donations', { lineRef: 'donations_cash' }),
+          cur('donations_kind', 'Gifts of capital property or ecologically sensitive land', { lineRef: 'donations_kind' }),
+          cur('donations_carryforward', 'Unused donations carried forward', { lineRef: 'donations_carryforward' }),
+          computed('total_donations_claim', 'Total donations claim (line 34900)', {
+            lineRef: '34900',
+            compute: 'sum_expenses',
+            targets: [{ kind: 'deduction', category: 'donations', lineRef: '34900', scheduleRef: 'Schedule 9' }]
+          })
+        ]
+      }
+    ]
+  },
+  {
+    code: 'Schedule 11',
+    name: 'Tuition, Education, and Textbook Amounts',
+    registryTitle: 'Schedule 11 Tuition Amounts',
+    landingUrl: 'https://www.canada.ca/en/revenue-agency/services/forms-publications/tax-packages-archives/general-income-tax-benefit-package/5000-s11.html',
+    formFamily: 't1_schedule',
+    sections: [
+      {
+        id: 'tuition',
+        title: 'Tuition amounts',
+        description: 'Eligible tuition fees from T2202 and transfers (line 32300).',
+        fields: [
+          cur('tuition_eligible', 'Eligible tuition fees (from T2202)', { lineRef: 'tuition_eligible' }),
+          cur('tuition_received_transfer', 'Tuition transferred from child or spouse', { lineRef: 'tuition_received' }),
+          cur('tuition_transferred_out', 'Tuition amount transferred to spouse, parent, or grandparent', { lineRef: 'tuition_transferred' }),
+          computed('tuition_amount_claimed', 'Tuition amount claimed (line 32300)', {
+            lineRef: '32300',
+            compute: 'net_income',
+            targets: [{ kind: 'deduction', category: 'tuition_amount', lineRef: '32300', scheduleRef: 'Schedule 11' }]
+          })
+        ]
+      }
+    ]
+  },
+  {
+    code: 'T2200',
+    name: 'Declaration of Conditions of Employment',
+    registryTitle: 'T2200 Declaration of Conditions of Employment',
+    landingUrl: 'https://www.canada.ca/en/revenue-agency/services/forms-publications/forms/t2200.html',
+    formFamily: 't1_form',
+    sections: [
+      {
+        id: 'employer',
+        title: 'Employer declaration',
+        fields: [
+          txt('employer_name', 'Employer name'),
+          txt('employer_address', 'Employer address'),
+          txt('employee_name', 'Employee name'),
+          txt('employee_occupation', 'Employee occupation'),
+          txt('employment_period', 'Period of employment')
+        ]
+      },
+      {
+        id: 'conditions',
+        title: 'Conditions of employment',
+        description: 'Employer confirms the employee was required to pay these expenses to earn employment income (supports T777).',
+        fields: [
+          txt('expenses_required', 'Required to pay expenses not reimbursed (yes/no)'),
+          txt('motor_vehicle_required', 'Required to use a motor vehicle for employment (yes/no)'),
+          txt('travel_required', 'Required to travel away from the employer\'s place of business (yes/no)'),
+          txt('home_office_required', 'Required to have a home office (yes/no)'),
+          txt('supplies_required', 'Required to pay for supplies used directly in work (yes/no)'),
+          txt('employer_signed', 'Form signed by authorized employer representative (yes/no)')
+        ]
+      }
+    ]
+  },
+  {
+    code: 'ON479',
+    name: 'Ontario Credits',
+    registryTitle: 'ON479 Ontario Tax Credits',
+    landingUrl: 'https://www.canada.ca/en/revenue-agency/services/forms-publications/tax-packages-archives/general-income-tax-benefit-package/5000-on479.html',
+    formFamily: 't1_form',
+    sections: [
+      {
+        id: 'ontario_credits',
+        title: 'Ontario tax credits',
+        description: 'Common Ontario non-refundable tax credits (flows to provincial line 47900).',
+        fields: [
+          cur('line_61010', 'Low-income individuals and families tax credit (line 61010)', { lineRef: '61010' }),
+          cur('line_61070', 'Community food program donation tax credit (line 61070)', { lineRef: '61070' }),
+          cur('line_61500', 'Ontario energy and property tax credit (line 61500)', { lineRef: '61500' }),
+          cur('line_63100', 'Ontario seniors\' public transit tax credit (line 63100)', { lineRef: '63100' }),
+          cur('line_63640', 'Ontario child care tax credit (line 63640)', { lineRef: '63640' }),
+          cur('line_63800', 'Ontario jobs training tax credit (line 63800)', { lineRef: '63800' }),
+          computed('total_ontario_credits', 'Total Ontario credits (line 47900)', {
+            lineRef: '47900',
+            compute: 'sum_expenses',
+            targets: [{ kind: 'deduction', category: 'provincial_tax_credits', lineRef: '47900', scheduleRef: 'ON479' }]
+          })
+        ]
+      }
+    ]
+  }
+)

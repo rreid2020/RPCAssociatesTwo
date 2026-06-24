@@ -1,6 +1,6 @@
 {
   "name": "rpc-associates-api",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "Backend API for RPC Associates website",
   "main": "server.js",

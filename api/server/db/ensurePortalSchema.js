@@ -1774,13 +1774,13 @@ const EVOLUTIONARY_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS taxgpt.form_worksheet_fields (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   form_worksheet_schema_id UUID NOT NULL REFERENCES taxgpt.form_worksheet_schemas(id) ON DELETE CASCADE,
-  section_id VARCHAR(64) NOT NULL,
+  section_id VARCHAR(128) NOT NULL,
   section_title TEXT NOT NULL,
   section_description TEXT,
-  field_code VARCHAR(32) NOT NULL,
+  field_code VARCHAR(128) NOT NULL,
   label TEXT NOT NULL,
-  field_type VARCHAR(16) NOT NULL DEFAULT 'currency',
-  line_ref VARCHAR(16),
+  field_type VARCHAR(32) NOT NULL DEFAULT 'currency',
+  line_ref VARCHAR(64),
   sort_order INTEGER NOT NULL DEFAULT 0,
   targets JSONB NOT NULL DEFAULT '[]'::jsonb,
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -1795,8 +1795,8 @@ const EVOLUTIONARY_STATEMENTS = [
   tax_return_id UUID NOT NULL REFERENCES taxgpt.tax_returns(id) ON DELETE CASCADE,
   form_code VARCHAR(64) NOT NULL,
   taxpayer_role VARCHAR(16) NOT NULL DEFAULT 'self',
-  field_code VARCHAR(32) NOT NULL,
-  field_type VARCHAR(16) NOT NULL DEFAULT 'currency',
+  field_code VARCHAR(128) NOT NULL,
+  field_type VARCHAR(32) NOT NULL DEFAULT 'currency',
   amount NUMERIC(14, 2),
   text_value TEXT,
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -1831,7 +1831,15 @@ const EVOLUTIONARY_STATEMENTS = [
   created_at TIMESTAMP NOT NULL DEFAULT now(),
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 )`,
-  'CREATE INDEX IF NOT EXISTS household_interview_drafts_clerk_idx ON taxgpt.household_interview_drafts(clerk_user_id)'
+  'CREATE INDEX IF NOT EXISTS household_interview_drafts_clerk_idx ON taxgpt.household_interview_drafts(clerk_user_id)',
+  `ALTER TABLE taxgpt.form_worksheet_fields
+     ALTER COLUMN section_id TYPE VARCHAR(128),
+     ALTER COLUMN field_code TYPE VARCHAR(128),
+     ALTER COLUMN field_type TYPE VARCHAR(32),
+     ALTER COLUMN line_ref TYPE VARCHAR(64)`,
+  `ALTER TABLE taxgpt.form_worksheet_values
+     ALTER COLUMN field_code TYPE VARCHAR(128),
+     ALTER COLUMN field_type TYPE VARCHAR(32)`
 ]
 
 async function runEvolutionaryMigrations (pool) {

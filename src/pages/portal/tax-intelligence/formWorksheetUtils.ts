@@ -1,8 +1,98 @@
 export const T2125_EXPENSE_FIELD_CODES = [
-  '8521', '8523', '8690', '8710', '8760', '8810', '8811', '8860', '8871',
-  '8910', '8960', '9060', '9180', '9200', '9220', '9275', '9281', '9282'
+  '8521', '8523', '8590', '8690', '8710', '8760', '8810', '8811', '8860', '8871',
+  '8910', '8960', '9060', '9180', '9200', '9220', '9224', '9275', '9281', '9936', '9270'
 ]
-export const T2125_INCOME_FIELD_CODES = ['8299', '8230']
+export const T2125_INCOME_FIELD_CODES = ['8000', '8290', '8230', '8299']
+export const T2125_PART6_FIELD_CODES = ['6A', '6B', '6C', '6D', '6E']
+export const T2125_HOME_OFFICE_FIELD_CODES = ['7A', '7B', '7C', '7D', '7E', '7F', '7G']
+export const T2125_CHART_A_EXPENSE_CODES = [
+  'chart_a_fuel', 'chart_a_interest', 'chart_a_insurance', 'chart_a_licence',
+  'chart_a_maintenance', 'chart_a_leasing', 'chart_a_electricity', 'chart_a_other'
+]
+
+function n2125 (values: Record<string, string | number | undefined>, key: string) {
+  const out = Number(values[key] || 0)
+  return Number.isFinite(out) ? out : 0
+}
+
+export function computeT2125Field (
+  fieldCode: string,
+  values: Record<string, string | number | undefined> = {}
+): number | undefined {
+  switch (fieldCode) {
+    case '3C': return n2125(values, '3A') - n2125(values, '3B')
+    case '3F': return n2125(values, '3D') - n2125(values, '3E')
+    case '3G': return (computeT2125Field('3C', values) ?? 0) + (computeT2125Field('3F', values) ?? 0)
+    case '3J': return n2125(values, '3H') - n2125(values, '3I')
+    case '3M': return n2125(values, '3K') - n2125(values, '3L')
+    case '3N': return (computeT2125Field('3J', values) ?? 0) + (computeT2125Field('3M', values) ?? 0)
+    case '8299': {
+      if (values['8299'] != null && values['8299'] !== '' && Number(values['8299']) !== 0) return n2125(values, '8299')
+      const from8000 = n2125(values, '8000') + n2125(values, '8290') + n2125(values, '8230')
+      if (from8000 !== 0) return from8000
+      const from3G = computeT2125Field('3G', values) ?? 0
+      if (from3G !== 0) return from3G
+      return computeT2125Field('3N', values)
+    }
+    case '8518': {
+      const subtotal = sumFieldCodes(values, ['8300', '8320', '8340', '8360', '8450'])
+      return subtotal - n2125(values, '8500')
+    }
+    case '8519': return (computeT2125Field('8299', values) ?? 0) - (computeT2125Field('8518', values) ?? 0)
+    case '4A':
+      if (n2125(values, '8519')) return n2125(values, '8519')
+      return computeT2125Field('8299', values)
+    case '9368': return sumFieldCodes(values, T2125_EXPENSE_FIELD_CODES)
+    case '9369': return (computeT2125Field('4A', values) ?? 0) - (computeT2125Field('9368', values) ?? 0)
+    case '5C': return n2125(values, '5A') + n2125(values, '5B') + n2125(values, '9974')
+    case '5D': {
+      if (values['5D'] != null && values['5D'] !== '' && Number(values['5D']) !== 0) return n2125(values, '5D')
+      const from5 = (computeT2125Field('5C', values) ?? 0) - n2125(values, '9943')
+      if (from5 !== 0 || n2125(values, '5A') || n2125(values, '5B') || n2125(values, '9974')) return from5
+      return computeT2125Field('9369', values)
+    }
+    case '6F': return sumFieldCodes(values, T2125_PART6_FIELD_CODES)
+    case '7H': return sumFieldCodes(values, T2125_HOME_OFFICE_FIELD_CODES) + n2125(values, '7G')
+    case '7J': return (computeT2125Field('7H', values) ?? 0) - n2125(values, '7I')
+    case '7M': return (computeT2125Field('7J', values) ?? 0) + n2125(values, '7K') + n2125(values, '7L')
+    case '7O': return Math.max(0, (computeT2125Field('7M', values) ?? 0) - n2125(values, '7N'))
+    case '7P': {
+      const m = computeT2125Field('7M', values) ?? 0
+      const netAdj = Math.max(0, n2125(values, '7N') || (computeT2125Field('5D', values) ?? 0))
+      return Math.min(m, netAdj)
+    }
+    case 'chart_a_12': return sumFieldCodes(values, T2125_CHART_A_EXPENSE_CODES)
+    case 'chart_a_total': return computeT2125Field('chart_a_12', values)
+    case 'chart_a_13': {
+      const kmB = n2125(values, 'chart_a_km_business')
+      const kmT = n2125(values, 'chart_a_km_total')
+      if (!kmT) return 0
+      return (kmB / kmT) * (computeT2125Field('chart_a_12', values) ?? 0)
+    }
+    case 'chart_a_business_part': return computeT2125Field('chart_a_13', values)
+    case 'chart_a_16':
+    case 'chart_a_allowable':
+      return (computeT2125Field('chart_a_13', values) ?? 0) + n2125(values, 'chart_a_parking') + n2125(values, 'chart_a_supp_insurance')
+    case 'chart_c_28':
+      return Math.min(Math.max(0, n2125(values, 'chart_c_26')), n2125(values, 'chart_c_27'))
+    case 'area_g_iii': {
+      const pct = n2125(values, 'area_g_epop1_percent') / 100
+      return pct > 0 ? 1_500_000 * pct : 0
+    }
+    case '9946':
+      return (computeT2125Field('5D', values) ?? 0) - n2125(values, '9945')
+    default:
+      return undefined
+  }
+}
+
+export function computeT2125Totals (values: Record<string, string | number | undefined> = {}) {
+  const grossIncome = computeT2125Field('8299', values) ?? 0
+  const totalExpenses = computeT2125Field('9368', values) ?? 0
+  const netBeforeAdj = computeT2125Field('9369', values) ?? 0
+  const netIncome = computeT2125Field('9946', values) ?? netBeforeAdj
+  return { grossIncome, totalExpenses, netIncome }
+}
 
 export const T776_EXPENSE_FIELD_CODES = [
   '8521', '8690', '8710', '8760', '8810', '8860', '8871', '8960', '9180', '9220', '9275', '9281', '9282'
@@ -63,10 +153,6 @@ function incomeExpenseTotals (
   const grossIncome = sumFieldCodes(values, incomeCodes)
   const totalExpenses = sumFieldCodes(values, expenseCodes)
   return { grossIncome, totalExpenses, netIncome: grossIncome - totalExpenses }
-}
-
-export function computeT2125Totals (values: Record<string, string | number | undefined> = {}) {
-  return incomeExpenseTotals(values, T2125_INCOME_FIELD_CODES, T2125_EXPENSE_FIELD_CODES)
 }
 
 export function computeT776Totals (values: Record<string, string | number | undefined> = {}) {
@@ -148,6 +234,11 @@ export function resolveComputedFormFieldValue (
   values: Record<string, string | number | undefined>
 ): number | undefined {
   const code = formCode.toUpperCase()
+  if (code === 'T2125') {
+    const t2125 = computeT2125Field(fieldCode, values)
+    if (t2125 != null) return t2125
+  }
+
   const totals = computeFormWorksheetTotals(code, values)
   if (!totals) return undefined
 

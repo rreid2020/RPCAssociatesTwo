@@ -88,7 +88,7 @@ export async function seedCompleteFormWorksheetSchemas (pool) {
       schemaStatus: 'complete',
       landingUrl: definition.landingUrl,
       metadata: {
-        seededFrom: 'complete_form_worksheet_definitions_v2',
+        seededFrom: 'complete_form_worksheet_definitions_v3',
         artifactKind: 't1_form'
       }
     })

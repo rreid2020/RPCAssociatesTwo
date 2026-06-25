@@ -72,17 +72,6 @@ const MODULES: PlatformModule[] = [
   }
 ]
 
-const PortalCta: FC<{ className?: string }> = ({ className = '' }) => (
-  <div className={`flex flex-wrap items-center gap-3 ${className}`}>
-    <Link to="/portal/sign-in" className="btn btn--primary">
-      Sign in to portal
-    </Link>
-    <Link to="/portal/select-plan" className="btn btn--secondary">
-      Create an account
-    </Link>
-  </div>
-)
-
 const PortalPlatform: FC = () => {
   return (
     <section id="client-portal" className="py-xxl bg-background">
@@ -92,10 +81,9 @@ const PortalPlatform: FC = () => {
             Client Portal
           </div>
           <h2 className="mb-md text-primary-dark">One secure platform for tax, returns, and accounting operations</h2>
-          <p className="text-lg text-text-light mb-lg">
+          <p className="text-lg text-text-light">
             Axiom&apos;s client portal brings TaxGPT, Tax Return Builder, and Accounting Operations into a single signed-in workspace—built for secure collaboration with your accountant.
           </p>
-          <PortalCta className="justify-center" />
         </div>
 
         <div className="space-y-xl">
@@ -119,53 +107,42 @@ const PortalPlatform: FC = () => {
                     )}
                   </div>
                   <h3 className="text-2xl lg:text-3xl font-bold mb-md text-primary-dark">{module.title}</h3>
-                  <p className="text-text-light mb-md">{module.description}</p>
-                  <ul className="list-none mb-lg">
+                  <p className="text-text-light">{module.description}</p>
+                </div>
+                <div className={`bg-white p-lg lg:p-xl rounded-xl shadow-md ${reversed ? 'lg:order-1' : undefined}`}>
+                  <ul className="list-none">
                     {module.highlights.map((item) => (
                       <li
                         key={item}
-                        className="pl-md mb-sm relative before:content-['✓'] before:absolute before:left-0 before:text-accent before:font-bold text-[0.9375rem] text-text-light"
+                        className="border-l-4 border-accent pl-md py-2 mb-sm last:mb-0"
                       >
-                        {item}
+                        <p className="text-sm text-text">{item}</p>
                       </li>
                     ))}
                   </ul>
-                  <PortalCta />
-                </div>
-                <div className={`bg-white p-lg lg:p-xl rounded-xl shadow-md ${reversed ? 'lg:order-1' : undefined}`}>
-                  <p className="text-sm font-semibold uppercase tracking-wide text-text-light mb-md">Included in the portal</p>
-                  <div className="space-y-sm">
-                    {module.highlights.map((item) => (
-                      <div key={item} className="border-l-4 border-accent pl-md py-1">
-                        <p className="text-sm text-text">{item}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mt-md text-xs text-text-light">
-                    <Link to="/portal/sign-in" className="text-accent font-semibold hover:underline">Sign in</Link>
-                    {' or '}
-                    <Link to="/portal/select-plan" className="text-accent font-semibold hover:underline">create an account</Link>
-                    {' to access '}
-                    {module.eyebrow}.
-                  </p>
                 </div>
               </article>
             )
           })}
         </div>
 
-        <div className="mt-xl text-center">
+        <div className="mt-xl text-center max-w-[640px] mx-auto">
           <p className="text-text-light mb-md">
-            Want a full tour of the portal modules?
+            Ready to get started? Sign in to your workspace or create an account to access TaxGPT, Tax Return Builder, and Accounting Operations.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            <Link to="/client-portal" className="btn btn--secondary">
-              Explore the client portal
-            </Link>
             <Link to="/portal/sign-in" className="btn btn--primary">
-              Sign in now
+              Sign in to portal
+            </Link>
+            <Link to="/portal/select-plan" className="btn btn--secondary">
+              Create an account
             </Link>
           </div>
+          <p className="mt-md text-sm text-text-light">
+            <Link to="/client-portal" className="text-accent font-semibold hover:underline">
+              Learn more about the client portal
+            </Link>
+          </p>
         </div>
       </div>
     </section>

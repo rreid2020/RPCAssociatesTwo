@@ -1,144 +1,94 @@
 import { FC } from 'react'
 import { Link } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
+import { portalModuleStatusLabel, portalModules } from '../lib/portal/modules'
+import { siteUrl } from '../lib/brand'
 
-type PlatformModule = {
-  id: string
-  eyebrow: string
-  title: string
-  description: string
-  highlights: string[]
-  icon: FC<{ className?: string }>
-  badge?: string
-  badgeTone?: 'active' | 'development'
+const statusBadgeClass: Record<string, string> = {
+  available: 'bg-green-100 text-green-800',
+  active: 'bg-green-100 text-green-800',
+  development: 'bg-amber-100 text-amber-900'
 }
 
-const SparklesIcon: FC<{ className?: string }> = ({ className }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3l2.5 5 5.5 2.5-5.5 2.5L12 18l-2.5-5-5.5-2.5 5.5-2.5L12 3z" />
-  </svg>
-)
-
-const ReturnBuilderIcon: FC<{ className?: string }> = ({ className }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-  </svg>
-)
-
-const AccountingIcon: FC<{ className?: string }> = ({ className }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-  </svg>
-)
-
-const MODULES: PlatformModule[] = [
-  {
-    id: 'taxgpt',
-    eyebrow: 'Tax Intelligence',
-    title: 'TaxGPT',
-    badge: 'Active',
-    badgeTone: 'active',
-    description:
-      'AI-powered Canadian tax research with citations from CRA publications, legislation, and official guidance—so you get accurate answers in plain language.',
-    highlights: [
-      'Tax research chat with source citations',
-      'Document intelligence and form guidance',
-      'Deduction discovery and audit risk insights'
-    ],
-    icon: SparklesIcon
-  },
-  {
-    id: 'tax-return-builder',
-    eyebrow: 'Tax Return Builder',
-    title: 'Personal T1 return workspace',
-    badge: 'Under Development',
-    badgeTone: 'development',
-    description:
-      'Prepare personal income tax returns end to end: interview-driven setup, slip and schedule worksheets, optimization, scenarios, and audit readiness.',
-    highlights: [
-      'Tax returns and CRA slip entry',
-      'Document processing and optimization',
-      'Scenarios, audit & risk, forms & schedules'
-    ],
-    icon: ReturnBuilderIcon
-  },
-  {
-    id: 'accounting-operations',
-    eyebrow: 'Accounting Operations',
-    title: 'Engagements and firm operations',
-    description:
-      'Run engagements, working papers, approvals, and integrations from one workspace—with business profile, roles, and permissions built in.',
-    highlights: [
-      'Engagements and approval-ready workflows',
-      'Business/firm profile and entity management',
-      'Roles, permissions, and accounting integrations'
-    ],
-    icon: AccountingIcon
-  }
-]
-
 const PortalPlatform: FC = () => {
+  const itemListSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Axiom Client Portal Modules',
+    description:
+      'Secure client portal capabilities including dashboard, TaxGPT, tax return builder, file repository, working papers, and integrations.',
+    itemListElement: portalModules.map((module, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      item: {
+        '@type': 'SoftwareApplication',
+        name: module.title,
+        applicationCategory: 'BusinessApplication',
+        operatingSystem: 'Web',
+        description: module.intro,
+        url: `${siteUrl.replace(/\/$/, '')}/client-portal#${module.id}`
+      }
+    }))
+  }
+
   return (
-    <section id="client-portal" className="py-xxl bg-background">
+    <section id="client-portal" className="py-xxl bg-background" aria-labelledby="client-portal-heading">
+      <Helmet>
+        <script type="application/ld+json">{JSON.stringify(itemListSchema)}</script>
+      </Helmet>
       <div className="max-w-[1200px] mx-auto px-md">
         <div className="text-center mb-xl max-w-[800px] mx-auto">
           <div className="inline-block text-sm font-semibold text-accent uppercase tracking-wider mb-md">
             Client Portal
           </div>
-          <h2 className="mb-md text-primary-dark">One secure platform for tax, returns, and accounting operations</h2>
+          <h2 id="client-portal-heading" className="mb-md text-primary-dark">
+            One secure platform for tax, returns, and accounting operations
+          </h2>
           <p className="text-lg text-text-light">
-            Axiom&apos;s client portal brings TaxGPT, Tax Return Builder, and Accounting Operations into a single signed-in workspace—built for secure collaboration with your accountant.
+            Axiom&apos;s client portal brings Dashboard, TaxGPT, Tax Return Builder, File Repository, Working
+            Papers, and Integrations into a single signed-in workspace—built for secure collaboration with your
+            accountant.
           </p>
         </div>
 
-        <div className="space-y-xl">
-          {MODULES.map((module, index) => {
-            const Icon = module.icon
-            const reversed = index % 2 === 1
-            return (
-              <article
-                key={module.id}
-                id={module.id}
-                className="grid grid-cols-1 lg:grid-cols-2 gap-lg lg:gap-xxl items-center"
-              >
-                <div className={reversed ? 'lg:order-2' : undefined}>
-                  <div className="inline-flex items-center gap-2 mb-md">
-                    <Icon className="w-7 h-7 text-accent" />
-                    <span className="text-sm font-semibold text-accent uppercase tracking-wider">{module.eyebrow}</span>
-                    {module.badge && (
-                      <span
-                        className={
-                          module.badgeTone === 'development'
-                            ? 'rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900'
-                            : 'rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800'
-                        }
-                      >
-                        {module.badge}
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="text-2xl lg:text-3xl font-bold mb-md text-primary-dark">{module.title}</h3>
-                  <p className="text-text-light">{module.description}</p>
-                </div>
-                <div className={`bg-white p-lg lg:p-xl rounded-xl shadow-md ${reversed ? 'lg:order-1' : undefined}`}>
-                  <ul className="list-none">
-                    {module.highlights.map((item) => (
-                      <li
-                        key={item}
-                        className="border-l-4 border-accent pl-md py-2 mb-sm last:mb-0"
-                      >
-                        <p className="text-sm text-text">{item}</p>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </article>
-            )
-          })}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
+          {portalModules.map((module) => (
+            <Link
+              key={module.id}
+              to={`/client-portal#${module.id}`}
+              id={module.id}
+              className="bg-white p-lg rounded-xl shadow-sm transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
+            >
+              <div className="flex flex-wrap items-center gap-2 mb-md">
+                <span className="inline-block px-3 py-1 bg-accent text-white text-xs font-semibold uppercase tracking-wider rounded-full">
+                  {module.pill}
+                </span>
+                <span
+                  className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${statusBadgeClass[module.status]}`}
+                >
+                  {portalModuleStatusLabel[module.status]}
+                </span>
+              </div>
+              <h3 className="text-xl mb-sm text-primary">{module.title}</h3>
+              <p className="text-text-light mb-md text-[0.9375rem]">{module.intro}</p>
+              <ul className="list-none">
+                {module.bullets.map((bullet) => (
+                  <li
+                    key={bullet}
+                    className="pl-md mb-xs relative before:content-['•'] before:absolute before:left-0 before:text-accent before:font-bold text-[0.9375rem]"
+                  >
+                    {bullet}
+                  </li>
+                ))}
+              </ul>
+            </Link>
+          ))}
         </div>
 
         <div className="mt-xl text-center max-w-[640px] mx-auto">
           <p className="text-text-light mb-md">
-            Ready to get started? Sign in to your workspace or create an account to access TaxGPT, Tax Return Builder, and Accounting Operations.
+            Ready to get started? Sign in to your workspace or create an account to explore every client portal
+            module.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link to="/portal/sign-in" className="btn btn--primary">

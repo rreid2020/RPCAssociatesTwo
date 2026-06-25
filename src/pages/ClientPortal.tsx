@@ -2,6 +2,7 @@ import { FC } from 'react'
 import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 import Services from '../components/Services'
+import { portalPlatformSeo } from '../lib/portal/modules'
 
 const ModuleStatusBadge: FC<{ status: 'available' | 'development' }> = ({ status }) => {
   if (status === 'available') {
@@ -23,9 +24,9 @@ const ClientPortal: FC = () => {
   return (
     <>
       <SEO
-        title="Client Portal | Secure Workspace for Tax, Documents & Collaboration"
-        description="Axiom Client Portal: Dashboard insights, TaxGPT AI research, secure file repository, working papers, and accounting app integrations. One secure workspace for everything we do together."
-        keywords="client portal, secure file sharing, tax research, document management, accounting portal, client collaboration, TaxGPT, working papers, accounting integrations"
+        title={portalPlatformSeo.title}
+        description={portalPlatformSeo.description}
+        keywords={portalPlatformSeo.keywords}
         canonical="/client-portal"
       />
       <main>
@@ -88,7 +89,7 @@ const ClientPortal: FC = () => {
         </section>
 
         {/* Dashboard Module */}
-        <section className="py-xxl bg-background">
+        <section id="dashboard" className="py-xxl bg-background">
           <div className="max-w-[1200px] mx-auto px-md">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-xxl items-center">
               <div>
@@ -152,8 +153,7 @@ const ClientPortal: FC = () => {
           </div>
         </section>
 
-        {/* TaxGPT Module */}
-        <section className="py-xxl">
+        <section id="taxgpt" className="py-xxl">
           <div className="max-w-[1200px] mx-auto px-md">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-xxl items-center">
               <div className="order-2 lg:order-1 bg-white p-xl rounded-xl shadow-md">
@@ -225,8 +225,7 @@ const ClientPortal: FC = () => {
           </div>
         </section>
 
-        {/* Tax Return Builder Module */}
-        <section className="py-xxl bg-background">
+        <section id="tax-return-builder" className="py-xxl bg-background">
           <div className="max-w-[1200px] mx-auto px-md">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-xxl items-center">
               <div>
@@ -294,8 +293,7 @@ const ClientPortal: FC = () => {
           </div>
         </section>
 
-        {/* File Repository Module */}
-        <section className="py-xxl">
+        <section id="file-repository" className="py-xxl">
           <div className="max-w-[1200px] mx-auto px-md">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-xxl items-center">
               <div>
@@ -363,8 +361,7 @@ const ClientPortal: FC = () => {
           </div>
         </section>
 
-        {/* Working Papers Module */}
-        <section className="py-xxl">
+        <section id="working-papers" className="py-xxl">
           <div className="max-w-[1200px] mx-auto px-md">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-xxl items-center">
               <div className="order-2 lg:order-1 bg-white p-xl rounded-xl shadow-md">
@@ -432,8 +429,7 @@ const ClientPortal: FC = () => {
           </div>
         </section>
 
-        {/* Integrations Module */}
-        <section className="py-xxl bg-background">
+        <section id="integrations" className="py-xxl bg-background">
           <div className="max-w-[1200px] mx-auto px-md">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-xxl items-center">
               <div>

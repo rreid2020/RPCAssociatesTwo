@@ -6,14 +6,34 @@ import PortalPlatform from '../components/PortalPlatform'
 import Why from '../components/Why'
 import About from '../components/About'
 import Remote from '../components/Remote'
+import { portalPlatformSeo } from '../lib/portal/modules'
+
+const homeKeywords = [
+  'accounting services',
+  'CPA',
+  'CMA',
+  'CGAP',
+  'tax preparation',
+  'business consulting',
+  'tech solutions',
+  'financial advisory',
+  'Canada accounting',
+  'Canadian Income Tax',
+  'Ottawa accountant',
+  'Ottawa accounting',
+  'Ottawa tax services',
+  'Ontario accountant',
+  'accounting services Ottawa',
+  ...portalPlatformSeo.keywords
+]
 
 const Home: FC = () => {
   return (
     <>
       <SEO
-        title="Axiom | Accounting, Consulting & Tech Solutions"
-        description="Axiom provides professional accounting, consulting, and tech solutions for growing businesses. Access TaxGPT, Tax Return Builder, and Accounting Operations in the secure client portal."
-        keywords="accounting services, CPA, CMA, CGAP, tax preparation, business consulting, tech solutions, financial advisory, Canada accounting, Canadian Income Tax, Ottawa accountant, Ottawa accounting, Ottawa tax services, Ontario accountant, accounting services Ottawa"
+        title="Axiom | Accounting, Consulting & Client Portal for Canadian Businesses"
+        description="Axiom provides accounting, consulting, and technology for growing Canadian businesses. Access Dashboard, TaxGPT, Tax Return Builder, File Repository, Working Papers, and Integrations in our secure client portal."
+        keywords={homeKeywords}
         canonical="/"
       />
       <main>

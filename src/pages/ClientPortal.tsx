@@ -1,6 +1,23 @@
 import { FC } from 'react'
 import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
+import Services from '../components/Services'
+
+const ModuleStatusBadge: FC<{ status: 'available' | 'development' }> = ({ status }) => {
+  if (status === 'available') {
+    return (
+      <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
+        Available
+      </span>
+    )
+  }
+
+  return (
+    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">
+      Under Development
+    </span>
+  )
+}
 
 const ClientPortal: FC = () => {
   return (
@@ -59,7 +76,7 @@ const ClientPortal: FC = () => {
             <div className="text-center mb-xl max-w-[800px] mx-auto">
               <h2 className="mb-md text-primary-dark">Everything You Need in One Portal</h2>
               <p className="text-lg text-text-light">
-                Five powerful modules working together to streamline your accounting, tax, and business advisory needs.
+                Six powerful modules working together to streamline your accounting, tax, and business advisory needs.
               </p>
               <div className="mt-lg">
                 <Link to="/portal/sign-in" className="btn btn--primary inline-block">
@@ -80,7 +97,7 @@ const ClientPortal: FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" />
                   </svg>
                   <span className="text-sm font-semibold text-accent uppercase tracking-wider">Dashboard</span>
-                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">Available</span>
+                  <ModuleStatusBadge status="available" />
                 </div>
                 <h2 className="text-3xl lg:text-4xl font-bold mb-md text-primary-dark">
                   At-a-glance visibility into your account status
@@ -169,7 +186,7 @@ const ClientPortal: FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3l2.5 5 5.5 2.5-5.5 2.5L12 18l-2.5-5-5.5-2.5 5.5-2.5L12 3z" />
                   </svg>
                   <span className="text-sm font-semibold text-accent uppercase tracking-wider">TaxGPT</span>
-                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">Available</span>
+                  <ModuleStatusBadge status="available" />
                 </div>
                 <h2 className="text-3xl lg:text-4xl font-bold mb-md text-primary-dark">
                   AI-powered tax research and guidance
@@ -208,8 +225,77 @@ const ClientPortal: FC = () => {
           </div>
         </section>
 
-        {/* File Repository Module */}
+        {/* Tax Return Builder Module */}
         <section className="py-xxl bg-background">
+          <div className="max-w-[1200px] mx-auto px-md">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-xxl items-center">
+              <div>
+                <div className="inline-flex items-center gap-2 mb-md">
+                  <svg className="w-8 h-8 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span className="text-sm font-semibold text-accent uppercase tracking-wider">Tax Return Builder</span>
+                  <ModuleStatusBadge status="development" />
+                </div>
+                <h2 className="text-3xl lg:text-4xl font-bold mb-md text-primary-dark">
+                  Personal T1 return workspace
+                </h2>
+                <p className="text-lg text-text-light mb-lg">
+                  Prepare personal income tax returns end to end with interview-driven setup, slip and schedule worksheets, optimization, scenarios, and audit readiness—all inside the portal.
+                </p>
+                <div className="space-y-md">
+                  <div>
+                    <h4 className="text-lg font-semibold mb-xs text-primary-dark">Interview-Driven Setup</h4>
+                    <p className="text-text-light">
+                      Walk through a guided interview to capture taxpayer details, income sources, deductions, and credits without starting from a blank return.
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-semibold mb-xs text-primary-dark">Slips, Schedules & Worksheets</h4>
+                    <p className="text-text-light">
+                      Enter CRA slips, schedules, and form worksheets in one workspace with line-level guidance and validation as you build the return.
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-semibold mb-xs text-primary-dark">Optimization & Scenarios</h4>
+                    <p className="text-text-light">
+                      Compare filing options, test what-if scenarios, and review optimization opportunities before finalizing the return.
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-semibold mb-xs text-primary-dark">Audit Readiness</h4>
+                    <p className="text-text-light">
+                      Review audit risk signals, supporting documentation, and return completeness before submission.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white p-xl rounded-xl shadow-md">
+                <div className="space-y-md">
+                  <div className="border-l-4 border-accent pl-md">
+                    <h4 className="font-semibold mb-xs text-primary-dark">Tax Returns & Slip Entry</h4>
+                    <p className="text-sm text-text-light">Manage personal returns and CRA slip data in a structured T1 workflow.</p>
+                  </div>
+                  <div className="border-l-4 border-accent pl-md">
+                    <h4 className="font-semibold mb-xs text-primary-dark">Document Processing</h4>
+                    <p className="text-sm text-text-light">Upload source documents and map extracted data into return worksheets.</p>
+                  </div>
+                  <div className="border-l-4 border-accent pl-md">
+                    <h4 className="font-semibold mb-xs text-primary-dark">Forms & Schedules</h4>
+                    <p className="text-sm text-text-light">Complete schedules, federal/provincial forms, and supporting worksheets in one place.</p>
+                  </div>
+                  <div className="border-l-4 border-accent pl-md">
+                    <h4 className="font-semibold mb-xs text-primary-dark">Scenarios & Audit & Risk</h4>
+                    <p className="text-sm text-text-light">Model outcomes and review risk before filing.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* File Repository Module */}
+        <section className="py-xxl">
           <div className="max-w-[1200px] mx-auto px-md">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-xxl items-center">
               <div>
@@ -218,7 +304,7 @@ const ClientPortal: FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
                   <span className="text-sm font-semibold text-accent uppercase tracking-wider">File Repository</span>
-                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">Available</span>
+                  <ModuleStatusBadge status="available" />
                 </div>
                 <h2 className="text-3xl lg:text-4xl font-bold mb-md text-primary-dark">
                   Secure document sharing and organization
@@ -307,7 +393,7 @@ const ClientPortal: FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                   <span className="text-sm font-semibold text-accent uppercase tracking-wider">Working Papers</span>
-                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">Available</span>
+                  <ModuleStatusBadge status="development" />
                 </div>
                 <h2 className="text-3xl lg:text-4xl font-bold mb-md text-primary-dark">
                   Centralized collaboration on workpapers and checklists
@@ -356,7 +442,7 @@ const ClientPortal: FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                   <span className="text-sm font-semibold text-accent uppercase tracking-wider">Integrations</span>
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">Request-based</span>
+                  <ModuleStatusBadge status="development" />
                 </div>
                 <h2 className="text-3xl lg:text-4xl font-bold mb-md text-primary-dark">
                   Connect your accounting apps and streamline data flow
@@ -415,6 +501,8 @@ const ClientPortal: FC = () => {
             </div>
           </div>
         </section>
+
+        <Services />
 
         {/* Security & Trust Section */}
         <section className="py-xxl">

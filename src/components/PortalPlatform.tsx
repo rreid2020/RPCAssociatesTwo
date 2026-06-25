@@ -9,6 +9,7 @@ type PlatformModule = {
   highlights: string[]
   icon: FC<{ className?: string }>
   badge?: string
+  badgeTone?: 'active' | 'development'
 }
 
 const SparklesIcon: FC<{ className?: string }> = ({ className }) => (
@@ -35,6 +36,7 @@ const MODULES: PlatformModule[] = [
     eyebrow: 'Tax Intelligence',
     title: 'TaxGPT',
     badge: 'Active',
+    badgeTone: 'active',
     description:
       'AI-powered Canadian tax research with citations from CRA publications, legislation, and official guidance—so you get accurate answers in plain language.',
     highlights: [
@@ -48,6 +50,8 @@ const MODULES: PlatformModule[] = [
     id: 'tax-return-builder',
     eyebrow: 'Tax Return Builder',
     title: 'Personal T1 return workspace',
+    badge: 'Under Development',
+    badgeTone: 'development',
     description:
       'Prepare personal income tax returns end to end: interview-driven setup, slip and schedule worksheets, optimization, scenarios, and audit readiness.',
     highlights: [
@@ -101,7 +105,13 @@ const PortalPlatform: FC = () => {
                     <Icon className="w-7 h-7 text-accent" />
                     <span className="text-sm font-semibold text-accent uppercase tracking-wider">{module.eyebrow}</span>
                     {module.badge && (
-                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
+                      <span
+                        className={
+                          module.badgeTone === 'development'
+                            ? 'rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900'
+                            : 'rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800'
+                        }
+                      >
                         {module.badge}
                       </span>
                     )}

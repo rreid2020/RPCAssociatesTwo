@@ -1,7 +1,6 @@
 import { FC } from 'react'
 import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
-import CalendlyButton from '../components/CalendlyButton'
 
 const ClientPortal: FC = () => {
   return (
@@ -29,7 +28,6 @@ const ClientPortal: FC = () => {
                   <Link to="/portal/sign-in" className="btn btn--primary">
                     Sign in to portal
                   </Link>
-                  <CalendlyButton text="Request Portal Access" className="btn btn--secondary" />
                   <a href="tel:6138840208" className="btn btn--secondary">
                     Call: 613-884-0208
                   </a>
@@ -508,13 +506,12 @@ const ClientPortal: FC = () => {
                 Ready to Get Started?
               </h2>
               <p className="text-lg text-text-light mb-lg max-w-[600px] mx-auto">
-                Join clients who are already using the Client Portal to streamline your accounting, tax, and business advisory needs. Request access today, or sign in if you already have an account.
+                Join clients who are already using the Client Portal to streamline your accounting, tax, and business advisory needs. Create an account or sign in to get started.
               </p>
               <div className="flex gap-md justify-center flex-wrap">
                 <Link to="/portal/sign-in" className="btn btn--primary">
                   Sign in to portal
                 </Link>
-                <CalendlyButton text="Request Portal Access" className="btn btn--secondary" />
                 <a href="mailto:roger.reid@axiomft.ca" className="btn btn--secondary">
                   Email Us
                 </a>

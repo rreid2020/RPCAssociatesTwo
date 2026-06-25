@@ -23,6 +23,12 @@ const Hero: FC = () => {
               <CalendlyButton text="Schedule a Free Consultation" />
               <button 
                 className="btn btn--secondary"
+                onClick={() => scrollToSection('client-portal')}
+              >
+                Client portal
+              </button>
+              <button 
+                className="btn btn--secondary"
                 onClick={() => scrollToSection('services')}
               >
                 View Services

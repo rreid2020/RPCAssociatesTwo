@@ -28,15 +28,13 @@ const ClientPortal: FC = () => {
                   <Link to="/portal/sign-in" className="btn btn--primary">
                     Sign in to portal
                   </Link>
+                  <Link to="/portal/select-plan" className="btn btn--secondary">
+                    Create an account
+                  </Link>
                   <a href="tel:6138840208" className="btn btn--secondary">
                     Call: 613-884-0208
                   </a>
                 </div>
-                <p className="text-sm text-text-light">
-                  New user? <Link to="/portal/select-plan" className="text-accent font-semibold hover:underline">Create an account</Link>
-                  {' · '}
-                  <Link to="/portal/sign-in" className="text-accent font-semibold hover:underline">Sign in</Link> if you already have one.
-                </p>
               </div>
               <div className="bg-white p-xl rounded-xl shadow-md">
                 <h3 className="text-2xl mb-md text-primary-dark">Why use the Client Portal?</h3>

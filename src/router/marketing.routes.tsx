@@ -14,6 +14,7 @@ import Privacy from '../pages/Privacy'
 import Terms from '../pages/Terms'
 import Sitemap from '../pages/Sitemap'
 import ClientPortal from '../pages/ClientPortal'
+import RogerReidCv from '../pages/RogerReidCv'
 import { getResourceRoutes } from './resource.routes'
 
 export function getMarketingRoutes () {
@@ -38,6 +39,8 @@ export function getMarketingRoutes () {
               <Route path="/terms" element={<Terms />} />
               <Route path="/sitemap" element={<Sitemap />} />
               <Route path="/client-portal" element={<ClientPortal />} />
+              {/* Unlisted: not in nav/sitemap; share URL only */}
+              <Route path="/roger-reid-cv" element={<RogerReidCv />} />
             </Routes>
             <Footer />
           </>

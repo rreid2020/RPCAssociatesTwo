@@ -26,6 +26,10 @@ const Sitemap: FC = () => {
                 <p className="text-sm text-text-light m-0 ml-0">Main landing page with overview of services</p>
               </li>
               <li className="mb-lg pb-md border-b border-border last:border-b-0">
+                <Link to="/products/aro-suite" className="text-lg lg:text-xl font-semibold text-primary no-underline mb-xs block transition-all hover:underline">Products — ARO Suite</Link>
+                <p className="text-sm text-text-light m-0 ml-0">Asset retirement obligation software marketing page</p>
+              </li>
+              <li className="mb-lg pb-md border-b border-border last:border-b-0">
                 <Link to="/resources" className="text-lg lg:text-xl font-semibold text-primary no-underline mb-xs block transition-all hover:underline">Resources</Link>
                 <p className="text-sm text-text-light m-0 ml-0">Helpful resources, tools, and guides</p>
               </li>

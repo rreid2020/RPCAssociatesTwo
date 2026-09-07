@@ -5,6 +5,7 @@ import AxiomWordmark from './AxiomWordmark'
 import HeaderPortalAuthLink from './HeaderPortalAuthLink'
 import { services } from '../lib/services/data'
 import { resourceCategories } from '../lib/resources/data'
+import { products } from '../lib/products/data'
 
 // Simple icon components for services
 const ServiceIcon = ({ icon }: { icon: string }) => {
@@ -78,58 +79,81 @@ const ResourceIcon = ({ icon }: { icon: string }) => {
   )
 }
 
+const ProductIcon = ({ icon }: { icon: string }) => {
+  if (icon === 'aro-suite') {
+    return (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7h16M4 12h10M4 17h7" />
+      </svg>
+    )
+  }
+  return (
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h10" />
+    </svg>
+  )
+}
+
+type NavMenuType = 'services' | 'products' | 'resources' | 'articles'
+
 const Header: FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isResourcesOpen, setIsResourcesOpen] = useState(false)
   const [isArticlesOpen, setIsArticlesOpen] = useState(false)
   const [isServicesOpen, setIsServicesOpen] = useState(false)
+  const [isProductsOpen, setIsProductsOpen] = useState(false)
   
   // Timeout refs for delayed menu closing
   const servicesTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const productsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const resourcesTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const articlesTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const menuRefs: Record<NavMenuType, { timeout: typeof servicesTimeoutRef; setOpen: (v: boolean) => void }> = {
+    services: { timeout: servicesTimeoutRef, setOpen: setIsServicesOpen },
+    products: { timeout: productsTimeoutRef, setOpen: setIsProductsOpen },
+    resources: { timeout: resourcesTimeoutRef, setOpen: setIsResourcesOpen },
+    articles: { timeout: articlesTimeoutRef, setOpen: setIsArticlesOpen },
+  }
   
   // Helper function to handle delayed menu closing
-  const handleMenuLeave = (menuType: 'services' | 'resources' | 'articles', delay: number = 200) => {
-    const timeoutRef = menuType === 'services' ? servicesTimeoutRef : menuType === 'resources' ? resourcesTimeoutRef : articlesTimeoutRef
-    const setState = menuType === 'services' ? setIsServicesOpen : menuType === 'resources' ? setIsResourcesOpen : setIsArticlesOpen
+  const handleMenuLeave = (menuType: NavMenuType, delay: number = 200) => {
+    const { timeout, setOpen } = menuRefs[menuType]
     
     // Clear any existing timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current)
+    if (timeout.current) {
+      clearTimeout(timeout.current)
     }
     
     // Set new timeout to close menu
-    timeoutRef.current = setTimeout(() => {
-      setState(false)
-      timeoutRef.current = null
+    timeout.current = setTimeout(() => {
+      setOpen(false)
+      timeout.current = null
     }, delay)
   }
   
   // Helper function to cancel menu closing
-  const handleMenuEnter = (menuType: 'services' | 'resources' | 'articles') => {
-    const timeoutRef = menuType === 'services' ? servicesTimeoutRef : menuType === 'resources' ? resourcesTimeoutRef : articlesTimeoutRef
+  const handleMenuEnter = (menuType: NavMenuType) => {
+    const { timeout } = menuRefs[menuType]
     
     // Clear any pending close timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current)
-      timeoutRef.current = null
+    if (timeout.current) {
+      clearTimeout(timeout.current)
+      timeout.current = null
     }
     
-    // Open menu immediately
-    if (menuType === 'services') {
-      setIsServicesOpen(true)
-    } else if (menuType === 'resources') {
-      setIsResourcesOpen(true)
-    } else {
-      setIsArticlesOpen(true)
-    }
+    // Open menu immediately; close siblings so only one desktop panel shows
+    setIsServicesOpen(menuType === 'services')
+    setIsProductsOpen(menuType === 'products')
+    setIsResourcesOpen(menuType === 'resources')
+    setIsArticlesOpen(menuType === 'articles')
   }
   
   // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (servicesTimeoutRef.current) clearTimeout(servicesTimeoutRef.current)
+      if (productsTimeoutRef.current) clearTimeout(productsTimeoutRef.current)
       if (resourcesTimeoutRef.current) clearTimeout(resourcesTimeoutRef.current)
       if (articlesTimeoutRef.current) clearTimeout(articlesTimeoutRef.current)
     }
@@ -152,6 +176,7 @@ const Header: FC = () => {
     setIsResourcesOpen(false)
     setIsArticlesOpen(false)
     setIsServicesOpen(false)
+    setIsProductsOpen(false)
   }
 
   const toggleMenu = () => {
@@ -242,6 +267,64 @@ const Header: FC = () => {
                           </Link>
                         ))}
                       </div>
+                      </div>
+                    </div>
+                  )}
+                </li>
+
+                {/* Products Dropdown */}
+                <li
+                  className="relative shrink-0"
+                  onMouseEnter={() => handleMenuEnter('products')}
+                  onMouseLeave={() => handleMenuLeave('products', 300)}
+                >
+                  <button
+                    type="button"
+                    className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center gap-1.5 text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap bg-transparent border-none cursor-pointer p-0"
+                    aria-expanded={isProductsOpen}
+                    aria-haspopup="true"
+                    onClick={() => setIsProductsOpen((open) => !open)}
+                  >
+                    Products
+                    <svg
+                      className={`w-5 h-5 shrink-0 transition-transform ${isProductsOpen ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {isProductsOpen && (
+                    <div
+                      className="absolute top-full left-1/2 -translate-x-1/2 pt-2 w-[420px] xl:w-[480px] bg-transparent z-[1001]"
+                      onMouseEnter={() => handleMenuEnter('products')}
+                      onMouseLeave={() => handleMenuLeave('products', 300)}
+                    >
+                      <div className="bg-white rounded-lg shadow-xl border border-primary/20 p-4">
+                        <div className="grid grid-cols-1 gap-2">
+                          {products.map((product) => (
+                            <Link
+                              key={product.slug}
+                              to={product.href}
+                              className="group flex flex-col gap-2 p-4 rounded-lg hover:bg-background transition-colors"
+                              onClick={closeMenu}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="flex-shrink-0 text-primary-dark">
+                                  <ProductIcon icon={product.icon} />
+                                </div>
+                                <h3 className="text-sm font-semibold text-text group-hover:text-primary-dark transition-colors leading-tight">
+                                  {product.title}
+                                </h3>
+                              </div>
+                              <p className="text-xs text-text-light leading-relaxed">
+                                {product.intro}
+                              </p>
+                            </Link>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -463,6 +546,55 @@ const Header: FC = () => {
                             </h3>
                             <p className="text-xs text-text-light leading-relaxed">
                               {service.intro}
+                            </p>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Products Section */}
+              <div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="block text-text font-medium py-2">Products</span>
+                  <button
+                    type="button"
+                    className="inline-flex h-10 w-10 items-center justify-center text-text"
+                    onClick={() => setIsProductsOpen(!isProductsOpen)}
+                    aria-expanded={isProductsOpen}
+                    aria-label="Toggle products menu"
+                  >
+                    <svg
+                      className={`w-5 h-5 transition-transform ${isProductsOpen ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
+                {isProductsOpen && (
+                  <div className="mt-2 pl-4 space-y-3">
+                    {products.map((product) => (
+                      <Link
+                        key={product.slug}
+                        to={product.href}
+                        className="block p-3 rounded-lg bg-background hover:bg-background/70 transition-colors"
+                        onClick={closeMenu}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 text-primary-dark mt-0.5">
+                            <ProductIcon icon={product.icon} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-sm font-semibold text-text mb-1">
+                              {product.title}
+                            </h3>
+                            <p className="text-xs text-text-light leading-relaxed">
+                              {product.intro}
                             </p>
                           </div>
                         </div>

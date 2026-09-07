@@ -21,6 +21,7 @@ const ROUTES = [
   '/services/fractional-controller',
   '/services/tech-solutions',
   '/services/icfm-icfr',
+  '/products/aro-suite',
   '/book-consultation',
   '/contact',
   '/resources',

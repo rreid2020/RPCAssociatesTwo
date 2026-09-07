@@ -93,6 +93,7 @@ async function generateSitemap() {
     const staticPages = [
       { url: '/', priority: '1.0', changefreq: 'weekly', sourceFiles: ['src/pages/Home.tsx'] },
       { url: '/services', priority: '0.9', changefreq: 'monthly', sourceFiles: ['src/pages/Services.tsx', 'src/lib/services/data.ts'] },
+      { url: '/products/aro-suite', priority: '0.9', changefreq: 'monthly', sourceFiles: ['src/pages/AroSuitePage.tsx', 'src/lib/products/data.ts'] },
       { url: '/client-portal', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/ClientPortal.tsx'] },
       { url: '/book-consultation', priority: '0.9', changefreq: 'monthly', sourceFiles: ['src/pages/BookConsultation.tsx'] },
       { url: '/contact', priority: '0.9', changefreq: 'monthly', sourceFiles: ['src/pages/ContactPage.tsx'] },

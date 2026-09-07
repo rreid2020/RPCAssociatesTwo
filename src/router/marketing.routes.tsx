@@ -16,6 +16,7 @@ import Terms from '../pages/Terms'
 import Sitemap from '../pages/Sitemap'
 import ClientPortal from '../pages/ClientPortal'
 import RogerReidCv from '../pages/RogerReidCv'
+import AroSuitePage from '../pages/AroSuitePage'
 import { getResourceRoutes } from './resource.routes'
 
 export function getMarketingRoutes () {
@@ -31,6 +32,7 @@ export function getMarketingRoutes () {
               <Route path="/services" element={<Services />} />
               <Route path="/services/icfm-icfr" element={<IcfmIcfrService />} />
               <Route path="/services/:slug" element={<ServiceDetail />} />
+              <Route path="/products/aro-suite" element={<AroSuitePage />} />
               {getResourceRoutes()}
               <Route path="/articles" element={<Articles />} />
               <Route path="/articles/category/:categorySlug" element={<ArticleCategory />} />

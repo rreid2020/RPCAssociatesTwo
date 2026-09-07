@@ -27,6 +27,7 @@ const SitemapXML: FC = () => {
         // Static pages
         const staticPages: SitemapPage[] = [
           { url: '/', priority: '1.0', changefreq: 'weekly' },
+          { url: '/products/aro-suite', priority: '0.9', changefreq: 'monthly' },
           { url: '/book-consultation', priority: '0.9', changefreq: 'monthly' },
           { url: '/resources', priority: '0.8', changefreq: 'monthly' },
           { url: '/resources/canadian-personal-income-tax-calculator', priority: '0.8', changefreq: 'monthly' },

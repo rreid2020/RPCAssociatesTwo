@@ -197,6 +197,53 @@ export const services: Service[] = [
       }
     ],
     metaDescription: 'Accounting systems and tech solutions in Ottawa, Ontario. Cloud accounting setup and optimization, workflow and approval process design, automation of recurring tasks, and integration with business tools. Expert tech solutions for modern businesses.'
+  },
+  {
+    slug: 'icfm-icfr',
+    pill: 'Internal Controls',
+    title: 'Internal Controls over Financial Management & Reporting (ICFM/ICFR)',
+    intro:
+      'Design, document, test, and remediate the controls that protect financial reporting—from your first risk & control matrix through SOX 404 readiness.',
+    bullets: [
+      'Risk & control matrix design',
+      'Process documentation & control testing',
+      'Deficiency identification & remediation',
+      'SOX 404 readiness & ongoing monitoring'
+    ],
+    details: [
+      {
+        title: 'Risk & Control Matrix Design',
+        description:
+          'Identify key financial statement risks by process and map them to the controls that mitigate them, including control owner, type, frequency, and the assertions each control addresses.'
+      },
+      {
+        title: 'Process Documentation & Narratives',
+        description:
+          'Auditor-ready process narratives that describe how each financial process works end to end, so control gaps and segregation-of-duties issues are visible before they become findings.'
+      },
+      {
+        title: 'Control Testing & Walkthroughs',
+        description:
+          'Independent testing of control design and operating effectiveness, with defensible sample sizes, documented procedures, and clear conclusions your auditors can rely on.'
+      },
+      {
+        title: 'Deficiency Remediation & SOX 404 Readiness',
+        description:
+          'Rate severity, identify root cause, and track remediation to closure. For IPO-bound or public issuers, scope the ICFR program and prepare management’s assessment of internal control effectiveness.'
+      },
+      {
+        title: 'Ongoing Monitoring',
+        description:
+          'Build the quarterly and annual review cadence—reconciliation reviews, access recertifications, and testing—that keeps your control environment current as the business changes.'
+      },
+      {
+        title: 'Industry-Tailored Frameworks',
+        description:
+          'Control frameworks tailored to financial services, manufacturing, SaaS & technology, and a cross-industry baseline covering Order-to-Cash, Procure-to-Pay, Payroll, Financial Close & Reporting, Fixed Assets, Treasury & Cash Management, and IT General Controls.'
+      }
+    ],
+    metaDescription:
+      'Internal control design, testing, and remediation for growing businesses — from first risk & control matrix to SOX 404 readiness. Ottawa-based, Canada-wide.'
   }
 ]
 

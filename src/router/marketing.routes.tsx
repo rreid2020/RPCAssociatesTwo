@@ -5,6 +5,7 @@ import Footer from '../components/Footer'
 import Home from '../pages/Home'
 import Services from '../pages/Services'
 import ServiceDetail from '../pages/ServiceDetail'
+import IcfmIcfrService from '../pages/IcfmIcfrService'
 import Articles from '../pages/Articles'
 import ArticleCategory from '../pages/ArticleCategory'
 import ArticleDetail from '../pages/ArticleDetail'
@@ -28,6 +29,7 @@ export function getMarketingRoutes () {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/services" element={<Services />} />
+              <Route path="/services/icfm-icfr" element={<IcfmIcfrService />} />
               <Route path="/services/:slug" element={<ServiceDetail />} />
               {getResourceRoutes()}
               <Route path="/articles" element={<Articles />} />

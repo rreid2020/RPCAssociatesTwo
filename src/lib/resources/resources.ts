@@ -1,4 +1,12 @@
 import { SPACES_FILES } from '../config/spaces'
+import { getIcfmIcfrDownloadUrl, icfmIcfrProcessTemplates } from './icfmIcfrTemplates'
+
+export interface ResourceDownload {
+  id: string
+  label: string
+  downloadUrl: string
+  fileName: string
+}
 
 export interface ResourceDetail {
   slug: string
@@ -10,6 +18,8 @@ export interface ResourceDetail {
   downloadUrl?: string
   fileName?: string
   fileSize?: string
+  /** Multiple downloadable files (e.g. ICFM/ICFR process pack) */
+  downloads?: ResourceDownload[]
   requiresLeadCapture: boolean
   benefits?: string[]
   features?: string[]
@@ -215,6 +225,80 @@ This resource is provided for general informational purposes only and does not c
     ],
     metaDescription: 'Free Cash Flow Statement Excel template for small businesses. Track operating, investing, and financing activities to monitor liquidity and make informed financial decisions.',
     keywords: ['cash flow template', 'Excel template', 'financial planning', 'cash flow statement', 'operating activities', 'investing activities', 'financing activities', 'liquidity', 'Ottawa']
+  },
+  {
+    slug: 'icfm-icfr-templates',
+    title: 'ICFM/ICFR Starter Templates',
+    shortDescription:
+      'Excel starter templates for internal controls across seven core financial management and financial reporting processes: risk & control matrix, testing tracker, deficiency log, and process narratives.',
+    longDescription: `Strong internal controls start with clear documentation. These free ICFM/ICFR starter templates help growing businesses see what a working risk & control matrix looks like — and give you a practical starting point before (or alongside) a full advisory engagement.
+
+**What's Included**
+
+Seven Excel templates, one for each core financial management and financial reporting business process:
+• Order-to-Cash
+• Procure-to-Pay
+• Payroll
+• Financial Close & Reporting
+• Fixed Assets
+• Treasury & Cash Management
+• IT General Controls
+
+Each template includes:
+• A risk & control matrix pre-populated with realistic example controls
+• A control testing tracker
+• A deficiency & remediation log
+• A process narrative template
+
+**Who These Templates Are For**
+
+Business owners, controllers, finance leaders, and teams preparing for audits, lender diligence, transactions, or SOX 404 readiness who want a concrete example of how controls are documented and tracked by process.
+
+**Important Note**
+
+These templates are provided for general informational and educational purposes only and do not constitute accounting, audit, or legal advice. Professional guidance may be required depending on your industry, regulatory obligations, and reporting needs.`,
+    category: 'excel-template',
+    categoryLabel: 'Excel Template',
+    downloadUrl: getIcfmIcfrDownloadUrl(icfmIcfrProcessTemplates[0]),
+    fileName: icfmIcfrProcessTemplates[0].fileName,
+    downloads: icfmIcfrProcessTemplates.map((template) => ({
+      id: template.id,
+      label: template.label,
+      downloadUrl: getIcfmIcfrDownloadUrl(template),
+      fileName: template.fileName
+    })),
+    requiresLeadCapture: true,
+    benefits: [
+      'See a working risk & control matrix with realistic examples',
+      'Start documenting controls before an audit or transaction',
+      'Track testing and remediation in one place',
+      'Starter content mapped to seven core FM and FR business processes',
+      'Process narrative template ready for auditor-style documentation'
+    ],
+    features: [
+      'Coverage of Order-to-Cash, Procure-to-Pay, Payroll, Financial Close & Reporting, Fixed Assets, Treasury & Cash Management, and IT General Controls',
+      'Risk & control matrix with control owner, type, frequency, and assertions',
+      'Control testing tracker for design and operating effectiveness',
+      'Deficiency & remediation log with severity tracking',
+      'Process narrative template for end-to-end financial processes',
+      'Pre-populated example controls by business process'
+    ],
+    metaDescription:
+      'Free ICFM/ICFR Excel starter templates covering Order-to-Cash, Procure-to-Pay, Payroll, Financial Close & Reporting, Fixed Assets, Treasury & Cash Management, and IT General Controls.',
+    keywords: [
+      'ICFM templates',
+      'ICFR templates',
+      'risk and control matrix',
+      'internal controls Excel',
+      'Order-to-Cash',
+      'Procure-to-Pay',
+      'Financial Close',
+      'Treasury and Cash Management',
+      'IT General Controls',
+      'SOX 404',
+      'control testing tracker',
+      'Ottawa'
+    ]
   },
   {
     slug: 'cfi-financial-ratios-guide',

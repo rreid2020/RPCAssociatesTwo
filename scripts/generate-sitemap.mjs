@@ -62,6 +62,7 @@ async function generateSitemap() {
       { slug: 'cash-flow-planning' },
       { slug: 'fractional-controller' },
       { slug: 'tech-solutions' },
+      { slug: 'icfm-icfr' },
     ]
 
     let articles = []
@@ -105,6 +106,7 @@ async function generateSitemap() {
       { url: '/resources/donation-credit-optimizer', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/DonationOptimizerPage.tsx'] },
       { url: '/resources/ccpc-salary-dividend-calculator', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/TaxEngineCalculatorPage.tsx'] },
       { url: '/resources/cash-flow-statement-template', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/CashFlowTemplate.tsx', 'src/pages/ResourceDetail.tsx'] },
+      { url: '/resources/icfm-icfr-templates', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/ResourceDetail.tsx', 'src/lib/resources/resources.ts'] },
       { url: '/resources/cfi-financial-ratios-guide', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/ResourceDetail.tsx'] },
       { url: '/articles', priority: '0.8', changefreq: 'weekly', sourceFiles: ['src/pages/Articles.tsx'] },
       { url: '/privacy', priority: '0.5', changefreq: 'yearly', sourceFiles: ['src/pages/Privacy.tsx'] },
@@ -117,7 +119,9 @@ async function generateSitemap() {
       url: `/services/${service.slug}`,
       priority: '0.9',
       changefreq: 'monthly',
-      sourceFiles: ['src/pages/ServiceDetail.tsx', 'src/lib/services/data.ts']
+      sourceFiles: service.slug === 'icfm-icfr'
+        ? ['src/pages/IcfmIcfrService.tsx', 'src/lib/services/data.ts']
+        : ['src/pages/ServiceDetail.tsx', 'src/lib/services/data.ts']
     }))
 
     // Article pages

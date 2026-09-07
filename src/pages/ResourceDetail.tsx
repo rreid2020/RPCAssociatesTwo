@@ -19,7 +19,7 @@ const ResourceDetail: FC = () => {
   const [hasAccess, setHasAccess] = useState(false)
 
   useEffect(() => {
-    if (resource && resource.requiresLeadCapture && resource.downloadUrl) {
+    if (resource && resource.requiresLeadCapture && (resource.downloadUrl || resource.downloads?.length)) {
       setHasAccess(hasAccessedResource(resource.title))
     } else {
       setHasAccess(true) // Calculators don't require lead capture
@@ -30,7 +30,8 @@ const ResourceDetail: FC = () => {
     if (resource) {
       markResourceAsAccessed(resource.title)
       setHasAccess(true)
-      if (resource.downloadUrl && resource.fileName) {
+      // Multi-file packs unlock the download list; single-file resources auto-download.
+      if (!resource.downloads?.length && resource.downloadUrl && resource.fileName) {
         downloadFile(resource.downloadUrl, resource.fileName)
       }
     }
@@ -105,21 +106,46 @@ const ResourceDetail: FC = () => {
                       <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
                         Ready to Download
                       </h2>
-                      <p className="text-base text-white/90 mb-8">
-                        You have access to this resource. Click the button below to download.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          if (resource.downloadUrl && resource.fileName) {
-                            downloadFile(resource.downloadUrl, resource.fileName)
-                          }
-                        }}
-                        className="w-full px-6 py-4 bg-white text-primary font-semibold rounded-lg hover:bg-white/90 transition-colors shadow-lg"
-                      >
-                        Download Now
-                      </button>
+                      {resource.downloads && resource.downloads.length > 0 ? (
+                        <>
+                          <p className="text-base text-white/90 mb-6">
+                            You have access to all seven process templates. Download the ones you need:
+                          </p>
+                          <div className="space-y-3 text-left">
+                            {resource.downloads.map((item) => (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  downloadFile(item.downloadUrl, item.fileName)
+                                }}
+                                className="w-full px-4 py-3 bg-white text-primary font-semibold rounded-lg hover:bg-white/90 transition-colors shadow-lg text-sm sm:text-base"
+                              >
+                                Download {item.label}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-base text-white/90 mb-8">
+                            You have access to this resource. Click the button below to download.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              if (resource.downloadUrl && resource.fileName) {
+                                downloadFile(resource.downloadUrl, resource.fileName)
+                              }
+                            }}
+                            className="w-full px-6 py-4 bg-white text-primary font-semibold rounded-lg hover:bg-white/90 transition-colors shadow-lg"
+                          >
+                            Download Now
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 ) : resource.category === 'calculator' ? (

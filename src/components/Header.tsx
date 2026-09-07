@@ -2,7 +2,6 @@ import { FC, useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import CalendlyButton from './CalendlyButton'
 import AxiomWordmark from './AxiomWordmark'
-import HeaderPortalAuthLink from './HeaderPortalAuthLink'
 import { services } from '../lib/services/data'
 import { resourceCategories } from '../lib/resources/data'
 import { products } from '../lib/products/data'
@@ -459,22 +458,6 @@ const Header: FC = () => {
                     Client Portal
                   </Link>
                 </li>
-                <li className="shrink-0">
-                  <Link
-                    to="/portal/select-plan"
-                    className="inline-flex h-12 items-center px-1.5 text-base font-semibold text-text hover:text-primary-dark whitespace-nowrap"
-                    onClick={closeMenu}
-                  >
-                    Create account
-                  </Link>
-                </li>
-                <li className="shrink-0">
-                  <HeaderPortalAuthLink
-                    classNameSignIn="inline-flex h-12 items-center px-1.5 text-base font-semibold text-text hover:text-primary-dark whitespace-nowrap"
-                    classNameSignedIn="inline-flex h-12 items-center px-1.5 text-base font-semibold text-text hover:text-primary-dark whitespace-nowrap"
-                    onNavigate={closeMenu}
-                  />
-                </li>
                 <li className="shrink-0 pl-0.5">
                   <CalendlyButton className="btn btn--primary inline-flex items-center justify-center min-h-12 text-base whitespace-nowrap" />
                 </li>
@@ -717,22 +700,6 @@ const Header: FC = () => {
               >
                 Client Portal
               </Link>
-
-              <div className="text-center">
-                <Link
-                  to="/portal/select-plan"
-                  className="block font-semibold text-primary-dark py-2"
-                  onClick={closeMenu}
-                >
-                  Create account
-                </Link>
-                <HeaderPortalAuthLink
-                  classNameSignIn="block font-semibold text-primary-dark py-2"
-                  classNameSignedIn="block font-semibold text-primary-dark py-2"
-                  signInLabel="Sign in to portal"
-                  onNavigate={closeMenu}
-                />
-              </div>
 
               <div className="pt-4 border-t border-primary/20">
                 <CalendlyButton className="btn btn--primary w-full" />

@@ -125,6 +125,11 @@ const IcfmIcfrService: FC = () => {
           areaServed: ['CA', 'CA-ON', 'Ottawa'],
           serviceType: 'ICFM/ICFR Advisory'
         }}
+        breadcrumbs={[
+          { name: 'Home', path: '/' },
+          { name: 'Services', path: '/services' },
+          { name: 'ICFM/ICFR', path: '/services/icfm-icfr' },
+        ]}
       />
       <main>
         <section className="py-xxl bg-background">

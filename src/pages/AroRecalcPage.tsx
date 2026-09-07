@@ -25,6 +25,22 @@ const AroRecalcPage: FC = () => {
           'Ottawa',
           'Axiom'
         ]}
+        schemaSoftware={{
+          name: 'ARO Recalculation',
+          description:
+            'Browser-based asset retirement obligation recalculation from REP04/REP06 extracts and a discount curve, with DAYS360/360 math and variance flags.',
+          applicationCategory: 'BusinessApplication',
+          operatingSystem: 'Web',
+          offersUrl: 'https://axiomft.ca/resources/aro-recalculation',
+          offersPrice: '0',
+          offersCurrency: 'CAD',
+        }}
+        breadcrumbs={[
+          { name: 'Home', path: '/' },
+          { name: 'Resources', path: '/resources' },
+          { name: 'Online Calculators', path: '/resources/category/online-calculators' },
+          { name: 'ARO Recalculation', path: '/resources/aro-recalculation' },
+        ]}
       />
       <main className="min-h-[60vh] bg-background">
         <div className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 lg:px-8">
@@ -73,6 +89,15 @@ const AroRecalcPage: FC = () => {
                 className="inline-flex items-center text-primary underline transition-colors hover:text-primary-dark"
               >
                 ← Online Calculators
+              </Link>
+              <span className="text-text-light" aria-hidden>
+                ·
+              </span>
+              <Link
+                to="/products/aro-suite"
+                className="inline-flex items-center text-primary underline transition-colors hover:text-primary-dark"
+              >
+                ARO Suite product
               </Link>
               <span className="text-text-light" aria-hidden>
                 ·

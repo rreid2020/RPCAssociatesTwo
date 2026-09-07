@@ -69,6 +69,8 @@ const PortableText: FC<PortableTextProps> = ({ content }) => {
             <img
               src={imageUrl.width(800).url()}
               alt={value.alt || ''}
+              loading="lazy"
+              decoding="async"
               className="max-w-full h-auto rounded-lg"
             />
             {value.alt && (

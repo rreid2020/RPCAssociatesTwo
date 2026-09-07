@@ -2,5 +2,9 @@ User-agent: *
 Allow: /
 Disallow: /roger-reid-cv
 Disallow: /downloads/private/
+Disallow: /portal
+Disallow: /portal/
+Disallow: /app
+Disallow: /app/
 
 Sitemap: https://axiomft.ca/sitemap.xml

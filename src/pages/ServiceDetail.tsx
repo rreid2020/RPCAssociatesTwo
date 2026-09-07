@@ -63,6 +63,11 @@ const ServiceDetail: FC = () => {
           areaServed: ['CA', 'CA-ON', 'Ottawa'],
           serviceType: service.title
         }}
+        breadcrumbs={[
+          { name: 'Home', path: '/' },
+          { name: 'Services', path: '/services' },
+          { name: service.title, path: `/services/${service.slug}` },
+        ]}
       />
       <main>
         {/* Hero Section */}

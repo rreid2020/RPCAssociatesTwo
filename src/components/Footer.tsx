@@ -13,9 +13,52 @@ const Footer: FC = () => {
             <div className="text-sm opacity-90">
               © {currentYear} Axiom Financial &amp; Technology. All rights reserved.
             </div>
+            <p className="mt-md text-sm opacity-80 leading-relaxed">
+              Accounting, advisory, automation, and intelligence for Canadian businesses.
+            </p>
           </div>
           <div className="text-center md:text-left">
-            <h3 className="text-xl mb-md font-semibold text-white">Legal</h3>
+            <h2 className="text-xl mb-md font-semibold text-white">Explore</h2>
+            <ul className="flex flex-col gap-sm list-none m-0 p-0">
+              <li>
+                <Link to="/services" className="text-white opacity-90 text-sm no-underline transition-all hover:opacity-100 hover:underline">
+                  Services
+                </Link>
+              </li>
+              <li>
+                <Link to="/products/aro-suite" className="text-white opacity-90 text-sm no-underline transition-all hover:opacity-100 hover:underline">
+                  ARO Suite
+                </Link>
+              </li>
+              <li>
+                <Link to="/resources" className="text-white opacity-90 text-sm no-underline transition-all hover:opacity-100 hover:underline">
+                  Resources
+                </Link>
+              </li>
+              <li>
+                <Link to="/articles" className="text-white opacity-90 text-sm no-underline transition-all hover:opacity-100 hover:underline">
+                  Articles
+                </Link>
+              </li>
+              <li>
+                <Link to="/client-portal" className="text-white opacity-90 text-sm no-underline transition-all hover:opacity-100 hover:underline">
+                  Client Portal
+                </Link>
+              </li>
+              <li>
+                <Link to="/book-consultation" className="text-white opacity-90 text-sm no-underline transition-all hover:opacity-100 hover:underline">
+                  Book a Consultation
+                </Link>
+              </li>
+              <li>
+                <Link to="/contact" className="text-white opacity-90 text-sm no-underline transition-all hover:opacity-100 hover:underline">
+                  Contact
+                </Link>
+              </li>
+            </ul>
+          </div>
+          <div className="text-center md:text-left">
+            <h2 className="text-xl mb-md font-semibold text-white">Legal &amp; Links</h2>
             <ul className="flex flex-col gap-sm list-none m-0 p-0">
               <li>
                 <Link to="/privacy" className="text-white opacity-90 text-sm no-underline transition-all hover:opacity-100 hover:underline">
@@ -32,24 +75,9 @@ const Footer: FC = () => {
                   Site Map
                 </Link>
               </li>
-            </ul>
-          </div>
-          <div className="text-center md:text-left">
-            <h3 className="text-xl mb-md font-semibold text-white">Links</h3>
-            <ul className="flex flex-col gap-sm list-none m-0 p-0">
-              <li>
-                <a href="https://www.canadian-accountant.com/" target="_blank" rel="noopener noreferrer" className="text-white opacity-90 text-sm no-underline transition-all hover:opacity-100 hover:underline">
-                  Canadian Accountant
-                </a>
-              </li>
               <li>
                 <a href="https://www.canada.ca/en/revenue-agency.html" target="_blank" rel="noopener noreferrer" className="text-white opacity-90 text-sm no-underline transition-all hover:opacity-100 hover:underline">
                   Canada Revenue Agency
-                </a>
-              </li>
-              <li>
-                <a href="https://www.ctf.ca/EN/EN/Home.aspx" target="_blank" rel="noopener noreferrer" className="text-white opacity-90 text-sm no-underline transition-all hover:opacity-100 hover:underline">
-                  Canadian Tax Foundation
                 </a>
               </li>
               <li>
@@ -57,15 +85,10 @@ const Footer: FC = () => {
                   CPA Canada
                 </a>
               </li>
-              <li>
-                <a href="https://cpab-ccrc.ca/" target="_blank" rel="noopener noreferrer" className="text-white opacity-90 text-sm no-underline transition-all hover:opacity-100 hover:underline">
-                  CPAB
-                </a>
-              </li>
             </ul>
           </div>
           <div className="text-center md:text-right lg:text-right">
-            <h3 className="text-xl mb-md font-semibold text-white">Contact</h3>
+            <h2 className="text-xl mb-md font-semibold text-white">Contact</h2>
             <div className="flex flex-col gap-sm items-center md:items-end lg:items-end">
               <div className="text-sm">
                 <span>Roger Reid, CPA, CMA, CGAP</span>
@@ -91,4 +114,3 @@ const Footer: FC = () => {
 }
 
 export default Footer
-

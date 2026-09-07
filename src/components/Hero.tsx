@@ -36,7 +36,7 @@ const Hero: FC = () => {
             </div>
           </div>
           <div className="bg-white p-xl rounded-xl shadow-md">
-            <h3 className="text-2xl mb-md">A great accountant is a strategic partner.</h3>
+            <h2 className="text-2xl mb-md">A great accountant is a strategic partner.</h2>
             <p className="mb-md">
               It is not just about bookkeeping and tax filings. The right accountant gives you real-time visibility into your business, proactive guidance, and stronger systems.
             </p>

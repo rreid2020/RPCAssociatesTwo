@@ -175,6 +175,9 @@ const ArticleDetail: FC = () => {
                   <img
                     src={imageUrl}
                     alt={article.featuredImage.alt || article.title}
+                    loading="eager"
+                    fetchPriority="high"
+                    decoding="async"
                     className="w-full h-auto block"
                   />
                 </div>

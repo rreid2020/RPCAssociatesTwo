@@ -28,6 +28,10 @@ const ClientPortal: FC = () => {
         description={portalPlatformSeo.description}
         keywords={portalPlatformSeo.keywords}
         canonical="/client-portal"
+        breadcrumbs={[
+          { name: 'Home', path: '/' },
+          { name: 'Client Portal', path: '/client-portal' },
+        ]}
       />
       <main>
         {/* Hero Section */}
@@ -55,7 +59,7 @@ const ClientPortal: FC = () => {
                 </div>
               </div>
               <div className="bg-white p-xl rounded-xl shadow-md">
-                <h3 className="text-2xl mb-md text-primary-dark">Why use the Client Portal?</h3>
+                <h2 className="text-2xl mb-md text-primary-dark">Why use the Client Portal?</h2>
                 <p className="mb-md text-text-light">
                   Stop juggling emails, file shares, and multiple tools. The Client Portal brings everything into one secure, organized workspace designed specifically for accounting and tax collaboration.
                 </p>

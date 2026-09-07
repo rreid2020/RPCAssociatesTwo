@@ -1,4 +1,5 @@
 import { FC, FormEvent, useState } from 'react'
+import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 import { API_ENDPOINTS } from '../lib/config/api'
 import { parseFormApiJson } from '../lib/formApiResponse'
@@ -239,6 +240,21 @@ const AroSuitePage: FC = () => {
         canonical="/products/aro-suite"
         keywords={keywords}
         ogType="website"
+        schemaSoftware={{
+          name: 'ARO Suite',
+          description:
+            'End-to-end asset retirement obligation software for PSAS PS 3280, ASPE 3110, IFRS/IFRIC 1, and ASC 410-20 — measurement, close, roll-forward, disclosure, and audit evidence.',
+          applicationCategory: 'BusinessApplication',
+          operatingSystem: 'Web',
+          offersUrl: 'https://arosuite.axiomft.ca',
+          offersPrice: '0',
+          offersCurrency: 'CAD',
+        }}
+        breadcrumbs={[
+          { name: 'Home', path: '/' },
+          { name: 'Products', path: '/products/aro-suite' },
+          { name: 'ARO Suite', path: '/products/aro-suite' },
+        ]}
       />
       <main className="aro-suite-page bg-[#f7f8f9] text-[#0b1f17]">
         {/* Product bar */}
@@ -678,7 +694,12 @@ const AroSuitePage: FC = () => {
               </p>
               <p className="mb-lg max-w-3xl text-base leading-relaxed text-[#3d4a43]">
                 It is the same scoping logic the product implements — useful whether or not you ever
-                open ARO Suite.
+                open ARO Suite. For an independent browser-side recalculation of ARO extracts, see
+                the{' '}
+                <Link to="/resources/aro-recalculation" className="underline underline-offset-2 text-[#0b1f17]">
+                  ARO Recalculation
+                </Link>{' '}
+                calculator.
               </p>
               <a
                 href={PS3280_CHECKLIST_URL}

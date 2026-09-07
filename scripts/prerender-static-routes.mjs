@@ -22,6 +22,7 @@ const ROUTES = [
   '/services/tech-solutions',
   '/services/icfm-icfr',
   '/products/aro-suite',
+  '/client-portal',
   '/book-consultation',
   '/contact',
   '/resources',

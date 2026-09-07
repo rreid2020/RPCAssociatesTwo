@@ -105,6 +105,7 @@ async function generateSitemap() {
       { url: '/resources/cash-flow-statement-direct-method', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/CashFlowStatementDirectMethod.tsx'] },
       { url: '/resources/donation-credit-optimizer', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/DonationOptimizerPage.tsx'] },
       { url: '/resources/ccpc-salary-dividend-calculator', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/TaxEngineCalculatorPage.tsx'] },
+      { url: '/resources/aro-recalculation', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/AroRecalcPage.tsx', 'src/features/aro-recalc/index.tsx'] },
       { url: '/resources/cash-flow-statement-template', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/CashFlowTemplate.tsx', 'src/pages/ResourceDetail.tsx'] },
       { url: '/resources/icfm-icfr-templates', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/ResourceDetail.tsx', 'src/lib/resources/resources.ts'] },
       { url: '/resources/cfi-financial-ratios-guide', priority: '0.8', changefreq: 'monthly', sourceFiles: ['src/pages/ResourceDetail.tsx'] },

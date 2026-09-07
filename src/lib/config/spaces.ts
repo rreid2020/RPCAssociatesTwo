@@ -31,18 +31,12 @@ export const getSpacesUrl = (filePath: string): string => {
  */
 export const SPACES_FILES = {
   cashFlowTemplate: getSpacesUrl('/public/resources/excel-templates/RPC Cash Flow Statement.xlsx'),
-  icfmIcfrOrderToCash: getSpacesUrl('/public/resources/excel-templates/icfm-icfr/Axiom-ICFR-Order-to-Cash.xlsx'),
-  icfmIcfrProcureToPay: getSpacesUrl('/public/resources/excel-templates/icfm-icfr/Axiom-ICFR-Procure-to-Pay.xlsx'),
-  icfmIcfrPayroll: getSpacesUrl('/public/resources/excel-templates/icfm-icfr/Axiom-ICFR-Payroll.xlsx'),
-  icfmIcfrFinancialCloseReporting: getSpacesUrl(
-    '/public/resources/excel-templates/icfm-icfr/Axiom-ICFR-Financial-Close-Reporting.xlsx'
-  ),
-  icfmIcfrFixedAssets: getSpacesUrl('/public/resources/excel-templates/icfm-icfr/Axiom-ICFR-Fixed-Assets.xlsx'),
-  icfmIcfrTreasuryCashManagement: getSpacesUrl(
-    '/public/resources/excel-templates/icfm-icfr/Axiom-ICFR-Treasury-Cash-Management.xlsx'
-  ),
-  icfmIcfrItGeneralControls: getSpacesUrl(
-    '/public/resources/excel-templates/icfm-icfr/Axiom-ICFR-IT-General-Controls.xlsx'
-  ),
+  icfmIcfrOrderToCash: getSpacesUrl('/public/resources/excel-templates/icfm-icfr/ICFR_P~1.XLS'),
+  icfmIcfrProcureToPay: getSpacesUrl('/public/resources/excel-templates/icfm-icfr/ICFR_P~2.XLS'),
+  icfmIcfrPayroll: getSpacesUrl('/public/resources/excel-templates/icfm-icfr/ICFR_P~3.XLS'),
+  icfmIcfrFinancialCloseReporting: getSpacesUrl('/public/resources/excel-templates/icfm-icfr/ICFR_P~4.XLS'),
+  icfmIcfrFixedAssets: getSpacesUrl('/public/resources/excel-templates/icfm-icfr/ICB1A2~1.XLS'),
+  icfmIcfrTreasuryCashManagement: getSpacesUrl('/public/resources/excel-templates/icfm-icfr/ICB877~1.XLS'),
+  icfmIcfrItGeneralControls: getSpacesUrl('/public/resources/excel-templates/icfm-icfr/IC9B9B~1.XLS'),
   financialRatiosGuide: getSpacesUrl('/public/resources/guides/CFI-Financial-Ratios-Definitive-Guide.pdf'),
 } as const

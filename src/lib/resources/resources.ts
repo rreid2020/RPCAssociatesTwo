@@ -138,6 +138,35 @@ export const resources: ResourceDetail[] = [
     ],
   },
   {
+    slug: 'aro-recalculation',
+    title: 'ARO Recalculation',
+    shortDescription:
+      'Independently recalculate asset retirement obligations from REP04/REP06 extracts and a bond yield curve, then compare FV/PV to the source system.',
+    longDescription:
+      'Recalculate an ARO portfolio in your browser: import cost estimates (REP04), settlement dates and reported FV/PV (REP06), and a discount curve. Escalation and discounting use DAYS360/360. Review variances against materiality thresholds and export workbook evidence. Nothing leaves your machine.',
+    category: 'calculator',
+    categoryLabel: 'Calculator',
+    requiresLeadCapture: false,
+    benefits: [
+      'Independent recalculation over source extracts',
+      'DAYS360/360 escalation and discounting',
+      'Variance flags vs reported FV/PV',
+      'Runs entirely in the browser — no upload required',
+    ],
+    metaDescription:
+      'Free ARO recalculation tool: independently recompute asset retirement obligation FV/PV from extracts and compare to source-system figures.',
+    keywords: [
+      'ARO',
+      'asset retirement obligation',
+      'ARO calculator',
+      'decommissioning liability',
+      'present value',
+      'REP04',
+      'REP06',
+      'Ottawa',
+    ],
+  },
+  {
     slug: 'cash-flow-statement-template',
     title: 'Cash Flow Statement Template',
     shortDescription: 'Track cash inflows and outflows with this comprehensive Excel template. Monitor liquidity, plan for major expenditures, and make informed financial decisions.',

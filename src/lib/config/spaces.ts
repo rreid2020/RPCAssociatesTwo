@@ -39,4 +39,6 @@ export const SPACES_FILES = {
   icfmIcfrTreasuryCashManagement: getSpacesUrl('/public/resources/excel-templates/icfm-icfr/ICB877~1.XLS'),
   icfmIcfrItGeneralControls: getSpacesUrl('/public/resources/excel-templates/icfm-icfr/IC9B9B~1.XLS'),
   financialRatiosGuide: getSpacesUrl('/public/resources/guides/CFI-Financial-Ratios-Definitive-Guide.pdf'),
+  ps3280AuditReadinessChecklist:
+    'https://rpc-associates-space.tor1.cdn.digitaloceanspaces.com/public/resources/guides/PS3280-Audit-Readiness-Checklist.pdf',
 } as const

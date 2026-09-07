@@ -2,8 +2,11 @@ import { FC, FormEvent, useState } from 'react'
 import SEO from '../components/SEO'
 import { API_ENDPOINTS } from '../lib/config/api'
 import { parseFormApiJson } from '../lib/formApiResponse'
+import { SPACES_FILES } from '../lib/config/spaces'
 
 const ARO_SUITE_APP_URL = 'https://arosuite.axiomft.ca'
+const PS3280_CHECKLIST_URL = SPACES_FILES.ps3280AuditReadinessChecklist
+const PS3280_CHECKLIST_FILENAME = 'PS3280-Audit-Readiness-Checklist.pdf'
 
 const frameworks = ['PSAS (PS 3280)', 'ASPE 3110', 'IFRS / IFRIC 1', 'ASC 410-20'] as const
 
@@ -286,7 +289,10 @@ const AroSuitePage: FC = () => {
                   Request a design partner session
                 </a>
                 <a
-                  href="#design-partner"
+                  href={PS3280_CHECKLIST_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download={PS3280_CHECKLIST_FILENAME}
                   className="btn inline-flex border-2 border-[#0b1f17] bg-transparent text-[#0b1f17] hover:bg-[#0b1f17] hover:text-white"
                 >
                   Get the PS 3280 scoping checklist
@@ -643,8 +649,9 @@ const AroSuitePage: FC = () => {
                   )}
                 </div>
                 <p className="m-0 text-xs text-white/60">
-                  No newsletter. We will use this to send you the checklist and, if you asked for
-                  one, to find fifteen minutes.
+                  No newsletter. If you asked for a design partner session or early access, we will
+                  use this to find fifteen minutes. The PS 3280 checklist is available for immediate
+                  download above.
                 </p>
               </form>
             </div>
@@ -665,16 +672,22 @@ const AroSuitePage: FC = () => {
                 The PS 3280 audit-readiness and asset scoping checklist.
               </h2>
               <p className="mb-lg max-w-3xl text-base leading-relaxed text-[#3d4a43]">
-                Request it below — no newsletter. The source-of-obligation test, the asset classes
-                where obligations hide, the transition decision record, the discount rate provenance
-                test, and a self-audit of the workbook against what an auditor will actually ask for.
+                Ungated, no form wall. The source-of-obligation test, the asset classes where
+                obligations hide, the transition decision record, the discount rate provenance test,
+                and a self-audit of the workbook against what an auditor will actually ask for.
               </p>
               <p className="mb-lg max-w-3xl text-base leading-relaxed text-[#3d4a43]">
                 It is the same scoping logic the product implements — useful whether or not you ever
                 open ARO Suite.
               </p>
-              <a href="#design-partner" className="btn inline-flex bg-[#0b1f17] text-white hover:bg-[#16352a]">
-                Request the checklist
+              <a
+                href={PS3280_CHECKLIST_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                download={PS3280_CHECKLIST_FILENAME}
+                className="btn inline-flex bg-[#0b1f17] text-white hover:bg-[#16352a]"
+              >
+                Download the checklist
               </a>
             </div>
           </div>

@@ -128,9 +128,9 @@ const ArticleCategory: FC = () => {
                 {categoryTitle} Articles
               </h1>
               {category?.description ? (
-                <p className="text-lg text-text-light mb-md">{category.description}</p>
+                <p className="text-lg text-text-body mb-md">{category.description}</p>
               ) : (
-                <p className="text-lg text-text-light mb-md">
+                <p className="text-lg text-text-body mb-md">
                   Browse our collection of articles covering {categoryName}. 
                   Find expert insights, practical advice, and the latest information on accounting, tax planning, and business consulting.
                 </p>
@@ -198,7 +198,7 @@ const ArticleCategory: FC = () => {
                   <div className="text-center py-xl">
                     <div className="max-w-[600px] mx-auto">
                       <h2 className="text-2xl font-semibold text-primary mb-md">No Articles Yet</h2>
-                      <p className="text-lg text-text-light mb-md">
+                      <p className="text-lg text-text-body mb-md">
                         We're currently working on adding articles to this category. Check back soon for expert insights, 
                         practical advice, and valuable information about {category?.title?.toLowerCase() || categorySlug?.replace(/-/g, ' ') || 'this topic'}.
                       </p>

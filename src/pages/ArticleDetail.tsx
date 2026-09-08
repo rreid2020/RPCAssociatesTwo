@@ -163,7 +163,7 @@ const ArticleDetail: FC = () => {
                   )}
                 </div>
 
-                <h1 className="text-4xl lg:text-5xl font-bold text-primary mb-md leading-tight">{article.title}</h1>
+                <h1 className="text-4xl lg:text-5xl font-semibold text-primary mb-md leading-tight">{article.title}</h1>
                 
                 {article.excerpt && (
                   <p className="text-xl text-text-light leading-relaxed mb-lg">{article.excerpt}</p>
@@ -171,7 +171,7 @@ const ArticleDetail: FC = () => {
               </div>
 
               {imageUrl && article.featuredImage && (
-                <div className="w-full mb-xl rounded-xl overflow-hidden">
+                <div className="w-full mb-xl rounded-lg overflow-hidden">
                   <img
                     src={imageUrl}
                     alt={article.featuredImage.alt || article.title}
@@ -188,7 +188,7 @@ const ArticleDetail: FC = () => {
               </div>
 
               {article.downloads && article.downloads.length > 0 && (
-                <div className="bg-white p-xl rounded-xl shadow-sm mb-xxl border border-border">
+                <div className="bg-white p-xl rounded-lg shadow-sm mb-xxl border border-border">
                   <h2 className="text-2xl font-semibold text-primary mb-lg">Downloads</h2>
                   <div className="flex flex-col gap-md">
                     {article.downloads.map((download) => (
@@ -202,7 +202,7 @@ const ArticleDetail: FC = () => {
                 <RelatedLinks links={article.relatedLinks} />
               )}
 
-              <div className="bg-white p-xl rounded-xl shadow-sm text-center mt-xxl">
+              <div className="bg-white p-xl rounded-lg shadow-sm text-center mt-xxl">
                 <h2 className="text-2xl font-semibold text-primary mb-sm">Ready to Get Started?</h2>
                 <p className="text-text-light mb-lg">
                   Let's discuss how we can help with your accounting, consulting, or technology needs.

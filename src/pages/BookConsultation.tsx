@@ -28,15 +28,15 @@ const BookConsultation: FC = () => {
         <section className="py-xxl bg-background">
           <div className="max-w-[1400px] mx-auto px-md">
             <div className="text-center mb-xl">
-              <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-md">
+              <h1 className="text-3xl lg:text-4xl font-semibold text-primary mb-md">
                 Book a Free Consultation
               </h1>
-              <p className="text-lg text-text-light leading-relaxed max-w-2xl mx-auto">
+              <p className="text-lg text-text-body leading-relaxed max-w-2xl mx-auto">
                 Schedule a free discovery call with our team. We'll discuss your tax and accounting needs and how we can help.
               </p>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-border">
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-border">
               <iframe
                 src={embedUrl}
                 width="100%"

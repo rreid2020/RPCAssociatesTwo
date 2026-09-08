@@ -80,10 +80,10 @@ const Services: FC = () => {
         <section className="py-xxl bg-background">
           <div className="max-w-[1200px] mx-auto px-md">
             <div className="text-center mb-xl max-w-[800px] mx-auto">
-              <h1 className="text-3xl lg:text-4xl font-bold text-primary-dark mb-md">
+              <h1 className="text-3xl lg:text-4xl font-semibold text-primary mb-md">
                 Our Services
               </h1>
-              <p className="text-lg text-text-light leading-relaxed">
+              <p className="text-lg text-text-body leading-relaxed">
                 Bringing together accounting, consulting, and technology so you have accurate numbers, practical advice, and modern systems working together.
               </p>
             </div>
@@ -98,17 +98,17 @@ const Services: FC = () => {
                 <Link 
                   key={service.slug}
                   to={`/services/${service.slug}`}
-                  className="bg-background p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
+                  className="bg-background p-lg rounded-lg shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
                 >
                   <div className="flex items-center gap-3 mb-md">
                     <div className="flex-shrink-0 text-accent">
                       <ServiceIcon icon={service.slug} />
                     </div>
-                    <span className="inline-block px-3 py-1 bg-accent text-white text-xs font-semibold uppercase tracking-wider rounded-full">
+                    <span className="pill">
                       {service.pill}
                     </span>
                   </div>
-                  <h3 className="text-xl font-semibold text-primary-dark mb-sm">
+                  <h3 className="text-xl font-semibold text-primary mb-sm">
                     {service.title}
                   </h3>
                   <p className="text-text-light mb-md text-[0.9375rem] leading-relaxed">
@@ -133,11 +133,11 @@ const Services: FC = () => {
         {/* CTA Section */}
         <section className="py-xxl bg-background">
           <div className="max-w-[900px] mx-auto px-md text-center">
-            <div className="bg-white p-xl rounded-xl shadow-sm border border-border">
-              <h2 className="text-3xl lg:text-4xl font-bold text-primary-dark mb-md">
+            <div className="bg-white p-xl rounded-lg shadow-sm border border-border">
+              <h2 className="text-3xl lg:text-4xl font-semibold text-primary mb-md">
                 Ready to Get Started?
               </h2>
-              <p className="text-lg text-text-light mb-lg max-w-2xl mx-auto">
+              <p className="text-lg text-text-body mb-lg max-w-2xl mx-auto">
                 Schedule a free consultation to discuss how our services can help your business.
               </p>
               <CalendlyButton className="btn btn--primary text-center w-full md:w-auto" />

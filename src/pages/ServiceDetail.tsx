@@ -15,10 +15,10 @@ const ServiceDetail: FC = () => {
         <main>
           <section className="py-xxl bg-background">
             <div className="max-w-[1200px] mx-auto px-md text-center">
-              <h1 className="text-3xl lg:text-4xl font-bold text-primary-dark mb-md">
+              <h1 className="text-3xl lg:text-4xl font-semibold text-primary mb-md">
                 Service Not Found
               </h1>
-              <p className="text-lg text-text-light mb-lg">
+              <p className="text-lg text-text-body mb-lg">
                 The requested service page could not be found.
               </p>
               <Link to="/" className="btn btn--primary">
@@ -71,16 +71,16 @@ const ServiceDetail: FC = () => {
       />
       <main>
         {/* Hero Section */}
-        <section className="py-xxl bg-background">
-          <div className="max-w-[1200px] mx-auto px-md">
+        <section className="py-xxl bg-gradient-to-b from-background-band to-background border-b border-border">
+          <div className="max-w-[1120px] mx-auto px-md">
             <div className="text-center mb-xl max-w-[800px] mx-auto">
-              <span className="inline-block px-4 py-2 bg-accent text-white text-sm font-semibold uppercase tracking-wider rounded-full mb-md">
+              <span className="pill mb-md">
                 {service.pill}
               </span>
-              <h1 className="text-3xl lg:text-4xl font-bold text-primary-dark mb-md">
+              <h1 className="text-3xl lg:text-4xl font-semibold text-primary mb-md">
                 {service.title}
               </h1>
-              <p className="text-lg text-text-light leading-relaxed">
+              <p className="text-lg text-text-body leading-relaxed">
                 {service.intro}
               </p>
             </div>
@@ -94,9 +94,9 @@ const ServiceDetail: FC = () => {
               {service.details.map((detail, index) => (
                 <div 
                   key={index}
-                  className="bg-background p-lg rounded-xl border border-border hover:shadow-md transition-all"
+                  className="bg-background p-lg rounded-lg border border-border hover:shadow-md transition-all"
                 >
-                  <h3 className="text-xl font-semibold text-primary-dark mb-sm">
+                  <h3 className="text-xl font-semibold text-primary mb-sm">
                     {detail.title}
                   </h3>
                   <p className="text-text-light leading-relaxed">
@@ -111,11 +111,11 @@ const ServiceDetail: FC = () => {
         {/* CTA Section */}
         <section className="py-xxl bg-background">
           <div className="max-w-[1200px] mx-auto px-md text-center">
-            <div className="bg-white p-xl rounded-xl shadow-sm border border-border">
-              <h2 className="text-3xl lg:text-4xl font-bold text-primary-dark mb-md">
+            <div className="bg-white p-xl rounded-lg shadow-sm border border-border">
+              <h2 className="text-3xl lg:text-4xl font-semibold text-primary mb-md">
                 Ready to Get Started?
               </h2>
-              <p className="text-lg text-text-light mb-lg max-w-2xl mx-auto">
+              <p className="text-lg text-text-body mb-lg max-w-2xl mx-auto">
                 Schedule a free consultation to discuss how {service.title.toLowerCase()} can help your business.
               </p>
               <div className="flex justify-center gap-md flex-wrap">

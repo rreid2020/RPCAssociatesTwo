@@ -31,11 +31,12 @@ const Why: FC = () => {
   ]
 
   return (
-    <section id="why" className="py-xxl">
-      <div className="max-w-[1200px] mx-auto px-md">
+    <section id="why" className="py-xxl section-band border-y border-border">
+      <div className="max-w-[1120px] mx-auto px-md">
         <div className="text-center mb-xl max-w-[800px] mx-auto">
+          <p className="eyebrow">Why it matters</p>
           <h2 className="mb-md">Why Hiring a Great Accountant Matters</h2>
-          <p className="text-lg text-text-light">
+          <p className="text-lg text-text-body">
             A great accountant is more than a bookkeeper or tax filer. They become a strategic partner who helps you understand where you stand today and what it will take to get where you want to go.
           </p>
         </div>

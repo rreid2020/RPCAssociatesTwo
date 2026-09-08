@@ -26,7 +26,7 @@ export function getMarketingRoutes () {
       <Route
         path="*"
         element={(
-          <>
+          <div className="marketing-site">
             <Header />
             <Routes>
               <Route path="/" element={<Home />} />
@@ -49,7 +49,7 @@ export function getMarketingRoutes () {
               <Route path="/roger-reid-cv" element={<RogerReidCv />} />
             </Routes>
             <Footer />
-          </>
+          </div>
         )}
       />
     </Fragment>

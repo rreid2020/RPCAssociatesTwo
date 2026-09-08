@@ -6,19 +6,19 @@ const Footer: FC = () => {
   const currentYear = new Date().getFullYear()
 
   return (
-    <footer className="bg-primary-dark text-white py-xl mt-xxl">
-      <div className="max-w-[1200px] mx-auto px-md">
+    <footer className="bg-primary-dark text-white py-xl mt-0">
+      <div className="max-w-[1120px] mx-auto px-md">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-xl items-start">
           <div>
             <div className="text-sm opacity-90">
               © {currentYear} Axiom Financial &amp; Technology. All rights reserved.
             </div>
-            <p className="mt-md text-sm opacity-80 leading-relaxed">
+            <p className="mt-md text-sm opacity-80 leading-relaxed mb-0 text-white/80">
               Accounting, advisory, automation, and intelligence for Canadian businesses.
             </p>
           </div>
           <div className="text-center md:text-left">
-            <h2 className="text-xl mb-md font-semibold text-white">Explore</h2>
+            <h2 className="text-xl mb-md font-serif font-semibold text-white">Explore</h2>
             <ul className="flex flex-col gap-sm list-none m-0 p-0">
               <li>
                 <Link to="/services" className="text-white opacity-90 text-sm no-underline transition-all hover:opacity-100 hover:underline">

@@ -12,7 +12,7 @@ const Terms: FC = () => {
       <main className="py-xxl min-h-[60vh]">
       <div className="max-w-[900px] mx-auto px-md">
         <div className="leading-relaxed">
-          <h1 className="text-4xl lg:text-5xl font-bold text-primary mb-md">Terms of Service</h1>
+          <h1 className="text-4xl lg:text-5xl font-semibold text-primary mb-md">Terms of Service</h1>
           
           <p className="text-text-light text-sm mb-lg pb-md border-b border-border">
             <strong>Last Updated:</strong> January 1, 2025

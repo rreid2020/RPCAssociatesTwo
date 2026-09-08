@@ -132,16 +132,16 @@ const IcfmIcfrService: FC = () => {
         ]}
       />
       <main>
-        <section className="py-xxl bg-background">
-          <div className="max-w-[1200px] mx-auto px-md">
+        <section className="py-xxl bg-gradient-to-b from-background-band to-background border-b border-border">
+          <div className="max-w-[1120px] mx-auto px-md">
             <div className="text-center mb-xl max-w-[800px] mx-auto">
-              <span className="inline-block px-4 py-2 bg-accent text-white text-sm font-semibold uppercase tracking-wider rounded-full mb-md">
+              <span className="pill mb-md">
                 Internal Controls
               </span>
-              <h1 className="text-3xl lg:text-4xl font-bold text-primary-dark mb-md">
+              <h1 className="text-3xl lg:text-4xl font-semibold text-primary mb-md">
                 Internal Controls over Financial Management &amp; Reporting (ICFM/ICFR)
               </h1>
-              <p className="text-lg text-text-light leading-relaxed">
+              <p className="text-lg text-text-body leading-relaxed">
                 Strong internal controls aren&apos;t just an audit requirement — they&apos;re what let you trust your own
                 numbers. Axiom helps growing companies design, document, test, and remediate the controls that protect
                 financial reporting, whether you&apos;re building your first control environment, preparing for a
@@ -154,7 +154,7 @@ const IcfmIcfrService: FC = () => {
         <section className="py-xxl bg-white">
           <div className="max-w-[1200px] mx-auto px-md">
             <div className="max-w-[800px] mx-auto">
-              <h2 className="text-3xl lg:text-4xl font-bold text-primary-dark mb-md">Why ICFM/ICFR matters</h2>
+              <h2 className="text-3xl lg:text-4xl font-semibold text-primary mb-md">Why ICFM/ICFR matters</h2>
               <div className="space-y-md text-text-light leading-relaxed text-lg">
                 <p>
                   As a business grows, the informal checks that worked at five employees stop working at fifty. Lenders
@@ -178,8 +178,8 @@ const IcfmIcfrService: FC = () => {
         <section className="py-xxl bg-background">
           <div className="max-w-[1200px] mx-auto px-md">
             <div className="text-center mb-xl max-w-[800px] mx-auto">
-              <h2 className="text-3xl lg:text-4xl font-bold text-primary-dark mb-md">How we help</h2>
-              <p className="text-lg text-text-light">
+              <h2 className="text-3xl lg:text-4xl font-semibold text-primary mb-md">How we help</h2>
+              <p className="text-lg text-text-body">
                 Practical ICFM/ICFR support scaled to your size and risk profile — not a generic checklist.
               </p>
             </div>
@@ -187,9 +187,9 @@ const IcfmIcfrService: FC = () => {
               {howWeHelp.map((item) => (
                 <div
                   key={item.title}
-                  className="bg-white p-lg rounded-xl border border-border hover:shadow-md transition-all"
+                  className="bg-white p-lg rounded-lg border border-border hover:shadow-md transition-all"
                 >
-                  <h3 className="text-xl font-semibold text-primary-dark mb-sm">{item.title}</h3>
+                  <h3 className="text-xl font-semibold text-primary mb-sm">{item.title}</h3>
                   <p className="text-text-light leading-relaxed">{item.description}</p>
                 </div>
               ))}
@@ -200,16 +200,16 @@ const IcfmIcfrService: FC = () => {
         <section className="py-xxl bg-white">
           <div className="max-w-[1200px] mx-auto px-md">
             <div className="text-center mb-xl max-w-[800px] mx-auto">
-              <h2 className="text-3xl lg:text-4xl font-bold text-primary-dark mb-md">Built for your industry</h2>
-              <p className="text-lg text-text-light">
+              <h2 className="text-3xl lg:text-4xl font-semibold text-primary mb-md">Built for your industry</h2>
+              <p className="text-lg text-text-body">
                 Financial statement risk doesn&apos;t look the same in every sector, so we tailor the control framework
                 to how your business actually operates.
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-lg">
               {industries.map((industry) => (
-                <div key={industry.title} className="bg-background p-lg rounded-xl border border-border">
-                  <h3 className="text-xl font-semibold text-primary-dark mb-sm">{industry.title}</h3>
+                <div key={industry.title} className="bg-background p-lg rounded-lg border border-border">
+                  <h3 className="text-xl font-semibold text-primary mb-sm">{industry.title}</h3>
                   <p className="text-text-light leading-relaxed">{industry.description}</p>
                 </div>
               ))}
@@ -220,7 +220,7 @@ const IcfmIcfrService: FC = () => {
         <section className="py-xxl bg-background">
           <div className="max-w-[1200px] mx-auto px-md">
             <div className="text-center mb-xl max-w-[800px] mx-auto">
-              <h2 className="text-3xl lg:text-4xl font-bold text-primary-dark mb-md">Our approach</h2>
+              <h2 className="text-3xl lg:text-4xl font-semibold text-primary mb-md">Our approach</h2>
             </div>
             <ol className="max-w-[800px] mx-auto space-y-lg list-none">
               {approachSteps.map((item) => (
@@ -229,7 +229,7 @@ const IcfmIcfrService: FC = () => {
                     {item.step}
                   </span>
                   <div>
-                    <h3 className="text-xl font-semibold text-primary-dark mb-xs">{item.title}</h3>
+                    <h3 className="text-xl font-semibold text-primary mb-xs">{item.title}</h3>
                     <p className="text-text-light leading-relaxed">{item.description}</p>
                   </div>
                 </li>
@@ -240,11 +240,11 @@ const IcfmIcfrService: FC = () => {
 
         <section className="py-xxl bg-white">
           <div className="max-w-[1200px] mx-auto px-md">
-            <div className="bg-background p-xl rounded-xl border border-border text-center max-w-[800px] mx-auto">
-              <h2 className="text-3xl lg:text-4xl font-bold text-primary-dark mb-md">
+            <div className="bg-background p-xl rounded-lg border border-border text-center max-w-[800px] mx-auto">
+              <h2 className="text-3xl lg:text-4xl font-semibold text-primary mb-md">
                 Free resource: ICFM/ICFR starter templates
               </h2>
-              <p className="text-lg text-text-light mb-lg leading-relaxed">
+              <p className="text-lg text-text-body mb-lg leading-relaxed">
                 To help you see what a working risk &amp; control matrix actually looks like, we&apos;ve built Excel
                 starter templates for seven core financial management and financial reporting business processes.
                 Each template includes a risk &amp; control matrix, a control testing tracker, a deficiency &amp;
@@ -272,11 +272,11 @@ const IcfmIcfrService: FC = () => {
 
         <section className="py-xxl bg-background">
           <div className="max-w-[1200px] mx-auto px-md text-center">
-            <div className="bg-white p-xl rounded-xl shadow-sm border border-border">
-              <h2 className="text-3xl lg:text-4xl font-bold text-primary-dark mb-md">
+            <div className="bg-white p-xl rounded-lg shadow-sm border border-border">
+              <h2 className="text-3xl lg:text-4xl font-semibold text-primary mb-md">
                 Let&apos;s talk about your control environment
               </h2>
-              <p className="text-lg text-text-light mb-lg max-w-2xl mx-auto leading-relaxed">
+              <p className="text-lg text-text-body mb-lg max-w-2xl mx-auto leading-relaxed">
                 Whether you&apos;re building your first control framework, preparing for an audit, or getting ready to
                 go public, Axiom can help you get there without the overhead of a Big Four engagement. Book a call or
                 contact us to discuss where your business stands today.

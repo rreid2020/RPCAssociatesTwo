@@ -19,8 +19,8 @@ const Sitemap: FC = () => {
       <main className="py-xxl min-h-[60vh]">
       <div className="max-w-[900px] mx-auto px-md">
         <div className="leading-relaxed">
-          <h1 className="text-4xl lg:text-5xl font-bold text-primary mb-md">Site Map</h1>
-          <p className="text-lg text-text-light mb-xl">
+          <h1 className="text-4xl lg:text-5xl font-semibold text-primary mb-md">Site Map</h1>
+          <p className="text-lg text-text-body mb-xl">
             Find all public pages and sections of the Axiom website below.
           </p>
 

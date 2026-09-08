@@ -47,8 +47,8 @@ const ResourceDetail: FC = () => {
         />
         <main className="py-xxl min-h-[60vh]">
           <div className="max-w-[1200px] mx-auto px-md text-center">
-            <h1 className="text-4xl font-bold text-primary-dark mb-md">Resource Not Found</h1>
-            <p className="text-lg text-text-light mb-lg">
+            <h1 className="text-4xl font-semibold text-primary mb-md">Resource Not Found</h1>
+            <p className="text-lg text-text-body mb-lg">
               The resource you're looking for doesn't exist.
             </p>
             <Link to="/resources" className="btn btn--primary">
@@ -318,11 +318,11 @@ const ResourceDetail: FC = () => {
         {/* CTA Section */}
         <section className="py-xxl bg-background">
           <div className="max-w-[1200px] mx-auto px-md">
-            <div className="bg-white p-xl rounded-xl shadow-sm border border-border text-center">
-              <h2 className="text-2xl lg:text-3xl font-bold text-primary-dark mb-md">
+            <div className="bg-white p-xl rounded-lg shadow-sm border border-border text-center">
+              <h2 className="text-2xl lg:text-3xl font-semibold text-primary mb-md">
                 Need Help with Your Finances?
               </h2>
-              <p className="text-lg text-text-light mb-lg max-w-2xl mx-auto">
+              <p className="text-lg text-text-body mb-lg max-w-2xl mx-auto">
                 Our team of experienced accountants and consultants can help you make the most of these resources and provide personalized guidance for your situation.
               </p>
               <CalendlyButton className="btn btn--primary" />

@@ -3,22 +3,40 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --fc-navy: #00204a;
+    --fc-navy-2: #0b3161;
+    --fc-ink: #16202c;
+    --fc-body: #3d4a58;
+    --fc-muted: #6b7a89;
+    --fc-rule: #dfe5ec;
+    --fc-band: #f4f7fa;
+    --fc-band-2: #eaf0f6;
+    --fc-accent: #b0632c;
+    --fc-accent-dark: #9a5624;
+    --fc-ok: #1e6b3c;
+  }
+
   html {
     scroll-behavior: smooth;
   }
 
   body {
-    @apply bg-background text-text antialiased;
+    @apply bg-white text-text-body antialiased;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 17px;
+    line-height: 1.65;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold text-primary-dark mb-md;
+    @apply font-semibold text-primary mb-md;
+    letter-spacing: -0.01em;
     line-height: 1.2;
   }
 
   h1 {
-    @apply text-4xl font-bold;
+    @apply text-4xl font-semibold;
+    line-height: 1.12;
   }
 
   h2 {
@@ -29,12 +47,22 @@
     @apply text-2xl;
   }
 
+  /* Marketing site adopts Fractional Controller typography */
+  .marketing-site h1,
+  .marketing-site h2,
+  .marketing-site h3,
+  .marketing-site h4,
+  .marketing-site h5,
+  .marketing-site h6 {
+    @apply font-serif;
+  }
+
   p {
-    @apply mb-md text-text;
+    @apply mb-md text-text-body;
   }
 
   a {
-    @apply text-primary no-underline transition-all;
+    @apply text-primary-soft no-underline transition-all;
   }
 
   a:hover {
@@ -48,35 +76,55 @@
 
 @layer components {
   .btn {
-    @apply inline-block px-6 py-3 rounded font-medium text-center cursor-pointer transition-all border-none text-[0.9375rem] font-sans whitespace-nowrap;
+    @apply inline-block px-[22px] py-3 rounded font-semibold text-center cursor-pointer transition-all text-[0.92rem] font-sans whitespace-nowrap leading-tight border-[1.5px] border-transparent;
   }
 
   .btn--primary {
-    @apply bg-primary-dark text-white;
+    @apply bg-accent text-white border-accent;
   }
 
   .btn--primary:hover {
-    @apply bg-primary -translate-y-0.5 shadow-md;
+    @apply bg-accent-dark border-accent-dark text-white;
   }
 
   .btn--primary:focus {
-    @apply outline-2 outline-primary outline-offset-2;
+    @apply outline-2 outline-accent outline-offset-2;
   }
 
   .btn--secondary {
-    @apply bg-transparent text-primary-dark border-2 border-primary-dark;
+    @apply bg-transparent text-primary border-primary;
   }
 
   .btn--secondary:hover {
-    @apply bg-primary-dark text-white;
+    @apply bg-primary text-white;
   }
 
   .btn--secondary:focus {
     @apply outline-2 outline-primary outline-offset-2;
   }
 
-  .btn:disabled {
-    @apply opacity-60 cursor-not-allowed;
+  .btn--ghost {
+    @apply bg-transparent text-white border-white/55;
+  }
+
+  .btn--ghost:hover {
+    @apply bg-white/10 text-white;
+  }
+
+  .eyebrow {
+    @apply text-[0.7rem] font-bold uppercase tracking-[0.2em] text-accent mb-3.5;
+  }
+
+  .pill {
+    @apply inline-block bg-primary text-white text-[0.66rem] font-semibold uppercase tracking-[0.19em] px-4 py-1.5 rounded-full;
+  }
+
+  .section-band {
+    @apply bg-background;
+  }
+
+  .section-band-soft {
+    @apply bg-background-band;
   }
 
   .tax-calculator .calc-input,
@@ -93,15 +141,15 @@
   }
 
   .tax-calculator .calc-section-title {
-    @apply bg-primary-dark text-white font-semibold text-[11px] px-2.5 py-1 rounded mb-2;
+    @apply bg-primary text-white font-semibold text-[11px] px-2.5 py-1 rounded mb-2;
   }
 
   .tax-calculator .calc-card {
-    @apply bg-white rounded-xl shadow-sm border border-border p-4 sm:p-6 lg:p-8;
+    @apply bg-white rounded-lg shadow-sm border border-border p-4 sm:p-6 lg:p-8;
   }
 
   .tax-calculator .calc-panel {
-    @apply bg-white p-3 rounded-lg border border-border;
+    @apply bg-white p-3 rounded border border-border;
   }
 
   .tax-calculator .tax-form .tax-row {
@@ -128,5 +176,4 @@
   .engagement-staffing-grid .ag-theme-quartz {
     padding-bottom: 2px;
   }
-
 }

@@ -19,8 +19,8 @@ const ResourceCategory: FC = () => {
         />
         <main className="py-xxl min-h-[60vh]">
           <div className="max-w-[1200px] mx-auto px-md text-center">
-            <h1 className="text-4xl font-bold text-primary-dark mb-md">Resource Not Found</h1>
-            <p className="text-lg text-text-light mb-lg">
+            <h1 className="text-4xl font-semibold text-primary mb-md">Resource Not Found</h1>
+            <p className="text-lg text-text-body mb-lg">
               The resource category you're looking for doesn't exist.
             </p>
             <Link to="/resources" className="btn btn--primary">
@@ -81,8 +81,8 @@ const ResourceCategory: FC = () => {
         <section className="py-xxl bg-background">
           <div className="max-w-[1200px] mx-auto px-md">
             <div className="text-center mb-xl max-w-[800px] mx-auto">
-              <h1 className="text-3xl lg:text-4xl font-bold text-primary-dark mb-md">{category.title}</h1>
-              <p className="text-lg text-text-light leading-relaxed">
+              <h1 className="text-3xl lg:text-4xl font-semibold text-primary mb-md">{category.title}</h1>
+              <p className="text-lg text-text-body leading-relaxed">
                 {category.description}
               </p>
             </div>
@@ -94,12 +94,12 @@ const ResourceCategory: FC = () => {
                     <Link
                       key={index}
                       to={`/resources/${resource.slug}`}
-                      className="bg-white p-lg rounded-xl shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
+                      className="bg-white p-lg rounded-lg shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
                     >
-                      <span className="inline-block px-3 py-1 bg-accent text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-md">
+                      <span className="pill mb-md">
                         {resource.categoryLabel}
                       </span>
-                      <h3 className="text-xl font-semibold text-primary-dark mb-sm">
+                      <h3 className="text-xl font-semibold text-primary mb-sm">
                         {resource.title}
                       </h3>
                       <p className="text-text-light text-[0.9375rem] leading-relaxed mb-sm">
@@ -114,17 +114,17 @@ const ResourceCategory: FC = () => {
                   ))}
                 </div>
                 <div className="text-center mb-xxl">
-                  <Link to="/resources" className="text-primary hover:text-primary-dark underline">
+                  <Link to="/resources" className="text-primary hover:text-primary underline">
                     View All Resources
                   </Link>
                 </div>
               </>
             ) : (
               <div className="text-center py-xl mb-xxl">
-                <p className="text-lg text-text-light mb-lg">
+                <p className="text-lg text-text-body mb-lg">
                   More {category.title.toLowerCase()} coming soon.
                 </p>
-                <Link to="/resources" className="text-primary hover:text-primary-dark underline">
+                <Link to="/resources" className="text-primary hover:text-primary underline">
                   View All Resources
                 </Link>
               </div>
@@ -133,11 +133,11 @@ const ResourceCategory: FC = () => {
             {/* CTA Section */}
             <section className="py-xxl bg-background">
               <div className="max-w-[900px] mx-auto px-md text-center">
-                <div className="bg-white p-xl rounded-xl shadow-sm border border-border">
-                  <h2 className="text-3xl lg:text-4xl font-bold text-primary-dark mb-md">
+                <div className="bg-white p-xl rounded-lg shadow-sm border border-border">
+                  <h2 className="text-3xl lg:text-4xl font-semibold text-primary mb-md">
                     Need Help with Your Finances?
                   </h2>
-                  <p className="text-lg text-text-light mb-lg max-w-2xl mx-auto">
+                  <p className="text-lg text-text-body mb-lg max-w-2xl mx-auto">
                     Our team of experienced accountants and consultants can help you make the most of these resources and provide personalized guidance for your situation.
                   </p>
                   <CalendlyButton className="btn btn--primary text-center w-full md:w-auto" />

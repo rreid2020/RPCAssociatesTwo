@@ -21,11 +21,12 @@ const Remote: FC = () => {
   ]
 
   return (
-    <section id="remote" className="py-xxl">
-      <div className="max-w-[1200px] mx-auto px-md">
+    <section id="remote" className="py-xxl section-band border-t border-border">
+      <div className="max-w-[1120px] mx-auto px-md">
         <div className="text-center mb-xl max-w-[800px] mx-auto">
+          <p className="eyebrow">How we work</p>
           <h2 className="mb-md">Remote & Online Services</h2>
-          <p className="text-lg text-text-light">
+          <p className="text-lg text-text-body">
             Most of our services are designed to be delivered fully remotely, so you can work with us wherever you are without sacrificing security or personal service.
           </p>
         </div>

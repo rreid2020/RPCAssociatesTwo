@@ -32,19 +32,17 @@ const PortalPlatform: FC = () => {
   }
 
   return (
-    <section id="client-portal" className="py-xxl bg-background" aria-labelledby="client-portal-heading">
+    <section id="client-portal" className="py-xxl section-band border-y border-border" aria-labelledby="client-portal-heading">
       <Helmet>
         <script type="application/ld+json">{JSON.stringify(itemListSchema)}</script>
       </Helmet>
-      <div className="max-w-[1200px] mx-auto px-md">
+      <div className="max-w-[1120px] mx-auto px-md">
         <div className="text-center mb-xl max-w-[800px] mx-auto">
-          <div className="inline-block text-sm font-semibold text-accent uppercase tracking-wider mb-md">
-            Client Portal
-          </div>
-          <h2 id="client-portal-heading" className="mb-md text-primary-dark">
+          <p className="eyebrow">Client Portal</p>
+          <h2 id="client-portal-heading" className="mb-md text-primary">
             One secure platform for tax, returns, and accounting operations
           </h2>
-          <p className="text-lg text-text-light">
+          <p className="text-lg text-text-body">
             Axiom&apos;s client portal brings Dashboard, TaxGPT, Tax Return Builder, File Repository, Working
             Papers, and Integrations into a single signed-in workspace—built for secure collaboration with your
             accountant.
@@ -57,12 +55,10 @@ const PortalPlatform: FC = () => {
               key={module.id}
               to={`/client-portal#${module.id}`}
               id={module.id}
-              className="bg-white p-lg rounded-xl shadow-sm transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
+              className="bg-white p-lg rounded border border-border shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 block no-underline text-inherit"
             >
               <div className="flex flex-wrap items-center gap-2 mb-md">
-                <span className="inline-block px-3 py-1 bg-accent text-white text-xs font-semibold uppercase tracking-wider rounded-full">
-                  {module.pill}
-                </span>
+                <span className="pill">{module.pill}</span>
                 <span
                   className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${statusBadgeClass[module.status]}`}
                 >
@@ -70,12 +66,12 @@ const PortalPlatform: FC = () => {
                 </span>
               </div>
               <h3 className="text-xl mb-sm text-primary">{module.title}</h3>
-              <p className="text-text-light mb-md text-[0.9375rem]">{module.intro}</p>
+              <p className="text-text-body mb-md text-[0.9375rem]">{module.intro}</p>
               <ul className="list-none">
                 {module.bullets.map((bullet) => (
                   <li
                     key={bullet}
-                    className="pl-md mb-xs relative before:content-['•'] before:absolute before:left-0 before:text-accent before:font-bold text-[0.9375rem]"
+                    className="pl-md mb-xs relative before:content-['•'] before:absolute before:left-0 before:text-accent before:font-bold text-[0.9375rem] text-text-body"
                   >
                     {bullet}
                   </li>

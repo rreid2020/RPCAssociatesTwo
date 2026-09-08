@@ -77,7 +77,7 @@ const Articles: FC = () => {
           <div className="max-w-[1200px] mx-auto px-md">
             <div className="text-center mb-xl max-w-[800px] mx-auto">
               <h1 className="mb-md">Articles</h1>
-              <p className="text-lg text-text-light">
+              <p className="text-lg text-text-body">
                 Insights, tips, and updates on accounting, consulting, and technology.
               </p>
             </div>

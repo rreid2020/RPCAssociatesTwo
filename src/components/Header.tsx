@@ -196,7 +196,7 @@ const Header: FC = () => {
         />
       )}
 
-      <header className="sticky top-0 bg-white shadow-sm z-[1000]">
+      <header className="sticky top-0 bg-white border-b border-border z-[1000]">
         <div className="w-full max-w-[min(100%,108rem)] mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 2xl:px-20 min-[1920px]:px-24">
           <div className="flex w-full items-center h-16 md:min-h-[6.5rem] lg:min-h-32 md:py-1.5 lg:py-2">
             {/* Logo */}
@@ -222,7 +222,7 @@ const Header: FC = () => {
                 >
                   <Link
                     to="/services"
-                    className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center gap-1.5 text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
+                    className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center gap-1.5 text-text font-medium hover:text-primary transition-colors whitespace-nowrap"
                     onClick={closeMenu}
                   >
                     Services
@@ -253,10 +253,10 @@ const Header: FC = () => {
                             onClick={closeMenu}
                           >
                             <div className="flex items-center gap-3">
-                              <div className="flex-shrink-0 text-primary-dark">
+                              <div className="flex-shrink-0 text-primary">
                                 <ServiceIcon icon={service.slug} />
                               </div>
-                              <h3 className="text-sm font-semibold text-text group-hover:text-primary-dark transition-colors leading-tight">
+                              <h3 className="text-sm font-semibold text-text group-hover:text-primary transition-colors leading-tight">
                                 {service.title}
                               </h3>
                             </div>
@@ -279,7 +279,7 @@ const Header: FC = () => {
                 >
                   <button
                     type="button"
-                    className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center gap-1.5 text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap bg-transparent border-none cursor-pointer p-0"
+                    className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center gap-1.5 text-text font-medium hover:text-primary transition-colors whitespace-nowrap bg-transparent border-none cursor-pointer p-0"
                     aria-expanded={isProductsOpen}
                     aria-haspopup="true"
                     onClick={() => setIsProductsOpen((open) => !open)}
@@ -311,10 +311,10 @@ const Header: FC = () => {
                               onClick={closeMenu}
                             >
                               <div className="flex items-center gap-3">
-                                <div className="flex-shrink-0 text-primary-dark">
+                                <div className="flex-shrink-0 text-primary">
                                   <ProductIcon icon={product.icon} />
                                 </div>
-                                <h3 className="text-sm font-semibold text-text group-hover:text-primary-dark transition-colors leading-tight">
+                                <h3 className="text-sm font-semibold text-text group-hover:text-primary transition-colors leading-tight">
                                   {product.title}
                                 </h3>
                               </div>
@@ -337,7 +337,7 @@ const Header: FC = () => {
                 >
                   <Link
                     to="/resources"
-                    className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center gap-1.5 text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
+                    className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center gap-1.5 text-text font-medium hover:text-primary transition-colors whitespace-nowrap"
                     onClick={closeMenu}
                   >
                     Resources
@@ -368,10 +368,10 @@ const Header: FC = () => {
                             onClick={closeMenu}
                           >
                             <div className="flex items-center gap-3">
-                              <div className="flex-shrink-0 text-primary-dark">
+                              <div className="flex-shrink-0 text-primary">
                                 <ResourceIcon icon={category.icon} />
                               </div>
-                              <h3 className="text-sm font-semibold text-text group-hover:text-primary-dark transition-colors leading-tight">
+                              <h3 className="text-sm font-semibold text-text group-hover:text-primary transition-colors leading-tight">
                                 {category.title}
                               </h3>
                             </div>
@@ -394,7 +394,7 @@ const Header: FC = () => {
                 >
                   <Link 
                     to="/articles" 
-                    className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center gap-1.5 text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
+                    className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center gap-1.5 text-text font-medium hover:text-primary transition-colors whitespace-nowrap"
                   >
                     Articles
                     <svg
@@ -442,7 +442,7 @@ const Header: FC = () => {
                 <li className="shrink-0">
                   <Link
                     to="/contact"
-                    className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center text-text font-medium hover:text-primary-dark transition-colors whitespace-nowrap"
+                    className="min-h-12 text-base xl:text-[1.05rem] inline-flex items-center text-text font-medium hover:text-primary transition-colors whitespace-nowrap"
                     onClick={closeMenu}
                   >
                     Contact
@@ -520,7 +520,7 @@ const Header: FC = () => {
                         onClick={closeMenu}
                       >
                         <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 text-primary-dark mt-0.5">
+                          <div className="flex-shrink-0 text-primary mt-0.5">
                             <ServiceIcon icon={service.slug} />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -569,7 +569,7 @@ const Header: FC = () => {
                         onClick={closeMenu}
                       >
                         <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 text-primary-dark mt-0.5">
+                          <div className="flex-shrink-0 text-primary mt-0.5">
                             <ProductIcon icon={product.icon} />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -662,21 +662,21 @@ const Header: FC = () => {
                   <div className="mt-2 pl-4 space-y-2">
                     <Link
                       to="/articles/category/canadian-tax"
-                      className="block py-2 text-sm text-text hover:text-primary-dark transition-colors"
+                      className="block py-2 text-sm text-text hover:text-primary transition-colors"
                       onClick={closeMenu}
                     >
                       Canadian Tax
                     </Link>
                     <Link
                       to="/articles/category/accounting"
-                      className="block py-2 text-sm text-text hover:text-primary-dark transition-colors"
+                      className="block py-2 text-sm text-text hover:text-primary transition-colors"
                       onClick={closeMenu}
                     >
                       Accounting
                     </Link>
                     <Link
                       to="/articles/category/technology"
-                      className="block py-2 text-sm text-text hover:text-primary-dark transition-colors"
+                      className="block py-2 text-sm text-text hover:text-primary transition-colors"
                       onClick={closeMenu}
                     >
                       Technology

@@ -167,6 +167,9 @@ const keywords = [
   'Canadian ARO accounting',
 ]
 
+const fieldClassName =
+  'rounded border border-white/20 bg-white/10 px-3 py-3 text-white placeholder:text-white/40 focus:border-white focus:outline-none focus:ring-1 focus:ring-white/40'
+
 const AroSuitePage: FC = () => {
   const [formData, setFormData] = useState({
     name: '',
@@ -256,52 +259,48 @@ const AroSuitePage: FC = () => {
           { name: 'ARO Suite', path: '/products/aro-suite' },
         ]}
       />
-      <main className="aro-suite-page bg-[#f7f8f9] text-[#0b1f17]">
-        {/* Product bar */}
-        <div className="border-b border-[#d8ddd9] bg-white">
-          <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-3 px-md py-4">
-            <div className="text-lg font-semibold tracking-tight text-[#0b1f17]">ARO Suite</div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#5f6b64]">
-              · Pre-release · Design partner program open
+      <main className="bg-white text-text-body">
+        {/* Status bar */}
+        <div className="border-b border-border bg-background-band">
+          <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-3 px-md py-3">
+            <div className="text-base font-semibold tracking-tight text-primary">ARO Suite</div>
+            <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-light">
+              Pre-release · Design partner program open
             </p>
           </div>
         </div>
 
         {/* Hero */}
-        <section className="border-b border-[#d8ddd9] bg-white">
+        <section className="border-b border-border bg-gradient-to-b from-background-band to-background">
           <div className="mx-auto grid max-w-[1180px] gap-0 px-md lg:grid-cols-[180px_minmax(0,1fr)_340px]">
-            <aside className="border-b border-[#d8ddd9] py-xl lg:border-b-0 lg:border-r lg:pr-lg">
-              <p className="mb-md text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5f6b64]">
-                Frameworks
-              </p>
+            <aside className="border-b border-border py-xl lg:border-b-0 lg:border-r lg:pr-lg">
+              <p className="eyebrow mb-md">Frameworks</p>
               <ul className="m-0 list-none space-y-3 p-0">
                 {frameworks.map((item) => (
-                  <li key={item} className="text-sm font-medium text-[#0b1f17]">
+                  <li key={item} className="text-sm font-medium text-text">
                     {item}
                   </li>
                 ))}
               </ul>
             </aside>
 
-            <div className="border-b border-[#d8ddd9] py-xl lg:border-b-0 lg:border-r lg:px-xl">
-              <p className="mb-md text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5f6b64]">
-                Asset retirement obligations
-              </p>
-              <h1 className="mb-md text-4xl font-bold leading-tight text-[#0b1f17] lg:text-5xl">
+            <div className="border-b border-border py-xl lg:border-b-0 lg:border-r lg:px-xl">
+              <p className="eyebrow mb-md">Asset retirement obligations</p>
+              <h1 className="mb-md text-4xl font-semibold leading-tight text-primary lg:text-5xl">
                 Own the ARO process, end to end.
               </h1>
-              <p className="mb-md text-base leading-relaxed text-[#3d4a43] lg:text-lg">
+              <p className="mb-md text-base leading-relaxed text-text-body lg:text-lg">
                 One asset register, four reporting frameworks, and an engine that knows the
                 difference between them. ASPE and US GAAP lock a rate onto every layer; IFRS and
                 PSAS carry a single current rate. Get that wrong and every figure downstream is
                 wrong with it.
               </p>
-              <p className="mb-lg text-base leading-relaxed text-[#3d4a43]">
+              <p className="mb-lg text-base leading-relaxed text-text-body">
                 Scoping, measurement, close, roll-forward, disclosure note and the audit file — in
                 one place. Built by Canadian CPAs who have signed off on these balances.
               </p>
               <div className="mb-lg flex flex-wrap gap-3">
-                <a href="#design-partner" className="btn inline-flex bg-[#0b1f17] text-white hover:bg-[#16352a]">
+                <a href="#design-partner" className="btn btn--primary">
                   Request a design partner session
                 </a>
                 <a
@@ -309,7 +308,7 @@ const AroSuitePage: FC = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   download={PS3280_CHECKLIST_FILENAME}
-                  className="btn inline-flex border-2 border-[#0b1f17] bg-transparent text-[#0b1f17] hover:bg-[#0b1f17] hover:text-white"
+                  className="btn btn--secondary"
                 >
                   Get the PS 3280 scoping checklist
                 </a>
@@ -317,34 +316,34 @@ const AroSuitePage: FC = () => {
                   href={ARO_SUITE_APP_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn inline-flex border border-[#c5c8cc] bg-white text-[#0b1f17] hover:border-[#0b1f17]"
+                  className="btn btn--secondary"
                 >
                   Open ARO Suite
                 </a>
               </div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#5f6b64]">
+              <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-light">
                 CPA · CMA · CGAP · MBA · Canadian-built
               </p>
             </div>
 
             <aside className="py-xl lg:pl-lg">
-              <div className="rounded-lg border border-[#d8ddd9] bg-white p-md shadow-sm">
+              <div className="rounded border border-border bg-white p-md shadow-sm">
                 <div className="mb-sm flex items-start justify-between gap-3">
                   <div>
-                    <h2 className="m-0 text-base font-semibold text-[#0b1f17]">
+                    <h2 className="m-0 text-base font-semibold text-primary">
                       Roll-forward of asset retirement obligations
                     </h2>
-                    <p className="mt-1 text-xs text-[#5f6b64]">
+                    <p className="mt-1 mb-0 text-xs text-text-light">
                       Year ended March 31 · PSAS (PS 3280)
                     </p>
                   </div>
-                  <span className="shrink-0 rounded bg-[#eef1ef] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#5f6b64]">
+                  <span className="shrink-0 rounded bg-background px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-text-light">
                     Illustrative
                   </span>
                 </div>
                 <table className="w-full border-collapse text-sm">
                   <thead>
-                    <tr className="border-b border-[#d8ddd9] text-left text-[11px] uppercase tracking-wider text-[#5f6b64]">
+                    <tr className="border-b border-border text-left text-[11px] uppercase tracking-wider text-text-light">
                       <th className="py-2 font-semibold">Line</th>
                       <th className="py-2 text-right font-semibold">$</th>
                     </tr>
@@ -353,15 +352,15 @@ const AroSuitePage: FC = () => {
                     {rollForwardRows.map((row) => (
                       <tr
                         key={row.line}
-                        className={`border-b border-[#ecefeb] ${row.emphasize ? 'font-semibold' : ''}`}
+                        className={`border-b border-border/70 ${row.emphasize ? 'font-semibold' : ''}`}
                       >
-                        <td className="py-2.5 pr-3 text-[#0b1f17]">{row.line}</td>
-                        <td className="py-2.5 text-right tabular-nums text-[#0b1f17]">{row.amount}</td>
+                        <td className="py-2.5 pr-3 text-text">{row.line}</td>
+                        <td className="py-2.5 text-right tabular-nums text-text">{row.amount}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-                <p className="mt-md text-[11px] leading-relaxed text-[#5f6b64]">
+                <p className="mt-md mb-0 text-[11px] leading-relaxed text-text-light">
                   Foots to the cent, and independently derived. The roll-forward is computed from
                   the event ledger, not from the journals — so the check that a batch&apos;s net
                   movement equals closing less opening is actually falsifiable. Measurement stamp
@@ -374,30 +373,30 @@ const AroSuitePage: FC = () => {
         </section>
 
         {/* 01 Framework engine */}
-        <section className="border-b border-[#d8ddd9] bg-white">
+        <section className="border-b border-border bg-white">
           <div className="mx-auto grid max-w-[1180px] gap-xl px-md py-xxl lg:grid-cols-[180px_minmax(0,1fr)]">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5f6b64]">01</p>
-              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#0b1f17]">
+              <p className="eyebrow mb-2">01</p>
+              <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
                 The framework engine
               </p>
             </div>
             <div>
-              <h2 className="mb-md text-3xl font-bold text-[#0b1f17] lg:text-4xl">
+              <h2 className="mb-md text-3xl font-semibold text-primary lg:text-4xl">
                 The difference between the four standards is not cosmetic. It is the model.
               </h2>
-              <p className="mb-lg max-w-3xl text-base leading-relaxed text-[#3d4a43]">
+              <p className="mb-lg max-w-3xl text-base leading-relaxed text-text-body">
                 Most ARO tooling implements one framework and paints the others on. The measurement
                 mechanics genuinely diverge, and the divergence compounds every year you carry the
                 balance forward.
               </p>
-              <p className="mb-md text-[11px] font-semibold uppercase tracking-[0.14em] text-[#5f6b64]">
+              <p className="mb-md text-[11px] font-semibold uppercase tracking-[0.14em] text-text-light">
                 How each framework measures · Summary — the Handbook governs
               </p>
-              <div className="overflow-x-auto rounded-lg border border-[#d8ddd9]">
+              <div className="overflow-x-auto rounded border border-border">
                 <table className="w-full min-w-[640px] border-collapse text-sm">
-                  <thead className="bg-[#f7f8f9]">
-                    <tr className="text-left text-[11px] uppercase tracking-wider text-[#5f6b64]">
+                  <thead className="bg-background">
+                    <tr className="text-left text-[11px] uppercase tracking-wider text-text-light">
                       <th className="px-4 py-3 font-semibold">Framework</th>
                       <th className="px-4 py-3 font-semibold">Discount rate basis</th>
                       <th className="px-4 py-3 font-semibold">Rate per layer</th>
@@ -405,16 +404,16 @@ const AroSuitePage: FC = () => {
                   </thead>
                   <tbody>
                     {frameworkRows.map((row) => (
-                      <tr key={row.framework} className="border-t border-[#ecefeb] align-top">
-                        <td className="px-4 py-3 font-medium text-[#0b1f17]">{row.framework}</td>
-                        <td className="px-4 py-3 text-[#3d4a43]">{row.rateBasis}</td>
-                        <td className="px-4 py-3 text-[#3d4a43]">{row.ratePerLayer}</td>
+                      <tr key={row.framework} className="border-t border-border align-top">
+                        <td className="px-4 py-3 font-medium text-text">{row.framework}</td>
+                        <td className="px-4 py-3 text-text-body">{row.rateBasis}</td>
+                        <td className="px-4 py-3 text-text-body">{row.ratePerLayer}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <p className="mt-lg max-w-3xl text-base leading-relaxed text-[#3d4a43]">
+              <p className="mt-lg mb-0 max-w-3xl text-base leading-relaxed text-text-body">
                 Change the framework on a unit and the engine remeasures it. Layered frameworks keep
                 every historical rate on its own cost increment; single-rate frameworks reprice the
                 whole obligation and present the layers as a record of when the obligation arose.
@@ -426,28 +425,28 @@ const AroSuitePage: FC = () => {
         </section>
 
         {/* 02 What it covers */}
-        <section className="border-b border-[#d8ddd9] bg-[#f7f8f9]">
+        <section className="border-b border-border bg-background">
           <div className="mx-auto grid max-w-[1180px] gap-xl px-md py-xxl lg:grid-cols-[180px_minmax(0,1fr)]">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5f6b64]">02</p>
-              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#0b1f17]">
+              <p className="eyebrow mb-2">02</p>
+              <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
                 What it covers
               </p>
             </div>
             <div>
-              <h2 className="mb-md text-3xl font-bold text-[#0b1f17] lg:text-4xl">
+              <h2 className="mb-md text-3xl font-semibold text-primary lg:text-4xl">
                 Six stages, from the PP&amp;E extract to the partner&apos;s signature.
               </h2>
-              <p className="mb-xl max-w-3xl text-base leading-relaxed text-[#3d4a43]">
+              <p className="mb-xl max-w-3xl text-base leading-relaxed text-text-body">
                 Not a calculator bolted onto a spreadsheet. The whole process, in the order a
                 reporting team actually works it, with each stage gating the next.
               </p>
               <div className="grid gap-md md:grid-cols-2">
                 {stages.map((stage) => (
-                  <article key={stage.title} className="rounded-lg border border-[#d8ddd9] bg-white p-md">
-                    <h3 className="mb-sm text-xl font-semibold text-[#0b1f17]">{stage.title}</h3>
-                    <p className="mb-md text-sm leading-relaxed text-[#3d4a43]">{stage.body}</p>
-                    <p className="m-0 text-xs leading-relaxed text-[#5f6b64]">{stage.tags.join(' · ')}</p>
+                  <article key={stage.title} className="rounded border border-border bg-white p-md">
+                    <h3 className="mb-sm text-xl font-semibold text-primary">{stage.title}</h3>
+                    <p className="mb-md text-sm leading-relaxed text-text-body">{stage.body}</p>
+                    <p className="m-0 text-xs leading-relaxed text-text-light">{stage.tags.join(' · ')}</p>
                   </article>
                 ))}
               </div>
@@ -456,31 +455,31 @@ const AroSuitePage: FC = () => {
         </section>
 
         {/* 03 Why not the workbook */}
-        <section className="border-b border-[#d8ddd9] bg-white">
+        <section className="border-b border-border bg-white">
           <div className="mx-auto grid max-w-[1180px] gap-xl px-md py-xxl lg:grid-cols-[180px_minmax(0,1fr)]">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5f6b64]">03</p>
-              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#0b1f17]">
+              <p className="eyebrow mb-2">03</p>
+              <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
                 Why not the workbook
               </p>
             </div>
             <div>
-              <h2 className="mb-md text-3xl font-bold text-[#0b1f17] lg:text-4xl">
+              <h2 className="mb-md text-3xl font-semibold text-primary lg:text-4xl">
                 Excel gets the arithmetic right. It cannot produce the evidence.
               </h2>
-              <p className="mb-xl max-w-3xl text-base leading-relaxed text-[#3d4a43]">
+              <p className="mb-xl max-w-3xl text-base leading-relaxed text-text-body">
                 ARO is one of the few balances where the calculation, the evidence and the disclosure
                 all have to survive an auditor asking “show me how you got here” three years after
                 the person who built the model left.
               </p>
               <div className="grid gap-md md:grid-cols-2">
                 {workbookRisks.map((risk, index) => (
-                  <article key={risk.title} className="border-t border-[#d8ddd9] pt-md">
-                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#5f6b64]">
+                  <article key={risk.title} className="border-t border-border pt-md">
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-light">
                       Risk {index + 1}
                     </p>
-                    <h3 className="mb-sm text-xl font-semibold text-[#0b1f17]">{risk.title}</h3>
-                    <p className="m-0 text-sm leading-relaxed text-[#3d4a43]">{risk.body}</p>
+                    <h3 className="mb-sm text-xl font-semibold text-primary">{risk.title}</h3>
+                    <p className="m-0 text-sm leading-relaxed text-text-body">{risk.body}</p>
                   </article>
                 ))}
               </div>
@@ -489,23 +488,23 @@ const AroSuitePage: FC = () => {
         </section>
 
         {/* 04 How it fits */}
-        <section className="border-b border-[#d8ddd9] bg-[#f7f8f9]">
+        <section className="border-b border-border bg-background">
           <div className="mx-auto grid max-w-[1180px] gap-xl px-md py-xxl lg:grid-cols-[180px_minmax(0,1fr)]">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5f6b64]">04</p>
-              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#0b1f17]">
+              <p className="eyebrow mb-2">04</p>
+              <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
                 How it fits
               </p>
             </div>
             <div>
-              <h2 className="mb-xl text-3xl font-bold text-[#0b1f17] lg:text-4xl">
+              <h2 className="mb-xl text-3xl font-semibold text-primary lg:text-4xl">
                 No integration project, and it can run inside your building.
               </h2>
               <div className="grid gap-lg md:grid-cols-2">
                 {fitPoints.map((point) => (
                   <article key={point.title}>
-                    <h3 className="mb-sm text-xl font-semibold text-[#0b1f17]">{point.title}</h3>
-                    <p className="m-0 text-sm leading-relaxed text-[#3d4a43]">{point.body}</p>
+                    <h3 className="mb-sm text-xl font-semibold text-primary">{point.title}</h3>
+                    <p className="m-0 text-sm leading-relaxed text-text-body">{point.body}</p>
                   </article>
                 ))}
               </div>
@@ -514,41 +513,41 @@ const AroSuitePage: FC = () => {
         </section>
 
         {/* 05 Who is building it */}
-        <section className="border-b border-[#d8ddd9] bg-white">
+        <section className="border-b border-border bg-white">
           <div className="mx-auto grid max-w-[1180px] gap-xl px-md py-xxl lg:grid-cols-[180px_minmax(0,1fr)]">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5f6b64]">05</p>
-              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#0b1f17]">
+              <p className="eyebrow mb-2">05</p>
+              <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
                 Who is building it
               </p>
             </div>
             <div>
-              <h2 className="mb-md text-3xl font-bold text-[#0b1f17] lg:text-4xl">
+              <h2 className="mb-md text-3xl font-semibold text-primary lg:text-4xl">
                 Built by auditors. Designed for controllers.
               </h2>
-              <p className="mb-xl max-w-3xl text-base leading-relaxed text-[#3d4a43]">
+              <p className="mb-xl max-w-3xl text-base leading-relaxed text-text-body">
                 A boutique firm, not a venture-funded platform team. You will talk to the people
                 writing the measurement engine.
               </p>
               <div className="grid gap-md md:grid-cols-2">
-                <article className="rounded-lg border border-[#d8ddd9] p-md">
-                  <h3 className="mb-1 text-xl font-semibold text-[#0b1f17]">Roger Reid</h3>
-                  <p className="mb-md text-[11px] font-semibold uppercase tracking-[0.14em] text-[#5f6b64]">
+                <article className="rounded border border-border p-md">
+                  <h3 className="mb-1 text-xl font-semibold text-primary">Roger Reid</h3>
+                  <p className="mb-md text-[11px] font-semibold uppercase tracking-[0.14em] text-text-light">
                     CPA · CMA · CGAP
                   </p>
-                  <p className="m-0 text-sm leading-relaxed text-[#3d4a43]">
+                  <p className="m-0 text-sm leading-relaxed text-text-body">
                     Public sector accounting, government audit, and the engagements that put Axiom
                     in front of PS 3280 adoption and ARO measurement work.
                   </p>
                 </article>
-                <article className="rounded-lg border border-[#d8ddd9] p-md">
-                  <h3 className="mb-1 text-xl font-semibold text-[#0b1f17]">
+                <article className="rounded border border-border p-md">
+                  <h3 className="mb-1 text-xl font-semibold text-primary">
                     Axiom Financial &amp; Technology
                   </h3>
-                  <p className="mb-md text-[11px] font-semibold uppercase tracking-[0.14em] text-[#5f6b64]">
+                  <p className="mb-md text-[11px] font-semibold uppercase tracking-[0.14em] text-text-light">
                     Accounting · Advisory · Automation · Intelligence
                   </p>
-                  <p className="m-0 text-sm leading-relaxed text-[#3d4a43]">
+                  <p className="m-0 text-sm leading-relaxed text-text-body">
                     Corporate financial infrastructure, internal controls, and software-led audit
                     assurance — the same practice that delivers ICFM/ICFR and client portal systems.
                   </p>
@@ -559,16 +558,18 @@ const AroSuitePage: FC = () => {
         </section>
 
         {/* 06 Design partner */}
-        <section id="design-partner" className="border-b border-[#d8ddd9] bg-[#0b1f17] text-white">
+        <section id="design-partner" className="border-b border-border bg-primary text-white">
           <div className="mx-auto grid max-w-[1180px] gap-xl px-md py-xxl lg:grid-cols-[180px_minmax(0,1fr)]">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/60">06</p>
-              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/85">
+              <p className="mb-2 text-[0.7rem] font-bold uppercase tracking-[0.2em] text-[#e0a877]">
+                06
+              </p>
+              <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/85">
                 Design partner program
               </p>
             </div>
             <div>
-              <h2 className="mb-md text-3xl font-bold lg:text-4xl">
+              <h2 className="mb-md text-3xl font-semibold text-white lg:text-4xl">
                 We are looking for three to five design partners.
               </h2>
               <p className="mb-xl max-w-3xl text-base leading-relaxed text-white/80">
@@ -587,7 +588,7 @@ const AroSuitePage: FC = () => {
                       name="name"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="rounded-lg border border-white/20 bg-white/10 px-3 py-3 text-white placeholder:text-white/40 focus:border-white focus:outline-none"
+                      className={fieldClassName}
                       placeholder="Your name"
                     />
                   </label>
@@ -599,7 +600,7 @@ const AroSuitePage: FC = () => {
                       name="email"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="rounded-lg border border-white/20 bg-white/10 px-3 py-3 text-white placeholder:text-white/40 focus:border-white focus:outline-none"
+                      className={fieldClassName}
                       placeholder="you@organization.ca"
                     />
                   </label>
@@ -611,7 +612,7 @@ const AroSuitePage: FC = () => {
                     name="organization"
                     value={formData.organization}
                     onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
-                    className="rounded-lg border border-white/20 bg-white/10 px-3 py-3 text-white placeholder:text-white/40 focus:border-white focus:outline-none"
+                    className={fieldClassName}
                     placeholder="Municipality, Crown corp, firm, or company"
                   />
                 </label>
@@ -622,7 +623,7 @@ const AroSuitePage: FC = () => {
                     name="framework"
                     value={formData.framework}
                     onChange={(e) => setFormData({ ...formData, framework: e.target.value })}
-                    className="rounded-lg border border-white/20 bg-[#0b1f17] px-3 py-3 text-white focus:border-white focus:outline-none"
+                    className={`${fieldClassName} bg-primary`}
                   >
                     <option value="">Select a framework</option>
                     {frameworkOptions.map((option) => (
@@ -639,7 +640,7 @@ const AroSuitePage: FC = () => {
                     name="interest"
                     value={formData.interest}
                     onChange={(e) => setFormData({ ...formData, interest: e.target.value })}
-                    className="rounded-lg border border-white/20 bg-[#0b1f17] px-3 py-3 text-white focus:border-white focus:outline-none"
+                    className={`${fieldClassName} bg-primary`}
                   >
                     <option value="">Select an option</option>
                     {interestOptions.map((option) => (
@@ -653,12 +654,12 @@ const AroSuitePage: FC = () => {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="btn inline-flex bg-white text-[#0b1f17] hover:bg-[#eef1ef] disabled:opacity-60"
+                    className="btn btn--primary disabled:opacity-60"
                   >
                     {isSubmitting ? 'Sending…' : 'Send request'}
                   </button>
                   {submitStatus === 'success' && (
-                    <p className="m-0 text-sm text-emerald-200">Request sent. We will follow up shortly.</p>
+                    <p className="m-0 text-sm text-[#b8e0c4]">Request sent. We will follow up shortly.</p>
                   )}
                   {submitStatus === 'error' && (
                     <p className="m-0 text-sm text-red-200">{errorMessage}</p>
@@ -678,25 +679,25 @@ const AroSuitePage: FC = () => {
         <section className="bg-white">
           <div className="mx-auto grid max-w-[1180px] gap-xl px-md py-xxl lg:grid-cols-[180px_minmax(0,1fr)]">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5f6b64]">07</p>
-              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#0b1f17]">
+              <p className="eyebrow mb-2">07</p>
+              <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
                 Free resource
               </p>
             </div>
             <div>
-              <h2 className="mb-md text-3xl font-bold text-[#0b1f17] lg:text-4xl">
+              <h2 className="mb-md text-3xl font-semibold text-primary lg:text-4xl">
                 The PS 3280 audit-readiness and asset scoping checklist.
               </h2>
-              <p className="mb-lg max-w-3xl text-base leading-relaxed text-[#3d4a43]">
+              <p className="mb-lg max-w-3xl text-base leading-relaxed text-text-body">
                 Ungated, no form wall. The source-of-obligation test, the asset classes where
                 obligations hide, the transition decision record, the discount rate provenance test,
                 and a self-audit of the workbook against what an auditor will actually ask for.
               </p>
-              <p className="mb-lg max-w-3xl text-base leading-relaxed text-[#3d4a43]">
+              <p className="mb-lg max-w-3xl text-base leading-relaxed text-text-body">
                 It is the same scoping logic the product implements — useful whether or not you ever
                 open ARO Suite. For an independent browser-side recalculation of ARO extracts, see
                 the{' '}
-                <Link to="/resources/aro-recalculation" className="underline underline-offset-2 text-[#0b1f17]">
+                <Link to="/resources/aro-recalculation" className="text-primary underline underline-offset-2">
                   ARO Recalculation
                 </Link>{' '}
                 calculator.
@@ -706,7 +707,7 @@ const AroSuitePage: FC = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 download={PS3280_CHECKLIST_FILENAME}
-                className="btn inline-flex bg-[#0b1f17] text-white hover:bg-[#16352a]"
+                className="btn btn--primary"
               >
                 Download the checklist
               </a>

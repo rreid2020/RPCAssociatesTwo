@@ -140,32 +140,38 @@ export const services: Service[] = [
     slug: 'fractional-controller',
     pill: 'Advisory',
     title: 'Fractional Controller & Business Advisory',
-    intro: 'Senior-level financial insight without the cost of a full-time hire.',
+    intro:
+      'Fixed-fee, fixed-scope fractional controller work that starts with a guaranteed Finance Function Review.',
     bullets: [
-      'Budgeting and variance analysis',
-      'KPI design and monitoring',
-      'Support for pricing, hiring, and capital decisions',
-      'Regular financial review meetings'
+      'Published prices and written scope',
+      'Finance Function Review before any retainer',
+      'Month-end close, cash, KPIs, and controls',
+      'Systems automation that reduces manual hours',
     ],
     details: [
       {
-        title: 'Budgeting and Variance Analysis',
-        description: 'We develop comprehensive budgets aligned with your business goals and regularly analyze variances to identify trends and opportunities. This process helps you stay on track financially and make adjustments as needed throughout the year.'
+        title: 'Finance Function Review',
+        description:
+          'Every engagement starts with a three-week, fixed-fee review of your books, close, controls, and systems — with a costed remediation plan you own whether or not you retain us.'
       },
       {
-        title: 'KPI Design and Monitoring',
-        description: 'We help identify and design key performance indicators (KPIs) that matter most to your business. We then monitor these metrics regularly, providing insights into performance trends and areas that need attention.'
+        title: 'Fixed Scope Monthly Engagements',
+        description:
+          'Foundation, Core, and Advanced tiers with published monthly fees, defined deliverables, and out-of-scope work quoted before it starts.'
       },
       {
-        title: 'Support for Pricing, Hiring, and Capital Decisions',
-        description: 'Make informed decisions about pricing strategies, hiring plans, and capital investments with our financial analysis and advisory support. We provide the data and insights you need to evaluate options and understand the financial impact of your decisions.'
+        title: 'Close, Reporting, and Cash Discipline',
+        description:
+          'Month-end oversight, reporting packs with commentary, rolling cash flow, budget and reforecast support, and lender or board reporting where needed.'
       },
       {
-        title: 'Regular Financial Review Meetings',
-        description: 'Regular financial review meetings ensure you stay informed about your business\'s financial performance and have a forum to discuss questions, concerns, and opportunities. These meetings help you make timely decisions and stay ahead of potential issues.'
+        title: 'Controls and Automation',
+        description:
+          'Risk and control assessment is part of the review. Reducing manual close hours through systems work is an explicit engagement objective.'
       }
     ],
-    metaDescription: 'Fractional controller and business advisory services in Ottawa, Canada. Senior-level financial insight with budgeting, variance analysis, KPI design and monitoring, strategic decision support, and regular financial review meetings. Expert CPA advisory services.'
+    metaDescription:
+      'Most fractional controller engagements fail the same four ways. Ours are fixed-fee, fixed-scope, and start with a guaranteed Finance Function Review. Ottawa-based, CPA-led.'
   },
   {
     slug: 'tech-solutions',

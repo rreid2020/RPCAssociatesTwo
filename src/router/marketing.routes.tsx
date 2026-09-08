@@ -6,6 +6,7 @@ import Home from '../pages/Home'
 import Services from '../pages/Services'
 import ServiceDetail from '../pages/ServiceDetail'
 import IcfmIcfrService from '../pages/IcfmIcfrService'
+import FractionalControllerService from '../pages/FractionalControllerService'
 import Articles from '../pages/Articles'
 import ArticleCategory from '../pages/ArticleCategory'
 import ArticleDetail from '../pages/ArticleDetail'
@@ -31,6 +32,7 @@ export function getMarketingRoutes () {
               <Route path="/" element={<Home />} />
               <Route path="/services" element={<Services />} />
               <Route path="/services/icfm-icfr" element={<IcfmIcfrService />} />
+              <Route path="/services/fractional-controller" element={<FractionalControllerService />} />
               <Route path="/services/:slug" element={<ServiceDetail />} />
               <Route path="/products/aro-suite" element={<AroSuitePage />} />
               {getResourceRoutes()}

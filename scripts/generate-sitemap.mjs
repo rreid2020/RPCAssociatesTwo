@@ -121,9 +121,12 @@ async function generateSitemap() {
       url: `/services/${service.slug}`,
       priority: '0.9',
       changefreq: 'monthly',
-      sourceFiles: service.slug === 'icfm-icfr'
-        ? ['src/pages/IcfmIcfrService.tsx', 'src/lib/services/data.ts']
-        : ['src/pages/ServiceDetail.tsx', 'src/lib/services/data.ts']
+      sourceFiles:
+        service.slug === 'icfm-icfr'
+          ? ['src/pages/IcfmIcfrService.tsx', 'src/lib/services/data.ts']
+          : service.slug === 'fractional-controller'
+            ? ['src/pages/FractionalControllerService.tsx', 'src/lib/services/data.ts']
+            : ['src/pages/ServiceDetail.tsx', 'src/lib/services/data.ts']
     }))
 
     // Article pages

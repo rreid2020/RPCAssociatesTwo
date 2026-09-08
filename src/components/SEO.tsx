@@ -285,7 +285,7 @@ const SEO: FC<SEOProps> = ({
       <meta property="og:image" content={ogImage} />
       <meta property="og:image:width" content={OG_IMAGE_WIDTH} />
       <meta property="og:image:height" content={OG_IMAGE_HEIGHT} />
-      <meta property="og:image:alt" content={`${BRAND.nameFull} — ${BRAND.tagline}`} />
+      <meta property="og:image:alt" content={`${BRAND.nameFull} - ${BRAND.tagline}`} />
       <meta property="og:site_name" content={BRAND.nameFull} />
       <meta property="og:locale" content="en_CA" />
       {publishedDate && <meta property="article:published_time" content={publishedDate} />}
@@ -296,7 +296,7 @@ const SEO: FC<SEOProps> = ({
       <meta name="twitter:title" content={twitterTitleValue} />
       <meta name="twitter:description" content={twitterDescriptionValue} />
       <meta name="twitter:image" content={twitterImageValue} />
-      <meta name="twitter:image:alt" content={`${BRAND.nameFull} — ${BRAND.tagline}`} />
+      <meta name="twitter:image:alt" content={`${BRAND.nameFull} - ${BRAND.tagline}`} />
 
       <meta name="robots" content={robotsContent} />
       <meta name="googlebot" content={robotsContent} />

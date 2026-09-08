@@ -363,7 +363,23 @@ app.get('/robots.txt', (req, res) => {
 
 // Serve static files from the frontend build (dist folder)
 // Note: express.static only handles GET/HEAD requests, so it won't interfere with POST /api/leads
-app.use(express.static(distPath))
+app.use(express.static(distPath, {
+  index: false,
+  setHeaders (res, filePath) {
+    const normalized = String(filePath || '').replace(/\\/g, '/')
+    if (normalized.endsWith('.html')) {
+      // Always revalidate shell HTML so hashed JS/CSS references stay in sync after deploys.
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+      res.setHeader('Pragma', 'no-cache')
+      res.setHeader('Expires', '0')
+      return
+    }
+    if (normalized.includes('/assets/')) {
+      // Content-hashed assets are safe to cache permanently.
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+    }
+  }
+}))
 
 // Handle unmatched API routes (for debugging)
 app.use('/api', (req, res, next) => {
@@ -395,8 +411,12 @@ app.get('*', (req, res, next) => {
     return next()
   }
   // Serve index.html for all other routes (React Router will handle routing)
-  if (existsSync(path.join(distPath, 'index.html'))) {
-    res.sendFile(path.join(distPath, 'index.html'))
+  const indexHtmlPath = path.join(distPath, 'index.html')
+  if (existsSync(indexHtmlPath)) {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+    res.setHeader('Pragma', 'no-cache')
+    res.setHeader('Expires', '0')
+    res.sendFile(indexHtmlPath)
   } else {
     res.status(404).json({ error: 'Frontend not built. Please check build process.' })
   }

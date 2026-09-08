@@ -3,6 +3,54 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Asset-load recovery must run before Vite injects the hashed module entry.
+      Vite moves type=module scripts into <head> and drops onerror attributes, so a
+      capturing listener is required to recover from stale post-deploy caches.
+    -->
+    <script>
+      (function () {
+        var ENTRY_RELOAD_KEY = 'axiom:entry-reload'
+        window.__loadAxiomAppFallback = function () {
+          try {
+            if (window.sessionStorage.getItem(ENTRY_RELOAD_KEY) === '1') return
+            window.sessionStorage.setItem(ENTRY_RELOAD_KEY, '1')
+          } catch (_) {}
+          window.location.reload()
+        }
+
+        function isStaleModuleMessage (message) {
+          var msg = String(message || '')
+          return (
+            msg.indexOf('Failed to fetch dynamically imported module') !== -1 ||
+            msg.indexOf('Importing a module script failed') !== -1 ||
+            msg.indexOf('error loading dynamically imported module') !== -1 ||
+            msg.indexOf('does not provide an export named') !== -1
+          )
+        }
+
+        window.addEventListener('error', function (event) {
+          var target = event && event.target
+          if (!target || !target.tagName) return
+          var tag = String(target.tagName).toUpperCase()
+          if (tag === 'SCRIPT' && target.type === 'module') {
+            window.__loadAxiomAppFallback()
+            return
+          }
+          if (tag === 'LINK' && target.rel === 'stylesheet') {
+            window.__loadAxiomAppFallback()
+          }
+        }, true)
+
+        window.addEventListener('unhandledrejection', function (event) {
+          var reason = event && event.reason
+          var message = reason && reason.message ? reason.message : reason
+          if (isStaleModuleMessage(message)) {
+            window.__loadAxiomAppFallback()
+          }
+        })
+      })()
+    </script>
     
     <!-- Favicons: `npm run generate-favicons` when public/favicon.svg changes -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -33,7 +81,7 @@
     <meta property="og:image" content="https://axiomft.ca/og-image.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Axiom Financial &amp; Technology — Accounting, Advisory, Automation &amp; Intelligence" />
+    <meta property="og:image:alt" content="Axiom Financial &amp; Technology - Accounting, Advisory, Automation &amp; Intelligence" />
     <meta property="og:site_name" content="Axiom Financial &amp; Technology" />
     <meta property="og:locale" content="en_CA" />
     
@@ -57,18 +105,6 @@
   </head>
   <body>
     <div id="root"></div>
-    <script>
-      window.__loadAxiomAppFallback = function () {
-        // Production entry is injected by Vite with a content hash; reload once to pick up the latest deploy.
-        if (window.sessionStorage.getItem('axiom:entry-reload') === '1') return
-        window.sessionStorage.setItem('axiom:entry-reload', '1')
-        window.location.reload()
-      }
-    </script>
-    <script
-      type="module"
-      src="/src/main.tsx"
-      onerror="window.__loadAxiomAppFallback && window.__loadAxiomAppFallback()"
-    ></script>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

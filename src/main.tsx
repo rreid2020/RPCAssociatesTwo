@@ -15,26 +15,25 @@ if (!clerkPubKey) {
   console.warn('⚠️ VITE_CLERK_PUBLISHABLE_KEY is not set. Portal authentication will not work.')
 }
 
+const tree = clerkPubKey ? (
+  <ClerkProvider publishableKey={clerkPubKey}>
+    <ObservabilityProvider>
+      <AccountContextProvider>
+        <AccountAuthorizationProvider>
+          <App />
+        </AccountAuthorizationProvider>
+      </AccountContextProvider>
+    </ObservabilityProvider>
+  </ClerkProvider>
+) : (
+  // Marketing can still boot without Clerk. Portal auth routes will fail closed.
+  <ObservabilityProvider>
+    <App />
+  </ObservabilityProvider>
+)
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    {clerkPubKey ? (
-      <ClerkProvider publishableKey={clerkPubKey}>
-        <ObservabilityProvider>
-          <AccountContextProvider>
-            <AccountAuthorizationProvider>
-              <App />
-            </AccountAuthorizationProvider>
-          </AccountContextProvider>
-        </ObservabilityProvider>
-      </ClerkProvider>
-    ) : (
-      <ObservabilityProvider>
-        <AccountContextProvider>
-          <AccountAuthorizationProvider>
-            <App />
-          </AccountAuthorizationProvider>
-        </AccountContextProvider>
-      </ObservabilityProvider>
-    )}
+    {tree}
   </React.StrictMode>,
 )

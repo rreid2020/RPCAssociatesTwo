@@ -150,7 +150,6 @@ export const resources: ResourceDetail[] = [
       'A free, browser-only recalculation of asset retirement obligations. Import any workbook with the required columns (templates are provided), confirm the mapping, and compare the independent present and future values to what was reported. Nothing leaves this browser.',
     category: 'calculator',
     categoryLabel: 'Calculator',
-    externalUrl: ARO_RECALC_URL,
     requiresLeadCapture: false,
     benefits: [
       'Independent PV and FV recalculation obligation by obligation',

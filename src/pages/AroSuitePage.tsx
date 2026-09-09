@@ -1,9 +1,9 @@
 import { FC, FormEvent, useState } from 'react'
+import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 import { API_ENDPOINTS } from '../lib/config/api'
 import { parseFormApiJson } from '../lib/formApiResponse'
 import { SPACES_FILES } from '../lib/config/spaces'
-import { ARO_RECALC_URL } from '../lib/resources/resources'
 
 const ARO_SUITE_APP_URL = 'https://arosuite.axiomft.ca'
 const PS3280_CHECKLIST_URL = SPACES_FILES.ps3280AuditReadinessChecklist
@@ -697,14 +697,9 @@ const AroSuitePage: FC = () => {
                 It is the same scoping logic the product implements — useful whether or not you ever
                 open ARO Suite. For an independent browser-side recalculation of ARO extracts, see
                 the{' '}
-                <a
-                  href={ARO_RECALC_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary underline underline-offset-2"
-                >
+                <Link to="/resources/aro-recalculation" className="text-primary underline underline-offset-2">
                   ARO Recalculation
-                </a>{' '}
+                </Link>{' '}
                 calculator.
               </p>
               <a

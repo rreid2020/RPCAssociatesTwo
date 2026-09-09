@@ -34,6 +34,7 @@ const ROUTES = [
   '/resources/cash-flow-statement-direct-method',
   '/resources/donation-credit-optimizer',
   '/resources/ccpc-salary-dividend-calculator',
+  '/resources/aro-recalculation',
   '/resources/cash-flow-statement-template',
   '/resources/icfm-icfr-templates',
   '/resources/cfi-financial-ratios-guide',

@@ -16,7 +16,15 @@
             if (window.sessionStorage.getItem(ENTRY_RELOAD_KEY) === '1') return
             window.sessionStorage.setItem(ENTRY_RELOAD_KEY, '1')
           } catch (_) {}
-          window.location.reload()
+          // Full navigation recovers more reliably than reload() when the module
+          // graph already failed midway through evaluation.
+          try {
+            var url = new URL(window.location.href)
+            url.searchParams.set('_boot', String(Date.now()))
+            window.location.replace(url.toString())
+          } catch (_) {
+            window.location.reload()
+          }
         }
 
         function isStaleModuleMessage (message) {
@@ -25,19 +33,27 @@
             msg.indexOf('Failed to fetch dynamically imported module') !== -1 ||
             msg.indexOf('Importing a module script failed') !== -1 ||
             msg.indexOf('error loading dynamically imported module') !== -1 ||
-            msg.indexOf('does not provide an export named') !== -1
+            msg.indexOf('does not provide an export named') !== -1 ||
+            msg.indexOf('Failed to load module script') !== -1 ||
+            msg.indexOf('Expected a JavaScript') !== -1 ||
+            (msg.indexOf('MIME type') !== -1 && msg.indexOf('text/html') !== -1)
           )
         }
 
         window.addEventListener('error', function (event) {
           var target = event && event.target
-          if (!target || !target.tagName) return
-          var tag = String(target.tagName).toUpperCase()
-          if (tag === 'SCRIPT' && target.type === 'module') {
-            window.__loadAxiomAppFallback()
-            return
+          if (target && target.tagName) {
+            var tag = String(target.tagName).toUpperCase()
+            if (tag === 'SCRIPT' && target.type === 'module') {
+              window.__loadAxiomAppFallback()
+              return
+            }
+            if (tag === 'LINK' && target.rel === 'stylesheet') {
+              window.__loadAxiomAppFallback()
+              return
+            }
           }
-          if (tag === 'LINK' && target.rel === 'stylesheet') {
+          if (isStaleModuleMessage(event && event.message)) {
             window.__loadAxiomAppFallback()
           }
         }, true)
@@ -49,6 +65,14 @@
             window.__loadAxiomAppFallback()
           }
         })
+
+        // If the entry module never mounts React (stale deploy / silent module failure),
+        // recover once. Timeout is generous so slow first downloads are not false positives.
+        window.setTimeout(function () {
+          if (!window.__axiomAppMounted) {
+            window.__loadAxiomAppFallback()
+          }
+        }, 10000)
       })()
     </script>
     
@@ -104,7 +128,14 @@
     <link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div
+        id="axiom-boot"
+        style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f4f7fa;color:#00204a;font-family:Georgia,'Iowan Old Style','Times New Roman',serif;font-size:1.05rem;letter-spacing:0.02em;"
+      >
+        Loading Axiom…
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

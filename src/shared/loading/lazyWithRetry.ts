@@ -9,7 +9,10 @@ export function isStaleChunkError (error: unknown): boolean {
   return (
     message.includes('does not provide an export named') ||
     message.includes('Failed to fetch dynamically imported module') ||
-    message.includes('Importing a module script failed')
+    message.includes('Importing a module script failed') ||
+    message.includes('Failed to load module script') ||
+    message.includes('Expected a JavaScript') ||
+    (message.includes('MIME type') && message.includes('text/html'))
   )
 }
 

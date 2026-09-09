@@ -381,6 +381,13 @@ app.use(express.static(distPath, {
   }
 }))
 
+// Hashed Vite assets must never fall through to the SPA HTML shell.
+// Serving index.html as application/javascript leaves a blank page until a manual refresh.
+app.use('/assets', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store')
+  res.status(404).type('text/plain').send('Not found')
+})
+
 // Handle unmatched API routes (for debugging)
 app.use('/api', (req, res, next) => {
   console.log(`Unmatched API route: ${req.method} ${req.path}`)
@@ -409,6 +416,11 @@ app.get('*', (req, res, next) => {
   // Skip API routes (both GET and POST should be handled by API routes above)
   if (req.path.startsWith('/api')) {
     return next()
+  }
+  // Never SPA-fallback build output or common static extensions as HTML.
+  if (/\.(?:js|mjs|css|map|json|txt|xml|ico|png|jpe?g|gif|svg|webp|woff2?|ttf|eot)$/i.test(req.path)) {
+    res.setHeader('Cache-Control', 'no-store')
+    return res.status(404).type('text/plain').send('Not found')
   }
   // Serve index.html for all other routes (React Router will handle routing)
   const indexHtmlPath = path.join(distPath, 'index.html')

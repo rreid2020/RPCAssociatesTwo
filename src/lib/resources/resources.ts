@@ -20,13 +20,13 @@ export interface ResourceDetail {
   fileSize?: string
   /** Multiple downloadable files (e.g. ICFM/ICFR process pack) */
   downloads?: ResourceDownload[]
+  /** When set, resource cards open this URL in a new window instead of an in-site route. */
+  externalUrl?: string
   requiresLeadCapture: boolean
   benefits?: string[]
   features?: string[]
   metaDescription: string
   keywords: string[]
-  /** Opens in a new tab instead of an in-site page. */
-  externalUrl?: string
 }
 
 export const ARO_RECALC_URL = 'https://arorecalc.axiomft.ca'
@@ -150,8 +150,8 @@ export const resources: ResourceDetail[] = [
       'A free, browser-only recalculation of asset retirement obligations. Import any workbook with the required columns (templates are provided), confirm the mapping, and compare the independent present and future values to what was reported. Nothing leaves this browser.',
     category: 'calculator',
     categoryLabel: 'Calculator',
-    requiresLeadCapture: false,
     externalUrl: ARO_RECALC_URL,
+    requiresLeadCapture: false,
     benefits: [
       'Independent PV and FV recalculation obligation by obligation',
       'Any workbook with the required columns — templates included',

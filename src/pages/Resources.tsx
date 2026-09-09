@@ -70,7 +70,7 @@ const Resources: FC = () => {
                   ))}
                 </div>
               ) : (
-                <p className="text-text-light">Guides and resources coming soon.</p>
+                <p className="text-text-light">More publications coming soon.</p>
               )}
             </div>
           </div>

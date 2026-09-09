@@ -20,6 +20,7 @@ export function getResourceRoutes () {
       <Route path="/resources/cash-flow-statement-direct-method" element={<CashFlowStatementDirectMethod />} />
       <Route path="/resources/donation-credit-optimizer" element={<DonationOptimizerPage />} />
       <Route path="/resources/ccpc-salary-dividend-calculator" element={<TaxEngineCalculatorPage />} />
+      {/* Deprecated: tool moved to arorecalc.axiomft.ca — keep route for bookmarks */}
       <Route path="/resources/aro-recalculation" element={<ExternalRedirect to={ARO_RECALC_URL} />} />
       <Route path="/resources/cash-flow-statement-template" element={<ResourceDetail />} />
       <Route path="/resources/cfi-financial-ratios-guide" element={<ResourceDetail />} />
@@ -28,4 +29,3 @@ export function getResourceRoutes () {
     </Fragment>
   )
 }
-

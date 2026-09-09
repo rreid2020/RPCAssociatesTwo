@@ -1,6 +1,7 @@
 import { FC } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import SEO from '../components/SEO'
+import ResourceCard from '../components/ResourceCard'
 import { getResourceCategoryBySlug } from '../lib/resources/data'
 import { getResourcesByCategory, ResourceDetail } from '../lib/resources/resources'
 import CalendlyButton from '../components/CalendlyButton'
@@ -90,27 +91,8 @@ const ResourceCategory: FC = () => {
             {orderedResources.length > 0 ? (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg mb-xxl">
-                  {orderedResources.map((resource: ResourceDetail, index: number) => (
-                    <Link
-                      key={index}
-                      to={`/resources/${resource.slug}`}
-                      className="bg-white p-lg rounded-lg shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
-                    >
-                      <span className="pill mb-md">
-                        {resource.categoryLabel}
-                      </span>
-                      <h3 className="text-xl font-semibold text-primary mb-sm">
-                        {resource.title}
-                      </h3>
-                      <p className="text-text-light text-[0.9375rem] leading-relaxed mb-sm">
-                        {resource.shortDescription}
-                      </p>
-                      {resource.fileSize && (
-                        <p className="text-sm text-text-light m-0">
-                          File size: {resource.fileSize}
-                        </p>
-                      )}
-                    </Link>
+                  {orderedResources.map((resource: ResourceDetail) => (
+                    <ResourceCard key={resource.slug} resource={resource} />
                   ))}
                 </div>
                 <div className="text-center mb-xxl">

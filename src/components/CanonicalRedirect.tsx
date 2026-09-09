@@ -9,6 +9,12 @@ const CanonicalRedirect: FC = () => {
   const location = useLocation()
 
   useEffect(() => {
+    const normalizedPath = location.pathname.replace(/\/+$/, '') || '/'
+    if (normalizedPath === '/resources/aro-recalculation') {
+      window.location.replace(`https://arorecalc.axiomft.ca${location.search}${location.hash}`)
+      return
+    }
+
     const isPortalRoute = location.pathname.startsWith('/portal') || location.pathname.startsWith('/app')
 
     // If there are query parameters, redirect to clean URL

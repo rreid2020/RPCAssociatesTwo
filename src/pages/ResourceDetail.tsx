@@ -7,6 +7,7 @@ import { hasAccessedResource, markResourceAsAccessed } from '../lib/utils/leadCa
 import { downloadFile } from '../lib/utils/download'
 import CalendlyButton from '../components/CalendlyButton'
 import FormattedText from '../components/FormattedText'
+import ExternalRedirect from './ExternalRedirect'
 
 const ResourceDetail: FC = () => {
   const { slug: slugParam } = useParams<{ slug: string }>()
@@ -58,6 +59,10 @@ const ResourceDetail: FC = () => {
         </main>
       </>
     )
+  }
+
+  if (resource.externalUrl) {
+    return <ExternalRedirect to={resource.externalUrl} />
   }
 
   return (

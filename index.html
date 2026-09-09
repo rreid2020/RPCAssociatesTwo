@@ -1,6 +1,14 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>
+      (function () {
+        var path = location.pathname.replace(/\/+$/, '') || '/'
+        if (path === '/resources/aro-recalculation') {
+          location.replace('https://arorecalc.axiomft.ca' + location.search + location.hash)
+        }
+      })()
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!--

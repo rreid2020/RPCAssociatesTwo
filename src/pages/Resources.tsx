@@ -1,37 +1,12 @@
 import { FC } from 'react'
-import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
-import { getResourcesByCategory, ResourceDetail } from '../lib/resources/resources'
+import ResourceCard from '../components/ResourceCard'
+import { getResourcesByCategory } from '../lib/resources/resources'
 
 const Resources: FC = () => {
   const calculators = getResourcesByCategory('calculator')
   const excelTemplates = getResourcesByCategory('excel-template')
   const publications = getResourcesByCategory('publication')
-
-  const renderResourceCard = (resource: ResourceDetail, index: number) => {
-    return (
-      <Link
-        key={index}
-        to={`/resources/${resource.slug}`}
-        className="bg-white p-lg rounded-lg shadow-sm border border-border transition-all hover:shadow-md hover:-translate-y-1 block no-underline text-inherit"
-      >
-        <span className="pill mb-md">
-          {resource.categoryLabel}
-        </span>
-        <h3 className="text-xl font-semibold text-primary mb-sm">
-          {resource.title}
-        </h3>
-        <p className="text-text-light text-[0.9375rem] leading-relaxed mb-sm">
-          {resource.shortDescription}
-        </p>
-        {resource.fileSize && (
-          <p className="text-sm text-text-light m-0">
-            File size: {resource.fileSize}
-          </p>
-        )}
-      </Link>
-    )
-  }
 
   return (
     <>
@@ -58,7 +33,9 @@ const Resources: FC = () => {
               </h2>
               {calculators.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
-                  {calculators.map((resource: ResourceDetail, index: number) => renderResourceCard(resource, index))}
+                  {calculators.map((resource) => (
+                    <ResourceCard key={resource.slug} resource={resource} />
+                  ))}
                 </div>
               ) : (
                 <p className="text-text-light">More calculators and tools coming soon.</p>
@@ -72,7 +49,9 @@ const Resources: FC = () => {
               </h2>
               {excelTemplates.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
-                  {excelTemplates.map((resource: ResourceDetail, index: number) => renderResourceCard(resource, index))}
+                  {excelTemplates.map((resource) => (
+                    <ResourceCard key={resource.slug} resource={resource} />
+                  ))}
                 </div>
               ) : (
                 <p className="text-text-light">More Excel templates coming soon.</p>
@@ -86,7 +65,9 @@ const Resources: FC = () => {
               </h2>
               {publications.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
-                  {publications.map((resource: ResourceDetail, index: number) => renderResourceCard(resource, index))}
+                  {publications.map((resource) => (
+                    <ResourceCard key={resource.slug} resource={resource} />
+                  ))}
                 </div>
               ) : (
                 <p className="text-text-light">Guides and resources coming soon.</p>

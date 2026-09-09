@@ -8,7 +8,8 @@ import CashFlowCalculator from '../pages/CashFlowCalculator'
 import CashFlowStatementDirectMethod from '../pages/CashFlowStatementDirectMethod'
 import DonationOptimizerPage from '../pages/DonationOptimizerPage'
 import TaxEngineCalculatorPage from '../pages/TaxEngineCalculatorPage'
-import AroRecalcPage from '../pages/AroRecalcPage'
+import ExternalRedirect from '../pages/ExternalRedirect'
+import { ARO_RECALC_URL } from '../lib/resources/resources'
 
 export function getResourceRoutes () {
   return (
@@ -19,7 +20,7 @@ export function getResourceRoutes () {
       <Route path="/resources/cash-flow-statement-direct-method" element={<CashFlowStatementDirectMethod />} />
       <Route path="/resources/donation-credit-optimizer" element={<DonationOptimizerPage />} />
       <Route path="/resources/ccpc-salary-dividend-calculator" element={<TaxEngineCalculatorPage />} />
-      <Route path="/resources/aro-recalculation" element={<AroRecalcPage />} />
+      <Route path="/resources/aro-recalculation" element={<ExternalRedirect to={ARO_RECALC_URL} />} />
       <Route path="/resources/cash-flow-statement-template" element={<ResourceDetail />} />
       <Route path="/resources/cfi-financial-ratios-guide" element={<ResourceDetail />} />
       <Route path="/resources/category/:slug" element={<ResourceCategory />} />

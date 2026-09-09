@@ -25,7 +25,11 @@ export interface ResourceDetail {
   features?: string[]
   metaDescription: string
   keywords: string[]
+  /** Opens in a new tab instead of an in-site page. */
+  externalUrl?: string
 }
+
+export const ARO_RECALC_URL = 'https://arorecalc.axiomft.ca'
 
 export const resources: ResourceDetail[] = [
   {
@@ -141,28 +145,27 @@ export const resources: ResourceDetail[] = [
     slug: 'aro-recalculation',
     title: 'ARO Recalculation',
     shortDescription:
-      'Independently recalculate asset retirement obligations from REP04/REP06 extracts and a bond yield curve, then compare FV/PV to the source system.',
+      'Independently recalculate asset retirement obligations from cost estimate and reported-value extracts and a bond yield curve, then compare FV/PV to the source system.',
     longDescription:
-      'Recalculate an ARO portfolio in your browser: import cost estimates (REP04), settlement dates and reported FV/PV (REP06), and a discount curve. Escalation and discounting use DAYS360/360. Review variances against materiality thresholds and export workbook evidence. Nothing leaves your machine.',
+      'A free, browser-only recalculation of asset retirement obligations. Import any workbook with the required columns (templates are provided), confirm the mapping, and compare the independent present and future values to what was reported. Nothing leaves this browser.',
     category: 'calculator',
     categoryLabel: 'Calculator',
     requiresLeadCapture: false,
+    externalUrl: ARO_RECALC_URL,
     benefits: [
-      'Independent recalculation over source extracts',
-      'DAYS360/360 escalation and discounting',
-      'Variance flags vs reported FV/PV',
-      'Runs entirely in the browser — no upload required',
+      'Independent PV and FV recalculation obligation by obligation',
+      'Any workbook with the required columns — templates included',
+      'Completeness test against a trial-balance control total',
+      'Nothing is uploaded; the register stays in the browser',
     ],
     metaDescription:
-      'Free ARO recalculation tool: independently recompute asset retirement obligation FV/PV from extracts and compare to source-system figures.',
+      'Free ARO recalculation tool. Independently recalculate asset retirement obligation present and future values from extracts and a yield curve.',
     keywords: [
       'ARO',
       'asset retirement obligation',
-      'ARO calculator',
-      'decommissioning liability',
-      'present value',
-      'REP04',
-      'REP06',
+      'recalculation',
+      'PS 3280',
+      'calculator',
       'Ottawa',
     ],
   },

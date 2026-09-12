@@ -67,10 +67,14 @@ const Articles: FC = () => {
   return (
     <>
       <SEO
-        title="Articles"
-        description="Insights, tips, and updates on accounting, consulting, and technology from Axiom. Stay informed with expert articles and industry news."
+        title="Articles on Canadian Tax, Accounting & Technology"
+        description="Insights on Canadian tax, accounting, and technology from Axiom Financial & Technology in Ottawa."
         keywords="accounting articles, tax tips, business advice, financial insights, Canadian Income Tax, tax planning, accounting advice, business consulting, Ottawa accountant, Ottawa tax advice"
         canonical="/articles"
+        breadcrumbs={[
+          { name: 'Home', path: '/' },
+          { name: 'Articles', path: '/articles' },
+        ]}
       />
       <main>
         <section className="py-xxl">

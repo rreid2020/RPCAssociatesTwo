@@ -6,9 +6,13 @@ const ContactPage: FC = () => {
   return (
     <>
       <SEO
-        title="Contact | Axiom Financial & Technology"
-        description="Get in touch with Axiom for accounting, advisory, and technology support. Send us a message to schedule an introductory call."
+        title="Contact an Ottawa Accountant"
+        description="Contact Axiom Financial & Technology in Ottawa for accounting, advisory, and technology support. Phone 613-884-0208 or send a message."
         canonical="/contact"
+        breadcrumbs={[
+          { name: 'Home', path: '/' },
+          { name: 'Contact', path: '/contact' },
+        ]}
       />
       <main>
         <section className="py-xl bg-background">

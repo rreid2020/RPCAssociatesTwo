@@ -57,6 +57,10 @@ const Services: FC = () => {
         title="Our Services | Accounting, Consulting & Tech Solutions - Axiom"
         description="Comprehensive accounting, consulting, and tech solutions for growing businesses. Core accounting, year-end reporting, tax planning, cash flow forecasting, fractional controller services, and accounting systems. Expert CPA services across Canada."
         canonical="/services"
+        breadcrumbs={[
+          { name: 'Home', path: '/' },
+          { name: 'Services', path: '/services' },
+        ]}
         keywords={[
           'accounting services',
           'CPA services',

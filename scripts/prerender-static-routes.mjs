@@ -43,7 +43,8 @@ const ROUTES = [
   '/articles/category/accounting',
   '/articles/category/technology',
   '/privacy',
-  '/terms'
+  '/terms',
+  '/sitemap'
 ]
 
 const CONTENT_TYPES = {

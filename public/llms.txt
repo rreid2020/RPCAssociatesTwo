@@ -1,0 +1,29 @@
+# Axiom Financial & Technology
+
+> CPA-led Ottawa firm providing accounting, advisory, automation, and intelligence for Canadian businesses.
+
+- Site: https://axiomft.ca
+- Contact: roger.reid@axiomft.ca
+- Phone: +1-613-884-0208
+- Founder: Roger Reid, CPA, CMA, CGAP
+
+## Services
+
+- [Core Accounting & Cloud Bookkeeping](https://axiomft.ca/services/core-accounting)
+- [Year-End Financials & Reporting](https://axiomft.ca/services/year-end-reporting)
+- [Tax Planning & Compliance Support](https://axiomft.ca/services/tax-planning)
+- [Cash Flow Planning & Forecasting](https://axiomft.ca/services/cash-flow-planning)
+- [Fractional Controller](https://axiomft.ca/services/fractional-controller)
+- [Accounting Systems & Tech Solutions](https://axiomft.ca/services/tech-solutions)
+- [ICFM / ICFR](https://axiomft.ca/services/icfm-icfr)
+
+## Products and tools
+
+- [ARO Suite](https://axiomft.ca/products/aro-suite): end-to-end asset retirement obligation software
+- [ARO Recalculation](https://axiomft.ca/resources/aro-recalculation): free independent PS 3280 recalculation
+- [Client Portal](https://axiomft.ca/client-portal)
+
+## Optional
+
+- [Articles](https://axiomft.ca/articles)
+- [Book a consultation](https://axiomft.ca/book-consultation)

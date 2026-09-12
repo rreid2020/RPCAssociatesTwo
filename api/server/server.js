@@ -5,6 +5,7 @@ import dotenv from 'dotenv'
 import path from 'path'
 import crypto from 'crypto'
 import { existsSync } from 'fs'
+import { readFile } from 'fs/promises'
 import { fileURLToPath } from 'url'
 import { createPool, getDatabaseConnectionSummary, getDatabasePoolSummary } from './db/pool.js'
 import { sendEmail } from './utils/email.js'
@@ -21,6 +22,8 @@ import { createClerkWebhookRouter } from './routes/clerkWebhookRoutes.js'
 import { logServerEnvSummary } from './config/env.js'
 import { getNotificationInbox } from './config/mail.js'
 import { escapeHtml, singleLine } from './utils/html.js'
+import { applyRouteSeo } from './seo/injectHtmlMeta.js'
+import { normalizePathname } from './seo/routeMeta.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -36,6 +39,15 @@ app.use((req, res, next) => {
   const requestId = String(req.headers['x-request-id'] || crypto.randomUUID())
   req.requestId = requestId
   res.setHeader('x-request-id', requestId)
+  next()
+})
+
+app.use((req, res, next) => {
+  const host = String(req.headers.host || '').split(':')[0]
+  if (host.startsWith('www.')) {
+    const apex = host.slice(4)
+    return res.redirect(301, `https://${apex}${req.originalUrl}`)
+  }
   next()
 })
 
@@ -332,6 +344,31 @@ const sitemapDistPath = path.join(distPath, 'sitemap.xml')
 const sitemapPublicPath = path.join(publicPath, 'sitemap.xml')
 const robotsDistPath = path.join(distPath, 'robots.txt')
 const robotsPublicPath = path.join(publicPath, 'robots.txt')
+const llmsDistPath = path.join(distPath, 'llms.txt')
+const llmsPublicPath = path.join(publicPath, 'llms.txt')
+const rootIndexHtmlPath = path.join(distPath, 'index.html')
+
+function resolvePrerenderedHtml (requestPath) {
+  const pathname = normalizePathname(requestPath)
+  if (pathname === '/') return null
+  const nested = path.join(distPath, pathname.replace(/^\//, ''), 'index.html')
+  return existsSync(nested) ? nested : null
+}
+
+function sendMarketingHtml (req, res, filePath, injectSeo) {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+  res.setHeader('Pragma', 'no-cache')
+  res.setHeader('Expires', '0')
+  res.type('html')
+  if (!injectSeo) {
+    return res.sendFile(filePath)
+  }
+  return readFile(filePath, 'utf8').then((html) => {
+    res.send(applyRouteSeo(html, req.path))
+  }).catch(() => {
+    res.status(500).send('Unable to serve page')
+  })
+}
 
 // Check if dist folder exists
 if (!existsSync(distPath)) {
@@ -359,6 +396,17 @@ app.get('/robots.txt', (req, res) => {
     return res.sendFile(robotsPublicPath)
   }
   return res.status(404).send('User-agent: *\nAllow: /\n')
+})
+
+app.get('/llms.txt', (req, res) => {
+  res.type('text/plain; charset=utf-8')
+  if (existsSync(llmsDistPath)) {
+    return res.sendFile(llmsDistPath)
+  }
+  if (existsSync(llmsPublicPath)) {
+    return res.sendFile(llmsPublicPath)
+  }
+  return res.status(404).send('Not found')
 })
 
 // Serve static files from the frontend build (dist folder)
@@ -422,16 +470,14 @@ app.get('*', (req, res, next) => {
     res.setHeader('Cache-Control', 'no-store')
     return res.status(404).type('text/plain').send('Not found')
   }
-  // Serve index.html for all other routes (React Router will handle routing)
-  const indexHtmlPath = path.join(distPath, 'index.html')
-  if (existsSync(indexHtmlPath)) {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
-    res.setHeader('Pragma', 'no-cache')
-    res.setHeader('Expires', '0')
-    res.sendFile(indexHtmlPath)
-  } else {
-    res.status(404).json({ error: 'Frontend not built. Please check build process.' })
+  const prerenderedHtml = resolvePrerenderedHtml(req.path)
+  if (prerenderedHtml) {
+    return sendMarketingHtml(req, res, prerenderedHtml, false)
   }
+  if (existsSync(rootIndexHtmlPath)) {
+    return sendMarketingHtml(req, res, rootIndexHtmlPath, true)
+  }
+  return res.status(404).json({ error: 'Frontend not built. Please check build process.' })
 })
 
 async function startServer () {

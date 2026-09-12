@@ -5,8 +5,11 @@ const root = process.cwd()
 const requiredFiles = [
   'public/robots.txt',
   'public/sitemap.xml',
+  'public/llms.txt',
   'src/components/SEO.tsx',
-  'scripts/generate-sitemap.mjs'
+  'scripts/generate-sitemap.mjs',
+  'api/server/seo/routeMeta.js',
+  'api/server/seo/injectHtmlMeta.js'
 ]
 
 const missing = requiredFiles.filter((rel) => !fs.existsSync(path.resolve(root, rel)))

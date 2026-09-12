@@ -15,6 +15,70 @@ const keywords = [
   'Ottawa',
 ]
 
+const faqs = [
+  {
+    question: "It's free. What's the catch?",
+    answer:
+      'There is no payment and no account requirement. Axiom publishes the tool because ARO recalculation is the kind of work that gets deferred indefinitely once it has to be scoped and quoted — and because entities that find material variances often want help resolving them. You are under no obligation to engage us for that, and the tool works the same either way.',
+  },
+  {
+    question: 'Do I still need my own ARO schedule?',
+    answer:
+      'Yes. The tool is a check against your records, not a replacement for them — it has to have something to compare its result to. It also does not post entries, so your schedule and general ledger remain the books of record.',
+  },
+  {
+    question: 'What happens to our data?',
+    answer:
+      'The recalculation runs entirely in your browser. Your extracts and curves are not uploaded to Axiom, and nothing is stored or retained on our servers. Closing the tab clears the working session from memory.',
+  },
+  {
+    question: 'Can my auditor rely on the output?',
+    answer:
+      "That is the auditor's judgment to make, not ours. What the tool produces is an independent recalculation with its inputs, method and results visible — the form of evidence a recalculation procedure is meant to generate. Auditors are welcome to run it themselves against client data rather than relying on a client-prepared run.",
+  },
+  {
+    question: 'Does it check whether our discount rate is appropriate?',
+    answer:
+      'No. Rate selection is a management judgment under PS 3280 and depends on facts the tool has no visibility into. What it does test is whether the rate you selected has been applied consistently — to the right layer, from the right date, on the right base.',
+  },
+  {
+    question: 'Does it handle multiple revisions to the same asset?',
+    answer:
+      'Yes. Each revision is treated as its own measurement layer, with its own cash flows, rate and recognition date, and is accreted independently. This is one of the more common sources of variance, because a spreadsheet that started with a single layer per asset often was not built to add more.',
+  },
+  {
+    question: 'Our ARO file has its own layout. Is that a problem?',
+    answer:
+      'Downloadable templates are provided for a clean first import. You can also load your own workbook and map columns to the required fields. Most municipal ARO spreadsheets need a light mapping pass rather than a full re-key — typically the identifiers, cost estimates, dates, rates, and recorded FV/PV balances.',
+  },
+  {
+    question: 'How long does a run take?',
+    answer:
+      'The recalculation itself is immediate. The work is in assembling the inputs — typically an afternoon for a first run, and considerably less in later years once the input file exists and only needs updating.',
+  },
+  {
+    question: 'What if it finds a variance?',
+    answer:
+      'A variance is a difference, not automatically an error. It can mean the recorded balance is wrong, or that an input was captured differently than it was originally measured. The report narrows it to a specific asset and component so you can tell which. Correcting it is ordinary work; if the amount is material or the cause is not obvious, book a demo and we can look at it together.',
+  },
+  {
+    question:
+      "We adopted PS 3280 with outside help and haven't touched the model since. Is this useful?",
+    answer:
+      'That is the most common situation among the entities we speak to, and the one the tool was built for. An adoption-year model that has been rolled forward without review is precisely where an independent recalculation has the most to say.',
+  },
+  {
+    question: 'Does it work for ASPE or IFRS reporters?',
+    answer:
+      'No. It applies PS 3280 under Canadian public sector accounting standards. Asset retirement obligations under ASPE and IFRS have different recognition and measurement mechanics, and a PS 3280 recalculation would not give you a valid answer.',
+  },
+  {
+    question: 'Who built it?',
+    answer:
+      "Axiom Financial & Technology, an Ottawa firm providing accounting, advisory and automation services to Canadian organizations. The tool was built by Roger Reid, CPA, CMA, CGAP. It is the free, independent check that sits alongside ARO Suite — Axiom's end-to-end ARO measurement, close, disclosure and audit-evidence product.",
+  },
+] as const
+
 /**
  * Marketing landing page for the free ARO Recalculation tool.
  * Tool itself runs at arorecalc.axiomft.ca; this page is the in-site entry from Resources.
@@ -38,6 +102,7 @@ const AroRecalcPage: FC = () => {
           offersPrice: '0',
           offersCurrency: 'CAD',
         }}
+        schemaFaq={faqs.map((item) => ({ question: item.question, answer: item.answer }))}
         breadcrumbs={[
           { name: 'Home', path: '/' },
           { name: 'Resources', path: '/resources' },
@@ -49,153 +114,178 @@ const AroRecalcPage: FC = () => {
       <main className="aro-landing">
         <style>{`
           .aro-landing {
-            --navy:#00204a;
-            --navy-800:#052e63;
-            --navy-050:#eef3f9;
-            --accent:#0e7c86;
-            --accent-050:#e6f2f3;
-            --flag:#8a5a00;
-            --flag-050:#fdf4e3;
-            --ink:#12202f;
-            --ink-muted:#4c5c6d;
-            --rule:#d9e1ea;
-            --paper:#ffffff;
-            --paper-alt:#f6f8fb;
-            --radius:6px;
-            --maxw:1080px;
-            --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            --font-display: Georgia, "Times New Roman", serif;
-            background:var(--paper);
-            color:var(--ink);
-            font-family:var(--font);
-            font-size:17px;
-            line-height:1.65;
-            -webkit-font-smoothing:antialiased;
+            --navy: #00204a;
+            --navy-800: #0b3161;
+            --navy-050: #eaf0f6;
+            --accent: #b0632c;
+            --accent-dark: #9a5624;
+            --accent-050: #fdf4ec;
+            --flag: #9a3b2c;
+            --flag-050: #fdf6f4;
+            --ink: #16202c;
+            --ink-muted: #3d4a58;
+            --ink-light: #6b7a89;
+            --rule: #dfe5ec;
+            --paper: #ffffff;
+            --paper-alt: #f4f7fa;
+            --radius: 4px;
+            --maxw: 1120px;
+            background: var(--paper);
+            color: var(--ink-muted);
+            font-size: 17px;
+            line-height: 1.65;
+            -webkit-font-smoothing: antialiased;
           }
-          .aro-landing .wrap{max-width:var(--maxw); margin-inline:auto; padding-inline:24px}
-          .aro-landing section{padding-block:64px; border-top:1px solid var(--rule)}
-          .aro-landing section:first-of-type{border-top:0}
-          .aro-landing .alt{background:var(--paper-alt)}
-          .aro-landing h1,.aro-landing h2,.aro-landing h3{
-            font-family:var(--font-display); font-weight:600; line-height:1.2; color:var(--navy); margin:0 0 .5em
+          .aro-landing .wrap { max-width: var(--maxw); margin-inline: auto; padding-inline: 28px; }
+          .aro-landing section { padding-block: 74px; border-top: 1px solid var(--rule); }
+          .aro-landing section:first-of-type { border-top: 0; }
+          .aro-landing .alt { background: var(--paper-alt); }
+          .aro-landing h1, .aro-landing h2, .aro-landing h3 {
+            font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+            font-weight: 600; line-height: 1.2; color: var(--navy); margin: 0 0 0.5em;
+            letter-spacing: -0.01em;
           }
-          .aro-landing h1{font-size:clamp(2rem,4.4vw,3rem); letter-spacing:-.01em}
-          .aro-landing h2{font-size:clamp(1.5rem,3vw,2rem)}
-          .aro-landing h3{font-size:1.075rem; font-family:var(--font); font-weight:650; line-height:1.35}
-          .aro-landing p{margin:0 0 1em}
-          .aro-landing p:last-child{margin-bottom:0}
-          .aro-landing a{color:var(--accent)}
-          .aro-landing .eyebrow{
-            font-size:.75rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
-            color:var(--accent); margin:0 0 14px;
+          .aro-landing h1 { font-size: clamp(2.1rem, 4.4vw, 3.15rem); line-height: 1.12; }
+          .aro-landing h2 { font-size: clamp(1.6rem, 2.8vw, 2.15rem); }
+          .aro-landing h3 {
+            font-size: 1.08rem; font-family: system-ui, -apple-system, sans-serif;
+            font-weight: 650; line-height: 1.35;
           }
-          .aro-landing .lede{font-size:1.2rem; line-height:1.55; color:var(--ink-muted); max-width:62ch}
-          .aro-landing .intro{max-width:70ch}
-          .aro-landing .section-note{font-size:.95rem; color:var(--ink-muted); max-width:70ch}
-          .aro-landing .hero{background:var(--navy); color:#dbe6f2; border-top:0}
-          .aro-landing .hero h1{color:#fff}
-          .aro-landing .hero .eyebrow{color:#7fc7cf}
-          .aro-landing .hero .lede{color:#c2d3e4}
-          .aro-landing .hero strong{color:#fff}
-          .aro-landing .facts{
-            list-style:none; margin:32px 0 0; padding:0;
-            display:grid; gap:1px; background:rgba(255,255,255,.18);
-            border:1px solid rgba(255,255,255,.18); border-radius:var(--radius); overflow:hidden;
-            grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+          .aro-landing p { margin: 0 0 1.05em; }
+          .aro-landing p:last-child { margin-bottom: 0; }
+          .aro-landing a { color: var(--accent); }
+          .aro-landing a:hover { opacity: 0.9; }
+          .aro-landing .eyebrow {
+            font-size: 0.7rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase;
+            color: var(--accent); margin: 0 0 14px;
           }
-          .aro-landing .facts li{background:var(--navy); padding:16px 18px}
-          .aro-landing .facts .k{
-            font-size:.7rem; letter-spacing:.12em; text-transform:uppercase;
-            color:#7fc7cf; font-weight:700; margin-bottom:4px;
+          .aro-landing .lede { font-size: 1.15rem; line-height: 1.55; color: var(--ink-muted); max-width: 62ch; }
+          .aro-landing .intro { max-width: 70ch; }
+          .aro-landing .section-note { font-size: 0.95rem; color: var(--ink-light); max-width: 70ch; }
+          .aro-landing .hero {
+            background: linear-gradient(180deg, var(--navy-050), var(--paper-alt));
+            border-bottom: 1px solid var(--rule);
+            padding: 74px 0 66px;
           }
-          .aro-landing .facts .v{font-size:.95rem; color:#fff; line-height:1.4}
-          .aro-landing .cta-row{display:flex; flex-wrap:wrap; gap:14px; margin-top:32px}
-          .aro-landing .btn{
-            display:inline-block; padding:13px 24px; border-radius:var(--radius);
-            font-weight:650; font-size:.98rem; text-decoration:none; border:2px solid transparent;
-            line-height:1.2; text-align:center; cursor:pointer;
+          .aro-landing .hero h1 { color: var(--navy); }
+          .aro-landing .hero .lede { color: var(--ink-muted); }
+          .aro-landing .hero strong { color: var(--ink); }
+          .aro-landing .facts {
+            list-style: none; margin: 32px 0 0; padding: 0;
+            display: grid; gap: 1px; background: var(--rule);
+            border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
           }
-          .aro-landing .btn-primary{background:#fff; color:var(--navy); border-color:#fff}
-          .aro-landing .btn-primary:hover{background:#e9f3f4; color:var(--navy)}
-          .aro-landing .btn-ghost{background:transparent; color:#fff; border-color:rgba(255,255,255,.55)}
-          .aro-landing .btn-ghost:hover{border-color:#fff; color:#fff; background:rgba(255,255,255,.08)}
-          .aro-landing .btn-solid{background:var(--navy); color:#fff; border-color:var(--navy)}
-          .aro-landing .btn-solid:hover{background:var(--navy-800); color:#fff}
-          .aro-landing .btn-outline{background:transparent; color:var(--navy); border-color:var(--navy)}
-          .aro-landing .btn-outline:hover{background:var(--navy-050); color:var(--navy)}
-          .aro-landing .grid{display:grid; gap:20px; margin-top:36px}
-          .aro-landing .grid-2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
-          .aro-landing .grid-3{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
-          .aro-landing .card{
-            background:var(--paper); border:1px solid var(--rule); border-radius:var(--radius);
-            padding:22px 22px 24px; border-top:3px solid var(--navy);
+          .aro-landing .facts li { background: var(--paper); padding: 16px 18px; }
+          .aro-landing .facts .k {
+            font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase;
+            color: var(--accent); font-weight: 700; margin-bottom: 4px;
           }
-          .aro-landing .card p{font-size:.97rem; color:var(--ink-muted)}
-          .aro-landing .card h3{margin-bottom:.45em}
-          .aro-landing .card-problem{border-top-color:var(--flag)}
-          .aro-landing .card-problem h3{color:var(--flag)}
-          .aro-landing .pair{border-left:3px solid var(--accent); padding:2px 0 2px 20px}
-          .aro-landing .pair h3{color:var(--navy); margin-bottom:.35em}
-          .aro-landing .pair p{font-size:.97rem; color:var(--ink-muted); margin:0}
-          .aro-landing .pair .from{
-            display:block; font-size:.72rem; letter-spacing:.1em; text-transform:uppercase;
-            color:var(--ink-muted); font-weight:700; margin-bottom:6px;
+          .aro-landing .facts .v { font-size: 0.95rem; color: var(--ink); line-height: 1.4; }
+          .aro-landing .cta-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 32px; }
+          .aro-landing .btn {
+            display: inline-block; padding: 12px 22px; border-radius: var(--radius);
+            font-weight: 600; font-size: 0.92rem; text-decoration: none; border: 1.5px solid transparent;
+            line-height: 1.2; text-align: center; cursor: pointer; transition: 0.15s;
           }
-          .aro-landing .panel{
-            margin-top:40px; padding:26px 28px; border-radius:var(--radius);
-            background:var(--flag-050); border:1px solid #e6d3ac;
+          .aro-landing .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+          .aro-landing .btn-primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); color: #fff; }
+          .aro-landing .btn-ghost, .aro-landing .btn-outline {
+            background: transparent; color: var(--navy); border-color: var(--navy);
           }
-          .aro-landing .panel h3{color:var(--flag); font-size:1.05rem}
-          .aro-landing .panel ul{margin:0; padding-left:1.15em}
-          .aro-landing .panel li{margin-bottom:.7em; font-size:.97rem; color:var(--ink)}
-          .aro-landing .panel li:last-child{margin-bottom:0}
-          .aro-landing .panel li strong{color:var(--flag)}
-          .aro-landing .panel-accent{background:var(--accent-050); border-color:#b9d9dc}
-          .aro-landing .panel-accent h3{color:var(--accent)}
-          .aro-landing .panel-accent li strong{color:var(--accent)}
-          .aro-landing .steps{list-style:none; counter-reset:step; margin:36px 0 0; padding:0}
-          .aro-landing .steps > li{
-            counter-increment:step; position:relative;
-            padding:0 0 30px 66px; border-left:2px solid var(--rule); margin-left:20px;
+          .aro-landing .btn-ghost:hover, .aro-landing .btn-outline:hover {
+            background: var(--navy); color: #fff;
           }
-          .aro-landing .steps > li:last-child{border-left-color:transparent; padding-bottom:0}
-          .aro-landing .steps > li::before{
-            content:counter(step); position:absolute; left:-21px; top:-4px;
-            width:40px; height:40px; border-radius:50%;
-            background:var(--navy); color:#fff;
-            font-weight:700; font-size:1rem; display:grid; place-items:center;
+          .aro-landing .btn-solid { background: var(--accent); color: #fff; border-color: var(--accent); }
+          .aro-landing .btn-solid:hover { background: var(--accent-dark); border-color: var(--accent-dark); color: #fff; }
+          .aro-landing .closing.dark {
+            background: var(--navy); color: rgba(255,255,255,0.86); text-align: center;
+            border-top: 0;
           }
-          .aro-landing .steps h3{margin-bottom:.35em}
-          .aro-landing .steps p{font-size:.97rem; color:var(--ink-muted)}
-          .aro-landing .steps .fields{
-            margin:12px 0 0; padding:14px 16px; background:var(--paper-alt);
-            border:1px solid var(--rule); border-radius:var(--radius);
-            font-size:.9rem; color:var(--ink-muted); line-height:1.7;
+          .aro-landing .closing.dark h2 { color: #fff; }
+          .aro-landing .closing.dark .lede { color: rgba(255,255,255,0.82); margin-inline: auto; }
+          .aro-landing .closing.dark .section-note { color: rgba(255,255,255,0.65); margin-inline: auto; }
+          .aro-landing .closing.dark .btn-solid {
+            background: var(--accent); color: #fff; border-color: var(--accent);
           }
-          .aro-landing .fields b{color:var(--ink); font-weight:650}
-          .aro-landing .faq{margin-top:36px; border-top:1px solid var(--rule)}
-          .aro-landing .faq details{border-bottom:1px solid var(--rule)}
-          .aro-landing .faq summary{
-            cursor:pointer; list-style:none; padding:18px 44px 18px 0; position:relative;
-            font-weight:650; color:var(--navy); font-size:1.02rem;
+          .aro-landing .closing.dark .btn-outline {
+            background: transparent; color: #fff; border-color: rgba(255,255,255,0.55);
           }
-          .aro-landing .faq summary::-webkit-details-marker{display:none}
-          .aro-landing .faq summary::after{
-            content:"+"; position:absolute; right:8px; top:15px;
-            font-size:1.5rem; font-weight:400; color:var(--accent); line-height:1;
+          .aro-landing .closing.dark .btn-outline:hover { background: rgba(255,255,255,0.1); color: #fff; }
+          .aro-landing .closing .cta-row { justify-content: center; }
+          .aro-landing .grid { display: grid; gap: 20px; margin-top: 36px; }
+          .aro-landing .grid-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+          .aro-landing .grid-3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+          .aro-landing .card {
+            background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius);
+            padding: 22px 22px 24px; border-top: 3px solid var(--navy);
           }
-          .aro-landing .faq details[open] summary::after{content:"\\2013"}
-          .aro-landing .faq summary:focus-visible{outline:2px solid var(--accent); outline-offset:3px}
-          .aro-landing .faq .a{padding:0 44px 22px 0; color:var(--ink-muted); font-size:.98rem; max-width:78ch}
-          .aro-landing .faq .a ul{padding-left:1.15em; margin:.6em 0}
-          .aro-landing .faq .a li{margin-bottom:.4em}
-          .aro-landing .closing{background:var(--navy-050); text-align:center; border-top:1px solid var(--rule)}
-          .aro-landing .closing .lede{margin-inline:auto}
-          .aro-landing .closing .cta-row{justify-content:center}
-          @media (max-width:640px){
-            .aro-landing{font-size:16px}
-            .aro-landing section{padding-block:48px}
-            .aro-landing .steps > li{padding-left:56px}
+          .aro-landing .card p { font-size: 0.97rem; color: var(--ink-muted); }
+          .aro-landing .card h3 { margin-bottom: 0.45em; }
+          .aro-landing .card-problem { border-top-color: var(--flag); }
+          .aro-landing .card-problem h3 { color: var(--flag); }
+          .aro-landing .pair { border-left: 3px solid var(--accent); padding: 2px 0 2px 20px; }
+          .aro-landing .pair h3 { color: var(--navy); margin-bottom: 0.35em; }
+          .aro-landing .pair p { font-size: 0.97rem; color: var(--ink-muted); margin: 0; }
+          .aro-landing .pair .from {
+            display: block; font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase;
+            color: var(--ink-light); font-weight: 700; margin-bottom: 6px;
+          }
+          .aro-landing .panel {
+            margin-top: 40px; padding: 26px 28px; border-radius: var(--radius);
+            background: var(--flag-050); border: 1px solid #e8cfc9;
+          }
+          .aro-landing .panel h3 { color: var(--flag); font-size: 1.05rem; }
+          .aro-landing .panel ul { margin: 0; padding-left: 1.15em; }
+          .aro-landing .panel li { margin-bottom: 0.7em; font-size: 0.97rem; color: var(--ink); }
+          .aro-landing .panel li:last-child { margin-bottom: 0; }
+          .aro-landing .panel li strong { color: var(--flag); }
+          .aro-landing .panel-accent { background: var(--accent-050); border-color: #e8d2bf; }
+          .aro-landing .panel-accent h3 { color: var(--accent-dark); }
+          .aro-landing .panel-accent li strong { color: var(--accent-dark); }
+          .aro-landing .steps { list-style: none; counter-reset: step; margin: 36px 0 0; padding: 0; }
+          .aro-landing .steps > li {
+            counter-increment: step; position: relative;
+            padding: 0 0 30px 66px; border-left: 2px solid var(--rule); margin-left: 20px;
+          }
+          .aro-landing .steps > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+          .aro-landing .steps > li::before {
+            content: counter(step); position: absolute; left: -21px; top: -4px;
+            width: 40px; height: 40px; border-radius: 50%;
+            background: var(--navy); color: #fff;
+            font-weight: 700; font-size: 1rem; display: grid; place-items: center;
+          }
+          .aro-landing .steps h3 { margin-bottom: 0.35em; }
+          .aro-landing .steps p { font-size: 0.97rem; color: var(--ink-muted); }
+          .aro-landing .steps .fields {
+            margin: 12px 0 0; padding: 14px 16px; background: var(--paper-alt);
+            border: 1px solid var(--rule); border-radius: var(--radius);
+            font-size: 0.9rem; color: var(--ink-muted); line-height: 1.7;
+          }
+          .aro-landing .fields b { color: var(--ink); font-weight: 650; }
+          .aro-landing .faq { margin-top: 36px; border-top: 1px solid var(--rule); }
+          .aro-landing .faq details { border-bottom: 1px solid var(--rule); }
+          .aro-landing .faq summary {
+            cursor: pointer; list-style: none; padding: 18px 44px 18px 0; position: relative;
+            font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+            font-weight: 600; color: var(--navy); font-size: 1.06rem;
+          }
+          .aro-landing .faq summary::-webkit-details-marker { display: none; }
+          .aro-landing .faq summary::after {
+            content: "+"; position: absolute; right: 8px; top: 15px;
+            font-size: 1.5rem; font-weight: 400; color: var(--accent); line-height: 1;
+            font-family: system-ui, sans-serif;
+          }
+          .aro-landing .faq details[open] summary::after { content: "\\2013"; }
+          .aro-landing .faq summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+          .aro-landing .faq .a { padding: 0 44px 22px 0; color: var(--ink-muted); font-size: 0.98rem; max-width: 78ch; }
+          .aro-landing .faq .a ul { padding-left: 1.15em; margin: 0.6em 0; }
+          .aro-landing .faq .a li { margin-bottom: 0.4em; }
+          @media (max-width: 640px) {
+            .aro-landing { font-size: 16px; }
+            .aro-landing section { padding-block: 56px; }
+            .aro-landing .hero { padding: 56px 0; }
+            .aro-landing .steps > li { padding-left: 56px; }
           }
         `}</style>
 
@@ -544,146 +634,32 @@ const AroRecalcPage: FC = () => {
             <p className="eyebrow">Questions</p>
             <h2>Frequently asked questions</h2>
             <div className="faq">
-              <details open>
-                <summary>It&apos;s free. What&apos;s the catch?</summary>
-                <div className="a">
-                  <p>
-                    There is no payment and no account requirement. Axiom publishes the tool because
-                    ARO recalculation is the kind of work that gets deferred indefinitely once it
-                    has to be scoped and quoted — and because entities that find material variances
-                    often want help resolving them. You are under no obligation to engage us for
-                    that, and the tool works the same either way.
-                  </p>
-                </div>
-              </details>
-              <details>
-                <summary>Do I still need my own ARO schedule?</summary>
-                <div className="a">
-                  <p>
-                    Yes. The tool is a check against your records, not a replacement for them — it
-                    has to have something to compare its result to. It also does not post entries, so
-                    your schedule and general ledger remain the books of record.
-                  </p>
-                </div>
-              </details>
-              <details>
-                <summary>What happens to our data?</summary>
-                <div className="a">
-                  <p>
-                    The recalculation runs entirely in your browser. Your extracts and curves are
-                    not uploaded to Axiom, and nothing is stored or retained on our servers. Closing
-                    the tab clears the working session from memory.
-                  </p>
-                </div>
-              </details>
-              <details>
-                <summary>Can my auditor rely on the output?</summary>
-                <div className="a">
-                  <p>
-                    That is the auditor&apos;s judgment to make, not ours. What the tool produces is
-                    an independent recalculation with its inputs, method and results visible — the
-                    form of evidence a recalculation procedure is meant to generate. Auditors are
-                    welcome to run it themselves against client data rather than relying on a
-                    client-prepared run.
-                  </p>
-                </div>
-              </details>
-              <details>
-                <summary>Does it check whether our discount rate is appropriate?</summary>
-                <div className="a">
-                  <p>
-                    No. Rate selection is a management judgment under PS 3280 and depends on facts
-                    the tool has no visibility into. What it does test is whether the rate you
-                    selected has been applied consistently — to the right layer, from the right date,
-                    on the right base.
-                  </p>
-                </div>
-              </details>
-              <details>
-                <summary>Does it handle multiple revisions to the same asset?</summary>
-                <div className="a">
-                  <p>
-                    Yes. Each revision is treated as its own measurement layer, with its own cash
-                    flows, rate and recognition date, and is accreted independently. This is one of
-                    the more common sources of variance, because a spreadsheet that started with a
-                    single layer per asset often was not built to add more.
-                  </p>
-                </div>
-              </details>
-              <details>
-                <summary>Our ARO file has its own layout. Is that a problem?</summary>
-                <div className="a">
-                  <p>
-                    Downloadable templates are provided for a clean first import. You can also load
-                    your own workbook and map columns to the required fields. Most municipal ARO
-                    spreadsheets need a light mapping pass rather than a full re-key — typically the
-                    identifiers, cost estimates, dates, rates, and recorded FV/PV balances.
-                  </p>
-                </div>
-              </details>
-              <details>
-                <summary>How long does a run take?</summary>
-                <div className="a">
-                  <p>
-                    The recalculation itself is immediate. The work is in assembling the inputs —
-                    typically an afternoon for a first run, and considerably less in later years once
-                    the input file exists and only needs updating.
-                  </p>
-                </div>
-              </details>
-              <details>
-                <summary>What if it finds a variance?</summary>
-                <div className="a">
-                  <p>
-                    A variance is a difference, not automatically an error. It can mean the recorded
-                    balance is wrong, or that an input was captured differently than it was
-                    originally measured. The report narrows it to a specific asset and component so
-                    you can tell which. Correcting it is ordinary work; if the amount is material or
-                    the cause is not obvious, book a demo and we can look at it together.
-                  </p>
-                </div>
-              </details>
-              <details>
-                <summary>
-                  We adopted PS 3280 with outside help and haven&apos;t touched the model since. Is
-                  this useful?
-                </summary>
-                <div className="a">
-                  <p>
-                    That is the most common situation among the entities we speak to, and the one the
-                    tool was built for. An adoption-year model that has been rolled forward without
-                    review is precisely where an independent recalculation has the most to say.
-                  </p>
-                </div>
-              </details>
-              <details>
-                <summary>Does it work for ASPE or IFRS reporters?</summary>
-                <div className="a">
-                  <p>
-                    No. It applies PS 3280 under Canadian public sector accounting standards. Asset
-                    retirement obligations under ASPE and IFRS have different recognition and
-                    measurement mechanics, and a PS 3280 recalculation would not give you a valid
-                    answer.
-                  </p>
-                </div>
-              </details>
-              <details>
-                <summary>Who built it?</summary>
-                <div className="a">
-                  <p>
-                    Axiom Financial &amp; Technology, an Ottawa firm providing accounting, advisory
-                    and automation services to Canadian organizations. The tool was built by Roger
-                    Reid, CPA, CMA, CGAP. It is the free, independent check that sits alongside{' '}
-                    <Link to="/products/aro-suite">ARO Suite</Link> — Axiom&apos;s end-to-end ARO
-                    measurement, close, disclosure and audit-evidence product.
-                  </p>
-                </div>
-              </details>
+              {faqs.map((item, index) => (
+                <details key={item.question} open={index === 0}>
+                  <summary>{item.question}</summary>
+                  <div className="a">
+                    <p>
+                      {item.question === 'Who built it?' ? (
+                        <>
+                          Axiom Financial &amp; Technology, an Ottawa firm providing accounting,
+                          advisory and automation services to Canadian organizations. The tool was
+                          built by Roger Reid, CPA, CMA, CGAP. It is the free, independent check that
+                          sits alongside{' '}
+                          <Link to="/products/aro-suite">ARO Suite</Link> — Axiom&apos;s end-to-end
+                          ARO measurement, close, disclosure and audit-evidence product.
+                        </>
+                      ) : (
+                        item.answer
+                      )}
+                    </p>
+                  </div>
+                </details>
+              ))}
             </div>
           </div>
         </section>
 
-        <section className="closing">
+        <section className="closing dark">
           <div className="wrap">
             <h2>Find out what a second calculation says.</h2>
             <p className="lede">

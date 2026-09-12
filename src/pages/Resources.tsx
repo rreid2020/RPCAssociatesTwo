@@ -11,9 +11,13 @@ const Resources: FC = () => {
   return (
     <>
       <SEO
-        title="Resources - Axiom"
-        description="Helpful resources, tools, and guides for your business from Axiom. Access calculators, templates, and expert insights."
+        title="Free Accounting Calculators, Templates & Guides"
+        description="Free Canadian tax calculators, cash-flow tools, Excel templates, and ARO resources from Axiom in Ottawa."
         canonical="/resources"
+        breadcrumbs={[
+          { name: 'Home', path: '/' },
+          { name: 'Resources', path: '/resources' },
+        ]}
         keywords={['resources', 'tax calculator', 'tools', 'guides', 'Ottawa', 'Canada']}
       />
       <main>

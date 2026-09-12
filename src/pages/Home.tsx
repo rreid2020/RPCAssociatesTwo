@@ -31,8 +31,8 @@ const Home: FC = () => {
   return (
     <>
       <SEO
-        title="Axiom | Accounting, Consulting & Client Portal for Canadian Businesses"
-        description="Axiom provides accounting, consulting, and technology for growing Canadian businesses. Access Dashboard, TaxGPT, Tax Return Builder, File Repository, Working Papers, and Integrations in our secure client portal."
+        title="Ottawa Accountant | Accounting, Advisory & Client Portal"
+        description="CPA-led accounting, bookkeeping, tax planning, and fractional controller services in Ottawa. Secure client portal and practical systems for Canadian businesses."
         keywords={homeKeywords}
         canonical="/"
       />

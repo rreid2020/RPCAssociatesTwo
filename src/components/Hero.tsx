@@ -16,10 +16,10 @@ const Hero: FC = () => {
           <div className="max-w-[600px]">
             <div className="pill mb-md">Accounting · Consulting · Tech Solutions</div>
             <h1 className="text-4xl lg:text-5xl mb-md">
-              Financial clarity and modern systems for growing businesses.
+              Ottawa accounting, advisory, and systems for growing Canadian businesses.
             </h1>
             <p className="text-lg text-text-body mb-lg">
-              Axiom helps entrepreneurs and organizations gain control of their numbers, strengthen internal controls, and implement practical tech solutions—so they can focus on running and growing the business.
+              Axiom is a CPA-led Ottawa firm. We help entrepreneurs and organizations gain control of their numbers, strengthen internal controls, and implement practical tech solutions—so they can focus on running and growing the business.
             </p>
             <div className="flex gap-md mb-lg flex-wrap">
               <CalendlyButton text="Schedule a Free Consultation" />

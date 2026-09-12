@@ -17,6 +17,11 @@ interface SchemaSoftware {
   offersCurrency?: string
 }
 
+interface SchemaFaqItem {
+  question: string
+  answer: string
+}
+
 interface SEOProps {
   title?: string
   description?: string
@@ -45,6 +50,7 @@ interface SEOProps {
     serviceType?: string
   }
   schemaSoftware?: SchemaSoftware
+  schemaFaq?: SchemaFaqItem[]
   breadcrumbs?: BreadcrumbItem[]
 }
 
@@ -80,6 +86,7 @@ const SEO: FC<SEOProps> = ({
   modifiedDate,
   schemaService,
   schemaSoftware,
+  schemaFaq,
   breadcrumbs
 }) => {
   const fullTitle = title.includes(BRAND.name) ? title : `${title} | ${BRAND.name}`
@@ -122,12 +129,69 @@ const SEO: FC<SEOProps> = ({
   const robotsContent = `${effectiveNoIndex ? 'noindex' : 'index'}, ${noFollow ? 'nofollow' : 'follow'}`
 
   const organizationNode = {
-    '@type': 'AccountingService',
+    '@type': ['Organization', 'AccountingService', 'ProfessionalService'],
+    '@id': `${baseUrl}/#organization`,
     name: BRAND.nameFull,
+    alternateName: BRAND.name,
     url: siteUrl,
     logo: defaultOgImage,
+    image: defaultOgImage,
     telephone: '+1-613-884-0208',
     email: contactEmail,
+    priceRange: '$$',
+    foundingLocation: {
+      '@type': 'Place',
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: 'Ottawa',
+        addressRegion: 'ON',
+        addressCountry: 'CA'
+      }
+    },
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'Ottawa',
+      addressRegion: 'ON',
+      addressCountry: 'CA'
+    },
+    geo: {
+      '@type': 'GeoCoordinates',
+      latitude: 45.4215,
+      longitude: -75.6972
+    },
+    areaServed: [
+      { '@type': 'City', name: 'Ottawa' },
+      { '@type': 'State', name: 'Ontario' },
+      { '@type': 'Country', name: 'Canada' }
+    ],
+    founder: {
+      '@type': 'Person',
+      '@id': `${baseUrl}/#roger-reid`,
+      name: 'Roger Reid',
+      honorificSuffix: 'CPA, CMA, CGAP'
+    }
+  }
+
+  const websiteSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    '@id': `${baseUrl}/#website`,
+    name: BRAND.nameFull,
+    url: siteUrl,
+    inLanguage: 'en-CA',
+    publisher: { '@id': `${baseUrl}/#organization` }
+  }
+
+  const personSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    '@id': `${baseUrl}/#roger-reid`,
+    name: 'Roger Reid',
+    honorificSuffix: 'CPA, CMA, CGAP',
+    jobTitle: 'Founder',
+    worksFor: { '@id': `${baseUrl}/#organization` },
+    email: contactEmail,
+    telephone: '+1-613-884-0208',
     address: {
       '@type': 'PostalAddress',
       addressLocality: 'Ottawa',
@@ -231,44 +295,48 @@ const SEO: FC<SEOProps> = ({
               '@id': fullCanonical
             }
           }
-        : {
-            '@context': 'https://schema.org',
-            '@type': 'AccountingService',
-            name: BRAND.nameFull,
-            description: description,
-            url: siteUrl,
-            logo: defaultOgImage,
-            image: defaultOgImage,
-            telephone: '+1-613-884-0208',
-            email: contactEmail,
-            priceRange: '$$',
-            contactPoint: {
-              '@type': 'ContactPoint',
-              telephone: '+1-613-884-0208',
-              contactType: 'customer service',
-              email: contactEmail,
-              areaServed: ['CA', 'CA-ON'],
-              availableLanguage: ['English']
-            },
-            address: {
-              '@type': 'PostalAddress',
-              addressLocality: 'Ottawa',
-              addressRegion: 'ON',
-              addressCountry: 'CA'
-            },
-            geo: {
-              '@type': 'GeoCoordinates',
-              latitude: 45.4215,
-              longitude: -75.6972
-            },
-            areaServed: [
-              { '@type': 'City', name: 'Ottawa' },
-              { '@type': 'State', name: 'Ontario' },
-              { '@type': 'Country', name: 'Canada' }
-            ]
-          }
+        : canonicalPath === '/'
+          ? {
+              '@context': 'https://schema.org',
+              ...organizationNode,
+              description,
+              contactPoint: {
+                '@type': 'ContactPoint',
+                telephone: '+1-613-884-0208',
+                contactType: 'customer service',
+                email: contactEmail,
+                areaServed: ['CA', 'CA-ON'],
+                availableLanguage: ['English']
+              }
+            }
+          : {
+              '@context': 'https://schema.org',
+              '@type': 'WebPage',
+              name: fullTitle,
+              description,
+              url: fullCanonical,
+              isPartOf: { '@id': `${baseUrl}/#website` },
+              about: { '@id': `${baseUrl}/#organization` },
+              inLanguage: 'en-CA'
+            }
 
-  const jsonLdBlocks = [primarySchema, breadcrumbSchema].filter(Boolean)
+  const faqSchema = schemaFaq && schemaFaq.length > 0
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: schemaFaq.map((item) => ({
+          '@type': 'Question',
+          name: item.question,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: item.answer
+          }
+        }))
+      }
+    : null
+
+  const homeExtraSchema = canonicalPath === '/' ? [websiteSchema, personSchema] : [websiteSchema]
+  const jsonLdBlocks = [primarySchema, ...homeExtraSchema, breadcrumbSchema, faqSchema].filter(Boolean)
 
   return (
     <Helmet>

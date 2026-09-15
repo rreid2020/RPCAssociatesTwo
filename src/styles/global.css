@@ -58,7 +58,8 @@
     @apply font-serif;
   }
 
-  .marketing-site a {
+  /* Body links only — never paint CTA / button labels */
+  .marketing-site a:not(.btn):not([class*="btn"]) {
     color: #0e7c86;
   }
 
@@ -70,11 +71,11 @@
     @apply mb-md text-text-body;
   }
 
-  a {
+  a:not(.btn):not([class*="btn"]) {
     @apply text-primary-soft no-underline transition-all;
   }
 
-  a:hover {
+  a:not(.btn):not([class*="btn"]):hover {
     @apply opacity-80;
   }
 
@@ -185,4 +186,178 @@
   .engagement-staffing-grid .ag-theme-quartz {
     padding-bottom: 2px;
   }
+}
+
+/*
+  Unlayered button lock — must beat @layer base link colors and Tailwind utilities.
+  Invisible CTA text was caused by `.marketing-site a { color: accent }` painting
+  teal labels onto teal (and white) button faces.
+*/
+a.btn,
+button.btn {
+  text-decoration: none;
+  opacity: 1;
+}
+
+a.btn:hover,
+button.btn:hover {
+  opacity: 1;
+}
+
+/* Site-wide BEM buttons (Home, Header, Services, Client Portal, …) */
+a.btn.btn--primary,
+button.btn.btn--primary {
+  background-color: #0e7c86 !important;
+  border-color: #0e7c86 !important;
+  color: #ffffff !important;
+}
+
+a.btn.btn--primary:hover,
+button.btn.btn--primary:hover {
+  background-color: #0b656d !important;
+  border-color: #0b656d !important;
+  color: #ffffff !important;
+}
+
+a.btn.btn--secondary,
+button.btn.btn--secondary {
+  background-color: transparent !important;
+  border-color: #00204a !important;
+  color: #00204a !important;
+}
+
+a.btn.btn--secondary:hover,
+button.btn.btn--secondary:hover {
+  background-color: #00204a !important;
+  border-color: #00204a !important;
+  color: #ffffff !important;
+}
+
+a.btn.btn--ghost,
+button.btn.btn--ghost {
+  background-color: transparent !important;
+  border-color: rgba(255, 255, 255, 0.55) !important;
+  color: #ffffff !important;
+}
+
+a.btn.btn--ghost:hover,
+button.btn.btn--ghost:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+}
+
+/* Service landing aliases (Year-End, Fractional Controller) */
+.svc-landing a.btn.btn-primary,
+.svc-landing .btn.btn-primary {
+  background-color: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #00204a !important;
+}
+
+.svc-landing a.btn.btn-primary:hover,
+.svc-landing .btn.btn-primary:hover {
+  background-color: #e9f3f4 !important;
+  border-color: #e9f3f4 !important;
+  color: #00204a !important;
+}
+
+.svc-landing .offer-side a.btn.btn-primary,
+.svc-landing .offer-side .btn.btn-primary {
+  background-color: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #00204a !important;
+}
+
+.svc-landing a.btn.btn-ghost,
+.svc-landing .btn.btn-ghost {
+  background-color: transparent !important;
+  border-color: rgba(255, 255, 255, 0.55) !important;
+  color: #ffffff !important;
+}
+
+.svc-landing a.btn.btn-ghost:hover,
+.svc-landing .btn.btn-ghost:hover {
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+}
+
+.svc-landing a.btn.btn-solid,
+.svc-landing .btn.btn-solid {
+  background-color: #00204a !important;
+  border-color: #00204a !important;
+  color: #ffffff !important;
+}
+
+.svc-landing a.btn.btn-solid:hover,
+.svc-landing .btn.btn-solid:hover {
+  background-color: #052e63 !important;
+  border-color: #052e63 !important;
+  color: #ffffff !important;
+}
+
+.svc-landing a.btn.btn-outline,
+.svc-landing .btn.btn-outline {
+  background-color: transparent !important;
+  border-color: #00204a !important;
+  color: #00204a !important;
+}
+
+.svc-landing a.btn.btn-outline:hover,
+.svc-landing .btn.btn-outline:hover {
+  background-color: #eef3f9 !important;
+  border-color: #00204a !important;
+  color: #00204a !important;
+}
+
+/* Standalone landing pages still using btn-* (ARO Recalc, etc.) */
+.aro-landing a.btn.btn-primary,
+.aro-landing a.btn.btn-solid,
+.aro-landing .btn.btn-primary,
+.aro-landing .btn.btn-solid {
+  background-color: #0e7c86 !important;
+  border-color: #0e7c86 !important;
+  color: #ffffff !important;
+}
+
+.aro-landing a.btn.btn-primary:hover,
+.aro-landing a.btn.btn-solid:hover,
+.aro-landing .btn.btn-primary:hover,
+.aro-landing .btn.btn-solid:hover {
+  background-color: #0b656d !important;
+  border-color: #0b656d !important;
+  color: #ffffff !important;
+}
+
+.aro-landing a.btn.btn-outline,
+.aro-landing .btn.btn-outline {
+  background-color: transparent !important;
+  border-color: #00204a !important;
+  color: #00204a !important;
+}
+
+.aro-landing a.btn.btn-outline:hover,
+.aro-landing .btn.btn-outline:hover {
+  background-color: #00204a !important;
+  color: #ffffff !important;
+}
+
+.aro-landing a.btn.btn-ghost,
+.aro-landing .btn.btn-ghost {
+  background-color: transparent !important;
+  border-color: rgba(255, 255, 255, 0.55) !important;
+  color: #ffffff !important;
+}
+
+.aro-landing .closing.dark a.btn.btn-outline,
+.aro-landing .closing.dark .btn.btn-outline {
+  background-color: transparent !important;
+  border-color: rgba(255, 255, 255, 0.55) !important;
+  color: #ffffff !important;
+}
+
+.aro-landing .closing.dark a.btn.btn-outline:hover,
+.aro-landing .closing.dark .btn.btn-outline:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
 }

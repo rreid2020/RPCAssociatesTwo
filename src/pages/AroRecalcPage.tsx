@@ -188,16 +188,16 @@ const AroRecalcPage: FC = () => {
             font-weight: 600; font-size: 0.92rem; text-decoration: none; border: 1.5px solid transparent;
             line-height: 1.2; text-align: center; cursor: pointer; transition: 0.15s;
           }
-          .aro-landing .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-          .aro-landing .btn-primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); color: #fff; }
+          .aro-landing .btn-primary { background: var(--accent) !important; color: #fff !important; border-color: var(--accent) !important; }
+          .aro-landing .btn-primary:hover { background: var(--accent-dark) !important; border-color: var(--accent-dark) !important; color: #fff !important; }
           .aro-landing .btn-ghost, .aro-landing .btn-outline {
-            background: transparent; color: var(--navy); border-color: var(--navy);
+            background: transparent !important; color: var(--navy) !important; border-color: var(--navy) !important;
           }
           .aro-landing .btn-ghost:hover, .aro-landing .btn-outline:hover {
-            background: var(--navy); color: #fff;
+            background: var(--navy) !important; color: #fff !important;
           }
-          .aro-landing .btn-solid { background: var(--accent); color: #fff; border-color: var(--accent); }
-          .aro-landing .btn-solid:hover { background: var(--accent-dark); border-color: var(--accent-dark); color: #fff; }
+          .aro-landing .btn-solid { background: var(--accent) !important; color: #fff !important; border-color: var(--accent) !important; }
+          .aro-landing .btn-solid:hover { background: var(--accent-dark) !important; border-color: var(--accent-dark) !important; color: #fff !important; }
           .aro-landing .closing.dark {
             background: var(--navy); color: rgba(255,255,255,0.86); text-align: center;
             border-top: 0;
@@ -206,12 +206,24 @@ const AroRecalcPage: FC = () => {
           .aro-landing .closing.dark .lede { color: rgba(255,255,255,0.82); margin-inline: auto; }
           .aro-landing .closing.dark .section-note { color: rgba(255,255,255,0.65); margin-inline: auto; }
           .aro-landing .closing.dark .btn-solid {
-            background: var(--accent); color: #fff; border-color: var(--accent);
+            background: var(--accent) !important; color: #fff !important; border-color: var(--accent) !important;
           }
           .aro-landing .closing.dark .btn-outline {
-            background: transparent; color: #fff; border-color: rgba(255,255,255,0.55);
+            background: transparent !important; color: #fff !important; border-color: rgba(255,255,255,0.55) !important;
           }
-          .aro-landing .closing.dark .btn-outline:hover { background: rgba(255,255,255,0.1); color: #fff; }
+          .aro-landing .closing.dark .btn-outline:hover { background: rgba(255,255,255,0.1) !important; color: #fff !important; }
+          .aro-landing .hero .btn-ghost {
+            background: transparent !important; color: #fff !important; border-color: rgba(255,255,255,0.55) !important;
+          }
+          .aro-landing .hero .btn-ghost:hover {
+            border-color: #fff !important; color: #fff !important;
+          }
+          .aro-landing .hero .btn-primary {
+            background: #fff !important; color: var(--navy) !important; border-color: #fff !important;
+          }
+          .aro-landing .hero .btn-primary:hover {
+            background: #e9f3f4 !important; color: var(--navy) !important;
+          }
           .aro-landing .closing .cta-row { justify-content: center; }
           .aro-landing .grid { display: grid; gap: 20px; margin-top: 36px; }
           .aro-landing .grid-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }

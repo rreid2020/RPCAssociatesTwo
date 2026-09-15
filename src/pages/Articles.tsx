@@ -77,15 +77,21 @@ const Articles: FC = () => {
         ]}
       />
       <main>
-        <section className="py-xxl">
-          <div className="max-w-[1200px] mx-auto px-md">
-            <div className="text-center mb-xl max-w-[800px] mx-auto">
-              <h1 className="mb-md">Articles</h1>
-              <p className="text-lg text-text-body">
-                Insights, tips, and updates on accounting, consulting, and technology.
+        <div className="svc-landing">
+          <section className="hero" id="hero">
+            <div className="wrap">
+              <p className="eyebrow">Articles</p>
+              <h1>Insights on Canadian tax, accounting, and technology.</h1>
+              <p className="lede">
+                Practical writing from Axiom — for owners, finance teams, and anyone who needs the
+                numbers to mean something.
               </p>
             </div>
+          </section>
+        </div>
 
+        <section className="py-xxl">
+          <div className="max-w-[1200px] mx-auto px-md">
             {loading && (
               <div className="text-center py-xl">
                 <p>Loading articles...</p>

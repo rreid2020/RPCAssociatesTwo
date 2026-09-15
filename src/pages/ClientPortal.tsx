@@ -34,46 +34,38 @@ const ClientPortal: FC = () => {
         ]}
       />
       <main>
-        {/* Hero Section */}
-        <section className="py-xxl bg-gradient-to-b from-background-band to-background border-b border-border">
-          <div className="max-w-[1120px] mx-auto px-md">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-xxl items-center">
-              <div className="max-w-[600px]">
-                <p className="eyebrow">Client Portal</p>
-                <h1 className="text-4xl lg:text-5xl font-semibold mb-md text-primary">
-                  One secure workspace for everything we do together.
-                </h1>
-                <p className="text-lg text-text-body mb-lg">
-                  Centralize communication, documents, and tax intelligence in a single portal built for fast, secure client collaboration. Access your dashboard, research tax questions, share files, and connect your accounting tools—all in one place.
-                </p>
-                <div className="flex gap-md mb-md flex-wrap items-center">
-                  <Link to="/portal/sign-in" className="btn btn--primary">
-                    Sign in to portal
-                  </Link>
-                  <Link to="/portal/select-plan" className="btn btn--secondary">
-                    Create an account
-                  </Link>
-                  <a href="tel:6138840208" className="btn btn--secondary">
-                    Call: 613-884-0208
-                  </a>
-                </div>
+        <div className="svc-landing">
+          <section className="hero" id="hero">
+            <div className="wrap">
+              <p className="eyebrow">Client Portal</p>
+              <h1>One secure workspace for everything we do together.</h1>
+              <p className="lede">
+                Centralize communication, documents, and tax intelligence in a single portal built
+                for fast, secure client collaboration. Dashboard, TaxGPT, files, and accounting tools
+                — in one place.
+              </p>
+              <div className="cta-row">
+                <Link to="/portal/sign-in" className="btn btn-primary">
+                  Sign in to portal
+                </Link>
+                <Link to="/portal/select-plan" className="btn btn-ghost">
+                  Create an account
+                </Link>
               </div>
-              <div className="bg-white p-xl rounded-lg shadow-md">
-                <h2 className="text-2xl mb-md text-primary">Why use the Client Portal?</h2>
-                <p className="mb-md text-text-light">
-                  Stop juggling emails, file shares, and multiple tools. The Client Portal brings everything into one secure, organized workspace designed specifically for accounting and tax collaboration.
-                </p>
-                <ul className="list-none">
-                  <li className="pl-md mb-sm relative before:content-['✓'] before:absolute before:left-0 before:text-accent before:font-bold">Instant access to your financial dashboard and status</li>
-                  <li className="pl-md mb-sm relative before:content-['✓'] before:absolute before:left-0 before:text-accent before:font-bold">AI-powered tax research with instant answers</li>
-                  <li className="pl-md mb-sm relative before:content-['✓'] before:absolute before:left-0 before:text-accent before:font-bold">Secure document sharing and organization</li>
-                  <li className="pl-md mb-sm relative before:content-['✓'] before:absolute before:left-0 before:text-accent before:font-bold">Real-time collaboration on working papers</li>
-                  <li className="pl-md mb-sm relative before:content-['✓'] before:absolute before:left-0 before:text-accent before:font-bold">Seamless integration with your accounting apps</li>
-                </ul>
-              </div>
+              <p className="strip">
+                <b>Secure collaboration</b>
+                {' '}
+                &nbsp;&middot;&nbsp;
+                {' '}
+                <b>TaxGPT research</b>
+                {' '}
+                &nbsp;&middot;&nbsp;
+                {' '}
+                <b>Working papers &amp; files</b>
+              </p>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
 
         {/* Portal Modules Overview */}
         <section className="py-xxl">

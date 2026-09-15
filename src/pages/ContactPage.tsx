@@ -1,6 +1,7 @@
 import { FC } from 'react'
 import SEO from '../components/SEO'
 import Contact from '../components/Contact'
+import CalendlyButton from '../components/CalendlyButton'
 
 const ContactPage: FC = () => {
   return (
@@ -15,14 +16,35 @@ const ContactPage: FC = () => {
         ]}
       />
       <main>
-        <section className="py-xl bg-background">
-          <div className="max-w-[1200px] mx-auto px-md text-center">
-            <h1 className="text-3xl lg:text-4xl font-semibold text-primary mb-sm">Contact</h1>
-            <p className="text-lg text-text-body max-w-[760px] mx-auto">
-              Tell us about your business and what support you need. We will follow up to schedule a short introductory call.
-            </p>
-          </div>
-        </section>
+        <div className="svc-landing">
+          <section className="hero" id="hero">
+            <div className="wrap">
+              <p className="eyebrow">Contact</p>
+              <h1>Tell us what you need. We&apos;ll tell you if we&apos;re the right fit.</h1>
+              <p className="lede">
+                Send a message about your business and the support you need. We follow up to schedule
+                a short introductory call — no proposal theatre.
+              </p>
+              <div className="cta-row">
+                <CalendlyButton text="Book a 30-minute call" className="btn btn-primary" />
+                <a className="btn btn-ghost" href="tel:6138840208">
+                  Call 613-884-0208
+                </a>
+              </div>
+              <p className="strip">
+                <b>Ottawa-based</b>
+                {' '}
+                &nbsp;&middot;&nbsp;
+                {' '}
+                <b>Serving clients across Canada</b>
+                {' '}
+                &nbsp;&middot;&nbsp;
+                {' '}
+                <b>roger.reid@axiomft.ca</b>
+              </p>
+            </div>
+          </section>
+        </div>
         <Contact />
       </main>
     </>

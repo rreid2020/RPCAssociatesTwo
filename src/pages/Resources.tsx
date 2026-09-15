@@ -21,17 +21,42 @@ const Resources: FC = () => {
         keywords={['resources', 'tax calculator', 'tools', 'guides', 'Ottawa', 'Canada']}
       />
       <main>
-        <section className="py-xxl bg-background">
-          <div className="max-w-[1200px] mx-auto px-md">
-            <div className="text-center mb-xl max-w-[800px] mx-auto">
-              <h1 className="text-3xl lg:text-4xl font-semibold text-primary mb-md">Resources</h1>
-              <p className="text-lg text-text-body leading-relaxed">
-                Helpful resources, tools, and guides to support your business and personal financial planning. Access calculators, templates, and expert insights to make informed decisions.
+        <div className="svc-landing">
+          <section className="hero" id="hero">
+            <div className="wrap">
+              <p className="eyebrow">Resources</p>
+              <h1>Calculators, templates, and guides you can use today.</h1>
+              <p className="lede">
+                Free Canadian tax calculators, cash-flow tools, Excel templates, and ARO resources —
+                built for practical decisions, not brochureware.
+              </p>
+              <div className="cta-row">
+                <a className="btn btn-primary" href="#calculators">
+                  Browse calculators
+                </a>
+                <a className="btn btn-ghost" href="#templates">
+                  Excel templates
+                </a>
+              </div>
+              <p className="strip">
+                <b>Free to use</b>
+                {' '}
+                &nbsp;&middot;&nbsp;
+                {' '}
+                <b>CPA-built</b>
+                {' '}
+                &nbsp;&middot;&nbsp;
+                {' '}
+                <b>Ottawa / Canada</b>
               </p>
             </div>
-            
+          </section>
+        </div>
+
+        <section className="py-xxl bg-white">
+          <div className="max-w-[1200px] mx-auto px-md">
             {/* Online Calculator and Tools Section */}
-            <div className="mb-xxl">
+            <div className="mb-xxl" id="calculators">
               <h2 className="text-2xl lg:text-3xl font-semibold text-primary mb-lg">
                 Online Calculator and Tools
               </h2>
@@ -46,8 +71,7 @@ const Resources: FC = () => {
               )}
             </div>
 
-            {/* Excel Templates Section */}
-            <div className="mb-xxl">
+            <div className="mb-xxl" id="templates">
               <h2 className="text-2xl lg:text-3xl font-semibold text-primary mb-lg">
                 Excel Templates
               </h2>

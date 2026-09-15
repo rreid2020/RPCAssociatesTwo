@@ -666,6 +666,106 @@
   justify-content: center;
 }
 
+.svc-landing .service-grid {
+  display: grid;
+  gap: 20px;
+  margin-top: 38px;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+}
+
+.svc-landing a.service-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper);
+  padding: 28px 26px;
+  text-decoration: none;
+  color: var(--ink);
+  transition: box-shadow 0.15s, border-color 0.15s;
+  opacity: 1;
+}
+
+.svc-landing a.service-card:hover {
+  border-color: var(--navy);
+  box-shadow: 0 2px 16px rgba(0, 32, 74, 0.08);
+  color: var(--ink);
+  opacity: 1;
+}
+
+.svc-landing .service-card .name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+
+.svc-landing .service-card h3 {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  margin-bottom: 0.55em;
+}
+
+.svc-landing .service-card .intro {
+  font-size: 0.97rem;
+  color: var(--ink-muted);
+  margin-bottom: 18px;
+  max-width: none;
+}
+
+.svc-landing .service-card ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.svc-landing .service-card li {
+  position: relative;
+  padding-left: 20px;
+  margin-bottom: 9px;
+  font-size: 0.93rem;
+  color: var(--ink);
+}
+
+.svc-landing .service-card li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.6em;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.svc-landing .detail-grid {
+  display: grid;
+  gap: 18px;
+  margin-top: 36px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.svc-landing .detail-grid article {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-top: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+
+.svc-landing .detail-grid h3 {
+  color: var(--navy);
+  margin-bottom: 0.45em;
+}
+
+.svc-landing .detail-grid p {
+  font-size: 0.95rem;
+  color: var(--ink-muted);
+  margin: 0;
+}
+
 @media (max-width: 760px) {
   .svc-landing .pairrow {
     grid-template-columns: 1fr;

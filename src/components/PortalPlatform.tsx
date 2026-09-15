@@ -4,12 +4,6 @@ import { Helmet } from 'react-helmet-async'
 import { portalModuleStatusLabel, portalModules } from '../lib/portal/modules'
 import { siteUrl } from '../lib/brand'
 
-const statusBadgeClass: Record<string, string> = {
-  available: 'bg-green-100 text-green-800',
-  active: 'bg-green-100 text-green-800',
-  development: 'bg-amber-100 text-amber-900'
-}
-
 const PortalPlatform: FC = () => {
   const itemListSchema = {
     '@context': 'https://schema.org',
@@ -26,82 +20,56 @@ const PortalPlatform: FC = () => {
         applicationCategory: 'BusinessApplication',
         operatingSystem: 'Web',
         description: module.intro,
-        url: `${siteUrl.replace(/\/$/, '')}/client-portal#${module.id}`
-      }
-    }))
+        url: `${siteUrl.replace(/\/$/, '')}/client-portal#${module.id}`,
+      },
+    })),
   }
 
   return (
-    <section id="client-portal" className="py-xxl section-band border-y border-border" aria-labelledby="client-portal-heading">
-      <Helmet>
-        <script type="application/ld+json">{JSON.stringify(itemListSchema)}</script>
-      </Helmet>
-      <div className="max-w-[1120px] mx-auto px-md">
-        <div className="text-center mb-xl max-w-[800px] mx-auto">
+    <div className="svc-landing">
+      <section
+        id="client-portal"
+        className="alt"
+        style={{ borderTop: '1px solid var(--rule)' }}
+        aria-labelledby="client-portal-heading"
+      >
+        <Helmet>
+          <script type="application/ld+json">{JSON.stringify(itemListSchema)}</script>
+        </Helmet>
+        <div className="wrap">
           <p className="eyebrow">Client Portal</p>
-          <h2 id="client-portal-heading" className="mb-md text-primary">
+          <h2 id="client-portal-heading">
             One secure platform for tax, returns, and accounting operations
           </h2>
-          <p className="text-lg text-text-body">
-            Axiom&apos;s client portal brings Dashboard, TaxGPT, Tax Return Builder, File Repository, Working
-            Papers, and Integrations into a single signed-in workspace—built for secure collaboration with your
-            accountant.
+          <p className="intro">
+            Axiom&apos;s client portal brings Dashboard, TaxGPT, Tax Return Builder, File Repository,
+            Working Papers, and Integrations into a single signed-in workspace — built for secure
+            collaboration with your accountant.
           </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
-          {portalModules.map((module) => (
-            <Link
-              key={module.id}
-              to={`/client-portal#${module.id}`}
-              id={module.id}
-              className="bg-white p-lg rounded border border-border shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 block no-underline text-inherit"
-            >
-              <div className="flex flex-wrap items-center gap-2 mb-md">
-                <span className="pill">{module.pill}</span>
-                <span
-                  className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${statusBadgeClass[module.status]}`}
-                >
+          <div className="detail-grid">
+            {portalModules.map((module) => (
+              <article key={module.id}>
+                <h3>
+                  <Link to={`/client-portal#${module.id}`}>{module.title}</Link>
+                </h3>
+                <p>{module.intro}</p>
+                <p className="section-note" style={{ marginTop: 12 }}>
                   {portalModuleStatusLabel[module.status]}
-                </span>
-              </div>
-              <h3 className="text-xl mb-sm text-primary">{module.title}</h3>
-              <p className="text-text-body mb-md text-[0.9375rem]">{module.intro}</p>
-              <ul className="list-none">
-                {module.bullets.map((bullet) => (
-                  <li
-                    key={bullet}
-                    className="pl-md mb-xs relative before:content-['•'] before:absolute before:left-0 before:text-accent before:font-bold text-[0.9375rem] text-text-body"
-                  >
-                    {bullet}
-                  </li>
-                ))}
-              </ul>
+                </p>
+              </article>
+            ))}
+          </div>
+          <div className="cta-row" style={{ marginTop: 36 }}>
+            <Link to="/portal/sign-in" className="btn btn-solid">
+              Open the portal
             </Link>
-          ))}
-        </div>
-
-        <div className="mt-xl text-center max-w-[640px] mx-auto">
-          <p className="text-text-light mb-md">
-            Ready to get started? Sign in to your workspace or create an account to explore every client portal
-            module.
-          </p>
-          <div className="flex flex-wrap justify-center gap-3">
-            <Link to="/portal/sign-in" className="btn btn--primary">
-              Sign in to portal
-            </Link>
-            <Link to="/portal/select-plan" className="btn btn--secondary">
-              Create an account
+            <Link to="/client-portal" className="btn btn-outline">
+              Learn more
             </Link>
           </div>
-          <p className="mt-md text-sm text-text-light">
-            <Link to="/client-portal" className="text-accent font-semibold hover:underline">
-              Learn more about the client portal
-            </Link>
-          </p>
         </div>
-      </div>
-    </section>
+      </section>
+    </div>
   )
 }
 

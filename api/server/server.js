@@ -459,6 +459,12 @@ app.use('/api', (req, res, next) => {
   })
 })
 
+// Deprecated marketing service pages → services index (SEO / inbound links)
+const DEPRECATED_MARKETING_REDIRECTS = {
+  '/services/core-accounting': '/services',
+  '/services/tax-planning': '/services',
+}
+
 // Handle client-side routing - serve index.html for all non-API GET routes
 app.get('*', (req, res, next) => {
   // Skip API routes (both GET and POST should be handled by API routes above)
@@ -469,6 +475,10 @@ app.get('*', (req, res, next) => {
   if (/\.(?:js|mjs|css|map|json|txt|xml|ico|png|jpe?g|gif|svg|webp|woff2?|ttf|eot)$/i.test(req.path)) {
     res.setHeader('Cache-Control', 'no-store')
     return res.status(404).type('text/plain').send('Not found')
+  }
+  const deprecatedTarget = DEPRECATED_MARKETING_REDIRECTS[req.path]
+  if (deprecatedTarget) {
+    return res.redirect(301, deprecatedTarget)
   }
   const prerenderedHtml = resolvePrerenderedHtml(req.path)
   if (prerenderedHtml) {

@@ -56,9 +56,7 @@ async function generateSitemap() {
 
     // Services data (inline to avoid TypeScript import issues)
     const services = [
-      { slug: 'core-accounting' },
       { slug: 'year-end-reporting' },
-      { slug: 'tax-planning' },
       { slug: 'cash-flow-planning' },
       { slug: 'fractional-controller' },
       { slug: 'tech-solutions' },

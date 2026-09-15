@@ -18,26 +18,14 @@ export const ROUTE_META = {
   '/services': {
     title: 'Our Services | Accounting, Consulting & Tech Solutions | Axiom',
     description:
-      'Accounting, bookkeeping, tax planning, cash flow forecasting, fractional controller, and systems work for Canadian businesses. CPA-led services from Ottawa.',
+      'Year-end reporting, cash flow forecasting, fractional controller, accounting systems, and ICFM/ICFR for Canadian businesses. CPA-led services from Ottawa.',
     h1: 'Accounting, consulting, and technology services',
-  },
-  '/services/core-accounting': {
-    title: 'Core Accounting & Cloud Bookkeeping | Ottawa | Axiom',
-    description:
-      'Cloud bookkeeping, bank reconciliations, monthly statements, and HST/GST support for Ottawa and Canadian businesses.',
-    h1: 'Core Accounting & Cloud Bookkeeping',
   },
   '/services/year-end-reporting': {
     title: 'Year-End Financials & Reporting | Ottawa | Axiom',
     description:
       'Year-end adjustments, working papers, and management-ready financial reports for Canadian businesses, prepared in Ottawa.',
     h1: 'Year-End Financials & Reporting',
-  },
-  '/services/tax-planning': {
-    title: 'Tax Planning & Compliance Support | Ottawa | Axiom',
-    description:
-      'Tax planning for self-employed owners and corporations, filing support, and coordination with your tax preparer.',
-    h1: 'Tax Planning & Compliance Support',
   },
   '/services/cash-flow-planning': {
     title: 'Cash Flow Planning & Forecasting | Ottawa | Axiom',

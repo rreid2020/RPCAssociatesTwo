@@ -14,9 +14,7 @@ const ALLOW_PRERENDER_IN_CI = process.env.PRERENDER_IN_CI === '1'
 const ROUTES = [
   '/',
   '/services',
-  '/services/core-accounting',
   '/services/year-end-reporting',
-  '/services/tax-planning',
   '/services/cash-flow-planning',
   '/services/fractional-controller',
   '/services/tech-solutions',

@@ -6,12 +6,11 @@
 - https://rpcassociates.co/
 
 ### Service Pages (High Priority - SEO Optimized)
-- https://rpcassociates.co/services/core-accounting
 - https://rpcassociates.co/services/year-end-reporting
-- https://rpcassociates.co/services/tax-planning
 - https://rpcassociates.co/services/cash-flow-planning
 - https://rpcassociates.co/services/fractional-controller
 - https://rpcassociates.co/services/tech-solutions
+- https://rpcassociates.co/services/icfm-icfr
 
 ### Key Resource Pages
 - https://rpcassociates.co/resources

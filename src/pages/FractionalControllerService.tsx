@@ -120,7 +120,7 @@ const advancedIncludes = [
 ]
 
 const notIncluded = [
-  'Day-to-day bookkeeping and transaction entry — a separate Axiom service line, or we work alongside your existing bookkeeper',
+  'Day-to-day bookkeeping and transaction entry — we work alongside your existing bookkeeper',
   'Corporate and personal tax return preparation and filing — separate engagement',
   'Audit, review or any assurance engagement — professional independence rules prevent us from auditing work we perform',
   'Formal business valuations and fairness opinions',

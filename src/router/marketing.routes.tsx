@@ -1,5 +1,5 @@
 import { Fragment } from 'react'
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 import Home from '../pages/Home'
@@ -20,6 +20,12 @@ import RogerReidCv from '../pages/RogerReidCv'
 import AroSuitePage from '../pages/AroSuitePage'
 import { getResourceRoutes } from './resource.routes'
 
+/** Deprecated service slugs — keep until Search Console / inbound links settle. */
+const DEPRECATED_SERVICE_REDIRECTS = [
+  '/services/core-accounting',
+  '/services/tax-planning',
+] as const
+
 export function getMarketingRoutes () {
   return (
     <Fragment>
@@ -31,6 +37,9 @@ export function getMarketingRoutes () {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/services" element={<Services />} />
+              {DEPRECATED_SERVICE_REDIRECTS.map((from) => (
+                <Route key={from} path={from} element={<Navigate to="/services" replace />} />
+              ))}
               <Route path="/services/icfm-icfr" element={<IcfmIcfrService />} />
               <Route path="/services/fractional-controller" element={<FractionalControllerService />} />
               <Route path="/services/:slug" element={<ServiceDetail />} />

@@ -9,9 +9,7 @@
 
 ## Services
 
-- [Core Accounting & Cloud Bookkeeping](https://axiomft.ca/services/core-accounting)
 - [Year-End Financials & Reporting](https://axiomft.ca/services/year-end-reporting)
-- [Tax Planning & Compliance Support](https://axiomft.ca/services/tax-planning)
 - [Cash Flow Planning & Forecasting](https://axiomft.ca/services/cash-flow-planning)
 - [Fractional Controller](https://axiomft.ca/services/fractional-controller)
 - [Accounting Systems & Tech Solutions](https://axiomft.ca/services/tech-solutions)

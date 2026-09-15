@@ -115,21 +115,21 @@ const AroRecalcPage: FC = () => {
         <style>{`
           .aro-landing {
             --navy: #00204a;
-            --navy-800: #0b3161;
-            --navy-050: #eaf0f6;
-            --accent: #b0632c;
-            --accent-dark: #9a5624;
-            --accent-050: #fdf4ec;
-            --flag: #9a3b2c;
-            --flag-050: #fdf6f4;
-            --ink: #16202c;
-            --ink-muted: #3d4a58;
-            --ink-light: #6b7a89;
-            --rule: #dfe5ec;
+            --navy-800: #052e63;
+            --navy-050: #eef3f9;
+            --accent: #0e7c86;
+            --accent-dark: #0b656d;
+            --accent-050: #e6f2f3;
+            --flag: #8a5a00;
+            --flag-050: #fdf4e3;
+            --ink: #12202f;
+            --ink-muted: #4c5c6d;
+            --ink-light: #4c5c6d;
+            --rule: #d9e1ea;
             --paper: #ffffff;
-            --paper-alt: #f4f7fa;
-            --radius: 4px;
-            --maxw: 1120px;
+            --paper-alt: #f6f8fb;
+            --radius: 6px;
+            --maxw: 1080px;
             background: var(--paper);
             color: var(--ink-muted);
             font-size: 17px;
@@ -240,7 +240,7 @@ const AroRecalcPage: FC = () => {
           .aro-landing .panel li { margin-bottom: 0.7em; font-size: 0.97rem; color: var(--ink); }
           .aro-landing .panel li:last-child { margin-bottom: 0; }
           .aro-landing .panel li strong { color: var(--flag); }
-          .aro-landing .panel-accent { background: var(--accent-050); border-color: #e8d2bf; }
+          .aro-landing .panel-accent { background: var(--accent-050); border-color: #b9d9dc; }
           .aro-landing .panel-accent h3 { color: var(--accent-dark); }
           .aro-landing .panel-accent li strong { color: var(--accent-dark); }
           .aro-landing .steps { list-style: none; counter-reset: step; margin: 36px 0 0; padding: 0; }

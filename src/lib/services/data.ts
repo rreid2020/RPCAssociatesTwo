@@ -16,32 +16,38 @@ export const services: Service[] = [
     slug: 'year-end-reporting',
     pill: 'Reporting',
     title: 'Year-End Financials & Reporting',
-    intro: 'Clear, organized year-end information to support tax filings, lenders, and management.',
+    intro:
+      'Published fixed fee, a delivery date in the engagement letter, and a working paper file you keep.',
     bullets: [
-      'Year-end adjustments and reconciliations',
-      'Working papers and supporting schedules',
-      'Management-ready financial reports',
-      'Liaison with your external tax preparer'
+      'Three published tiers: Compilation, Reporting, Assurance-Ready',
+      'Guaranteed delivery window with fee credit if we miss it',
+      'Working papers delivered with the statements',
+      'CSRS 4200 compilation report and tax-preparer package',
     ],
     details: [
       {
-        title: 'Year-End Adjustments and Reconciliations',
-        description: 'We perform comprehensive year-end adjustments to ensure your financial statements accurately reflect your business\'s financial position. This includes depreciation calculations, accruals, prepaid expenses, and other necessary adjustments to align with accounting standards.'
+        title: 'Published Fixed Fee',
+        description:
+          'Three tiers with published prices and defined deliverables. The fee is agreed in writing before we open the file and does not move because the bookkeeping was worse than expected.',
       },
       {
-        title: 'Working Papers and Supporting Schedules',
-        description: 'We maintain detailed working papers and supporting schedules that document all adjustments and provide a clear audit trail. These documents are essential for tax preparation, audits, and understanding the basis for your financial statements.'
+        title: 'Committed Delivery Date',
+        description:
+          '20, 25 or 35 business days by tier from written confirmation that records are complete. Late delivery within our control reduces the fee automatically.',
       },
       {
-        title: 'Management-Ready Financial Reports',
-        description: 'Receive professional, management-ready financial reports that present your year-end results in a clear, actionable format. These reports are designed to help you understand your business performance and make informed decisions.'
+        title: 'Working Papers You Keep',
+        description:
+          'Schedules, reconciliations, adjusting entries and the year-end checklist are delivered with the statements in a portable format you can hand to anyone.',
       },
       {
-        title: 'Liaison with Your External Tax Preparer',
-        description: 'We work directly with your external tax preparer to ensure they have all the information and documentation needed for your tax filings. This coordination saves you time and helps ensure accuracy in your tax returns.'
-      }
+        title: 'Commentary, Not Just Statements',
+        description:
+          'Comparatives, movement analysis and written commentary on what changed and why — plus an adjustment list with upstream causes so the same issues stop recurring.',
+      },
     ],
-    metaDescription: 'Professional year-end financials and reporting services in Ottawa, Ontario. Year-end adjustments, working papers, management-ready financial reports, and coordination with your tax preparer. Expert accounting services for Canadian businesses.'
+    metaDescription:
+      'Year-end adjustments, working papers and compiled financial statements for Canadian businesses and not-for-profits. Published fixed fee, a delivery date in the engagement letter, and a working paper file you keep.',
   },
   {
     slug: 'cash-flow-planning',

@@ -5,16 +5,17 @@
 @layer base {
   :root {
     --fc-navy: #00204a;
-    --fc-navy-2: #0b3161;
-    --fc-ink: #16202c;
-    --fc-body: #3d4a58;
-    --fc-muted: #6b7a89;
-    --fc-rule: #dfe5ec;
-    --fc-band: #f4f7fa;
-    --fc-band-2: #eaf0f6;
-    --fc-accent: #b0632c;
-    --fc-accent-dark: #9a5624;
-    --fc-ok: #1e6b3c;
+    --fc-navy-2: #052e63;
+    --fc-ink: #12202f;
+    --fc-body: #4c5c6d;
+    --fc-muted: #4c5c6d;
+    --fc-rule: #d9e1ea;
+    --fc-band: #f6f8fb;
+    --fc-band-2: #eef3f9;
+    --fc-accent: #0e7c86;
+    --fc-accent-dark: #0b656d;
+    --fc-ok: #0e7c86;
+    --fc-flag: #8a5a00;
   }
 
   html {
@@ -23,7 +24,7 @@
 
   body {
     @apply bg-white text-text-body antialiased;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     font-size: 17px;
     line-height: 1.65;
   }
@@ -47,7 +48,7 @@
     @apply text-2xl;
   }
 
-  /* Marketing site adopts Fractional Controller typography */
+  /* Marketing site adopts Year-End Reporting typography */
   .marketing-site h1,
   .marketing-site h2,
   .marketing-site h3,
@@ -55,6 +56,14 @@
   .marketing-site h5,
   .marketing-site h6 {
     @apply font-serif;
+  }
+
+  .marketing-site a {
+    color: #0e7c86;
+  }
+
+  .marketing-site .eyebrow {
+    letter-spacing: 0.14em;
   }
 
   p {
@@ -76,7 +85,7 @@
 
 @layer components {
   .btn {
-    @apply inline-block px-[22px] py-3 rounded font-semibold text-center cursor-pointer transition-all text-[0.92rem] font-sans whitespace-nowrap leading-tight border-[1.5px] border-transparent;
+    @apply inline-block px-6 py-[13px] rounded font-semibold text-center cursor-pointer transition-all text-[0.98rem] font-sans whitespace-nowrap leading-tight border-2 border-transparent;
   }
 
   .btn--primary {

@@ -22,10 +22,10 @@ export const ROUTE_META = {
     h1: 'Accounting, consulting, and technology services',
   },
   '/services/year-end-reporting': {
-    title: 'Year-End Financials & Reporting | Ottawa | Axiom',
+    title: 'Year-End Reporting | Published Fee, Committed Date | Axiom',
     description:
-      'Year-end adjustments, working papers, and management-ready financial reports for Canadian businesses, prepared in Ottawa.',
-    h1: 'Year-End Financials & Reporting',
+      'Year-end adjustments, working papers and compiled financial statements for Canadian businesses and not-for-profits. Published fixed fee, a delivery date in the engagement letter, and a working paper file you keep.',
+    h1: 'You don\'t know the price. You don\'t know the date. And the statements arrive too late to use.',
   },
   '/services/cash-flow-planning': {
     title: 'Cash Flow Planning & Forecasting | Ottawa | Axiom',

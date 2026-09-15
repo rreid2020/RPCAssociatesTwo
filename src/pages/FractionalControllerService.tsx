@@ -191,44 +191,45 @@ const FractionalControllerService: FC = () => {
         <style>{`
           .fc-page {
             --fc-navy: #00204a;
-            --fc-navy-2: #0b3161;
-            --fc-ink: #16202c;
-            --fc-body: #3d4a58;
-            --fc-muted: #6b7a89;
-            --fc-rule: #dfe5ec;
-            --fc-band: #f4f7fa;
-            --fc-band-2: #eaf0f6;
-            --fc-accent: #b0632c;
-            --fc-ok: #1e6b3c;
-            --fc-maxw: 1120px;
+            --fc-navy-2: #052e63;
+            --fc-ink: #12202f;
+            --fc-body: #4c5c6d;
+            --fc-muted: #4c5c6d;
+            --fc-rule: #d9e1ea;
+            --fc-band: #f6f8fb;
+            --fc-band-2: #eef3f9;
+            --fc-accent: #0e7c86;
+            --fc-ok: #0e7c86;
+            --fc-flag: #8a5a00;
+            --fc-maxw: 1080px;
             color: var(--fc-body);
             font-size: 17px;
             line-height: 1.65;
             -webkit-font-smoothing: antialiased;
           }
           .fc-page h1, .fc-page h2, .fc-page h3 {
-            font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+            font-family: Georgia, "Times New Roman", serif;
             color: var(--fc-navy);
             font-weight: 600;
             letter-spacing: -0.01em;
           }
-          .fc-page h1 { font-size: clamp(2.1rem, 4.4vw, 3.15rem); line-height: 1.12; margin: 0 0 0.55em; }
-          .fc-page h2 { font-size: clamp(1.6rem, 2.8vw, 2.15rem); line-height: 1.2; margin: 0 0 0.5em; }
-          .fc-page h3 { font-size: 1.16rem; line-height: 1.3; margin: 0 0 0.45em; }
+          .fc-page h1 { font-size: clamp(2rem, 4.4vw, 3rem); line-height: 1.2; margin: 0 0 0.55em; }
+          .fc-page h2 { font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1.2; margin: 0 0 0.5em; }
+          .fc-page h3 { font-size: 1.075rem; line-height: 1.35; margin: 0 0 0.45em; font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 650; }
           .fc-page p { margin: 0 0 1.05em; }
-          .fc-wrap { max-width: var(--fc-maxw); margin: 0 auto; padding: 0 28px; }
+          .fc-wrap { max-width: var(--fc-maxw); margin: 0 auto; padding: 0 24px; }
           .fc-narrow { max-width: 820px; }
           .fc-btn {
-            display: inline-block; padding: 12px 22px; border-radius: 3px; font-size: 0.92rem;
-            font-weight: 600; text-decoration: none; border: 1.5px solid transparent;
+            display: inline-block; padding: 13px 24px; border-radius: 6px; font-size: 0.98rem;
+            font-weight: 650; text-decoration: none; border: 2px solid transparent;
             transition: 0.15s; line-height: 1.2; text-align: center; cursor: pointer;
           }
           .fc-btn-primary { background: var(--fc-accent); color: #fff; border-color: var(--fc-accent); }
-          .fc-btn-primary:hover { background: #9a5624; border-color: #9a5624; color: #fff; }
+          .fc-btn-primary:hover { background: #0b656d; border-color: #0b656d; color: #fff; }
           .fc-btn-ghost { border-color: rgba(255,255,255,0.55); color: #fff; background: transparent; }
           .fc-btn-ghost:hover { background: rgba(255,255,255,0.1); color: #fff; }
           .fc-btn-outline { border-color: var(--fc-navy); color: var(--fc-navy); background: transparent; }
-          .fc-btn-outline:hover { background: var(--fc-navy); color: #fff; }
+          .fc-btn-outline:hover { background: #eef3f9; color: var(--fc-navy); }
           .fc-hero {
             background: linear-gradient(180deg, var(--fc-band-2), var(--fc-band));
             border-bottom: 1px solid var(--fc-rule); padding: 74px 0 66px; text-align: center;
@@ -246,31 +247,31 @@ const FractionalControllerService: FC = () => {
           .fc-dark { background: var(--fc-navy); color: rgba(255,255,255,0.86); }
           .fc-dark h2, .fc-dark h3 { color: #fff; }
           .fc-eyebrow {
-            font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase;
+            font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase;
             color: var(--fc-accent); font-weight: 700; margin: 0 0 14px;
           }
-          .fc-dark .fc-eyebrow { color: #e0a877; }
+          .fc-dark .fc-eyebrow { color: #7fc7cf; }
           .fc-section-head { max-width: 760px; margin-bottom: 44px; }
           .fc-section-head.center { margin-left: auto; margin-right: auto; text-align: center; }
           .fc-section-head p { font-size: 1.08rem; margin-bottom: 0; }
           .fc-pair {
             display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--fc-rule);
-            background: #fff; margin-bottom: 22px; border-radius: 4px; overflow: hidden;
+            background: #fff; margin-bottom: 22px; border-radius: 6px; overflow: hidden;
           }
           .fc-pair > div { padding: 28px 30px; }
           .fc-prob { background: #fbfcfd; border-right: 1px solid var(--fc-rule); }
           .fc-tag {
-            font-size: 0.66rem; letter-spacing: 0.16em; text-transform: uppercase;
+            font-size: 0.7rem; letter-spacing: 0.13em; text-transform: uppercase;
             font-weight: 700; margin-bottom: 12px; display: block;
           }
-          .fc-tag-bad { color: #9a3b2c; }
-          .fc-tag-good { color: var(--fc-ok); }
+          .fc-tag-bad { color: var(--fc-flag); }
+          .fc-tag-good { color: var(--fc-accent); }
           .fc-pair h3 { font-size: 1.06rem; margin-bottom: 0.5em; }
           .fc-pair p { font-size: 0.97rem; margin-bottom: 0; }
           .fc-pair p + p { margin-top: 0.8em; }
           .fc-tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 8px; }
           .fc-tier {
-            background: #fff; border: 1px solid var(--fc-rule); border-radius: 4px;
+            background: #fff; border: 1px solid var(--fc-rule); border-radius: 6px;
             padding: 30px 26px; display: flex; flex-direction: column;
           }
           .fc-tier-feature { border: 2px solid var(--fc-navy); position: relative; }
@@ -301,12 +302,11 @@ const FractionalControllerService: FC = () => {
             margin-bottom: 9px; line-height: 1.5;
           }
           .fc-tier li::before {
-            content: ""; position: absolute; left: 2px; top: 0.35em; width: 6px; height: 11px;
-            border-right: 2px solid var(--fc-accent); border-bottom: 2px solid var(--fc-accent);
-            transform: rotate(42deg);
+            content: ""; position: absolute; left: 2px; top: 0.55em; width: 7px; height: 7px;
+            border-radius: 50%; background: var(--fc-accent);
           }
           .fc-entry {
-            background: #fff; border: 2px solid var(--fc-accent); border-radius: 4px;
+            background: #fff; border: 2px solid var(--fc-accent); border-radius: 6px;
             padding: 34px; margin-bottom: 34px; display: grid;
             grid-template-columns: 1.35fr 1fr; gap: 34px; align-items: center;
           }
@@ -314,7 +314,7 @@ const FractionalControllerService: FC = () => {
           .fc-entry h3 { font-size: 1.35rem; }
           .fc-guarantee {
             background: #fff; border-left: 4px solid var(--fc-accent); padding: 34px 36px;
-            border-radius: 0 4px 4px 0; box-shadow: 0 1px 3px rgba(0,32,74,0.07);
+            border-radius: 0 6px 6px 0; box-shadow: 0 1px 3px rgba(0,32,74,0.07);
           }
           .fc-guarantee ol { margin: 18px 0 0; padding-left: 20px; }
           .fc-guarantee li { margin-bottom: 12px; padding-left: 6px; }
@@ -325,9 +325,8 @@ const FractionalControllerService: FC = () => {
             padding-left: 28px; position: relative; margin-bottom: 11px; font-size: 0.99rem;
           }
           .fc-checklist li::before {
-            content: ""; position: absolute; left: 4px; top: 0.3em; width: 6px; height: 12px;
-            border-right: 2px solid var(--fc-ok); border-bottom: 2px solid var(--fc-ok);
-            transform: rotate(42deg);
+            content: ""; position: absolute; left: 2px; top: 0.55em; width: 10px; height: 10px;
+            border-radius: 2px; background: var(--fc-accent);
           }
           .fc-exclude li::before {
             content: "—"; position: absolute; left: 2px; top: 0;
@@ -335,7 +334,7 @@ const FractionalControllerService: FC = () => {
           }
           .fc-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; }
           .fc-step .fc-n {
-            font-family: Georgia, serif; font-size: 2.4rem; color: #e0a877;
+            font-family: Georgia, serif; font-size: 2.4rem; color: #7fc7cf;
             line-height: 1; display: block; margin-bottom: 10px;
           }
           .fc-dark .fc-step p { color: rgba(255,255,255,0.8); font-size: 0.97rem; }

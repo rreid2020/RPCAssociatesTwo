@@ -1,6 +1,7 @@
 import { FC } from 'react'
 import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
+import MarketingPageHero from '../components/MarketingPageHero'
 import { services } from '../lib/services/data'
 import { products } from '../lib/products/data'
 import { resources } from '../lib/resources/resources'
@@ -16,13 +17,17 @@ const Sitemap: FC = () => {
         description="Complete site map of Axiom Financial & Technology. Find services, products, resources, articles, and the client portal."
         canonical="/sitemap"
       />
-      <main className="py-xxl min-h-[60vh]">
-      <div className="max-w-[900px] mx-auto px-md">
+      <main>
+        <MarketingPageHero
+          eyebrow="Site map"
+          title="Find every public page"
+          lede="Services, products, resources, articles, and the client portal — all in one place."
+          strip={['Services', 'Resources', 'Portal']}
+        />
+      <div className="svc-landing">
+      <section className="alt">
+      <div className="wrap" style={{ maxWidth: 900 }}>
         <div className="leading-relaxed">
-          <h1 className="text-4xl lg:text-5xl font-semibold text-primary mb-md">Site Map</h1>
-          <p className="text-lg text-text-body mb-xl">
-            Find all public pages and sections of the Axiom website below.
-          </p>
 
           <section className="mb-xl">
             <h2 className="text-2xl lg:text-3xl font-semibold text-primary mb-md pb-xs border-b-2 border-primary">Main Pages</h2>
@@ -130,6 +135,8 @@ const Sitemap: FC = () => {
             </ul>
           </section>
         </div>
+      </div>
+      </section>
       </div>
     </main>
     </>

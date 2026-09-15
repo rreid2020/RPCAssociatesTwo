@@ -1,6 +1,7 @@
 import { FC, FormEvent, useState } from 'react'
 import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
+import MarketingPageHero from '../components/MarketingPageHero'
 import { API_ENDPOINTS } from '../lib/config/api'
 import { parseFormApiJson } from '../lib/formApiResponse'
 import { SPACES_FILES } from '../lib/config/spaces'
@@ -260,18 +261,31 @@ const AroSuitePage: FC = () => {
         ]}
       />
       <main className="bg-white text-text-body">
-        {/* Status bar */}
-        <div className="border-b border-border bg-background-band">
-          <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-3 px-md py-3">
-            <div className="text-base font-semibold tracking-tight text-primary">ARO Suite</div>
-            <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-light">
-              Pre-release · Design partner program open
-            </p>
-          </div>
-        </div>
+        <MarketingPageHero
+          eyebrow="Asset retirement obligations"
+          title="Own the ARO process, end to end."
+          lede="One asset register, four reporting frameworks, and an engine that knows the difference between them. Scoping, measurement, close, roll-forward, disclosure note and the audit file — in one place."
+          primary={(
+            <a href="#design-partner" className="btn btn-primary">
+              Request a design partner session
+            </a>
+          )}
+          secondary={(
+            <a
+              href={PS3280_CHECKLIST_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              download={PS3280_CHECKLIST_FILENAME}
+              className="btn btn-ghost"
+            >
+              Get the PS 3280 checklist
+            </a>
+          )}
+          strip={['PSAS · IFRS · ASPE · US GAAP', 'Pre-release', 'CPA-built']}
+        />
 
-        {/* Hero */}
-        <section className="border-b border-border bg-gradient-to-b from-background-band to-background">
+        {/* Hero detail: frameworks + illustrative roll-forward */}
+        <section className="border-b border-border bg-background">
           <div className="mx-auto grid max-w-[1180px] gap-0 px-md lg:grid-cols-[180px_minmax(0,1fr)_340px]">
             <aside className="border-b border-border py-xl lg:border-b-0 lg:border-r lg:pr-lg">
               <p className="eyebrow mb-md">Frameworks</p>
@@ -282,47 +296,25 @@ const AroSuitePage: FC = () => {
                   </li>
                 ))}
               </ul>
-            </aside>
-
-            <div className="border-b border-border py-xl lg:border-b-0 lg:border-r lg:px-xl">
-              <p className="eyebrow mb-md">Asset retirement obligations</p>
-              <h1 className="mb-md text-4xl font-semibold leading-tight text-primary lg:text-5xl">
-                Own the ARO process, end to end.
-              </h1>
-              <p className="mb-md text-base leading-relaxed text-text-body lg:text-lg">
-                One asset register, four reporting frameworks, and an engine that knows the
-                difference between them. ASPE and US GAAP lock a rate onto every layer; IFRS and
-                PSAS carry a single current rate. Get that wrong and every figure downstream is
-                wrong with it.
-              </p>
-              <p className="mb-lg text-base leading-relaxed text-text-body">
-                Scoping, measurement, close, roll-forward, disclosure note and the audit file — in
-                one place. Built by Canadian CPAs who have signed off on these balances.
-              </p>
-              <div className="mb-lg flex flex-wrap gap-3">
-                <a href="#design-partner" className="btn btn--primary">
-                  Request a design partner session
-                </a>
-                <a
-                  href={PS3280_CHECKLIST_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  download={PS3280_CHECKLIST_FILENAME}
-                  className="btn btn--secondary"
-                >
-                  Get the PS 3280 scoping checklist
-                </a>
+              <div className="mt-lg flex flex-wrap gap-3">
                 <a
                   href={ARO_SUITE_APP_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn btn--secondary"
+                  className="btn btn-solid"
                 >
                   Open ARO Suite
                 </a>
               </div>
-              <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-light">
-                CPA · CMA · CGAP · MBA · Canadian-built
+            </aside>
+
+            <div className="border-b border-border py-xl lg:border-b-0 lg:border-r lg:px-xl">
+              <p className="mb-md text-base leading-relaxed text-text-body lg:text-lg">
+                ASPE and US GAAP lock a rate onto every layer; IFRS and PSAS carry a single current rate.
+                Get that wrong and every figure downstream is wrong with it.
+              </p>
+              <p className="mb-0 text-base leading-relaxed text-text-body">
+                Built by Canadian CPAs who have signed off on these balances.
               </p>
             </div>
 
@@ -361,11 +353,7 @@ const AroSuitePage: FC = () => {
                   </tbody>
                 </table>
                 <p className="mt-md mb-0 text-[11px] leading-relaxed text-text-light">
-                  Foots to the cent, and independently derived. The roll-forward is computed from
-                  the event ledger, not from the journals — so the check that a batch&apos;s net
-                  movement equals closing less opening is actually falsifiable. Measurement stamp
-                  sha256:… hashed from the register, the assumptions, the curve and the policy.
-                  Figures are illustrative and do not represent any client or entity.
+                  Foots to the cent, and independently derived. Figures are illustrative and do not represent any client or entity.
                 </p>
               </div>
             </aside>
@@ -654,7 +642,7 @@ const AroSuitePage: FC = () => {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="btn btn--primary disabled:opacity-60"
+                    className="btn btn-solid disabled:opacity-60"
                   >
                     {isSubmitting ? 'Sending…' : 'Send request'}
                   </button>
@@ -707,7 +695,7 @@ const AroSuitePage: FC = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 download={PS3280_CHECKLIST_FILENAME}
-                className="btn btn--primary"
+                className="btn btn-solid"
               >
                 Download the checklist
               </a>

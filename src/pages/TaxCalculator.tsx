@@ -1,6 +1,8 @@
 import { FC, useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 import CalendlyButton from '../components/CalendlyButton'
+import MarketingPageHero from '../components/MarketingPageHero'
 import { TaxCalculatorInputs, TaxCalculatorResults } from '../lib/tax/types'
 import { calcSummary } from '../lib/tax/calcSummary'
 import federalData2025 from '../tax-data/2025/federal.json'
@@ -196,15 +198,31 @@ const TaxCalculator: FC = () => {
         keywords="Canadian Income Tax, income tax calculator, Canadian tax calculator, tax planning, federal tax, provincial tax, tax brackets, tax rates, Canada tax, personal income tax, Ottawa tax calculator, Ontario tax calculator"
         canonical="/resources/canadian-personal-income-tax-calculator"
       />
-      <main className="py-xxl min-h-[60vh] tax-calculator">
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
-          <section className="py-xxl">
-            <div className="text-center mb-xxl max-w-[800px] mx-auto">
-              <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-md">
+      <main className="min-h-[60vh] tax-calculator">
+        <MarketingPageHero
+          eyebrow="Calculator"
+          title="Canadian Personal Income Tax Calculator"
+          lede="Plug in a few numbers for visibility into your tax bracket, marginal and average rates, and an estimate of taxes owed."
+          primary={(
+            <a href="#tool" className="btn btn-primary">
+              Open the calculator
+            </a>
+          )}
+          secondary={(
+            <Link to="/resources/category/online-calculators" className="btn btn-ghost">
+              All calculators
+            </Link>
+          )}
+          strip={['Federal + provincial', '2025 rates', 'Estimates only']}
+        />
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-xxl" id="tool">
+          <section>
+            <div className="mb-xl">
+              <h2 className="text-2xl lg:text-3xl font-bold text-primary mb-md">
                 {inputs.taxYear} {provinces.find(p => p.code === inputs.province)?.name || 'Ontario'} Income Tax Calculator
-              </h1>
+              </h2>
               <p className="text-lg text-text-light leading-relaxed m-0">
-                Plug in a few numbers and we'll give you visibility into your tax bracket, marginal tax rate, average tax rate, and an estimate of your taxes owed in {inputs.taxYear}.
+                Plug in a few numbers and we&apos;ll give you visibility into your tax bracket, marginal tax rate, average tax rate, and an estimate of your taxes owed in {inputs.taxYear}.
               </p>
             </div>
 
@@ -597,7 +615,7 @@ const TaxCalculator: FC = () => {
                         </div>
                       </div>
 
-                      <button type="submit" className="btn btn--primary w-full mt-md py-3 text-base font-semibold">
+                      <button type="submit" className="btn btn-solid w-full mt-md py-3 text-base font-semibold">
                         Calculate
                       </button>
                     </div>

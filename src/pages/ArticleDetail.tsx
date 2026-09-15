@@ -5,6 +5,7 @@ import PortableText from '../components/PortableText'
 import DownloadButton from '../components/DownloadButton'
 import RelatedLinks from '../components/RelatedLinks'
 import CalendlyButton from '../components/CalendlyButton'
+import MarketingPageHero from '../components/MarketingPageHero'
 import { getArticleBySlug } from '../lib/sanity/queries'
 import { SanityArticle } from '../lib/sanity/types'
 import { urlFor } from '../lib/sanity/image'
@@ -18,7 +19,7 @@ const ArticleDetail: FC = () => {
   useEffect(() => {
     async function fetchArticle() {
       if (!slug) return
-      
+
       try {
         setLoading(true)
         const articleData = await getArticleBySlug(slug)
@@ -42,14 +43,16 @@ const ArticleDetail: FC = () => {
     return (
       <>
         <SEO title="Article Not Found" canonical="/articles" />
-        <main>
-          <section className="py-xxl">
-            <div className="max-w-[1200px] mx-auto px-md">
-              <h1>Article Not Found</h1>
-              <p>The requested article does not exist.</p>
-              <Link to="/articles" className="btn btn--primary mt-md">
-                Back to Articles
-              </Link>
+        <main className="svc-landing">
+          <section className="closing">
+            <div className="wrap">
+              <h2>Article not found</h2>
+              <p className="lede">The requested article does not exist.</p>
+              <div className="cta-row">
+                <Link to="/articles" className="btn btn-solid">
+                  Back to articles
+                </Link>
+              </div>
             </div>
           </section>
         </main>
@@ -61,12 +64,10 @@ const ArticleDetail: FC = () => {
     return (
       <>
         <SEO title="Loading..." canonical="/articles" />
-        <main>
-          <section className="py-xxl">
-            <div className="max-w-[1200px] mx-auto px-md">
-              <div className="text-center py-xl">
-                <p>Loading article...</p>
-              </div>
+        <main className="svc-landing">
+          <section className="alt">
+            <div className="wrap">
+              <p className="intro">Loading article…</p>
             </div>
           </section>
         </main>
@@ -78,14 +79,16 @@ const ArticleDetail: FC = () => {
     return (
       <>
         <SEO title="Article Not Found" canonical="/articles" />
-        <main>
-          <section className="py-xxl">
-            <div className="max-w-[1200px] mx-auto px-md">
-              <h1>Article Not Found</h1>
-              <p>{error || 'The requested article does not exist.'}</p>
-              <Link to="/articles" className="btn btn--primary mt-md">
-                Back to Articles
-              </Link>
+        <main className="svc-landing">
+          <section className="closing">
+            <div className="wrap">
+              <h2>Article not found</h2>
+              <p className="lede">{error || 'The requested article does not exist.'}</p>
+              <div className="cta-row">
+                <Link to="/articles" className="btn btn-solid">
+                  Back to articles
+                </Link>
+              </div>
             </div>
           </section>
         </main>
@@ -96,21 +99,25 @@ const ArticleDetail: FC = () => {
   const publishedDate = new Date(article.publishedAt).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
   })
-  
-  const primaryCategory = article.categories && article.categories.length > 0 
-    ? article.categories[0] 
+
+  const primaryCategory = article.categories && article.categories.length > 0
+    ? article.categories[0]
     : null
 
   const imageUrl = article.featuredImage ? urlFor(article.featuredImage)?.width(1200).url() : null
-  const ogImageUrl = article.seo?.openGraph?.ogImage 
+  const ogImageUrl = article.seo?.openGraph?.ogImage
     ? urlFor(article.seo.openGraph.ogImage)?.width(1200).url()
     : imageUrl || undefined
-  
+
   const twitterImageUrl = article.seo?.twitter?.image
     ? urlFor(article.seo.twitter.image)?.width(1200).url()
     : ogImageUrl || undefined
+
+  const categorySlug = primaryCategory
+    ? primaryCategory.slug.current.split('/').pop() || primaryCategory.slug.current
+    : null
 
   return (
     <>
@@ -136,42 +143,33 @@ const ArticleDetail: FC = () => {
         modifiedDate={article.updatedAt}
       />
       <main>
-        <article className="max-w-[800px] mx-auto">
-          <section className="py-xxl">
-            <div className="max-w-[1200px] mx-auto px-md">
-              <div className="mb-xl">
-                <Link to="/articles" className="inline-block text-primary no-underline mb-md text-[0.9375rem] transition-all hover:underline">
-                  ← Back to Articles
-                </Link>
-                
-                <div className="flex gap-md items-center mb-md text-sm text-text-light flex-wrap">
-                  {primaryCategory && (() => {
-                    // Ensure we only use the slug part, not any path that might be included
-                    const slug = primaryCategory.slug.current.split('/').pop() || primaryCategory.slug.current
-                    return (
-                      <Link
-                        to={`/articles/category/${slug}`}
-                        className="bg-primary text-white px-xs py-1 rounded no-underline font-medium transition-all hover:opacity-90"
-                      >
-                        {primaryCategory.title}
-                      </Link>
-                    )
-                  })()}
-                  <span className="text-text-light">{publishedDate}</span>
-                  {article.author && (
-                    <span className="text-text-light">By {article.author.name}</span>
-                  )}
-                </div>
+        <MarketingPageHero
+          eyebrow={primaryCategory?.title || 'Articles'}
+          title={article.title}
+          lede={article.excerpt || `Published ${publishedDate}${article.author ? ` · By ${article.author.name}` : ''}`}
+          primary={(
+            <Link to="/articles" className="btn btn-primary">
+              All articles
+            </Link>
+          )}
+          secondary={
+            categorySlug ? (
+              <Link to={`/articles/category/${categorySlug}`} className="btn btn-ghost">
+                {primaryCategory?.title}
+              </Link>
+            ) : undefined
+          }
+          strip={[
+            publishedDate,
+            ...(article.author ? [`By ${article.author.name}`] : []),
+          ]}
+        />
 
-                <h1 className="text-4xl lg:text-5xl font-semibold text-primary mb-md leading-tight">{article.title}</h1>
-                
-                {article.excerpt && (
-                  <p className="text-xl text-text-light leading-relaxed mb-lg">{article.excerpt}</p>
-                )}
-              </div>
-
-              {imageUrl && article.featuredImage && (
-                <div className="w-full mb-xl rounded-lg overflow-hidden">
+        <div className="svc-landing">
+          <section className="alt">
+            <div className="wrap" style={{ maxWidth: 800 }}>
+              {imageUrl && article.featuredImage ? (
+                <div className="w-full mb-xl overflow-hidden" style={{ borderRadius: 6 }}>
                   <img
                     src={imageUrl}
                     alt={article.featuredImage.alt || article.title}
@@ -181,46 +179,47 @@ const ArticleDetail: FC = () => {
                     className="w-full h-auto block"
                   />
                 </div>
-              )}
+              ) : null}
 
               <div className="mb-xxl">
                 <PortableText content={article.body} />
               </div>
 
-              {article.downloads && article.downloads.length > 0 && (
-                <div className="bg-white p-xl rounded-lg shadow-sm mb-xxl border border-border">
-                  <h2 className="text-2xl font-semibold text-primary mb-lg">Downloads</h2>
-                  <div className="flex flex-col gap-md">
+              {article.downloads && article.downloads.length > 0 ? (
+                <div className="mb-xxl">
+                  <h2>Downloads</h2>
+                  <div className="flex flex-col gap-md mt-md">
                     {article.downloads.map((download) => (
                       <DownloadButton key={download._key} download={download} />
                     ))}
                   </div>
                 </div>
-              )}
+              ) : null}
 
-              {article.relatedLinks && article.relatedLinks.length > 0 && (
+              {article.relatedLinks && article.relatedLinks.length > 0 ? (
                 <RelatedLinks links={article.relatedLinks} />
-              )}
+              ) : null}
+            </div>
+          </section>
 
-              <div className="bg-white p-xl rounded-lg shadow-sm text-center mt-xxl">
-                <h2 className="text-2xl font-semibold text-primary mb-sm">Ready to Get Started?</h2>
-                <p className="text-text-light mb-lg">
-                  Let's discuss how we can help with your accounting, consulting, or technology needs.
-                </p>
-                <div className="flex gap-md justify-center flex-wrap">
-                  <CalendlyButton />
-                  <a href="tel:6138840208" className="btn btn--secondary">
-                    Call: 613-884-0208
-                  </a>
-                </div>
+          <section className="closing" id="closing">
+            <div className="wrap">
+              <h2>Ready to get started?</h2>
+              <p className="lede">
+                Let&apos;s discuss how we can help with your accounting, consulting, or technology needs.
+              </p>
+              <div className="cta-row">
+                <CalendlyButton text="Book a 30-minute call" className="btn btn-solid" />
+                <a href="tel:6138840208" className="btn btn-outline">
+                  Call: 613-884-0208
+                </a>
               </div>
             </div>
           </section>
-        </article>
+        </div>
       </main>
     </>
   )
 }
 
 export default ArticleDetail
-

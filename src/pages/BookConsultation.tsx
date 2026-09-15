@@ -1,72 +1,66 @@
 import { FC } from 'react'
 import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
+import MarketingPageHero from '../components/MarketingPageHero'
 import { CALENDLY_URL } from '../config/calendly'
 
 const BookConsultation: FC = () => {
-  // Convert Calendly URL to embed format with custom styling to match site colors
-  let embedUrl = CALENDLY_URL.replace(/\/$/, '') // Remove trailing slash if present
-  
-  // Add customization parameters to match site branding
+  let embedUrl = CALENDLY_URL.replace(/\/$/, '')
   const url = new URL(embedUrl)
-  url.searchParams.set('primary_color', '183956') // Match site primary color
-  url.searchParams.set('text_color', '333333') // Match site text color
-  url.searchParams.set('bg_color', 'ffffff') // White background
-  url.searchParams.set('hide_event_type_details', '0') // Show event details
-  url.searchParams.set('hide_landing_page_details', '1') // Hide landing page details for cleaner look
+  url.searchParams.set('primary_color', '0e7c86')
+  url.searchParams.set('text_color', '12202f')
+  url.searchParams.set('bg_color', 'ffffff')
+  url.searchParams.set('hide_event_type_details', '0')
+  url.searchParams.set('hide_landing_page_details', '1')
   embedUrl = url.toString()
 
   return (
     <>
-      <SEO 
+      <SEO
         title="Book a Free Consultation | Ottawa Accountant"
         description="Schedule a free consultation with Axiom. Talk through accounting, advisory, ARO, or portal needs with a CPA in Ottawa."
         canonical="/book-consultation"
         keywords={['book consultation', 'schedule appointment', 'tax consultation', 'accounting consultation', 'Ottawa']}
       />
       <main>
-        <section className="py-xxl bg-background">
-          <div className="max-w-[1400px] mx-auto px-md">
-            <div className="text-center mb-xl">
-              <h1 className="text-3xl lg:text-4xl font-semibold text-primary mb-md">
-                Book a Free Consultation
-              </h1>
-              <p className="text-lg text-text-body leading-relaxed max-w-2xl mx-auto">
-                Schedule a free discovery call with our team. We'll discuss your tax and accounting needs and how we can help.
+        <MarketingPageHero
+          eyebrow="Book a consultation"
+          title="A 30-minute call. Clear next steps."
+          lede="Schedule a free discovery call. We'll discuss your accounting and advisory needs, and whether Axiom is the right fit — without a proposal that moves later."
+          primary={(
+            <a className="btn btn-primary" href="#scheduler">
+              Jump to scheduler
+            </a>
+          )}
+          secondary={(
+            <Link to="/contact" className="btn btn-ghost">
+              Prefer email? Contact us
+            </Link>
+          )}
+          strip={['Free discovery call', 'Ottawa-based CPA', 'No obligation']}
+        />
+
+        <div className="svc-landing">
+          <section className="alt" id="scheduler">
+            <div className="wrap">
+              <p className="eyebrow">Pick a time</p>
+              <h2>Choose a slot that works</h2>
+              <p className="intro" style={{ marginBottom: 28 }}>
+                Use the calendar below. If nothing fits, email roger.reid@axiomft.ca or call 613-884-0208.
               </p>
+              <div style={{ border: '1px solid var(--rule)', borderRadius: 6, overflow: 'hidden', background: '#fff' }}>
+                <iframe
+                  src={embedUrl}
+                  width="100%"
+                  height="700"
+                  title="Calendly Scheduling Page"
+                  className="w-full min-h-[700px]"
+                  style={{ minHeight: 700, border: 'none', display: 'block' }}
+                />
+              </div>
             </div>
-
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-border">
-              <iframe
-                src={embedUrl}
-                width="100%"
-                height="700"
-                frameBorder="0"
-                title="Calendly Scheduling Page"
-                className="w-full min-h-[700px]"
-                style={{ 
-                  minHeight: '700px',
-                  border: 'none',
-                  display: 'block'
-                }}
-                allow="camera; microphone; geolocation"
-                loading="lazy"
-              />
-            </div>
-
-            <div className="mt-xl text-center">
-              <Link 
-                to="/" 
-                className="btn btn--secondary inline-flex items-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                Back to Home
-              </Link>
-            </div>
-          </div>
-        </section>
+          </section>
+        </div>
       </main>
     </>
   )

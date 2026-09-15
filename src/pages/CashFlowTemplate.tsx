@@ -1,6 +1,7 @@
 import { FC, useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
+import MarketingPageHero from '../components/MarketingPageHero'
 import { SPACES_FILES } from '../lib/config/spaces'
 import { downloadFile } from '../lib/utils/download'
 import LeadCaptureForm from '../components/LeadCaptureForm'
@@ -10,11 +11,10 @@ const CashFlowTemplate: FC = () => {
   const downloadUrl = SPACES_FILES.cashFlowTemplate
   const fileName = 'Axiom Cash Flow Statement.xlsx'
   const resourceName = 'Cash Flow Statement Template'
-  
+
   const [hasAccess, setHasAccess] = useState(false)
 
   useEffect(() => {
-    // Check if user has already accessed this resource
     setHasAccess(hasAccessedResource(resourceName))
   }, [resourceName])
 
@@ -40,53 +40,56 @@ const CashFlowTemplate: FC = () => {
           'Canadian business templates',
           'free excel template',
           'cash flow forecasting',
-          'liquidity management'
+          'liquidity management',
         ]}
       />
       <main>
-        {/* Hero Section */}
-        <section className="py-xxl bg-background">
-          <div className="max-w-[1200px] mx-auto px-md">
-            <div className="text-center mb-xl max-w-[800px] mx-auto">
-              <span className="inline-block px-4 py-2 bg-accent text-white text-sm font-semibold uppercase tracking-wider rounded-full mb-md">
-                Excel Template
-              </span>
-              <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-md">
-                Cash Flow Statement Template (Excel)
-              </h1>
-              <p className="text-lg text-text-light leading-relaxed mb-lg">
-                A comprehensive Excel template designed to help small and owner-managed businesses track cash inflows and outflows, monitor liquidity, and make informed financial decisions.
-              </p>
-              {hasAccess ? (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    downloadFile(downloadUrl, fileName)
-                  }}
-                  className="btn btn--primary inline-block"
-                >
-                  Download Template
-                </button>
-              ) : (
-                <p className="text-text-light">
-                  Enter your information below to access this free template.
-                </p>
-              )}
-            </div>
-          </div>
-        </section>
+        <MarketingPageHero
+          eyebrow="Excel template"
+          title="Cash Flow Statement Template"
+          lede="A free Excel template for small and owner-managed businesses to track cash inflows and outflows, monitor liquidity, and plan major expenditures."
+          primary={
+            hasAccess ? (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={(e) => {
+                  e.preventDefault()
+                  downloadFile(downloadUrl, fileName)
+                }}
+              >
+                Download template
+              </button>
+            ) : (
+              <a href="#access" className="btn btn-primary">
+                Get free access
+              </a>
+            )
+          }
+          secondary={(
+            <Link to="/resources" className="btn btn-ghost">
+              All resources
+            </Link>
+          )}
+          strip={['Free download', 'Operating · Investing · Financing', 'CPA-built']}
+        />
 
-        {/* Lead Capture Form or Main Content */}
         {!hasAccess ? (
-          <section className="py-xxl bg-white">
-            <div className="max-w-[900px] mx-auto px-md">
-              <LeadCaptureForm
-                resourceName={resourceName}
-                onSuccess={handleFormSuccess}
-              />
-            </div>
-          </section>
+          <div className="svc-landing">
+            <section className="alt" id="access">
+              <div className="wrap" style={{ maxWidth: 720 }}>
+                <p className="eyebrow">Lead capture</p>
+                <h2>Enter your details to download</h2>
+                <p className="intro">
+                  Free template access — we&apos;ll email you nothing spammy; this unlocks the file.
+                </p>
+                <LeadCaptureForm
+                  resourceName={resourceName}
+                  onSuccess={handleFormSuccess}
+                />
+              </div>
+            </section>
+          </div>
         ) : (
           <>
             {/* Main Content */}
@@ -330,67 +333,45 @@ const CashFlowTemplate: FC = () => {
                 </ul>
               </div>
 
-              {/* Important Note */}
-              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-lg rounded mb-xl">
+              <div className="mb-xl">
                 <h3 className="text-lg font-semibold text-primary mb-sm">
-                  Important Note
+                  Important note
                 </h3>
                 <p className="text-text-light leading-relaxed m-0">
-                  This resource is for general informational purposes only and does not constitute accounting, tax, or financial advice. 
+                  This resource is for general informational purposes only and does not constitute accounting, tax, or financial advice.
                   Professional guidance may be required depending on your specific circumstances and reporting needs.
                 </p>
-              </div>
-
-              {/* Download CTA */}
-              <div className="bg-background p-xl rounded-xl text-center">
-                <div className="bg-white p-xl rounded-xl shadow-sm border border-border">
-                  <h2 className="text-2xl lg:text-3xl font-bold text-primary mb-md">
-                    Ready to Get Started?
-                  </h2>
-                  <p className="text-lg text-text-light mb-lg max-w-2xl mx-auto">
-                    Download our free Cash Flow Statement Template and start tracking your business's cash flow today.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      downloadFile(downloadUrl, fileName)
-                    }}
-                    className="btn btn--primary inline-block"
-                  >
-                    Download Template
-                  </button>
-                </div>
               </div>
             </div>
           </div>
         </section>
-            {/* Back to Resources */}
-            <section className="py-lg bg-background">
-              <div className="max-w-[900px] mx-auto px-md">
-                <Link 
-                  to="/resources" 
-                  className="inline-block text-primary no-underline text-[0.9375rem] transition-all hover:underline"
-                >
-                  ← Back to Resources
-                </Link>
-              </div>
-            </section>
-          </>
-        )}
 
-        {/* Back to Resources (shown when form is displayed) */}
-        {!hasAccess && (
-          <section className="py-lg bg-background">
-            <div className="max-w-[900px] mx-auto px-md">
-              <Link 
-                to="/resources" 
-                className="inline-block text-primary no-underline text-[0.9375rem] transition-all hover:underline"
-              >
-                ← Back to Resources
-              </Link>
+            <div className="svc-landing">
+              <section className="closing" id="closing">
+                <div className="wrap">
+                  <h2>Ready to get started?</h2>
+                  <p className="lede">
+                    Download the free Cash Flow Statement Template and start tracking your business cash flow.
+                  </p>
+                  <div className="cta-row">
+                    <button
+                      type="button"
+                      className="btn btn-solid"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        downloadFile(downloadUrl, fileName)
+                      }}
+                    >
+                      Download template
+                    </button>
+                    <Link to="/resources" className="btn btn-outline">
+                      Back to resources
+                    </Link>
+                  </div>
+                </div>
+              </section>
             </div>
-          </section>
+          </>
         )}
       </main>
     </>

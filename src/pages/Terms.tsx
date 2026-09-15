@@ -1,5 +1,6 @@
 import { FC } from 'react'
 import SEO from '../components/SEO'
+import MarketingPageHero from '../components/MarketingPageHero'
 
 const Terms: FC = () => {
   return (
@@ -9,14 +10,17 @@ const Terms: FC = () => {
         description="Axiom Terms of Service - Read our terms and conditions for using our accounting, consulting, and tech solutions services."
         canonical="/terms"
       />
-      <main className="py-xxl min-h-[60vh]">
-      <div className="max-w-[900px] mx-auto px-md">
+      <main>
+        <MarketingPageHero
+          eyebrow="Legal"
+          title="Terms of Service"
+          lede="Terms that govern your use of our website, applications, client portal, products, and services."
+          strip={['Last updated: January 1, 2025']}
+        />
+      <div className="svc-landing">
+      <section className="alt">
+      <div className="wrap" style={{ maxWidth: 900 }}>
         <div className="leading-relaxed">
-          <h1 className="text-4xl lg:text-5xl font-semibold text-primary mb-md">Terms of Service</h1>
-          
-          <p className="text-text-light text-sm mb-lg pb-md border-b border-border">
-            <strong>Last Updated:</strong> January 1, 2025
-          </p>
 
           <p>
             Welcome to Axiom Financial &amp; Technology ("Company," "we," "our," or "us"). These Terms of Service ("Terms") govern your access to and use of our website, applications, client portals, products, and services (collectively, the "Services"). By accessing or using our Services, you agree to be bound by these Terms. If you do not agree, please discontinue use immediately.
@@ -145,6 +149,8 @@ const Terms: FC = () => {
             </div>
           </section>
         </div>
+      </div>
+      </section>
       </div>
     </main>
     </>

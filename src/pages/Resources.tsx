@@ -1,6 +1,7 @@
 import { FC } from 'react'
 import SEO from '../components/SEO'
 import ResourceCard from '../components/ResourceCard'
+import CalendlyButton from '../components/CalendlyButton'
 import { getResourcesByCategory } from '../lib/resources/resources'
 
 const Resources: FC = () => {
@@ -20,86 +21,96 @@ const Resources: FC = () => {
         ]}
         keywords={['resources', 'tax calculator', 'tools', 'guides', 'Ottawa', 'Canada']}
       />
-      <main>
-        <div className="svc-landing">
-          <section className="hero" id="hero">
-            <div className="wrap">
-              <p className="eyebrow">Resources</p>
-              <h1>Calculators, templates, and guides you can use today.</h1>
-              <p className="lede">
-                Free Canadian tax calculators, cash-flow tools, Excel templates, and ARO resources —
-                built for practical decisions, not brochureware.
-              </p>
-              <div className="cta-row">
-                <a className="btn btn-primary" href="#calculators">
-                  Browse calculators
-                </a>
-                <a className="btn btn-ghost" href="#templates">
-                  Excel templates
-                </a>
+      <main className="svc-landing">
+        <section className="hero" id="hero">
+          <div className="wrap">
+            <p className="eyebrow">Resources</p>
+            <h1>Calculators, templates, and guides you can use today.</h1>
+            <p className="lede">
+              Free Canadian tax calculators, cash-flow tools, Excel templates, and ARO resources —
+              built for practical decisions, not brochureware.
+            </p>
+            <div className="cta-row">
+              <a className="btn btn-primary" href="#calculators">
+                Browse calculators
+              </a>
+              <a className="btn btn-ghost" href="#templates">
+                Excel templates
+              </a>
+            </div>
+            <p className="strip">
+              <b>Free to use</b>
+              {' '}
+              &nbsp;&middot;&nbsp;
+              {' '}
+              <b>CPA-built</b>
+              {' '}
+              &nbsp;&middot;&nbsp;
+              {' '}
+              <b>Ottawa / Canada</b>
+            </p>
+          </div>
+        </section>
+
+        <section className="alt" id="calculators">
+          <div className="wrap">
+            <p className="eyebrow">Tools</p>
+            <h2>Online calculators</h2>
+            <p className="intro">Estimate tax, cash flow, and related figures with free interactive tools.</p>
+            {calculators.length > 0 ? (
+              <div className="service-grid">
+                {calculators.map((resource) => (
+                  <ResourceCard key={resource.slug} resource={resource} />
+                ))}
               </div>
-              <p className="strip">
-                <b>Free to use</b>
-                {' '}
-                &nbsp;&middot;&nbsp;
-                {' '}
-                <b>CPA-built</b>
-                {' '}
-                &nbsp;&middot;&nbsp;
-                {' '}
-                <b>Ottawa / Canada</b>
-              </p>
-            </div>
-          </section>
-        </div>
+            ) : (
+              <p className="intro">More calculators and tools coming soon.</p>
+            )}
+          </div>
+        </section>
 
-        <section className="py-xxl bg-white">
-          <div className="max-w-[1200px] mx-auto px-md">
-            {/* Online Calculator and Tools Section */}
-            <div className="mb-xxl" id="calculators">
-              <h2 className="text-2xl lg:text-3xl font-semibold text-primary mb-lg">
-                Online Calculator and Tools
-              </h2>
-              {calculators.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
-                  {calculators.map((resource) => (
-                    <ResourceCard key={resource.slug} resource={resource} />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-text-light">More calculators and tools coming soon.</p>
-              )}
-            </div>
+        <section id="templates">
+          <div className="wrap">
+            <p className="eyebrow">Downloads</p>
+            <h2>Excel templates</h2>
+            <p className="intro">Ready-to-use workbooks for cash flow and financial reporting.</p>
+            {excelTemplates.length > 0 ? (
+              <div className="service-grid">
+                {excelTemplates.map((resource) => (
+                  <ResourceCard key={resource.slug} resource={resource} />
+                ))}
+              </div>
+            ) : (
+              <p className="intro">More Excel templates coming soon.</p>
+            )}
+          </div>
+        </section>
 
-            <div className="mb-xxl" id="templates">
-              <h2 className="text-2xl lg:text-3xl font-semibold text-primary mb-lg">
-                Excel Templates
-              </h2>
-              {excelTemplates.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
-                  {excelTemplates.map((resource) => (
-                    <ResourceCard key={resource.slug} resource={resource} />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-text-light">More Excel templates coming soon.</p>
-              )}
-            </div>
+        <section className="alt" id="publications">
+          <div className="wrap">
+            <p className="eyebrow">Guides</p>
+            <h2>Publications</h2>
+            <p className="intro">Practical write-ups and checklists from our practice.</p>
+            {publications.length > 0 ? (
+              <div className="service-grid">
+                {publications.map((resource) => (
+                  <ResourceCard key={resource.slug} resource={resource} />
+                ))}
+              </div>
+            ) : (
+              <p className="intro">More publications coming soon.</p>
+            )}
+          </div>
+        </section>
 
-            {/* Publications Section */}
-            <div className="mb-xxl">
-              <h2 className="text-2xl lg:text-3xl font-semibold text-primary mb-lg">
-                Publications
-              </h2>
-              {publications.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
-                  {publications.map((resource) => (
-                    <ResourceCard key={resource.slug} resource={resource} />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-text-light">More publications coming soon.</p>
-              )}
+        <section className="closing" id="closing">
+          <div className="wrap">
+            <h2>Need help applying these tools?</h2>
+            <p className="lede">
+              Book a short call and we&apos;ll help you put the right calculator or template to work.
+            </p>
+            <div className="cta-row">
+              <CalendlyButton text="Book a 30-minute call" className="btn btn-solid" />
             </div>
           </div>
         </section>

@@ -2,6 +2,7 @@ import { FC } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 import ResourceCard from '../components/ResourceCard'
+import MarketingPageHero from '../components/MarketingPageHero'
 import { getResourceCategoryBySlug } from '../lib/resources/data'
 import { getResourcesByCategory, ResourceDetail } from '../lib/resources/resources'
 import CalendlyButton from '../components/CalendlyButton'
@@ -18,22 +19,23 @@ const ResourceCategory: FC = () => {
           description="The requested resource category could not be found."
           canonical="/resources"
         />
-        <main className="py-xxl min-h-[60vh]">
-          <div className="max-w-[1200px] mx-auto px-md text-center">
-            <h1 className="text-4xl font-semibold text-primary mb-md">Resource Not Found</h1>
-            <p className="text-lg text-text-body mb-lg">
-              The resource category you're looking for doesn't exist.
-            </p>
-            <Link to="/resources" className="btn btn--primary">
-              View All Resources
-            </Link>
-          </div>
+        <main className="svc-landing">
+          <section className="closing">
+            <div className="wrap">
+              <h2>Resource not found</h2>
+              <p className="lede">The resource category you&apos;re looking for doesn&apos;t exist.</p>
+              <div className="cta-row">
+                <Link to="/resources" className="btn btn-solid">
+                  View all resources
+                </Link>
+              </div>
+            </div>
+          </section>
         </main>
       </>
     )
   }
 
-  // Map category slugs to resource categories
   const getCategoryType = (categorySlug: string): 'calculator' | 'excel-template' | 'publication' | null => {
     switch (categorySlug) {
       case 'online-calculators':
@@ -50,24 +52,24 @@ const ResourceCategory: FC = () => {
   const categoryType = getCategoryType(category.slug)
   const resources = categoryType ? getResourcesByCategory(categoryType) : []
   const orderedResources = categoryType === 'calculator'
-        ? [
+    ? [
+      'canadian-personal-income-tax-calculator',
+      'cash-flow-calculator',
+      'cash-flow-statement-direct-method',
+      'donation-credit-optimizer',
+      'ccpc-salary-dividend-calculator',
+      'aro-recalculation',
+    ]
+      .map((slugValue) => resources.find((resource) => resource.slug === slugValue))
+      .filter((resource): resource is ResourceDetail => Boolean(resource))
+      .concat(resources.filter((resource) => ![
         'canadian-personal-income-tax-calculator',
         'cash-flow-calculator',
         'cash-flow-statement-direct-method',
         'donation-credit-optimizer',
         'ccpc-salary-dividend-calculator',
         'aro-recalculation',
-      ]
-        .map((slugValue) => resources.find((resource) => resource.slug === slugValue))
-        .filter((resource): resource is ResourceDetail => Boolean(resource))
-        .concat(resources.filter((resource) => ![
-          'canadian-personal-income-tax-calculator',
-          'cash-flow-calculator',
-          'cash-flow-statement-direct-method',
-          'donation-credit-optimizer',
-          'ccpc-salary-dividend-calculator',
-          'aro-recalculation',
-        ].includes(resource.slug)))
+      ].includes(resource.slug)))
     : resources
 
   return (
@@ -79,55 +81,64 @@ const ResourceCategory: FC = () => {
         keywords={[category.slug, 'resources', 'tools', 'Ottawa', 'Canada']}
       />
       <main>
-        <section className="py-xxl bg-background">
-          <div className="max-w-[1200px] mx-auto px-md">
-            <div className="text-center mb-xl max-w-[800px] mx-auto">
-              <h1 className="text-3xl lg:text-4xl font-semibold text-primary mb-md">{category.title}</h1>
-              <p className="text-lg text-text-body leading-relaxed">
-                {category.description}
-              </p>
-            </div>
+        <MarketingPageHero
+          eyebrow="Resources"
+          title={category.title}
+          lede={category.description}
+          primary={(
+            <Link to="/resources" className="btn btn-primary">
+              All resources
+            </Link>
+          )}
+          secondary={(
+            <CalendlyButton text="Book a 30-minute call" className="btn btn-ghost" />
+          )}
+          strip={['Free tools', 'CPA-built', 'Ottawa / Canada']}
+        />
 
-            {orderedResources.length > 0 ? (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg mb-xxl">
-                  {orderedResources.map((resource: ResourceDetail) => (
-                    <ResourceCard key={resource.slug} resource={resource} />
-                  ))}
-                </div>
-                <div className="text-center mb-xxl">
-                  <Link to="/resources" className="text-primary hover:text-primary underline">
-                    View All Resources
-                  </Link>
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-xl mb-xxl">
-                <p className="text-lg text-text-body mb-lg">
-                  More {category.title.toLowerCase()} coming soon.
-                </p>
-                <Link to="/resources" className="text-primary hover:text-primary underline">
-                  View All Resources
+        <div className="svc-landing">
+          <section className="alt" id="catalog">
+            <div className="wrap">
+              {orderedResources.length > 0 ? (
+                <>
+                  <p className="eyebrow">In this category</p>
+                  <h2>Browse {category.title.toLowerCase()}</h2>
+                  <div className="service-grid">
+                    {orderedResources.map((resource: ResourceDetail) => (
+                      <ResourceCard key={resource.slug} resource={resource} />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2>Coming soon</h2>
+                  <p className="intro">More {category.title.toLowerCase()} are on the way.</p>
+                  <div className="cta-row">
+                    <Link to="/resources" className="btn btn-solid">
+                      View all resources
+                    </Link>
+                  </div>
+                </>
+              )}
+            </div>
+          </section>
+
+          <section className="closing" id="closing">
+            <div className="wrap">
+              <h2>Need help applying these tools?</h2>
+              <p className="lede">
+                Our team can help you make the most of these resources and provide personalized
+                guidance for your situation.
+              </p>
+              <div className="cta-row">
+                <CalendlyButton text="Book a 30-minute call" className="btn btn-solid" />
+                <Link to="/resources" className="btn btn-outline">
+                  Back to resources
                 </Link>
               </div>
-            )}
-
-            {/* CTA Section */}
-            <section className="py-xxl bg-background">
-              <div className="max-w-[900px] mx-auto px-md text-center">
-                <div className="bg-white p-xl rounded-lg shadow-sm border border-border">
-                  <h2 className="text-3xl lg:text-4xl font-semibold text-primary mb-md">
-                    Need Help with Your Finances?
-                  </h2>
-                  <p className="text-lg text-text-body mb-lg max-w-2xl mx-auto">
-                    Our team of experienced accountants and consultants can help you make the most of these resources and provide personalized guidance for your situation.
-                  </p>
-                  <CalendlyButton className="btn btn--primary text-center w-full md:w-auto" />
-                </div>
-              </div>
-            </section>
-          </div>
-        </section>
+            </div>
+          </section>
+        </div>
       </main>
     </>
   )

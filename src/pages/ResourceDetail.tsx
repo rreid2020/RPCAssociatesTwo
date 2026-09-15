@@ -7,13 +7,13 @@ import { hasAccessedResource, markResourceAsAccessed } from '../lib/utils/leadCa
 import { downloadFile } from '../lib/utils/download'
 import CalendlyButton from '../components/CalendlyButton'
 import FormattedText from '../components/FormattedText'
+import MarketingPageHero from '../components/MarketingPageHero'
 import ExternalRedirect from './ExternalRedirect'
 
 const ResourceDetail: FC = () => {
   const { slug: slugParam } = useParams<{ slug: string }>()
   const location = useLocation()
-  
-  // Extract slug from URL pathname if not in params (for specific routes)
+
   const slug = slugParam || location.pathname.replace('/resources/', '')
   const resource = slug ? getResourceBySlug(slug) : null
 
@@ -23,7 +23,7 @@ const ResourceDetail: FC = () => {
     if (resource && resource.requiresLeadCapture && (resource.downloadUrl || resource.downloads?.length)) {
       setHasAccess(hasAccessedResource(resource.title))
     } else {
-      setHasAccess(true) // Calculators don't require lead capture
+      setHasAccess(true)
     }
   }, [resource])
 
@@ -31,7 +31,6 @@ const ResourceDetail: FC = () => {
     if (resource) {
       markResourceAsAccessed(resource.title)
       setHasAccess(true)
-      // Multi-file packs unlock the download list; single-file resources auto-download.
       if (!resource.downloads?.length && resource.downloadUrl && resource.fileName) {
         downloadFile(resource.downloadUrl, resource.fileName)
       }
@@ -46,16 +45,18 @@ const ResourceDetail: FC = () => {
           description="The requested resource could not be found."
           canonical="/resources"
         />
-        <main className="py-xxl min-h-[60vh]">
-          <div className="max-w-[1200px] mx-auto px-md text-center">
-            <h1 className="text-4xl font-semibold text-primary mb-md">Resource Not Found</h1>
-            <p className="text-lg text-text-body mb-lg">
-              The resource you're looking for doesn't exist.
-            </p>
-            <Link to="/resources" className="btn btn--primary">
-              View All Resources
-            </Link>
-          </div>
+        <main className="svc-landing">
+          <section className="closing">
+            <div className="wrap">
+              <h2>Resource not found</h2>
+              <p className="lede">The resource you&apos;re looking for doesn&apos;t exist.</p>
+              <div className="cta-row">
+                <Link to="/resources" className="btn btn-solid">
+                  View all resources
+                </Link>
+              </div>
+            </div>
+          </section>
         </main>
       </>
     )
@@ -64,6 +65,32 @@ const ResourceDetail: FC = () => {
   if (resource.externalUrl) {
     return <ExternalRedirect to={resource.externalUrl} />
   }
+
+  const description = resource.longDescription
+  const introEnd = description.indexOf('Inside the guide')
+  const intro = introEnd > 0
+    ? description.substring(0, introEnd).trim()
+    : description.split('\n\n')[0].trim()
+  const bulletMatch = description.match(/•\s+([^\n]+)/g)
+  const bullets = bulletMatch ? bulletMatch.map((b) => b.replace(/^•\s+/, '').trim()) : []
+  const closingStart = description.indexOf('Each ratio')
+  const copyrightStart = description.indexOf('**Copyright & Attribution**')
+  const closing = closingStart > 0 && copyrightStart > closingStart
+    ? description.substring(closingStart, copyrightStart).trim()
+    : closingStart > 0
+      ? description.substring(closingStart).trim()
+      : ''
+  const copyright = copyrightStart > 0
+    ? description.substring(copyrightStart).trim()
+    : ''
+
+  const calculatorHref = resource.category === 'calculator'
+    ? resource.slug === 'canadian-personal-income-tax-calculator'
+      ? '/resources/canadian-personal-income-tax-calculator'
+      : resource.slug === 'cash-flow-calculator'
+        ? '/resources/cash-flow-calculator'
+        : `/resources/${resource.slug}`
+    : null
 
   return (
     <>
@@ -74,58 +101,79 @@ const ResourceDetail: FC = () => {
         keywords={resource.keywords}
       />
       <main>
-        {/* Main Content Section - Form Left, Content Right */}
-        <section className="py-12 sm:py-16 lg:py-20 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 xl:gap-16 items-start">
-              {/* Left Column - Form Card (Dark Style) */}
-              <div className="order-2 lg:order-1">
-                {resource.requiresLeadCapture && !hasAccess ? (
-                  <div className="relative bg-gradient-to-br from-primary/90 to-primary rounded-2xl shadow-2xl p-8 sm:p-10 lg:p-12 overflow-hidden">
-                    {/* Background overlay pattern */}
-                    <div className="absolute inset-0 bg-primary/10 opacity-20"></div>
-                    <div className="relative z-10">
-                      <div className="mb-6">
-                        <span className="inline-block px-3 py-1 bg-white/20 text-white text-xs font-semibold uppercase tracking-wider rounded-full mb-4">
-                          {resource.categoryLabel}
-                        </span>
-                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">
-                          {resource.title}
-                        </h1>
-                        {resource.fileSize && (
-                          <p className="text-sm text-white/80">
-                            File size: {resource.fileSize}
-                          </p>
-                        )}
-                      </div>
+        <MarketingPageHero
+          eyebrow={resource.categoryLabel}
+          title={resource.title}
+          lede={resource.shortDescription}
+          primary={
+            resource.requiresLeadCapture && !hasAccess ? (
+              <a href="#access" className="btn btn-primary">
+                Get access
+              </a>
+            ) : calculatorHref ? (
+              <Link to={calculatorHref} className="btn btn-primary">
+                Use calculator
+              </Link>
+            ) : resource.downloadUrl ? (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={(e) => {
+                  e.preventDefault()
+                  if (resource.downloadUrl && resource.fileName) {
+                    downloadFile(resource.downloadUrl, resource.fileName)
+                  }
+                }}
+              >
+                Download now
+              </button>
+            ) : (
+              <Link to="/resources" className="btn btn-primary">
+                All resources
+              </Link>
+            )
+          }
+          secondary={(
+            <CalendlyButton text="Book a 30-minute call" className="btn btn-ghost" />
+          )}
+          strip={[
+            resource.categoryLabel,
+            ...(resource.fileSize ? [`File size: ${resource.fileSize}`] : []),
+          ]}
+        />
+
+        <div className="svc-landing">
+          <section className="alt" id="access">
+            <div className="wrap">
+              <div className="detail-grid">
+                <article>
+                  {resource.requiresLeadCapture && !hasAccess ? (
+                    <>
+                      <p className="eyebrow">{resource.categoryLabel}</p>
+                      <h3>Get free access</h3>
+                      <p>Enter your details to unlock this resource.</p>
                       <LeadCaptureForm
                         resourceName={resource.title}
                         onSuccess={handleFormSuccess}
                       />
-                    </div>
-                  </div>
-                ) : resource.requiresLeadCapture && hasAccess ? (
-                  <div className="relative bg-gradient-to-br from-primary/90 to-primary rounded-2xl shadow-2xl p-8 sm:p-10 lg:p-12 overflow-hidden text-center">
-                    <div className="absolute inset-0 bg-primary/10 opacity-20"></div>
-                    <div className="relative z-10">
-                      <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
-                        Ready to Download
-                      </h2>
+                    </>
+                  ) : resource.requiresLeadCapture && hasAccess ? (
+                    <>
+                      <p className="eyebrow">Ready</p>
+                      <h3>Ready to download</h3>
                       {resource.downloads && resource.downloads.length > 0 ? (
                         <>
-                          <p className="text-base text-white/90 mb-6">
-                            You have access to all seven process templates. Download the ones you need:
-                          </p>
-                          <div className="space-y-3 text-left">
+                          <p>You have access to this pack. Download the files you need:</p>
+                          <div className="cta-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
                             {resource.downloads.map((item) => (
                               <button
                                 key={item.id}
                                 type="button"
+                                className="btn btn-solid"
                                 onClick={(e) => {
                                   e.preventDefault()
                                   downloadFile(item.downloadUrl, item.fileName)
                                 }}
-                                className="w-full px-4 py-3 bg-white text-primary font-semibold rounded-lg hover:bg-white/90 transition-colors shadow-lg text-sm sm:text-base"
                               >
                                 Download {item.label}
                               </button>
@@ -134,218 +182,123 @@ const ResourceDetail: FC = () => {
                         </>
                       ) : (
                         <>
-                          <p className="text-base text-white/90 mb-8">
-                            You have access to this resource. Click the button below to download.
-                          </p>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              if (resource.downloadUrl && resource.fileName) {
-                                downloadFile(resource.downloadUrl, resource.fileName)
-                              }
-                            }}
-                            className="w-full px-6 py-4 bg-white text-primary font-semibold rounded-lg hover:bg-white/90 transition-colors shadow-lg"
-                          >
-                            Download Now
-                          </button>
+                          <p>You have access to this resource.</p>
+                          <div className="cta-row">
+                            <button
+                              type="button"
+                              className="btn btn-solid"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                if (resource.downloadUrl && resource.fileName) {
+                                  downloadFile(resource.downloadUrl, resource.fileName)
+                                }
+                              }}
+                            >
+                              Download now
+                            </button>
+                          </div>
                         </>
                       )}
-                    </div>
-                  </div>
-                ) : resource.category === 'calculator' ? (
-                  <div className="relative bg-gradient-to-br from-primary/90 to-primary rounded-2xl shadow-2xl p-8 sm:p-10 lg:p-12 overflow-hidden text-center">
-                    <div className="absolute inset-0 bg-primary/10 opacity-20"></div>
-                    <div className="relative z-10">
-                      <Link 
-                        to={resource.slug === 'canadian-personal-income-tax-calculator' 
-                          ? '/resources/canadian-personal-income-tax-calculator'
-                          : resource.slug === 'cash-flow-calculator'
-                          ? '/resources/cash-flow-calculator'
-                          : `/resources/${resource.slug}`} 
-                        className="inline-block px-8 py-4 bg-white text-primary font-semibold rounded-lg hover:bg-white/90 transition-colors shadow-lg"
-                      >
-                        Use Calculator
-                      </Link>
-                    </div>
-                  </div>
-                ) : resource.downloadUrl ? (
-                  <div className="relative bg-gradient-to-br from-primary/90 to-primary rounded-2xl shadow-2xl p-8 sm:p-10 lg:p-12 overflow-hidden text-center">
-                    <div className="absolute inset-0 bg-primary/10 opacity-20"></div>
-                    <div className="relative z-10">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          if (resource.downloadUrl && resource.fileName) {
-                            downloadFile(resource.downloadUrl, resource.fileName)
-                          }
-                        }}
-                        className="px-8 py-4 bg-white text-primary font-semibold rounded-lg hover:bg-white/90 transition-colors shadow-lg"
-                      >
-                        Download Now
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-
-              {/* Right Column - Summarized Content */}
-              <div className="order-1 lg:order-2">
-                <div className="space-y-8">
-                  {/* Category Label */}
-                  <div>
-                    <span className="text-sm font-semibold text-accent uppercase tracking-wider">
-                      {resource.categoryLabel}
-                    </span>
-                  </div>
-                  
-                  {/* Main Heading */}
-                  <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900">
-                    {resource.title}
-                  </h1>
-                  
-                  {/* Short Description */}
-                  <p className="text-lg text-gray-600 leading-relaxed">
-                    {resource.shortDescription}
-                  </p>
-                  
-                  {/* Content from longDescription */}
-                  {(() => {
-                    // Parse the longDescription to show intro, bullet points, closing, and copyright
-                    const description = resource.longDescription
-                    
-                    // Split by "Inside the guide"
-                    const introEnd = description.indexOf('Inside the guide')
-                    const intro = introEnd > 0 
-                      ? description.substring(0, introEnd).trim()
-                      : description.split('\n\n')[0].trim()
-                    
-                    // Get all bullet points
-                    const bulletMatch = description.match(/•\s+([^\n]+)/g)
-                    const bullets = bulletMatch ? bulletMatch.map(b => b.replace(/^•\s+/, '').trim()) : []
-                    
-                    // Get closing paragraphs (after bullets, before copyright)
-                    const closingStart = description.indexOf('Each ratio')
-                    const copyrightStart = description.indexOf('**Copyright & Attribution**')
-                    const closing = closingStart > 0 && copyrightStart > closingStart
-                      ? description.substring(closingStart, copyrightStart).trim()
-                      : closingStart > 0
-                      ? description.substring(closingStart).trim()
-                      : ''
-                    
-                    // Get copyright section
-                    const copyright = copyrightStart > 0
-                      ? description.substring(copyrightStart).trim()
-                      : ''
-                    
-                    return (
-                      <div className="space-y-6">
-                        <p className="text-base text-gray-700 leading-relaxed">
-                          {intro}
-                        </p>
-                        
-                        {bullets.length > 0 && (
-                          <div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                              Inside the guide, you'll learn:
-                            </h3>
-                            <ul className="space-y-3">
-                              {bullets.map((bullet, index) => (
-                                <li key={index} className="flex items-start">
-                                  <svg className="w-5 h-5 text-accent mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                  </svg>
-                                  <span className="text-base text-gray-700">{bullet}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        
-                        {closing && (
-                          <div className="space-y-4">
-                            {closing.split('\n\n').map((paragraph, index) => (
-                              paragraph.trim() && (
-                                <p key={index} className="text-base text-gray-700 leading-relaxed">
-                                  {paragraph.trim()}
-                                </p>
-                              )
-                            ))}
-                          </div>
-                        )}
-                        
-                        {copyright && (
-                          <div className="pt-6 border-t border-gray-200">
-                            <FormattedText 
-                              text={copyright}
-                              className="max-w-none"
-                            />
-                          </div>
-                        )}
+                    </>
+                  ) : calculatorHref ? (
+                    <>
+                      <p className="eyebrow">Calculator</p>
+                      <h3>Open the tool</h3>
+                      <p>Run the calculator with your own numbers.</p>
+                      <div className="cta-row">
+                        <Link to={calculatorHref} className="btn btn-solid">
+                          Use calculator
+                        </Link>
                       </div>
-                    )
-                  })()}
-                  
-                  {/* Benefits Section */}
-                  {resource.benefits && resource.benefits.length > 0 && (
-                    <div className="pt-6 border-t border-gray-200">
-                      <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                        What You'll Get
-                      </h2>
-                      <ul className="space-y-3">
-                        {resource.benefits.slice(0, 4).map((benefit, index) => (
-                          <li key={index} className="flex items-start">
-                            <svg className="w-5 h-5 text-accent mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            <span className="text-base text-gray-700">{benefit}</span>
-                          </li>
+                    </>
+                  ) : resource.downloadUrl ? (
+                    <>
+                      <p className="eyebrow">Download</p>
+                      <h3>Get the file</h3>
+                      <p>Download this resource to your device.</p>
+                      <div className="cta-row">
+                        <button
+                          type="button"
+                          className="btn btn-solid"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            if (resource.downloadUrl && resource.fileName) {
+                              downloadFile(resource.downloadUrl, resource.fileName)
+                            }
+                          }}
+                        >
+                          Download now
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="eyebrow">{resource.categoryLabel}</p>
+                      <h3>{resource.title}</h3>
+                      <p>{resource.shortDescription}</p>
+                    </>
+                  )}
+                </article>
+
+                <article>
+                  <p className="eyebrow">About this resource</p>
+                  <h2>{resource.title}</h2>
+                  <p className="intro">{intro}</p>
+
+                  {bullets.length > 0 ? (
+                    <>
+                      <h3>Inside the guide, you&apos;ll learn:</h3>
+                      <ul className="checklist">
+                        {bullets.map((bullet) => (
+                          <li key={bullet}>{bullet}</li>
                         ))}
                       </ul>
-                    </div>
-                  )}
-                  
-                  {/* File Size if available */}
-                  {resource.fileSize && (
-                    <div className="pt-6 border-t border-gray-200">
-                      <p className="text-sm text-gray-500">
-                        File size: {resource.fileSize}
-                      </p>
-                    </div>
-                  )}
-                </div>
+                    </>
+                  ) : null}
+
+                  {closing
+                    ? closing.split('\n\n').map((paragraph) => (
+                      paragraph.trim() ? (
+                        <p key={paragraph.slice(0, 24)} className="intro">{paragraph.trim()}</p>
+                      ) : null
+                    ))
+                    : null}
+
+                  {resource.benefits && resource.benefits.length > 0 ? (
+                    <>
+                      <h3>What you&apos;ll get</h3>
+                      <ul className="checklist">
+                        {resource.benefits.slice(0, 4).map((benefit) => (
+                          <li key={benefit}>{benefit}</li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : null}
+
+                  {copyright ? (
+                    <FormattedText text={copyright} className="max-w-none mt-lg" />
+                  ) : null}
+                </article>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* CTA Section */}
-        <section className="py-xxl bg-background">
-          <div className="max-w-[1200px] mx-auto px-md">
-            <div className="bg-white p-xl rounded-lg shadow-sm border border-border text-center">
-              <h2 className="text-2xl lg:text-3xl font-semibold text-primary mb-md">
-                Need Help with Your Finances?
-              </h2>
-              <p className="text-lg text-text-body mb-lg max-w-2xl mx-auto">
-                Our team of experienced accountants and consultants can help you make the most of these resources and provide personalized guidance for your situation.
+          <section className="closing" id="closing">
+            <div className="wrap">
+              <h2>Need help with your finances?</h2>
+              <p className="lede">
+                Our team can help you make the most of these resources and provide personalized
+                guidance for your situation.
               </p>
-              <CalendlyButton className="btn btn--primary" />
+              <div className="cta-row">
+                <CalendlyButton text="Book a 30-minute call" className="btn btn-solid" />
+                <Link to="/resources" className="btn btn-outline">
+                  Back to resources
+                </Link>
+              </div>
             </div>
-          </div>
-        </section>
-
-        {/* Back to Resources */}
-        <section className="py-lg bg-white">
-          <div className="max-w-[1200px] mx-auto px-md">
-            <Link
-              to="/resources"
-              className="inline-block text-primary no-underline text-[0.9375rem] transition-all hover:underline"
-            >
-              ← Back to Resources
-            </Link>
-          </div>
-        </section>
+          </section>
+        </div>
       </main>
     </>
   )

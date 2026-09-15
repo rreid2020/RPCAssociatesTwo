@@ -147,7 +147,7 @@ const Articles: FC = () => {
                         <button
                           onClick={handleLoadMore}
                           disabled={loadingMore}
-                          className="btn btn--primary px-xl py-md text-base font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+                          className="btn btn-solid px-xl py-md text-base font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                           {loadingMore ? (
                             <span className="flex items-center gap-sm">

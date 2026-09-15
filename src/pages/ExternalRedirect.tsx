@@ -19,23 +19,26 @@ const ExternalRedirect: FC<{ to: string; label?: string }> = ({
   }, [to])
 
   return (
-    <main className="min-h-[40vh] bg-background py-xxl text-center">
-      <div className="mx-auto max-w-xl px-md">
-        <p className="mb-md text-lg text-text-body">Opening the ARO Recalculation tool in a new window…</p>
-        {popupBlocked && (
-          <p className="mb-md rounded border border-border bg-white px-md py-sm text-sm text-text-body">
-            Your browser blocked the new window. Use the link below to continue.
-          </p>
-        )}
-        <a href={to} target="_blank" rel="noopener noreferrer" className="btn btn--primary mb-md inline-flex">
-          {label}
-        </a>
-        <p className="m-0 text-sm text-text-light">
-          <Link to="/resources/category/online-calculators" className="text-primary underline underline-offset-2">
-            Back to calculators
-          </Link>
-        </p>
-      </div>
+    <main className="svc-landing">
+      <section className="closing">
+        <div className="wrap">
+          <h2>Opening tool…</h2>
+          <p className="lede">Opening the ARO Recalculation tool in a new window.</p>
+          {popupBlocked ? (
+            <p className="intro">
+              Your browser blocked the new window. Use the link below to continue.
+            </p>
+          ) : null}
+          <div className="cta-row">
+            <a href={to} target="_blank" rel="noopener noreferrer" className="btn btn-solid">
+              {label}
+            </a>
+            <Link to="/resources/category/online-calculators" className="btn btn-outline">
+              Back to calculators
+            </Link>
+          </div>
+        </div>
+      </section>
     </main>
   )
 }

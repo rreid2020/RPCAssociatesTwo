@@ -67,22 +67,22 @@ const ClientPortal: FC = () => {
           </section>
         </div>
 
-        {/* Portal Modules Overview */}
-        <section className="py-xxl">
-          <div className="max-w-[1200px] mx-auto px-md">
-            <div className="text-center mb-xl max-w-[800px] mx-auto">
-              <h2 className="mb-md text-primary">Everything You Need in One Portal</h2>
-              <p className="text-lg text-text-body">
-                Six powerful modules working together to streamline your accounting, tax, and business advisory needs.
+        <div className="svc-landing">
+          <section className="alt" id="modules">
+            <div className="wrap">
+              <p className="eyebrow">Portal modules</p>
+              <h2>Everything you need in one portal</h2>
+              <p className="intro">
+                Six modules working together to streamline accounting, tax, and business advisory work.
               </p>
-              <div className="mt-lg">
-                <Link to="/portal/sign-in" className="btn btn--primary inline-block">
+              <div className="cta-row">
+                <Link to="/portal/sign-in" className="btn btn-solid">
                   Open the portal
                 </Link>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
 
         {/* Dashboard Module */}
         <section id="dashboard" className="py-xxl bg-background">
@@ -496,110 +496,64 @@ const ClientPortal: FC = () => {
 
         <Services />
 
-        {/* Security & Trust Section */}
-        <section className="py-xxl">
-          <div className="max-w-[1200px] mx-auto px-md">
-            <div className="text-center mb-xl max-w-[800px] mx-auto">
-              <h2 className="mb-md text-primary">Bank-Level Security & Compliance</h2>
-              <p className="text-lg text-text-body">
-                Your financial data deserves the highest level of protection. The Client Portal is built with security and compliance as foundational principles.
+        <div className="svc-landing">
+          <section className="alt" id="security">
+            <div className="wrap">
+              <p className="eyebrow">Security</p>
+              <h2>Bank-level security and compliance</h2>
+              <p className="intro">
+                Your financial data deserves the highest level of protection. The Client Portal is built with
+                security and compliance as foundational principles.
               </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
-              <div className="bg-white p-lg rounded-lg shadow-sm">
-                <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center mb-md">
-                  <svg className="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold mb-xs text-primary">End-to-End Encryption</h3>
-                <p className="text-sm text-text-light">
-                  All data is encrypted in transit and at rest using industry-standard encryption protocols. Your documents and communications are protected at every step.
-                </p>
-              </div>
-              <div className="bg-white p-lg rounded-lg shadow-sm">
-                <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center mb-md">
-                  <svg className="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold mb-xs text-primary">SOC 2 Compliant</h3>
-                <p className="text-sm text-text-light">
-                  Our infrastructure and processes meet SOC 2 Type II standards, ensuring rigorous security, availability, and confidentiality controls.
-                </p>
-              </div>
-              <div className="bg-white p-lg rounded-lg shadow-sm">
-                <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center mb-md">
-                  <svg className="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold mb-xs text-primary">Access Controls</h3>
-                <p className="text-sm text-text-light">
-                  Role-based access ensures only authorized users can view or modify specific documents and data. You control who sees what.
-                </p>
-              </div>
-              <div className="bg-white p-lg rounded-lg shadow-sm">
-                <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center mb-md">
-                  <svg className="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold mb-xs text-primary">Audit Logs</h3>
-                <p className="text-sm text-text-light">
-                  Complete audit trail of all access, changes, and activities. Know exactly who accessed what and when for compliance and security.
-                </p>
-              </div>
-              <div className="bg-white p-lg rounded-lg shadow-sm">
-                <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center mb-md">
-                  <svg className="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold mb-xs text-primary">Cloud Infrastructure</h3>
-                <p className="text-sm text-text-light">
-                  Built on enterprise-grade cloud infrastructure with automatic backups, redundancy, and disaster recovery. Your data is safe and always available.
-                </p>
-              </div>
-              <div className="bg-white p-lg rounded-lg shadow-sm">
-                <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center mb-md">
-                  <svg className="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold mb-xs text-primary">PIPEDA Compliant</h3>
-                <p className="text-sm text-text-light">
-                  Fully compliant with Canadian privacy legislation (PIPEDA) and provincial privacy laws. Your personal and financial information is handled according to the highest standards.
-                </p>
+              <div className="detail-grid">
+                <article>
+                  <h3>End-to-end encryption</h3>
+                  <p>Data encrypted in transit and at rest using industry-standard protocols.</p>
+                </article>
+                <article>
+                  <h3>SOC 2 compliant</h3>
+                  <p>Infrastructure and processes meet SOC 2 Type II security and confidentiality controls.</p>
+                </article>
+                <article>
+                  <h3>Access controls</h3>
+                  <p>Role-based access so only authorized users can view or modify specific data.</p>
+                </article>
+                <article>
+                  <h3>Audit logs</h3>
+                  <p>Complete trail of access, changes, and activity for compliance and security.</p>
+                </article>
+                <article>
+                  <h3>Cloud infrastructure</h3>
+                  <p>Enterprise-grade hosting with backups, redundancy, and disaster recovery.</p>
+                </article>
+                <article>
+                  <h3>PIPEDA compliant</h3>
+                  <p>Aligned with Canadian privacy legislation and provincial privacy requirements.</p>
+                </article>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* CTA Section */}
-        <section className="py-xxl bg-background">
-          <div className="max-w-[1200px] mx-auto px-md">
-            <div className="bg-white p-xxl rounded-lg shadow-md text-center">
-              <h2 className="text-3xl lg:text-4xl font-bold mb-md text-primary">
-                Ready to Get Started?
-              </h2>
-              <p className="text-lg text-text-body mb-lg max-w-[600px] mx-auto">
-                Join clients who are already using the Client Portal to streamline your accounting, tax, and business advisory needs. Create an account or sign in to get started.
+          <section className="closing" id="closing">
+            <div className="wrap">
+              <h2>Ready to get started?</h2>
+              <p className="lede">
+                Join clients already using the Client Portal to streamline accounting, tax, and advisory work.
               </p>
-              <div className="flex gap-md justify-center flex-wrap">
-                <Link to="/portal/sign-in" className="btn btn--primary">
+              <div className="cta-row">
+                <Link to="/portal/sign-in" className="btn btn-solid">
                   Sign in to portal
                 </Link>
-                <a href="mailto:roger.reid@axiomft.ca" className="btn btn--secondary">
-                  Email Us
+                <a href="mailto:roger.reid@axiomft.ca" className="btn btn-outline">
+                  Email us
                 </a>
-                <a href="tel:6138840208" className="btn btn--secondary">
+                <a href="tel:6138840208" className="btn btn-outline">
                   Call: 613-884-0208
                 </a>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
       </main>
     </>
   )

@@ -1,6 +1,7 @@
 import { FC, useMemo, useState } from 'react'
 import SEO from '../components/SEO'
 import CalendlyButton from '../components/CalendlyButton'
+import MarketingPageHero from '../components/MarketingPageHero'
 import { Link } from 'react-router-dom'
 
 interface DirectMethodInputs {
@@ -263,19 +264,25 @@ const CashFlowStatementDirectMethod: FC = () => {
           'Ottawa',
         ]}
       />
-      <main className="py-xxl min-h-[60vh]">
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
-          <section className="mb-8 sm:mb-12">
-            <div className="text-center max-w-3xl mx-auto">
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary mb-4">
-                Cash Flow Statement (Direct Method)
-              </h1>
-              <p className="text-base sm:text-lg text-text-light leading-relaxed mb-6">
-                Build a direct method cash flow statement by entering cash receipts and cash payments across operating, investing, and financing activities.
-              </p>
-            </div>
-          </section>
+      <main>
+        <MarketingPageHero
+          eyebrow="Calculator"
+          title="Cash Flow Statement (Direct Method)"
+          lede="Build a direct method cash flow statement by entering cash receipts and cash payments across operating, investing, and financing activities."
+          primary={(
+            <a href="#tool" className="btn btn-primary">
+              Open the calculator
+            </a>
+          )}
+          secondary={(
+            <Link to="/resources/category/online-calculators" className="btn btn-ghost">
+              All calculators
+            </Link>
+          )}
+          strip={['Direct method', 'Free tool', 'Planning only']}
+        />
 
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-xxl" id="tool">
           <div className="bg-white rounded-xl shadow-sm border border-border p-4 sm:p-6 lg:p-8">
             <div className="mb-4">
               <h2 className="text-xl sm:text-2xl font-bold text-primary">
@@ -615,46 +622,22 @@ const CashFlowStatementDirectMethod: FC = () => {
             </div>
           </section>
 
-          <section className="mt-8 sm:mt-12">
-            <div className="bg-white rounded-xl shadow-sm border border-border p-6 sm:p-8 lg:p-10 text-center">
-              <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-4">
-                Need Help with Cash Flow Management?
-              </h2>
-              <p className="text-base sm:text-lg text-text-light mb-6 max-w-2xl mx-auto">
+        </div>
+
+        <div className="svc-landing">
+          <section className="closing" id="closing">
+            <div className="wrap">
+              <h2>Need help with cash flow management?</h2>
+              <p className="lede">
                 Our team can help you build a reliable cash flow process and improve your financial reporting.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <CalendlyButton className="btn btn--primary" />
-                <Link
-                  to="/resources/cash-flow-statement-template"
-                  className="btn btn--secondary"
-                >
-                  Download Cash Flow Template
+              <div className="cta-row">
+                <CalendlyButton text="Book a 30-minute call" className="btn btn-solid" />
+                <Link to="/resources/cash-flow-statement-template" className="btn btn-outline">
+                  Download cash flow template
                 </Link>
               </div>
             </div>
-          </section>
-
-          <section className="mt-6 sm:mt-8">
-            <Link
-              to="/resources"
-              className="inline-flex items-center text-primary hover:text-primary-dark transition-colors text-sm sm:text-base"
-            >
-              <svg
-                className="w-4 h-4 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
-              Back to Resources
-            </Link>
           </section>
         </div>
       </main>

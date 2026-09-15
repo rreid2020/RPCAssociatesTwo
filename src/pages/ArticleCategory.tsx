@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import SEO from '../components/SEO'
 import ArticleCard from '../components/ArticleCard'
+import MarketingPageHero from '../components/MarketingPageHero'
 import { getArticles, getCategoryBySlug, getCategories } from '../lib/sanity/queries'
 import { SanityArticle, SanityCategory } from '../lib/sanity/types'
 import { siteUrl } from '../lib/brand'
@@ -121,25 +122,23 @@ const ArticleCategory: FC = () => {
         </script>
       </Helmet>
       <main>
+        <MarketingPageHero
+          eyebrow={categoryTitle}
+          title={`${categoryTitle} articles`}
+          lede={
+            category?.description
+              || `Browse our collection of articles covering ${categoryName}. Expert insights and practical advice from Axiom.`
+          }
+          primary={(
+            <Link to="/articles" className="btn btn-primary">
+              All articles
+            </Link>
+          )}
+          strip={['Canadian tax & accounting', 'Practical guidance', 'Ottawa / Canada']}
+        />
+
         <section className="py-xxl">
           <div className="max-w-[1200px] mx-auto px-md">
-            <div className="text-center mb-xl max-w-[800px] mx-auto">
-              <h1 className="mb-md">
-                {categoryTitle} Articles
-              </h1>
-              {category?.description ? (
-                <p className="text-lg text-text-body mb-md">{category.description}</p>
-              ) : (
-                <p className="text-lg text-text-body mb-md">
-                  Browse our collection of articles covering {categoryName}. 
-                  Find expert insights, practical advice, and the latest information on accounting, tax planning, and business consulting.
-                </p>
-              )}
-              <p className="text-base text-text-light">
-                Axiom provides professional accounting, consulting, and tech solutions for businesses across Canada. 
-                Our articles offer valuable insights to help you make informed financial decisions.
-              </p>
-            </div>
 
             {categories.length > 0 && (() => {
               // Clean the current category slug for comparison
@@ -185,7 +184,7 @@ const ArticleCategory: FC = () => {
                 <div className="bg-red-50 border border-red-200 rounded-lg p-lg max-w-[600px] mx-auto">
                   <p className="text-red-800 font-semibold mb-sm">Error Loading Articles</p>
                   <p className="text-red-600">{error}</p>
-                  <Link to="/articles" className="btn btn--primary mt-md inline-block">
+                  <Link to="/articles" className="btn btn-solid mt-md inline-block">
                     View All Articles
                   </Link>
                 </div>
@@ -207,10 +206,10 @@ const ArticleCategory: FC = () => {
                         and business consulting needs.
                       </p>
                       <div className="flex gap-md justify-center flex-wrap">
-                        <Link to="/articles" className="btn btn--primary">
+                        <Link to="/articles" className="btn btn-solid">
                           View All Articles
                         </Link>
-                        <Link to="/resources" className="btn btn--secondary">
+                        <Link to="/resources" className="btn btn-outline">
                           Browse Resources
                         </Link>
                       </div>

@@ -79,6 +79,100 @@ const faqs = [
   },
 ] as const
 
+const problems = [
+  {
+    title: 'The roll-forward verifies itself',
+    body:
+      "Each year's closing balance is derived from last year's closing balance, in the same file, using the same formulas. If the original measurement was wrong, the error carries forward and compounds — and nothing in the process is capable of detecting it.",
+  },
+  {
+    title: 'Accretion at the wrong rate, or on the wrong base',
+    body:
+      'Accretion unwinds the discount on each measurement layer at the rate used to measure that layer. It is common to see a single current-year rate applied across the whole balance, or accretion calculated on a closing rather than an opening position.',
+  },
+  {
+    title: 'Revisions entered as adjustments, not re-measurements',
+    body:
+      'A change in the estimated cost or timing of retirement is a change in expected cash flows — discounted, and layered onto the existing obligation. Posting the change directly as a balance adjustment produces a liability that no longer ties to any set of cash flows.',
+  },
+  {
+    title: 'Amortization drifting away from the asset',
+    body:
+      "The retirement cost capitalized under PS 3280 is amortized over the related asset's remaining useful life. When that life is revised, or a later layer is capitalized, the two schedules routinely fall out of step and stay that way.",
+  },
+  {
+    title: 'Retired and settled assets still carrying a liability',
+    body:
+      'Assets come off the capital asset register; their ARO layers frequently do not. The obligation keeps accreting against an asset that has already been disposed of, demolished, or settled.',
+  },
+  {
+    title: 'Real and nominal inputs mixed together',
+    body:
+      "Cash flows stated in today's dollars discounted at a nominal rate — or inflation applied both to the cash flow and inside the rate — produces a measurement error that grows with the length of the settlement horizon.",
+  },
+  {
+    title: 'Nobody left who can explain the file',
+    body:
+      'Turnover in public sector finance is constant. When the auditor asks how the balance was derived, the honest answer is increasingly "that is what the model produces" — which is not an explanation of the number.',
+  },
+  {
+    title: 'An audit request with no good answer',
+    body:
+      'Auditors ask for support for the ARO continuity schedule. The only support available is the spreadsheet that generated the schedule. That is circular, it is not independent evidence, and both sides know it.',
+  },
+] as const
+
+const solutions = [
+  {
+    from: 'Self-verifying roll-forward',
+    title: 'A derivation that does not start from your balance',
+    body:
+      "The recalculation runs from estimated cost, settlement date, rate and recognition date — not from last year's closing figure. That independence is what makes a variance meaningful rather than tautological.",
+  },
+  {
+    from: 'Accretion errors',
+    title: 'Accretion recomputed layer by layer',
+    body:
+      'Each measurement layer is accreted at its own discount rate, from its own recognition date, to the measurement date you specify. Where your accretion differs, the variance lands against the specific asset that caused it.',
+  },
+  {
+    from: 'Revisions posted as plugs',
+    title: 'Revisions rebuilt as discounted cash flows',
+    body:
+      'Estimate changes are re-measured and layered. The report shows the liability the revised cash flows actually support, and how far the recorded balance sits from it.',
+  },
+  {
+    from: 'Amortization drift',
+    title: "Capitalized cost tied back to the asset's life",
+    body:
+      "The capitalized retirement cost is amortized on the asset's own remaining useful life. Schedules that have fallen out of step surface as an accumulated amortization variance rather than staying buried.",
+  },
+  {
+    from: 'Retired and settled assets',
+    title: 'Layers with no live asset isolated',
+    body:
+      'Obligations still accreting against assets that have been disposed of or settled are separated out, so they can be removed rather than carried forward another year.',
+  },
+  {
+    from: 'Mixed real and nominal inputs',
+    title: 'Input consistency tested before measurement',
+    body:
+      'Real-versus-nominal mismatches, settlement dates preceding recognition dates, negative remaining lives and missing rates are flagged in their own right — not silently absorbed into a number.',
+  },
+  {
+    from: 'Turnover and lost knowledge',
+    title: "A method that does not live in one person's file",
+    body:
+      'The procedure is the same every year, regardless of who runs it. A new treasurer or manager of accounting can produce and explain the check on their first year-end.',
+  },
+  {
+    from: 'The audit request',
+    title: 'Evidence that is not your own spreadsheet',
+    body:
+      'The variance report is an independent recalculation with its inputs, method and results visible. You can prepare it before the auditors arrive — or your auditor can run it themselves on your data as a substantive recalculation procedure.',
+  },
+] as const
+
 /**
  * Marketing landing page for the free ARO Recalculation tool.
  * Tool itself runs at arorecalc.axiomft.ca; this page is the in-site entry from Resources.
@@ -111,210 +205,52 @@ const AroRecalcPage: FC = () => {
         ]}
       />
 
-      <main className="aro-landing">
-        <style>{`
-          .aro-landing {
-            --navy: #00204a;
-            --navy-800: #052e63;
-            --navy-050: #eef3f9;
-            --accent: #0e7c86;
-            --accent-dark: #0b656d;
-            --accent-050: #e6f2f3;
-            --flag: #8a5a00;
-            --flag-050: #fdf4e3;
-            --ink: #12202f;
-            --ink-muted: #4c5c6d;
-            --ink-light: #4c5c6d;
-            --rule: #d9e1ea;
-            --paper: #ffffff;
-            --paper-alt: #f6f8fb;
-            --radius: 6px;
-            --maxw: 1080px;
-            background: var(--paper);
-            color: var(--ink-muted);
-            font-size: 17px;
-            line-height: 1.65;
-            -webkit-font-smoothing: antialiased;
-          }
-          .aro-landing .wrap { max-width: var(--maxw); margin-inline: auto; padding-inline: 28px; }
-          .aro-landing section { padding-block: 74px; border-top: 1px solid var(--rule); }
-          .aro-landing section:first-of-type { border-top: 0; }
-          .aro-landing .alt { background: var(--paper-alt); }
-          .aro-landing h1, .aro-landing h2, .aro-landing h3 {
-            font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
-            font-weight: 600; line-height: 1.2; color: var(--navy); margin: 0 0 0.5em;
-            letter-spacing: -0.01em;
-          }
-          .aro-landing h1 { font-size: clamp(2.1rem, 4.4vw, 3.15rem); line-height: 1.12; }
-          .aro-landing h2 { font-size: clamp(1.6rem, 2.8vw, 2.15rem); }
-          .aro-landing h3 {
-            font-size: 1.08rem; font-family: system-ui, -apple-system, sans-serif;
-            font-weight: 650; line-height: 1.35;
-          }
-          .aro-landing p { margin: 0 0 1.05em; }
-          .aro-landing p:last-child { margin-bottom: 0; }
-          .aro-landing a { color: var(--accent); }
-          .aro-landing a:hover { opacity: 0.9; }
-          .aro-landing .eyebrow {
-            font-size: 0.7rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase;
-            color: var(--accent); margin: 0 0 14px;
-          }
-          .aro-landing .lede { font-size: 1.15rem; line-height: 1.55; color: var(--ink-muted); max-width: 62ch; }
-          .aro-landing .intro { max-width: 70ch; }
-          .aro-landing .section-note { font-size: 0.95rem; color: var(--ink-light); max-width: 70ch; }
-          .aro-landing .hero {
-            background: linear-gradient(180deg, var(--navy-050), var(--paper-alt));
-            border-bottom: 1px solid var(--rule);
-            padding: 74px 0 66px;
-          }
-          .aro-landing .hero h1 { color: var(--navy); }
-          .aro-landing .hero .lede { color: var(--ink-muted); }
-          .aro-landing .hero strong { color: var(--ink); }
-          .aro-landing .facts {
-            list-style: none; margin: 32px 0 0; padding: 0;
-            display: grid; gap: 1px; background: var(--rule);
-            border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden;
-            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-          }
-          .aro-landing .facts li { background: var(--paper); padding: 16px 18px; }
-          .aro-landing .facts .k {
-            font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase;
-            color: var(--accent); font-weight: 700; margin-bottom: 4px;
-          }
-          .aro-landing .facts .v { font-size: 0.95rem; color: var(--ink); line-height: 1.4; }
-          .aro-landing .cta-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 32px; }
-          .aro-landing .btn {
-            display: inline-block; padding: 12px 22px; border-radius: var(--radius);
-            font-weight: 600; font-size: 0.92rem; text-decoration: none; border: 1.5px solid transparent;
-            line-height: 1.2; text-align: center; cursor: pointer; transition: 0.15s;
-          }
-          .aro-landing .btn-primary { background: var(--accent) !important; color: #fff !important; border-color: var(--accent) !important; }
-          .aro-landing .btn-primary:hover { background: var(--accent-dark) !important; border-color: var(--accent-dark) !important; color: #fff !important; }
-          .aro-landing .btn-ghost, .aro-landing .btn-outline {
-            background: transparent !important; color: var(--navy) !important; border-color: var(--navy) !important;
-          }
-          .aro-landing .btn-ghost:hover, .aro-landing .btn-outline:hover {
-            background: var(--navy) !important; color: #fff !important;
-          }
-          .aro-landing .btn-solid { background: var(--accent) !important; color: #fff !important; border-color: var(--accent) !important; }
-          .aro-landing .btn-solid:hover { background: var(--accent-dark) !important; border-color: var(--accent-dark) !important; color: #fff !important; }
-          .aro-landing .closing.dark {
-            background: var(--navy); color: rgba(255,255,255,0.86); text-align: center;
-            border-top: 0;
-          }
-          .aro-landing .closing.dark h2 { color: #fff; }
-          .aro-landing .closing.dark .lede { color: rgba(255,255,255,0.82); margin-inline: auto; }
-          .aro-landing .closing.dark .section-note { color: rgba(255,255,255,0.65); margin-inline: auto; }
-          .aro-landing .closing.dark .btn-solid {
-            background: var(--accent) !important; color: #fff !important; border-color: var(--accent) !important;
-          }
-          .aro-landing .closing.dark .btn-outline {
-            background: transparent !important; color: #fff !important; border-color: rgba(255,255,255,0.55) !important;
-          }
-          .aro-landing .closing.dark .btn-outline:hover { background: rgba(255,255,255,0.1) !important; color: #fff !important; }
-          .aro-landing .hero .btn-ghost {
-            background: transparent !important; color: #fff !important; border-color: rgba(255,255,255,0.55) !important;
-          }
-          .aro-landing .hero .btn-ghost:hover {
-            border-color: #fff !important; color: #fff !important;
-          }
-          .aro-landing .hero .btn-primary {
-            background: #fff !important; color: var(--navy) !important; border-color: #fff !important;
-          }
-          .aro-landing .hero .btn-primary:hover {
-            background: #e9f3f4 !important; color: var(--navy) !important;
-          }
-          .aro-landing .closing .cta-row { justify-content: center; }
-          .aro-landing .grid { display: grid; gap: 20px; margin-top: 36px; }
-          .aro-landing .grid-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
-          .aro-landing .grid-3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-          .aro-landing .card {
-            background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius);
-            padding: 22px 22px 24px; border-top: 3px solid var(--navy);
-          }
-          .aro-landing .card p { font-size: 0.97rem; color: var(--ink-muted); }
-          .aro-landing .card h3 { margin-bottom: 0.45em; }
-          .aro-landing .card-problem { border-top-color: var(--flag); }
-          .aro-landing .card-problem h3 { color: var(--flag); }
-          .aro-landing .pair { border-left: 3px solid var(--accent); padding: 2px 0 2px 20px; }
-          .aro-landing .pair h3 { color: var(--navy); margin-bottom: 0.35em; }
-          .aro-landing .pair p { font-size: 0.97rem; color: var(--ink-muted); margin: 0; }
-          .aro-landing .pair .from {
-            display: block; font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase;
-            color: var(--ink-light); font-weight: 700; margin-bottom: 6px;
-          }
-          .aro-landing .panel {
-            margin-top: 40px; padding: 26px 28px; border-radius: var(--radius);
-            background: var(--flag-050); border: 1px solid #e8cfc9;
-          }
-          .aro-landing .panel h3 { color: var(--flag); font-size: 1.05rem; }
-          .aro-landing .panel ul { margin: 0; padding-left: 1.15em; }
-          .aro-landing .panel li { margin-bottom: 0.7em; font-size: 0.97rem; color: var(--ink); }
-          .aro-landing .panel li:last-child { margin-bottom: 0; }
-          .aro-landing .panel li strong { color: var(--flag); }
-          .aro-landing .panel-accent { background: var(--accent-050); border-color: #b9d9dc; }
-          .aro-landing .panel-accent h3 { color: var(--accent-dark); }
-          .aro-landing .panel-accent li strong { color: var(--accent-dark); }
-          .aro-landing .steps { list-style: none; counter-reset: step; margin: 36px 0 0; padding: 0; }
-          .aro-landing .steps > li {
-            counter-increment: step; position: relative;
-            padding: 0 0 30px 66px; border-left: 2px solid var(--rule); margin-left: 20px;
-          }
-          .aro-landing .steps > li:last-child { border-left-color: transparent; padding-bottom: 0; }
-          .aro-landing .steps > li::before {
-            content: counter(step); position: absolute; left: -21px; top: -4px;
-            width: 40px; height: 40px; border-radius: 50%;
-            background: var(--navy); color: #fff;
-            font-weight: 700; font-size: 1rem; display: grid; place-items: center;
-          }
-          .aro-landing .steps h3 { margin-bottom: 0.35em; }
-          .aro-landing .steps p { font-size: 0.97rem; color: var(--ink-muted); }
-          .aro-landing .steps .fields {
-            margin: 12px 0 0; padding: 14px 16px; background: var(--paper-alt);
-            border: 1px solid var(--rule); border-radius: var(--radius);
-            font-size: 0.9rem; color: var(--ink-muted); line-height: 1.7;
-          }
-          .aro-landing .fields b { color: var(--ink); font-weight: 650; }
-          .aro-landing .faq { margin-top: 36px; border-top: 1px solid var(--rule); }
-          .aro-landing .faq details { border-bottom: 1px solid var(--rule); }
-          .aro-landing .faq summary {
-            cursor: pointer; list-style: none; padding: 18px 44px 18px 0; position: relative;
-            font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
-            font-weight: 600; color: var(--navy); font-size: 1.06rem;
-          }
-          .aro-landing .faq summary::-webkit-details-marker { display: none; }
-          .aro-landing .faq summary::after {
-            content: "+"; position: absolute; right: 8px; top: 15px;
-            font-size: 1.5rem; font-weight: 400; color: var(--accent); line-height: 1;
-            font-family: system-ui, sans-serif;
-          }
-          .aro-landing .faq details[open] summary::after { content: "\\2013"; }
-          .aro-landing .faq summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-          .aro-landing .faq .a { padding: 0 44px 22px 0; color: var(--ink-muted); font-size: 0.98rem; max-width: 78ch; }
-          .aro-landing .faq .a ul { padding-left: 1.15em; margin: 0.6em 0; }
-          .aro-landing .faq .a li { margin-bottom: 0.4em; }
-          @media (max-width: 640px) {
-            .aro-landing { font-size: 16px; }
-            .aro-landing section { padding-block: 56px; }
-            .aro-landing .hero { padding: 56px 0; }
-            .aro-landing .steps > li { padding-left: 56px; }
-          }
-        `}</style>
-
+      <main className="svc-landing">
         <section className="hero" id="overview">
           <div className="wrap">
             <p className="eyebrow">Free tool · PS 3280 Asset Retirement Obligations</p>
             <h1>ARO Recalculation Tool</h1>
             <p className="lede">
               An <strong>independent recalculation</strong> of your asset retirement obligation
-              balances, compared line by line against the balances in your own records.
-              Where the two disagree, you see the variance — by asset, by component,
-              with the amount and direction of the difference.
+              balances, compared line by line against the balances in your own records. Where the
+              two disagree, you see the variance — by asset, by component, with the amount and
+              direction of the difference.
             </p>
             <p className="lede" style={{ marginTop: '1em' }}>
               It does not replace your ARO schedule. It tests it.
             </p>
-            <ul className="facts">
+            <div className="cta-row">
+              <a
+                className="btn btn-primary"
+                href={ARO_RECALC_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open the recalculation tool
+              </a>
+              <CalendlyButton text="Book a demo" className="btn btn-ghost" />
+            </div>
+            <p className="strip">
+              <b>Free</b>
+              {' '}
+              &nbsp;&middot;&nbsp;
+              {' '}
+              <b>PS 3280 / Canadian PSAS</b>
+              {' '}
+              &nbsp;&middot;&nbsp;
+              {' '}
+              <b>Public sector &amp; auditors</b>
+              {' '}
+              &nbsp;&middot;&nbsp;
+              {' '}
+              <b>Variance report as working paper</b>
+            </p>
+          </div>
+        </section>
+
+        <section className="alt" id="facts">
+          <div className="wrap">
+            <ul className="facts" style={{ marginTop: 0 }}>
               <li>
                 <div className="k">Cost</div>
                 <div className="v">Free. No engagement required.</div>
@@ -335,17 +271,6 @@ const AroRecalcPage: FC = () => {
                 <div className="v">Variance report you can file as a working paper</div>
               </li>
             </ul>
-            <div className="cta-row">
-              <a
-                className="btn btn-primary"
-                href={ARO_RECALC_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Open the recalculation tool
-              </a>
-              <CalendlyButton text="Book a demo" className="btn btn-ghost" />
-            </div>
           </div>
         </section>
 
@@ -370,74 +295,13 @@ const AroRecalcPage: FC = () => {
                 practice, these are the things that go wrong.
               </p>
             </div>
-            <div className="grid grid-3">
-              <article className="card card-problem">
-                <h3>The roll-forward verifies itself</h3>
-                <p>
-                  Each year&apos;s closing balance is derived from last year&apos;s closing balance,
-                  in the same file, using the same formulas. If the original measurement was wrong,
-                  the error carries forward and compounds — and nothing in the process is capable of
-                  detecting it.
-                </p>
-              </article>
-              <article className="card card-problem">
-                <h3>Accretion at the wrong rate, or on the wrong base</h3>
-                <p>
-                  Accretion unwinds the discount on each measurement layer at the rate used to
-                  measure that layer. It is common to see a single current-year rate applied across
-                  the whole balance, or accretion calculated on a closing rather than an opening
-                  position.
-                </p>
-              </article>
-              <article className="card card-problem">
-                <h3>Revisions entered as adjustments, not re-measurements</h3>
-                <p>
-                  A change in the estimated cost or timing of retirement is a change in expected cash
-                  flows — discounted, and layered onto the existing obligation. Posting the change
-                  directly as a balance adjustment produces a liability that no longer ties to any
-                  set of cash flows.
-                </p>
-              </article>
-              <article className="card card-problem">
-                <h3>Amortization drifting away from the asset</h3>
-                <p>
-                  The retirement cost capitalized under PS 3280 is amortized over the related
-                  asset&apos;s remaining useful life. When that life is revised, or a later layer is
-                  capitalized, the two schedules routinely fall out of step and stay that way.
-                </p>
-              </article>
-              <article className="card card-problem">
-                <h3>Retired and settled assets still carrying a liability</h3>
-                <p>
-                  Assets come off the capital asset register; their ARO layers frequently do not.
-                  The obligation keeps accreting against an asset that has already been disposed of,
-                  demolished, or settled.
-                </p>
-              </article>
-              <article className="card card-problem">
-                <h3>Real and nominal inputs mixed together</h3>
-                <p>
-                  Cash flows stated in today&apos;s dollars discounted at a nominal rate — or
-                  inflation applied both to the cash flow and inside the rate — produces a
-                  measurement error that grows with the length of the settlement horizon.
-                </p>
-              </article>
-              <article className="card card-problem">
-                <h3>Nobody left who can explain the file</h3>
-                <p>
-                  Turnover in public sector finance is constant. When the auditor asks how the
-                  balance was derived, the honest answer is increasingly “that is what the model
-                  produces” — which is not an explanation of the number.
-                </p>
-              </article>
-              <article className="card card-problem">
-                <h3>An audit request with no good answer</h3>
-                <p>
-                  Auditors ask for support for the ARO continuity schedule. The only support
-                  available is the spreadsheet that generated the schedule. That is circular, it is
-                  not independent evidence, and both sides know it.
-                </p>
-              </article>
+            <div className="detail-grid detail-grid--flag">
+              {problems.map((item) => (
+                <article key={item.title}>
+                  <h3>{item.title}</h3>
+                  <p>{item.body}</p>
+                </article>
+              ))}
             </div>
           </div>
         </section>
@@ -455,79 +319,14 @@ const AroRecalcPage: FC = () => {
               than from your closing balance, measures the obligation independently, and reports the
               difference against what you have recorded.
             </p>
-            <div className="grid grid-2">
-              <div className="pair">
-                <span className="from">Self-verifying roll-forward</span>
-                <h3>A derivation that does not start from your balance</h3>
-                <p>
-                  The recalculation runs from estimated cost, settlement date, rate and recognition
-                  date — not from last year&apos;s closing figure. That independence is what makes a
-                  variance meaningful rather than tautological.
-                </p>
-              </div>
-              <div className="pair">
-                <span className="from">Accretion errors</span>
-                <h3>Accretion recomputed layer by layer</h3>
-                <p>
-                  Each measurement layer is accreted at its own discount rate, from its own
-                  recognition date, to the measurement date you specify. Where your accretion
-                  differs, the variance lands against the specific asset that caused it.
-                </p>
-              </div>
-              <div className="pair">
-                <span className="from">Revisions posted as plugs</span>
-                <h3>Revisions rebuilt as discounted cash flows</h3>
-                <p>
-                  Estimate changes are re-measured and layered. The report shows the liability the
-                  revised cash flows actually support, and how far the recorded balance sits from
-                  it.
-                </p>
-              </div>
-              <div className="pair">
-                <span className="from">Amortization drift</span>
-                <h3>Capitalized cost tied back to the asset&apos;s life</h3>
-                <p>
-                  The capitalized retirement cost is amortized on the asset&apos;s own remaining
-                  useful life. Schedules that have fallen out of step surface as an accumulated
-                  amortization variance rather than staying buried.
-                </p>
-              </div>
-              <div className="pair">
-                <span className="from">Retired and settled assets</span>
-                <h3>Layers with no live asset isolated</h3>
-                <p>
-                  Obligations still accreting against assets that have been disposed of or settled
-                  are separated out, so they can be removed rather than carried forward another
-                  year.
-                </p>
-              </div>
-              <div className="pair">
-                <span className="from">Mixed real and nominal inputs</span>
-                <h3>Input consistency tested before measurement</h3>
-                <p>
-                  Real-versus-nominal mismatches, settlement dates preceding recognition dates,
-                  negative remaining lives and missing rates are flagged in their own right — not
-                  silently absorbed into a number.
-                </p>
-              </div>
-              <div className="pair">
-                <span className="from">Turnover and lost knowledge</span>
-                <h3>A method that does not live in one person&apos;s file</h3>
-                <p>
-                  The procedure is the same every year, regardless of who runs it. A new treasurer
-                  or manager of accounting can produce and explain the check on their first
-                  year-end.
-                </p>
-              </div>
-              <div className="pair">
-                <span className="from">The audit request</span>
-                <h3>Evidence that is not your own spreadsheet</h3>
-                <p>
-                  The variance report is an independent recalculation with its inputs, method and
-                  results visible. You can prepare it before the auditors arrive — or your auditor
-                  can run it themselves on your data as a substantive recalculation procedure.
-                </p>
-              </div>
+            <div className="pair-grid">
+              {solutions.map((item) => (
+                <div className="pair" key={item.title}>
+                  <span className="from">{item.from}</span>
+                  <h3>{item.title}</h3>
+                  <p>{item.body}</p>
+                </div>
+              ))}
             </div>
             <div className="panel">
               <h3>What the tool does not do</h3>
@@ -671,7 +470,7 @@ const AroRecalcPage: FC = () => {
           </div>
         </section>
 
-        <section className="closing dark">
+        <section className="closing" id="closing">
           <div className="wrap">
             <h2>Find out what a second calculation says.</h2>
             <p className="lede">

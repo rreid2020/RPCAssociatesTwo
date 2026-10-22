@@ -19,6 +19,7 @@ import Sitemap from '../pages/Sitemap'
 import ClientPortal from '../pages/ClientPortal'
 import RogerReidCv from '../pages/RogerReidCv'
 import AroSuitePage from '../pages/AroSuitePage'
+import PortfolioAnalystPage from '../pages/PortfolioAnalystPage'
 import { getResourceRoutes } from './resource.routes'
 
 /** Deprecated service slugs — keep until Search Console / inbound links settle. */
@@ -46,6 +47,7 @@ export function getMarketingRoutes () {
               <Route path="/services/fractional-controller" element={<FractionalControllerService />} />
               <Route path="/services/:slug" element={<ServiceDetail />} />
               <Route path="/products/aro-suite" element={<AroSuitePage />} />
+              <Route path="/products/portfolio-analyst" element={<PortfolioAnalystPage />} />
               {getResourceRoutes()}
               <Route path="/articles" element={<Articles />} />
               <Route path="/articles/category/:categorySlug" element={<ArticleCategory />} />

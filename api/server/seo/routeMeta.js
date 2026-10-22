@@ -57,6 +57,12 @@ export const ROUTE_META = {
       'End-to-end ARO software for PS 3280, ASPE 3110, IFRS/IFRIC 1, and ASC 410-20 — measurement, close, roll-forward, disclosure, and audit evidence.',
     h1: 'Own the ARO process, end to end.',
   },
+  '/products/portfolio-analyst': {
+    title: 'Portfolio Analyst | Investment Portfolio Dashboard for Canadians | Axiom',
+    description:
+      'Every TFSA, RRSP and non-registered account in one dashboard — allocation, risk, dividends, account placement, a rebalancer and an AI analyst. Read-only; it never trades.',
+    h1: 'Every account. One clear picture.',
+  },
   '/client-portal': {
     title: 'Client Portal | Dashboard, TaxGPT & Secure Files | Axiom',
     description:

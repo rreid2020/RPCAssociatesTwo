@@ -18,6 +18,7 @@
 ## Products and tools
 
 - [ARO Suite](https://axiomft.ca/products/aro-suite): end-to-end asset retirement obligation software
+- [Portfolio Analyst](https://axiomft.ca/products/portfolio-analyst): investment portfolio dashboard for Canadian TFSA, RRSP and non-registered accounts
 - [ARO Recalculation](https://axiomft.ca/resources/aro-recalculation): free independent PS 3280 recalculation
 - [Client Portal](https://axiomft.ca/client-portal)
 

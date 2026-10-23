@@ -201,7 +201,8 @@ const PortfolioAnalystPage: FC = () => {
                   </li>
                 ))}
               </ul>
-              <div className="mt-lg flex flex-wrap gap-3">
+              {/* .svc-landing scopes the site's button styles */}
+              <div className="svc-landing mt-lg flex flex-wrap gap-3">
                 <a
                   href={PORTFOLIO_ANALYST_APP_URL}
                   target="_blank"
@@ -527,14 +528,16 @@ const PortfolioAnalystPage: FC = () => {
                 Sign in with your Axiom account, create a portfolio, and import a file or connect a
                 broker. A guided walkthrough takes you through each step.
               </p>
-              <a
-                href={PORTFOLIO_ANALYST_APP_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-solid"
-              >
-                Open Portfolio Analyst
-              </a>
+              <div className="svc-landing">
+                <a
+                  href={PORTFOLIO_ANALYST_APP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-primary"
+                >
+                  Open Portfolio Analyst
+                </a>
+              </div>
               <p className="mt-lg mb-0 max-w-3xl text-xs leading-relaxed text-white/60">
                 Portfolio Analyst provides information and analysis tools only. It is not investment,
                 tax or financial advice, and it does not place trades. Consider speaking with a

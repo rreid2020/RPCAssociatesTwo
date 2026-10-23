@@ -3,7 +3,7 @@ export type ProductSummary = {
   title: string
   intro: string
   href: string
-  icon: 'aro-suite' | 'portfolio-analyst'
+  icon: 'aro-suite' | 'portfolio-analyst' | 'projectcost'
 }
 
 export const products: ProductSummary[] = [
@@ -22,5 +22,13 @@ export const products: ProductSummary[] = [
       'Every TFSA, RRSP and non-registered account in one dashboard, with a rebalancer and an AI analyst.',
     href: '/products/portfolio-analyst',
     icon: 'portfolio-analyst',
+  },
+  {
+    slug: 'projectcost',
+    title: 'ProjectCost',
+    intro:
+      'Job costing, WIP schedules and month-end entries on top of QuickBooks, Sage, Xero or spreadsheets.',
+    href: '/products/projectcost',
+    icon: 'projectcost',
   },
 ]

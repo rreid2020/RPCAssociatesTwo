@@ -36,6 +36,11 @@ const Footer: FC = () => {
                 </Link>
               </li>
               <li>
+                <Link to="/products/projectcost" className="text-white opacity-90 text-sm no-underline transition-all hover:opacity-100 hover:underline">
+                  ProjectCost
+                </Link>
+              </li>
+              <li>
                 <Link to="/resources/aro-recalculation" className="text-white opacity-90 text-sm no-underline transition-all hover:opacity-100 hover:underline">
                   ARO Recalculation
                 </Link>

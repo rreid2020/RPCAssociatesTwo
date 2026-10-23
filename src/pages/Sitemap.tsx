@@ -37,6 +37,7 @@ const Sitemap: FC = () => {
                 { to: '/services', title: 'Services', desc: 'Accounting, consulting, and technology services' },
                 { to: '/products/aro-suite', title: 'ARO Suite', desc: 'Asset retirement obligation software product page' },
                 { to: '/products/portfolio-analyst', title: 'Portfolio Analyst', desc: 'Investment portfolio dashboard product page' },
+                { to: '/products/projectcost', title: 'ProjectCost', desc: 'Project accounting and WIP schedule product page' },
                 { to: '/resources', title: 'Resources', desc: 'Calculators, templates, and guides' },
                 { to: '/articles', title: 'Articles', desc: 'Insights on Canadian tax, accounting, and technology' },
                 { to: '/client-portal', title: 'Client Portal', desc: 'Secure portal for dashboard, TaxGPT, files, and more' },

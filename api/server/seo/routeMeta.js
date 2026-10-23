@@ -63,6 +63,12 @@ export const ROUTE_META = {
       'Every TFSA, RRSP and non-registered account in one dashboard — allocation, risk, dividends, account placement, a rebalancer and an AI analyst. Read-only; it never trades.',
     h1: 'Every account. One clear picture.',
   },
+  '/products/projectcost': {
+    title: 'ProjectCost | Job Costing & WIP for Your Accounting System | Axiom',
+    description:
+      'Budgets, change orders, progress billing with holdback, a surety-format WIP schedule and month-end entries — on top of QuickBooks, Sage, Xero or spreadsheets.',
+    h1: 'Know where every project stands.',
+  },
   '/client-portal': {
     title: 'Client Portal | Dashboard, TaxGPT & Secure Files | Axiom',
     description:

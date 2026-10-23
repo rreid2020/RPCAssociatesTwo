@@ -69,6 +69,13 @@ const ResourceIcon = ({ icon }: { icon: string }) => {
 }
 
 const ProductIcon = ({ icon }: { icon: string }) => {
+  if (icon === 'projectcost') {
+    return (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21h18M5 21V8l7-4 7 4v13M9 21v-6h6v6M9 11h.01M15 11h.01" />
+      </svg>
+    )
+  }
   if (icon === 'portfolio-analyst') {
     return (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

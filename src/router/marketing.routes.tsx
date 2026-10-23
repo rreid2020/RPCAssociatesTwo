@@ -20,6 +20,7 @@ import ClientPortal from '../pages/ClientPortal'
 import RogerReidCv from '../pages/RogerReidCv'
 import AroSuitePage from '../pages/AroSuitePage'
 import PortfolioAnalystPage from '../pages/PortfolioAnalystPage'
+import ProjectCostPage from '../pages/ProjectCostPage'
 import NotFound from '../pages/NotFound'
 import { getResourceRoutes } from './resource.routes'
 
@@ -49,6 +50,7 @@ export function getMarketingRoutes () {
               <Route path="/services/:slug" element={<ServiceDetail />} />
               <Route path="/products/aro-suite" element={<AroSuitePage />} />
               <Route path="/products/portfolio-analyst" element={<PortfolioAnalystPage />} />
+              <Route path="/products/projectcost" element={<ProjectCostPage />} />
               {getResourceRoutes()}
               <Route path="/articles" element={<Articles />} />
               <Route path="/articles/category/:categorySlug" element={<ArticleCategory />} />

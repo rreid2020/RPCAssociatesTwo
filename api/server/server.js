@@ -23,7 +23,8 @@ import { logServerEnvSummary } from './config/env.js'
 import { getNotificationInbox } from './config/mail.js'
 import { escapeHtml, singleLine } from './utils/html.js'
 import { applyRouteSeo } from './seo/injectHtmlMeta.js'
-import { normalizePathname } from './seo/routeMeta.js'
+import { normalizePathname, resolveRouteMeta } from './seo/routeMeta.js'
+import { articleSlugFromPath, fetchArticleMeta } from './seo/articleMeta.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -363,8 +364,12 @@ function sendMarketingHtml (req, res, filePath, injectSeo) {
   if (!injectSeo) {
     return res.sendFile(filePath)
   }
-  return readFile(filePath, 'utf8').then((html) => {
-    res.send(applyRouteSeo(html, req.path))
+  const slug = articleSlugFromPath(normalizePathname(req.path))
+  const articleMeta = slug ? fetchArticleMeta(slug) : Promise.resolve(null)
+  return Promise.all([readFile(filePath, 'utf8'), articleMeta]).then(([html, override]) => {
+    // The SPA still renders its own "page not found" view; the status tells crawlers.
+    if ((override || resolveRouteMeta(req.path)).notFound) res.status(404)
+    res.send(applyRouteSeo(html, req.path, undefined, override))
   }).catch(() => {
     res.status(500).send('Unable to serve page')
   })

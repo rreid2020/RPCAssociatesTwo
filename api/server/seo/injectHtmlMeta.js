@@ -8,36 +8,38 @@ function escapeHtml (value) {
     .replace(/"/g, '&quot;')
 }
 
+// Head tags carry data-rh="true" so react-helmet-async replaces them once the
+// page renders, instead of leaving a second, conflicting copy alongside its own.
 function replaceMetaByName (html, name, content) {
-  const pattern = new RegExp(`(<meta\\s+name="${name}"\\s+content=")[^"]*("\\s*/?>)`, 'i')
+  const pattern = new RegExp(`(<meta\\s+name="${name}"\\s+content=")[^"]*("[^>]*>)`, 'i')
   if (pattern.test(html)) {
     return html.replace(pattern, `$1${content}$2`)
   }
-  return html.replace('</head>', `    <meta name="${name}" content="${content}" />\n  </head>`)
+  return html.replace('</head>', `    <meta name="${name}" content="${content}" data-rh="true" />\n  </head>`)
 }
 
 function replaceMetaByProperty (html, property, content) {
-  const pattern = new RegExp(`(<meta\\s+property="${property}"\\s+content=")[^"]*("\\s*/?>)`, 'i')
+  const pattern = new RegExp(`(<meta\\s+property="${property}"\\s+content=")[^"]*("[^>]*>)`, 'i')
   if (pattern.test(html)) {
     return html.replace(pattern, `$1${content}$2`)
   }
-  return html.replace('</head>', `    <meta property="${property}" content="${content}" />\n  </head>`)
+  return html.replace('</head>', `    <meta property="${property}" content="${content}" data-rh="true" />\n  </head>`)
 }
 
 function replaceLinkRel (html, rel, href) {
-  const pattern = new RegExp(`(<link\\s+rel="${rel}"\\s+href=")[^"]*("\\s*/?>)`, 'i')
+  const pattern = new RegExp(`(<link\\s+rel="${rel}"\\s+href=")[^"]*("[^>]*>)`, 'i')
   if (pattern.test(html)) {
     return html.replace(pattern, `$1${href}$2`)
   }
-  return html.replace('</head>', `    <link rel="${rel}" href="${href}" />\n  </head>`)
+  return html.replace('</head>', `    <link rel="${rel}" href="${href}" data-rh="true" />\n  </head>`)
 }
 
 /**
  * Rewrite the SPA shell so crawlers receive the requested URL's title,
  * description, and canonical — not the homepage defaults.
  */
-export function applyRouteSeo (html, rawPath, origin = SITE_ORIGIN) {
-  const meta = resolveRouteMeta(rawPath)
+export function applyRouteSeo (html, rawPath, origin = SITE_ORIGIN, override = null) {
+  const meta = { ...resolveRouteMeta(rawPath), ...override }
   const title = escapeHtml(meta.title)
   const description = escapeHtml(meta.description)
   const h1 = escapeHtml(meta.h1)
@@ -74,7 +76,7 @@ export function applyRouteSeo (html, rawPath, origin = SITE_ORIGIN) {
 
   next = next.replace(
     '</head>',
-    `    <script type="application/ld+json">${JSON.stringify(webPageLd)}</script>\n  </head>`
+    `    <script type="application/ld+json" data-rh="true">${JSON.stringify(webPageLd)}</script>\n  </head>`
   )
 
   const noscript = `<noscript><main><h1>${h1}</h1><p>${description}</p><p><a href="${canonical}">${canonical}</a></p></main></noscript>`

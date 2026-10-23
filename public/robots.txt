@@ -1,4 +1,12 @@
+# Crawlers obey only the most specific group that names them, so every
+# crawler shares this one group and the Disallow rules apply to all of them.
 User-agent: *
+User-agent: Googlebot
+User-agent: Bingbot
+User-agent: GPTBot
+User-agent: ChatGPT-User
+User-agent: PerplexityBot
+User-agent: ClaudeBot
 Allow: /
 Disallow: /roger-reid-cv
 Disallow: /downloads/private/
@@ -6,23 +14,6 @@ Disallow: /portal
 Disallow: /portal/
 Disallow: /app
 Disallow: /app/
-
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: GPTBot
-Allow: /
-
-User-agent: ChatGPT-User
-Allow: /
-
-User-agent: PerplexityBot
-Allow: /
-
-User-agent: ClaudeBot
-Allow: /
+Disallow: /sso-callback
 
 Sitemap: https://axiomft.ca/sitemap.xml

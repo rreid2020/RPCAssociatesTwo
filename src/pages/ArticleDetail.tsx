@@ -42,7 +42,7 @@ const ArticleDetail: FC = () => {
   if (!slug) {
     return (
       <>
-        <SEO title="Article Not Found" canonical="/articles" />
+        <SEO title="Article Not Found" canonical="/articles" noIndex />
         <main className="svc-landing">
           <section className="closing">
             <div className="wrap">
@@ -78,7 +78,7 @@ const ArticleDetail: FC = () => {
   if (error || !article) {
     return (
       <>
-        <SEO title="Article Not Found" canonical="/articles" />
+        <SEO title="Article Not Found" canonical="/articles" noIndex />
         <main className="svc-landing">
           <section className="closing">
             <div className="wrap">
@@ -135,7 +135,7 @@ const ArticleDetail: FC = () => {
         twitterTitle={article.seo?.twitter?.title}
         twitterDescription={article.seo?.twitter?.description}
         twitterImage={twitterImageUrl}
-        schemaType={article.seo?.schema?.articleType}
+        schemaType={article.seo?.schema?.articleType || 'Article'}
         schemaAuthor={article.seo?.schema?.authorName || article.author?.name}
         schemaPublisher={article.seo?.schema?.publisherName}
         schemaPublisherLogo={article.seo?.schema?.publisherLogo}

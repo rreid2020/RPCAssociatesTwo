@@ -58,7 +58,7 @@ export const ROUTE_META = {
     h1: 'Own the ARO process, end to end.',
   },
   '/products/portfolio-analyst': {
-    title: 'Portfolio Analyst | Investment Portfolio Dashboard for Canadians | Axiom',
+    title: 'Portfolio Analyst | Portfolio Dashboard for Canadians | Axiom',
     description:
       'Every TFSA, RRSP and non-registered account in one dashboard — allocation, risk, dividends, account placement, a rebalancer and an AI analyst. Read-only; it never trades.',
     h1: 'Every account. One clear picture.',
@@ -231,6 +231,15 @@ const PREFIX_RULES = [
       h1: 'Services',
     },
   },
+  {
+    test: (pathname) => pathname === '/roger-reid-cv' || pathname === '/sso-callback',
+    meta: {
+      title: 'Axiom Financial & Technology',
+      description: HOME_DESCRIPTION,
+      h1: 'Axiom Financial & Technology',
+      noIndex: true,
+    },
+  },
 ]
 
 export function normalizePathname (rawPath = '/') {
@@ -251,11 +260,14 @@ export function resolveRouteMeta (rawPath = '/') {
       return { path: pathname, noIndex: false, ...rule.meta }
     }
   }
+  // No such page: answer 404 so search engines drop the URL instead of
+  // indexing a copy of the homepage under it.
   return {
     path: pathname,
-    noIndex: false,
-    title: HOME_TITLE,
-    description: HOME_DESCRIPTION,
-    h1: 'Axiom Financial & Technology',
+    noIndex: true,
+    notFound: true,
+    title: 'Page Not Found | Axiom',
+    description: 'The page you were looking for could not be found on axiomft.ca.',
+    h1: 'Page not found',
   }
 }

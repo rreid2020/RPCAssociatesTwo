@@ -20,6 +20,7 @@ import ClientPortal from '../pages/ClientPortal'
 import RogerReidCv from '../pages/RogerReidCv'
 import AroSuitePage from '../pages/AroSuitePage'
 import PortfolioAnalystPage from '../pages/PortfolioAnalystPage'
+import NotFound from '../pages/NotFound'
 import { getResourceRoutes } from './resource.routes'
 
 /** Deprecated service slugs — keep until Search Console / inbound links settle. */
@@ -60,6 +61,7 @@ export function getMarketingRoutes () {
               <Route path="/client-portal" element={<ClientPortal />} />
               {/* Unlisted: not in nav/sitemap; share URL only */}
               <Route path="/roger-reid-cv" element={<RogerReidCv />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
             <Footer />
           </div>

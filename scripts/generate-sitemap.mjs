@@ -73,9 +73,10 @@ async function generateSitemap() {
         useCdn: true,
       })
 
-      // Fetch all published articles
+      // Fetch all published articles. Most are stored as "post"; match the
+      // filter the Articles page uses (src/lib/sanity/queries.ts).
       articles = await client.fetch(`
-        *[_type == "article" && defined(slug.current)] | order(publishedAt desc) {
+        *[(_type == "article" || _type == "post") && defined(publishedAt) && defined(slug.current) && seo.noIndex != true] | order(publishedAt desc) {
           "slug": slug.current,
           publishedAt,
           updatedAt,

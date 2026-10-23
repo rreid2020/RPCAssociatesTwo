@@ -145,7 +145,7 @@ const PortfolioAnalystPage: FC = () => {
   return (
     <>
       <SEO
-        title="Portfolio Analyst | Investment Portfolio Dashboard for Canadians"
+        title="Portfolio Analyst | Portfolio Dashboard for Canadians"
         description="See every account in one place — allocation, gain and loss, risk against a benchmark, dividends and TFSA/RRSP placement — with a rebalancer and an AI analyst. Read-only; it never trades."
         canonical="/products/portfolio-analyst"
         keywords={keywords}
